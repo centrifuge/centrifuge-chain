@@ -10,6 +10,7 @@
 
 pub mod currency;
 pub mod democracy;
+pub mod evm;
 pub mod genesis;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
@@ -35,6 +36,8 @@ use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 
+pub const ESSENTIAL: &str =
+	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
 fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
 where
 	T::RuntimeEventExt: TryInto<E>,

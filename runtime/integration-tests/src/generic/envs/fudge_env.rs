@@ -156,7 +156,7 @@ mod tests {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);

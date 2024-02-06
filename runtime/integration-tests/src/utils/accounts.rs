@@ -15,14 +15,12 @@
 use std::collections::HashMap;
 
 use cfg_primitives::Index;
+use ethabi::ethereum_types::{H160, H256};
+use frame_support::traits::OriginTrait;
 use fudge::primitives::Chain;
 use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
-pub use sp_core::sr25519;
-use sp_core::{
-	sr25519::{Pair, Public, Signature},
-	Pair as PairT,
-};
-use sp_runtime::AccountId32;
+use sp_core::{ecdsa, ed25519, sr25519, Hasher, Pair as PairT};
+use sp_runtime::{AccountId32, MultiSignature};
 
 use crate::{
 	chain::{centrifuge, centrifuge::PARA_ID, relay},
@@ -59,11 +57,11 @@ impl NonceManager {
 	fn nonce_from_chain(chain: Chain, who: Keyring) -> Index {
 		match chain {
 			Chain::Relay => nonce::<relay::Runtime, RelayAccountId, RelayIndex>(
-				who.clone().to_account_id().into(),
+				who.clone().id().into(),
 			),
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
-					who.clone().to_account_id().into()
+					who.clone().id().into()
 				),
 				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
 			}
@@ -109,7 +107,7 @@ fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
 			nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
-				who.clone().to_account_id().into(),
+				who.clone().id().into(),
 			)
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
@@ -120,9 +118,7 @@ fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 /// **NOTE: Usually one should use the TestEnv::nonce() api**
 fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
 	env.relay
-		.with_state(|| {
-			nonce::<relay::Runtime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
-		})
+		.with_state(|| nonce::<relay::Runtime, RelayAccountId, RelayIndex>(who.clone().id().into()))
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
 
@@ -150,38 +146,70 @@ pub enum Keyring {
 }
 
 impl Keyring {
-	pub fn to_account_id(self) -> AccountId32 {
-		self.public().0.into()
-	}
-
-	/// Shorter alias for `to_account_id()`
 	pub fn id(self) -> AccountId32 {
-		self.to_account_id()
+		let pair: sr25519::Pair = self.into();
+		pair.public().into()
 	}
 
-	pub fn sign(self, msg: &[u8]) -> Signature {
-		Pair::from(self).sign(msg)
+	pub fn id_ed25519(self) -> AccountId32 {
+		let pair: ed25519::Pair = self.into();
+		pair.public().into()
 	}
 
-	pub fn pair(self) -> Pair {
-		let path = match self {
-			Keyring::Admin => "Admin".to_owned(),
-			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{tranche_index}"),
-			Keyring::Alice => "Alice".to_owned(),
-			Keyring::Bob => "Bob".to_owned(),
-			Keyring::Charlie => "Charlie".to_owned(),
-			Keyring::Dave => "Dave".to_owned(),
-			Keyring::Eve => "Eve".to_owned(),
-			Keyring::Ferdie => "Ferdie".to_owned(),
-			Keyring::Custom(derivation_path) => derivation_path.to_owned(),
-		};
+	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
+		let h160: H160 = self.into();
 
-		Pair::from_string(&format!("//{}", path.as_str()), None)
-			.expect("static values are known good; qed")
+		runtime_common::account_conversion::AccountConverter::<(), ()>::convert_evm_address(
+			pallet_evm_chain_id::ChainId::<T>::get(),
+			h160.0,
+		)
 	}
 
-	pub fn public(self) -> Public {
-		self.pair().public()
+	pub fn as_multi(self) -> sp_runtime::MultiSigner {
+		let pair: sr25519::Pair = self.into();
+		pair.public().into()
+	}
+
+	pub fn as_multi_ed25519(self) -> sp_runtime::MultiSigner {
+		let pair: ed25519::Pair = self.into();
+		pair.public().into()
+	}
+
+	pub fn as_multi_ecdsa(self) -> sp_runtime::MultiSigner {
+		let pair: ecdsa::Pair = self.into();
+		pair.public().into()
+	}
+
+	pub fn sign(self, msg: &[u8]) -> sr25519::Signature {
+		let pair: sr25519::Pair = self.into();
+		pair.sign(msg)
+	}
+
+	pub fn sign_ed25519(self, msg: &[u8]) -> ed25519::Signature {
+		let pair: ed25519::Pair = self.into();
+		pair.sign(msg)
+	}
+
+	pub fn sign_ecdsa(self, msg: &[u8]) -> ecdsa::Signature {
+		let pair: ecdsa::Pair = self.into();
+		pair.sign(msg)
+	}
+
+	pub fn as_origin<T: OriginTrait<AccountId = AccountId32>>(self) -> T {
+		OriginTrait::signed(self.id())
+	}
+
+	pub fn as_origin_ed25519<T: OriginTrait<AccountId = AccountId32>>(self) -> T {
+		OriginTrait::signed(self.id_ed25519())
+	}
+
+	pub fn as_origin_ecdsa<
+		R: pallet_evm_chain_id::Config,
+		T: OriginTrait<AccountId = AccountId32>,
+	>(
+		self,
+	) -> T {
+		OriginTrait::signed(self.id_ecdsa::<R>())
 	}
 
 	pub fn to_seed(self) -> String {
@@ -198,21 +226,33 @@ impl Keyring {
 		};
 		format!("//{}", path.as_str())
 	}
+}
 
-	/// Create a crypto `Pair` from a numeric value.
-	pub fn numeric(idx: usize) -> Pair {
-		Pair::from_string(&format!("//{}", idx), None).expect("numeric values are known good; qed")
-	}
-
-	/// Get account id of a `numeric` account.
-	pub fn numeric_id(idx: usize) -> AccountId32 {
-		(*Self::numeric(idx).public().as_array_ref()).into()
+impl From<Keyring> for AccountId32 {
+	fn from(value: Keyring) -> Self {
+		value.id()
 	}
 }
 
-impl From<Keyring> for sp_runtime::MultiSigner {
-	fn from(x: Keyring) -> Self {
-		sp_runtime::MultiSigner::Sr25519(x.into())
+impl From<Keyring> for [u8; 32] {
+	fn from(value: Keyring) -> Self {
+		value.id().into()
+	}
+}
+
+impl From<Keyring> for H160 {
+	fn from(value: Keyring) -> Self {
+		H160::from(H256::from(
+			sp_core::KeccakHasher::hash(&Into::<ecdsa::Pair>::into(value).public().as_ref()).0,
+		))
+	}
+}
+
+impl From<Keyring> for sp_core::H160 {
+	fn from(value: Keyring) -> Self {
+		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
+			&Into::<ecdsa::Pair>::into(value).public().as_ref(),
+		)))
 	}
 }
 
@@ -222,9 +262,44 @@ impl From<Keyring> for sp_runtime::MultiAddress<AccountId32, ()> {
 	}
 }
 
+impl From<Keyring> for sr25519::Public {
+	fn from(k: Keyring) -> Self {
+		Into::<sr25519::Pair>::into(k).public()
+	}
+}
+
+impl From<Keyring> for sr25519::Pair {
+	fn from(k: Keyring) -> Self {
+		sr25519::Pair::from_string(&k.to_seed(), None).expect("static values are known good; qed")
+	}
+}
+
+impl From<Keyring> for ed25519::Public {
+	fn from(k: Keyring) -> Self {
+		Into::<ed25519::Pair>::into(k).public()
+	}
+}
+
+impl From<Keyring> for ed25519::Pair {
+	fn from(k: Keyring) -> Self {
+		ed25519::Pair::from_string(&k.to_seed(), None).expect("static values are known good; qed")
+	}
+}
+
+impl From<Keyring> for ecdsa::Public {
+	fn from(k: Keyring) -> Self {
+		Into::<ecdsa::Pair>::into(k).public()
+	}
+}
+
+impl From<Keyring> for ecdsa::Pair {
+	fn from(k: Keyring) -> Self {
+		ecdsa::Pair::from_string(&k.to_seed(), None).expect("static values are known good; qed")
+	}
+}
+
 #[derive(Debug)]
 pub struct ParseKeyringError;
-
 impl std::fmt::Display for ParseKeyringError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "ParseKeyringError")
@@ -430,42 +505,6 @@ pub fn default_investors() -> Vec<Keyring> {
 	]
 }
 
-impl From<Keyring> for AccountId32 {
-	fn from(k: Keyring) -> Self {
-		k.to_account_id()
-	}
-}
-
-impl From<Keyring> for Public {
-	fn from(k: Keyring) -> Self {
-		k.pair().public()
-	}
-}
-
-impl From<Keyring> for Pair {
-	fn from(k: Keyring) -> Self {
-		k.pair()
-	}
-}
-
-impl From<Keyring> for [u8; 32] {
-	fn from(k: Keyring) -> Self {
-		k.pair().public().0
-	}
-}
-
-impl From<Keyring> for crate::chain::centrifuge::RuntimeOrigin {
-	fn from(account: Keyring) -> Self {
-		crate::chain::centrifuge::RuntimeOrigin::signed(AccountId32::from(account))
-	}
-}
-
-impl From<Keyring> for crate::chain::relay::RuntimeOrigin {
-	fn from(account: Keyring) -> Self {
-		crate::chain::relay::RuntimeOrigin::signed(AccountId32::from(account))
-	}
-}
-
 #[cfg(test)]
 mod tests {
 	use sp_core::{sr25519::Pair, Pair as PairT};
@@ -477,17 +516,17 @@ mod tests {
 		assert!(Pair::verify(
 			&Keyring::Alice.sign(b"I am Alice!"),
 			b"I am Alice!",
-			&Keyring::Alice.public(),
+			&Keyring::Alice.into(),
 		));
 		assert!(!Pair::verify(
 			&Keyring::Alice.sign(b"I am Alice!"),
 			b"I am Bob!",
-			&Keyring::Alice.public(),
+			&Keyring::Alice.into(),
 		));
 		assert!(!Pair::verify(
 			&Keyring::Alice.sign(b"I am Alice!"),
 			b"I am Alice!",
-			&Keyring::Bob.public(),
+			&Keyring::Bob.into(),
 		));
 	}
 }

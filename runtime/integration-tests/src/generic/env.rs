@@ -1,5 +1,6 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
+use ethabi::Token;
 use parity_scale_codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
@@ -158,6 +159,24 @@ pub trait Env<T: Runtime>: Default {
 	fn __priv_build_block(&mut self, i: BlockNumber);
 }
 
+pub trait EvmEnv<T: Runtime>: Env<T> {
+	fn load_contracts(self) -> Self;
+
+	fn deploy(
+		&mut self,
+		what: impl Into<String>,
+		name: impl Into<String>,
+		who: Keyring,
+		args: Option<&[Token]>,
+	);
+
+	fn call(&mut self);
+
+	fn mut_call(&mut self);
+
+	fn view(&self);
+}
+
 pub mod utils {
 	use super::*;
 
@@ -185,7 +204,7 @@ pub mod utils {
 		let signature =
 			MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
 
-		let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
+		let multi_address = (Address::Id(who.id()), signature, signed_extra);
 
 		<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap()
 	}

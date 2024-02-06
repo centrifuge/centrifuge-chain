@@ -1,15 +1,17 @@
-use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use cfg_types::ParaId;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+use ethabi::{ethereum_types::H160, Contract, Token};
 use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
+use pallet_evm::{FeeCalculator, Runner};
 use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
@@ -25,7 +27,8 @@ use sp_timestamp::Timestamp;
 use crate::{
 	generic::{
 		config::Runtime,
-		env::{utils, Env},
+		env::{utils, Env, EvmEnv},
+		utils::{evm, evm::ContractInfo, ESSENTIAL},
 	},
 	utils::accounts::Keyring,
 };
@@ -37,12 +40,91 @@ pub struct RuntimeEnv<T: Runtime> {
 	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
 	pending_xcm: Vec<(ParaId, Vec<u8>)>,
+	sol_contracts: Option<HashMap<String, ContractInfo>>,
+	deployed_contracts: HashMap<String, (H160, Contract)>,
 	_config: PhantomData<T>,
 }
 
 impl<T: Runtime> Default for RuntimeEnv<T> {
 	fn default() -> Self {
 		Self::from_storage(Default::default(), Default::default(), Default::default())
+	}
+}
+
+const GAS_LIMIT: u64 = 5_000_000;
+const VALIDATE: bool = true;
+const TRANSACTIONAL: bool = true;
+
+impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
+	fn load_contracts(mut self) -> Self {
+		self.sol_contracts = Some(evm::fetch_contracts());
+		self
+	}
+
+	fn deploy(
+		&mut self,
+		what: impl Into<String>,
+		name: impl Into<String>,
+		who: Keyring,
+		args: Option<&[Token]>,
+	) {
+		let info = self
+			.sol_contracts
+			.as_ref()
+			.expect("Need to load_contracts first")
+			.get(&what.into())
+			.expect("Unknown contract")
+			.clone();
+
+		let init = match (info.contract.constructor(), args) {
+			(None, None) => info.bytecode.to_vec(),
+			(Some(constructor), Some(args)) => constructor
+				.encode_input(info.bytecode.to_vec(), args)
+				.expect(ESSENTIAL),
+			(Some(constructor), None) => constructor
+				.encode_input(info.bytecode.to_vec(), &[])
+				.expect(ESSENTIAL),
+			(None, Some(_)) => panic!("Contract expects constructor arguments."),
+		};
+
+		let address = self.parachain_state_mut(|| {
+			let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
+
+			<T as pallet_evm::Config>::Runner::create(
+				who.into(),
+				init,
+				0u8.into(),
+				GAS_LIMIT,
+				Some(base_fee),
+				None,
+				None,
+				Vec::new(),
+				// NOTE: Taken from pallet-evm implementation
+				VALIDATE,
+				// NOTE: Taken from pallet-evm implementation
+				TRANSACTIONAL,
+				None,
+				None,
+				<T as pallet_evm::Config>::config(),
+			)
+			.expect(ESSENTIAL)
+			.value
+		});
+
+		self.deployed_contracts
+			.insert(name.into(), (H160::from(address.0), info.contract.clone()));
+	}
+
+	fn call(&mut self) {
+		todo!()
+	}
+
+	fn mut_call(&mut self) {
+		todo!()
+	}
+
+	fn view(&self) {
+		todo!()
 	}
 }
 
@@ -83,6 +165,8 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			sibling_ext: Rc::new(RefCell::new(sibling_ext)),
 			pending_extrinsics: Vec::default(),
 			pending_xcm: Vec::default(),
+			sol_contracts: None,
+			deployed_contracts: HashMap::new(),
 			_config: PhantomData,
 		}
 	}
@@ -96,7 +180,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		let info = call.get_dispatch_info();
 
 		let extrinsic = self.parachain_state(|| {
-			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+			let nonce = frame_system::Pallet::<T>::account(who.id()).nonce;
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
 		let len = extrinsic.encoded_size();
@@ -194,7 +278,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 
 		for (who, call) in pending_extrinsics {
 			let extrinsic = self.parachain_state(|| {
-				let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+				let nonce = frame_system::Pallet::<T>::account(who.id()).nonce;
 				utils::create_extrinsic::<T>(who, call, nonce)
 			});
 
@@ -285,7 +369,7 @@ mod tests {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);
@@ -307,7 +391,7 @@ mod tests {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);

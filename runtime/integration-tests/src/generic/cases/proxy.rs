@@ -10,7 +10,7 @@ use xcm::{
 
 use crate::{
 	generic::{
-		cases::liquidity_pools::utils::setup_xcm,
+		cases::liquidity_pools_transfers::utils::setup_xcm,
 		config::Runtime,
 		env::Env,
 		envs::{

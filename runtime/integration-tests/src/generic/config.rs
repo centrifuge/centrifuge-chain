@@ -146,6 +146,10 @@ pub trait Runtime:
 	+ pallet_evm_chain_id::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
+	+ pallet_evm::Config<
+		Runner = pallet_evm::runner::stack::Runner<Self>,
+		Currency = pallet_balances::Pallet<Self>,
+	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

@@ -14,6 +14,7 @@
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
+use sp_core::{sr25519, Pair};
 use sp_runtime::{AccountId32, Storage};
 
 use crate::utils::{
@@ -176,8 +177,8 @@ where
 					AccountId32::from(acc.clone()).into(),
 					AccountId32::from(acc.clone()).into(),
 					development_runtime::SessionKeys {
-						aura: acc.public().into(),
-						block_rewards: acc.public().into(),
+						aura: Into::<sr25519::Public>::into(acc).into(),
+						block_rewards: Into::<sr25519::Public>::into(acc).into(),
 					}
 					.into(),
 				)
@@ -201,7 +202,7 @@ where
 	use sp_core::Get;
 
 	pallet_collator_selection::GenesisConfig::<Runtime> {
-		invulnerables: vec![Keyring::Admin.to_account_id().into()],
+		invulnerables: vec![Keyring::Admin.id().into()],
 		candidacy_bond: cfg_primitives::MILLI_CFG.into(),
 		desired_candidates: <Runtime as pallet_collator_selection::Config>::MaxCandidates::get(),
 	}
@@ -217,7 +218,7 @@ where
 	<Runtime as pallet_block_rewards::Config>::Balance: From<u128>,
 {
 	pallet_block_rewards::GenesisConfig::<Runtime> {
-		collators: vec![Keyring::Admin.to_account_id().into()],
+		collators: vec![Keyring::Admin.id().into()],
 		collator_reward: (1000 * cfg_primitives::CFG).into(),
 		total_reward: (10_000 * cfg_primitives::CFG).into(),
 	}
@@ -244,10 +245,7 @@ where
 {
 	pallet_collective::GenesisConfig::<Runtime, Instance> {
 		phantom: Default::default(),
-		members: members
-			.into_iter()
-			.map(|acc| acc.to_account_id().into())
-			.collect(),
+		members: members.into_iter().map(|acc| acc.id().into()).collect(),
 	}
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Pallet collective genesis build is not allowed to fail")

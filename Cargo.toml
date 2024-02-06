@@ -79,6 +79,7 @@ jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 url = "2.2.2"
 tempfile = "3.1.0"
 strum = { version = "0.24", default-features = false, features = ["derive"] }
+serde_json = "1.0.107"
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }

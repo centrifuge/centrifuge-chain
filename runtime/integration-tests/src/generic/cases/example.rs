@@ -27,7 +27,7 @@ fn transfer_balance<T: Runtime>() {
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
-					Keyring::Alice.to_account_id(),
+					Keyring::Alice.id(),
 					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
 			})
@@ -47,8 +47,8 @@ fn transfer_balance<T: Runtime>() {
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
-		from: Keyring::Alice.to_account_id(),
-		to: Keyring::Bob.to_account_id(),
+		from: Keyring::Alice.id(),
+		to: Keyring::Bob.id(),
 		amount: TRANSFER,
 	})
 	.unwrap();
@@ -56,11 +56,11 @@ fn transfer_balance<T: Runtime>() {
 	// Check the state
 	env.parachain_state(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
 		);
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.id()),
 			TRANSFER
 		);
 	});
@@ -78,7 +78,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
-					Keyring::Alice.to_account_id(),
+					Keyring::Alice.id(),
 					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
 			})
@@ -99,8 +99,8 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
-		from: Keyring::Alice.to_account_id(),
-		to: Keyring::Bob.to_account_id(),
+		from: Keyring::Alice.id(),
+		to: Keyring::Bob.id(),
 		amount: TRANSFER,
 	})
 	.unwrap();
@@ -118,11 +118,11 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	// Check the state
 	env.parachain_state(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
 		);
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.id()),
 			TRANSFER
 		);
 	});

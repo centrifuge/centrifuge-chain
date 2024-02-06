@@ -16,8 +16,9 @@ pub mod utils;
 mod cases {
 	mod example;
 	mod investments;
-	mod liquidity_pools;
+	mod liquidity_pools_transfers;
 	mod loans;
+	mod lp;
 	mod proxy;
 	mod restricted_transfers;
 }

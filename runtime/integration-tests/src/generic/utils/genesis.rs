@@ -85,9 +85,6 @@ where
 {
 	pallet_collective::GenesisConfig::<T, I> {
 		phantom: Default::default(),
-		members: members
-			.into_iter()
-			.map(|acc| acc.to_account_id().into())
-			.collect(),
+		members: members.into_iter().map(|acc| acc.id().into()).collect(),
 	}
 }

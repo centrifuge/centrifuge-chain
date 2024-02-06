@@ -144,7 +144,7 @@ fn execute_democracy_vote<T: Runtime>(
 
 		env.pass(Blocks::UntilEvent {
 			event: pallet_democracy::Event::<T>::Voted {
-				voter: acc.to_account_id(),
+				voter: acc.id(),
 				ref_index: referendum_index,
 				vote: acc_vote,
 			}
