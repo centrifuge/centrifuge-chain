@@ -223,6 +223,7 @@ pub mod pallet {
 				(Ok(_), Ok(_)) | (Err(_), Err(_)) => {
 					return Err(Error::<T>::InvalidSwapCurrencies.into())
 				}
+				// Mint local and exchange for foreign
 				(Ok(local), Err(_)) => {
 					ensure!(
 						order.currency_in == local,
@@ -232,6 +233,7 @@ pub mod pallet {
 					T::Tokens::mint_into(local, &Self::account(), amount)?;
 					T::Swaps::fill_order(Self::account(), order_id.clone(), amount)?;
 				}
+				// Exchange foreign for local and burn local
 				(Err(_), Ok(local)) => {
 					ensure!(
 						order.currency_out == local,
@@ -262,7 +264,7 @@ pub mod pallet {
 	where
 		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
 	{
-		fn account() -> T::AccountId {
+		pub(crate) fn account() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
@@ -301,7 +303,9 @@ pub mod pallet {
 			.map(|_| ())
 		}
 
-		fn try_local(currency: &CurrencyFor<T>) -> Result<CurrencyFor<T>, DispatchError> {
+		pub(crate) fn try_local(
+			currency: &CurrencyFor<T>,
+		) -> Result<CurrencyFor<T>, DispatchError> {
 			let meta_variant =
 				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MetadataNotFound)?;
 

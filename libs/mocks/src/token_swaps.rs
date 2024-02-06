@@ -75,6 +75,12 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_fill_order(
+			f: impl Fn(T::AccountId, T::OrderId, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c))
+		}
 	}
 
 	impl<T: Config, S> OrderDetails<S> for Pallet<T> {
