@@ -16,7 +16,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAddAssign, Zero},
-	ArithmeticError, DispatchError,
+	DispatchError, DispatchResult,
 };
 use sp_std::cmp::PartialEq;
 
@@ -116,36 +116,30 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 
 /// The collected investment/redemption amount for an account
 #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct CollectedAmount<Balance> {
+pub struct CollectedAmount<Collected, Payment> {
 	/// The amount which was collected
 	/// * If investment: Tranche tokens
 	/// * If redemption: Payment currency
-	pub amount_collected: Balance,
+	pub amount_collected: Collected,
 
 	/// The amount which was converted during processing based on the
 	/// fulfillment price(s)
 	/// * If investment: Payment currency
 	/// * If redemption: Tranche tokens
-	pub amount_payment: Balance,
+	pub amount_payment: Payment,
 }
 
-impl<Balance: EnsureAddAssign + Copy> CollectedAmount<Balance> {
-	pub fn increase(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+impl<Collected: EnsureAddAssign + Copy, Payment: EnsureAddAssign + Copy>
+	CollectedAmount<Collected, Payment>
+{
+	pub fn increase(&mut self, other: &Self) -> DispatchResult {
 		self.amount_collected
 			.ensure_add_assign(other.amount_collected)?;
-		self.amount_payment.ensure_add_assign(other.amount_payment)
+		self.amount_payment
+			.ensure_add_assign(other.amount_payment)?;
+
+		Ok(())
 	}
-}
-
-/// A representation of an investment identifier and the corresponding owner.
-///
-/// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-
-pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
-	pub owner: AccountId,
-	pub id: InvestmentId,
-	pub last_swap_reason: Option<TokenSwapReason>,
 }
 
 /// A simple representation of a currency swap.
@@ -203,7 +197,7 @@ pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 
 /// A representation of an executed collected foreign investment or redemption.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignCollect<Balance, Currency> {
+pub struct ExecutedForeignCollect<Balance, TrancheTokens, Remaining, Currency> {
 	/// The foreign currency in which ...
 	/// * If investment: the payment took place
 	/// * If redemption: the payout takes place
@@ -217,14 +211,14 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 	/// The amount of tranche tokens...
 	/// * If investment: received for the investment made
 	/// * If redemption: which were actually redeemed
-	pub amount_tranche_tokens_payout: Balance,
+	pub amount_tranche_tokens_payout: TrancheTokens,
 
 	/// The unprocessed ...
 	/// * If investment: investment amount of `currency` (denominated in foreign
 	///   currency)
 	/// * If redemption: redemption amount of tranche tokens (denominated in
 	///   pool currency)
-	pub amount_remaining: Balance,
+	pub amount_remaining: Remaining,
 }
 
 /// A representation of an investment portfolio consisting of free, pending and

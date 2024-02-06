@@ -227,7 +227,8 @@ pub mod pallet {
 		/// currencies.
 		type ForeignInvestment: ForeignInvestment<
 			Self::AccountId,
-			Amount = <Self as Config>::Balance,
+			Amount = Self::Balance,
+			TrancheAmount = Self::Balance,
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,

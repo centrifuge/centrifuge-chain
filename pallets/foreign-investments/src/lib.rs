@@ -23,17 +23,11 @@
 //!
 //! - The implementer of the pallet's associated `Investment` type sends
 //!   notifications for collected investments via `CollectedInvestmentHook` and
-//!   for collected redemptions via `CollectedRedemptionHook`]. Otherwise the
-//!   payment and collected amounts for foreign investments/redemptions are
-//!   never incremented.
+//!   for collected redemptions via `CollectedRedemptionHook`].
 //! - The implementer of the pallet's associated `TokenSwaps` type sends
 //!   notifications for fulfilled swap orders via the `FulfilledSwapOrderHook`.
-//!   Otherwise investment/redemption states can never advance the
-//!   `ActiveSwapInto*Currency` state.
 //! - The implementer of the pallet's associated `TokenSwaps` type sends
 //!   notifications for fulfilled swap orders via the `FulfilledSwapOrderHook`.
-//!   Otherwise investment/redemption states can never advance the
-//!   `ActiveSwapInto*Currency` state.
 //! - The implementer of the pallet's associated
 //!   `DecreasedForeignInvestOrderHook` type handles the refund of the decreased
 //!   amount to the investor.
@@ -76,10 +70,10 @@ pub type ForeignId<T> = (
 );
 
 /// Swap alias
-pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
+pub type SwapOf<T> = Swap<<T as Config>::SwapBalance, <T as Config>::CurrencyId>;
 
 /// Swap state alias
-pub type SwapStateOf<T> = SwapState<<T as Config>::Balance, <T as Config>::CurrencyId>;
+pub type SwapStateOf<T> = SwapState<<T as Config>::SwapBalance, <T as Config>::CurrencyId>;
 
 /// TrancheId Identification
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
@@ -121,8 +115,34 @@ pub mod pallet {
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The source of truth for the balance of accounts
-		type Balance: Parameter
+		/// Represents a foreign amount
+		type ForeignBalance: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ FixedPointOperand
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen
+			+ Into<Self::SwapBalance>
+			+ From<Self::SwapBalance>
+			+ Into<Self::PoolBalance>;
+
+		/// Represents a pool amount
+		type PoolBalance: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ FixedPointOperand
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen
+			+ Into<Self::SwapBalance>
+			+ From<Self::SwapBalance>
+			+ Into<Self::ForeignBalance>;
+
+		/// Represents a tranche token amount
+		type TrancheBalance: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
 			+ FixedPointOperand
@@ -131,13 +151,13 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Type for price ratio for cost of incoming currency relative to
-		/// outgoing
-		type BalanceRatio: Parameter
+		/// Any balances used in TokenSwaps
+		type SwapBalance: Parameter
 			+ Member
-			+ sp_runtime::FixedPointNumber
-			+ sp_runtime::traits::EnsureMul
-			+ sp_runtime::traits::EnsureDiv
+			+ AtLeast32BitUnsigned
+			+ FixedPointOperand
+			+ Default
+			+ Copy
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
@@ -157,7 +177,8 @@ pub mod pallet {
 		/// top of the wrapper implementation of this Pallet
 		type Investment: Investment<
 				Self::AccountId,
-				Amount = Self::Balance,
+				Amount = Self::PoolBalance,
+				TrancheAmount = Self::TrancheBalance,
 				CurrencyId = Self::CurrencyId,
 				Error = DispatchError,
 				InvestmentId = Self::InvestmentId,
@@ -173,30 +194,39 @@ pub mod pallet {
 		type TokenSwaps: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
-			Balance = Self::Balance,
+			Balance = Self::SwapBalance,
 			OrderId = Self::SwapId,
 			OrderDetails = SwapOf<Self>,
-			Ratio = Self::BalanceRatio,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
 		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignDecreaseInvest<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignDecreaseInvest<Self::ForeignBalance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
 		/// The hook type which acts upon a finalized redemption collection.
 		type CollectedForeignRedemptionHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignCollect<
+				Self::ForeignBalance,
+				Self::TrancheBalance,
+				Self::TrancheBalance,
+				Self::CurrencyId,
+			>,
 			Error = DispatchError,
 		>;
 
 		/// The hook type which acts upon a finalized redemption collection.
 		type CollectedForeignInvestmentHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignCollect<
+				Self::ForeignBalance,
+				Self::TrancheBalance,
+				Self::ForeignBalance,
+				Self::CurrencyId,
+			>,
 			Error = DispatchError,
 		>;
 

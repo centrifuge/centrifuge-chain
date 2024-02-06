@@ -35,17 +35,19 @@ use crate::{
 };
 
 impl pallet_foreign_investments::Config for Runtime {
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
+	type ForeignBalance = Balance;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
+	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
+	type SwapBalance = Balance;
 	type SwapId = u64;
 	type TokenSwaps = OrderBook;
+	type TrancheBalance = Balance;
 }
 
 parameter_types! {

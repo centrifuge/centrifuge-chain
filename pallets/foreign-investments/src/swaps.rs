@@ -16,10 +16,10 @@ use crate::{
 #[derive(RuntimeDebugNoBound, PartialEq)]
 pub struct SwapStatus<T: Config> {
 	/// The incoming amount already swapped and available to use.
-	pub swapped: T::Balance,
+	pub swapped: T::SwapBalance,
 
 	/// The outgoing amount pending to be swapped
-	pub pending: T::Balance,
+	pub pending: T::SwapBalance,
 
 	/// The swap id for a possible reminder swap order after `apply_swap()`
 	pub swap_id: Option<T::SwapId>,
@@ -76,7 +76,7 @@ impl<T: Config> Swaps<T> {
 		investment_id: T::InvestmentId,
 		action: Action,
 		currency_out: T::CurrencyId,
-	) -> T::Balance {
+	) -> T::SwapBalance {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
 			.and_then(T::TokenSwaps::get_order_details)
 			.filter(|swap| swap.currency_out == currency_out)
@@ -96,7 +96,7 @@ impl<T: Config> Swaps<T> {
 		if new_swap.currency_in == new_swap.currency_out {
 			return Ok(SwapStatus {
 				swapped: new_swap.amount_out,
-				pending: T::Balance::zero(),
+				pending: T::SwapBalance::zero(),
 				swap_id: None,
 			});
 		}
@@ -135,7 +135,7 @@ impl<T: Config> Swaps<T> {
 				)?;
 
 				Ok(SwapStatus {
-					swapped: T::Balance::zero(),
+					swapped: T::SwapBalance::zero(),
 					pending: new_swap.amount_out,
 					swap_id: Some(swap_id),
 				})
@@ -149,7 +149,7 @@ impl<T: Config> Swaps<T> {
 					T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
 
 					Ok(SwapStatus {
-						swapped: T::Balance::zero(),
+						swapped: T::SwapBalance::zero(),
 						pending: amount_to_swap,
 						swap_id: Some(swap_id),
 					})
@@ -175,7 +175,7 @@ impl<T: Config> Swaps<T> {
 
 							Ok(SwapStatus {
 								swapped: new_swap_amount_in,
-								pending: T::Balance::zero(),
+								pending: T::SwapBalance::zero(),
 								swap_id: Some(swap_id),
 							})
 						}
@@ -184,7 +184,7 @@ impl<T: Config> Swaps<T> {
 
 							Ok(SwapStatus {
 								swapped: new_swap_amount_in,
-								pending: T::Balance::zero(),
+								pending: T::SwapBalance::zero(),
 								swap_id: None,
 							})
 						}
