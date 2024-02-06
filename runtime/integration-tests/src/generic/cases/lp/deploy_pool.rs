@@ -22,22 +22,13 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-const DEFAULT_BALANCE: Balance = 100 * CFG;
-
 #[test]
 fn _test() {
 	deploy::<centrifuge_runtime::Runtime>()
 }
 
 fn deploy<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::from_parachain_storage(
-		Genesis::default()
-			.add(genesis::balances::<T>(DEFAULT_BALANCE))
-			.storage(),
-	)
-	.load_contracts();
-
-	super::setup::<T>(&mut env);
+	let mut env = super::setup::<T>();
 }
 
 crate::test_for_runtimes!(all, deploy);

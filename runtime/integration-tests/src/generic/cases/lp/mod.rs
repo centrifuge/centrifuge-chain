@@ -10,10 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{Balance, CFG};
+
 use crate::{
 	generic::{
 		config::Runtime,
 		env::{Env, EvmEnv},
+		envs::runtime_env::RuntimeEnv,
+		utils::{genesis, genesis::Genesis},
 	},
 	utils::accounts::Keyring,
 };
@@ -22,7 +26,16 @@ mod utils {}
 
 pub mod deploy_pool;
 
-pub fn setup<T: Runtime>(env: &mut impl EvmEnv<T>) {
+const DEFAULT_BALANCE: Balance = 100 * CFG;
+
+pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
+	let mut env = RuntimeEnv::<T>::from_parachain_storage(
+		Genesis::default()
+			.add(genesis::balances::<T>(DEFAULT_BALANCE))
+			.storage(),
+	)
+	.load_contracts();
+
 	// Deploy InvestmentManager
 
 	// Deploy router
@@ -33,4 +46,6 @@ pub fn setup<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// Give admin access
 
 	// Remove deployer access
+
+	env
 }
