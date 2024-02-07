@@ -1,6 +1,6 @@
 //! Abstracts the swapping logic
 
-use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
+use cfg_traits::{OrderRatio, TokenSwaps};
 use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 use sp_std::cmp::Ordering;
@@ -79,8 +79,8 @@ impl<T: Config> Swaps<T> {
 	) -> T::Balance {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
 			.and_then(T::TokenSwaps::get_order_details)
-			.filter(|swap| swap.currency_out == currency_out)
-			.map(|swap| swap.amount_out)
+			.filter(|swap| swap.swap.currency_out == currency_out)
+			.map(|swap| swap.swap.amount_out)
 			.unwrap_or_default()
 	}
 
@@ -141,11 +141,11 @@ impl<T: Config> Swaps<T> {
 				})
 			}
 			Some(swap_id) => {
-				let swap = T::TokenSwaps::get_order_details(swap_id)
+				let order = T::TokenSwaps::get_order_details(swap_id)
 					.ok_or(Error::<T>::SwapOrderNotFound)?;
 
-				if swap.is_same_direction(&new_swap)? {
-					let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
+				if order.swap.is_same_direction(&new_swap)? {
+					let amount_to_swap = order.swap.amount_out.ensure_add(new_swap.amount_out)?;
 					T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
 
 					Ok(SwapStatus {
@@ -154,7 +154,7 @@ impl<T: Config> Swaps<T> {
 						swap_id: Some(swap_id),
 					})
 				} else {
-					let inverse_swap = swap;
+					let inverse = order;
 
 					let new_swap_amount_in = T::TokenSwaps::convert_by_market(
 						new_swap.currency_in,
@@ -162,10 +162,10 @@ impl<T: Config> Swaps<T> {
 						new_swap.amount_out,
 					)?;
 
-					match inverse_swap.amount_out.cmp(&new_swap_amount_in) {
+					match inverse.swap.amount_out.cmp(&new_swap_amount_in) {
 						Ordering::Greater => {
 							let amount_to_swap =
-								inverse_swap.amount_out.ensure_sub(new_swap_amount_in)?;
+								inverse.swap.amount_out.ensure_sub(new_swap_amount_in)?;
 
 							T::TokenSwaps::update_order(
 								swap_id,
@@ -192,9 +192,9 @@ impl<T: Config> Swaps<T> {
 							T::TokenSwaps::cancel_order(swap_id)?;
 
 							let inverse_swap_amount_in = T::TokenSwaps::convert_by_market(
-								inverse_swap.currency_in,
-								inverse_swap.currency_out,
-								inverse_swap.amount_out,
+								inverse.swap.currency_in,
+								inverse.swap.currency_out,
+								inverse.swap.amount_out,
 							)?;
 
 							let amount_to_swap =
@@ -209,7 +209,7 @@ impl<T: Config> Swaps<T> {
 							)?;
 
 							Ok(SwapStatus {
-								swapped: inverse_swap.amount_out,
+								swapped: inverse.swap.amount_out,
 								pending: amount_to_swap,
 								swap_id: Some(swap_id),
 							})

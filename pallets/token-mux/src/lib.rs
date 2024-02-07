@@ -32,9 +32,9 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 
-	use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
+	use cfg_traits::{OrderRatio, TokenSwaps};
 	use cfg_types::{
-		orders::MuxSwap,
+		orders::OrderInfo,
 		tokens::{CustomMetadata, LocalAssetId},
 	};
 	use frame_support::{
@@ -53,13 +53,16 @@ pub mod pallet {
 
 	use super::*;
 
-	type AccountIdFor<T> = <T as frame_system::Config>::AccountId;
-	pub type BalanceFor<T> =
-		<<T as Config>::Tokens as fungibles::Inspect<AccountIdFor<T>>>::Balance;
-	pub type CurrencyFor<T> =
-		<<T as Config>::Tokens as fungibles::Inspect<AccountIdFor<T>>>::AssetId;
-	pub type OrderIdFor<T> = <<T as Config>::Swaps as TokenSwaps<AccountIdFor<T>>>::OrderId;
-	pub type RatioFor<T> = <<T as Config>::Swaps as TokenSwaps<AccountIdFor<T>>>::Ratio;
+	pub type BalanceFor<T> = <<T as Config>::Tokens as fungibles::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
+	pub type CurrencyFor<T> = <<T as Config>::Tokens as fungibles::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::AssetId;
+	pub type OrderIdFor<T> =
+		<<T as Config>::Swaps as TokenSwaps<<T as frame_system::Config>::AccountId>>::OrderId;
+	pub type RatioFor<T> =
+		<<T as Config>::Swaps as TokenSwaps<<T as frame_system::Config>::AccountId>>::Ratio;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -84,8 +87,12 @@ pub mod pallet {
 
 		type Tokens: fungibles::Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 
-		type Swaps: TokenSwaps<Self::AccountId, CurrencyId = CurrencyFor<Self>, Balance = BalanceFor<Self>>
-			+ OrderDetails<MuxSwap<CurrencyFor<Self>, RatioFor<Self>>, OrderId = OrderIdFor<Self>>;
+		type Swaps: TokenSwaps<
+			Self::AccountId,
+			CurrencyId = CurrencyFor<Self>,
+			Balance = BalanceFor<Self>,
+			OrderDetails = OrderInfo<BalanceFor<Self>, CurrencyFor<Self>, RatioFor<Self>>,
+		>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -206,8 +213,8 @@ pub mod pallet {
 				OrderRatio::Market => RatioFor::<T>::ensure_from_rational(
 					amount,
 					T::Swaps::convert_by_market(
-						order.currency_in.clone(),
-						order.currency_out.clone(),
+						order.swap.currency_in.clone(),
+						order.swap.currency_out.clone(),
 						amount,
 					)?,
 				)?,
@@ -217,8 +224,8 @@ pub mod pallet {
 			ensure!(ratio == One::one(), Error::<T>::NotIdenticalSwap);
 
 			match (
-				Self::try_local(&order.currency_out),
-				Self::try_local(&order.currency_in),
+				Self::try_local(&order.swap.currency_out),
+				Self::try_local(&order.swap.currency_in),
 			) {
 				(Ok(_), Ok(_)) | (Err(_), Err(_)) => {
 					return Err(Error::<T>::InvalidSwapCurrencies.into())
@@ -226,7 +233,7 @@ pub mod pallet {
 				// Mint local and exchange for foreign
 				(Ok(local), Err(_)) => {
 					ensure!(
-						order.currency_in == local,
+						order.swap.currency_in == local,
 						Error::<T>::InvalidSwapCurrencies
 					);
 
@@ -236,7 +243,7 @@ pub mod pallet {
 				// Exchange foreign for local and burn local
 				(Err(_), Ok(local)) => {
 					ensure!(
-						order.currency_out == local,
+						order.swap.currency_out == local,
 						Error::<T>::InvalidSwapCurrencies
 					);
 

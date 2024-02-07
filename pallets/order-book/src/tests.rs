@@ -10,8 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::OrderDetails;
-use cfg_types::investments::{Swap, SwapState};
+use cfg_types::{
+	investments::{Swap, SwapState},
+	orders::OrderInfo,
+};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::fungibles::{Inspect, InspectHold},
@@ -586,10 +588,13 @@ fn correct_order_details() {
 
 		assert_eq!(
 			OrderBook::get_order_details(order_id),
-			Some(Swap {
-				amount_out: token_a(1),
-				currency_in: CURRENCY_B,
-				currency_out: CURRENCY_A
+			Some(OrderInfo {
+				swap: Swap {
+					amount_out: token_a(1),
+					currency_in: CURRENCY_B,
+					currency_out: CURRENCY_A
+				},
+				ratio: OrderRatio::Custom(DEFAULT_RATIO)
 			})
 		);
 	});

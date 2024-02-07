@@ -22,6 +22,8 @@ use sp_std::{
 	vec::Vec,
 };
 
+use crate::investments::Swap;
+
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
 	pub of_amount: Perquintill,
@@ -128,12 +130,11 @@ impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, Orde
 	}
 }
 
-/// Swap details that the multiplexing pallet needs in order to match orders
-pub struct MuxSwap<Currency, Ratio> {
-	/// The incoming currency, i.e. the desired one.
-	pub currency_in: Currency,
-	/// The outgoing currency, i.e. the one which should be replaced.
-	pub currency_out: Currency,
+/// The information of a swap order
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct OrderInfo<Balance, Currency, Ratio> {
+	/// The underlying currency swap
+	pub swap: Swap<Balance, Currency>,
 	/// The ratio at which the swap should happen
 	pub ratio: OrderRatio<Ratio>,
 }

@@ -12,7 +12,7 @@
 
 use cfg_mocks::pallet_mock_token_swaps;
 use cfg_types::{
-	orders::MuxSwap,
+	orders::OrderInfo,
 	tokens::{CustomMetadata, LocalAssetId},
 };
 use frame_support::{
@@ -101,7 +101,7 @@ impl frame_system::Config for Runtime {
 impl pallet_mock_token_swaps::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type OrderDetails = MuxSwap<CurrencyId, Ratio>;
+	type OrderDetails = OrderInfo<Balance, CurrencyId, Ratio>;
 	type OrderId = SwapId;
 	type Ratio = Ratio;
 }

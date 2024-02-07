@@ -2,8 +2,11 @@ use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
 	OrderRatio, StatusNotificationHook, TokenSwaps,
 };
-use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
+use cfg_types::{
+	investments::{
+		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
+	},
+	orders::OrderInfo,
 };
 use frame_support::{assert_err, assert_ok};
 use sp_std::sync::{Arc, Mutex};
@@ -71,22 +74,28 @@ mod util {
 
 		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_out, _| {
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: curr_in,
-					currency_out: curr_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: curr_in,
+						currency_out: curr_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(SWAP_ID)
 		});
 
 		MockTokenSwaps::mock_update_order(|swap_id, amount_out, _| {
-			let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+			let order = MockTokenSwaps::get_order_details(swap_id).unwrap();
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: swap.currency_in,
-					currency_out: swap.currency_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: order.swap.currency_in,
+						currency_out: order.swap.currency_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(())
@@ -128,11 +137,14 @@ mod util {
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
 		let swap_id = ForeignIdToSwapId::<Runtime>::get((USER, INVESTMENT_ID, action)).unwrap();
-		let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+		let order = MockTokenSwaps::get_order_details(swap_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
-			Some(Swap {
-				amount_out: swap.amount_out - amount_out,
-				..swap
+			Some(OrderInfo {
+				swap: Swap {
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
+				},
+				ratio: order.ratio,
 			})
 		});
 
@@ -140,12 +152,12 @@ mod util {
 			swap_id,
 			SwapState {
 				remaining: Swap {
-					amount_out: swap.amount_out - amount_out,
-					..swap
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
 				},
 				swapped_in: MockTokenSwaps::convert_by_market(
-					swap.currency_in,
-					swap.currency_out,
+					order.swap.currency_in,
+					order.swap.currency_out,
 					amount_out,
 				)
 				.unwrap(),
@@ -241,10 +253,13 @@ mod swaps {
 			MockTokenSwaps::mock_get_order_details(move |swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
-				Some(Swap {
-					currency_in: POOL_CURR,
-					currency_out: FOREIGN_CURR,
-					amount_out: PREVIOUS_AMOUNT,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: POOL_CURR,
+						currency_out: FOREIGN_CURR,
+						amount_out: PREVIOUS_AMOUNT,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
@@ -292,10 +307,13 @@ mod swaps {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: FOREIGN_CURR,
-					currency_out: POOL_CURR,
-					amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: FOREIGN_CURR,
+						currency_out: POOL_CURR,
+						amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
@@ -341,10 +359,13 @@ mod swaps {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: FOREIGN_CURR,
-					currency_out: POOL_CURR,
-					amount_out: foreign_to_pool(AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: FOREIGN_CURR,
+						currency_out: POOL_CURR,
+						amount_out: foreign_to_pool(AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {
@@ -394,10 +415,13 @@ mod swaps {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: FOREIGN_CURR,
-					currency_out: POOL_CURR,
-					amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: FOREIGN_CURR,
+						currency_out: POOL_CURR,
+						amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {

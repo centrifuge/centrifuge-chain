@@ -301,7 +301,7 @@ pub(crate) mod try_local {
 }
 
 mod swaps {
-	use cfg_types::orders::MuxSwap;
+	use cfg_types::orders::OrderInfo;
 
 	use super::*;
 	use crate::{
@@ -313,6 +313,7 @@ mod swaps {
 
 	mod utils {
 		use cfg_traits::OrderRatio;
+		use cfg_types::investments::Swap;
 		use frame_support::traits::tokens::{fungibles::Mutate, Preservation};
 		use sp_arithmetic::traits::One;
 
@@ -322,9 +323,12 @@ mod swaps {
 		pub fn mock_order_details(currency_in: CurrencyId, currency_out: CurrencyId) {
 			MockTokenSwaps::mock_get_order_details(move |order_id| {
 				assert_eq!(order_id, ORDER_ID);
-				Some(MuxSwap {
-					currency_in,
-					currency_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in,
+						currency_out,
+						amount_out: AMOUNT,
+					},
 					ratio: OrderRatio::Custom(Ratio::one()),
 				})
 			});

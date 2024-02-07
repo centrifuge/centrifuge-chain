@@ -1,6 +1,7 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
+	use cfg_traits::{OrderRatio, TokenSwaps};
+	use cfg_types::orders::OrderInfo;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
@@ -83,19 +84,16 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config, S> OrderDetails<S> for Pallet<T> {
-		type OrderId = T::OrderId;
-
-		fn get_order_details(a: Self::OrderId) -> Option<S> {
-			execute_call!(a)
-		}
-	}
-
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
+		type OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::Ratio>;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
+
+		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
+			execute_call!(a)
+		}
 
 		fn place_order(
 			a: T::AccountId,

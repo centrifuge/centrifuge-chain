@@ -511,12 +511,6 @@ pub enum OrderRatio<Ratio> {
 	Custom(Ratio),
 }
 
-pub trait OrderDetails<T> {
-	type OrderId;
-
-	fn get_order_details(order: Self::OrderId) -> Option<T>;
-}
-
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
@@ -528,6 +522,10 @@ pub trait TokenSwaps<Account> {
 		+ MaybeSerializeDeserialize
 		+ TypeInfo
 		+ MaxEncodedLen;
+	type OrderDetails;
+
+	/// Retrieve information of the given order.
+	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
 
 	/// Swap tokens selling `amount_out` of `currency_out` and buying
 	/// `currency_in` given an order ratio.

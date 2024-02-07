@@ -3,7 +3,10 @@ use cfg_mocks::{
 	pallet_mock_token_swaps,
 };
 use cfg_traits::investments::TrancheCurrency;
-use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap};
+use cfg_types::{
+	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
+	orders::OrderInfo,
+};
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -97,7 +100,7 @@ impl pallet_mock_investment::Config for Runtime {
 impl pallet_mock_token_swaps::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type OrderDetails = Swap<Balance, CurrencyId>;
+	type OrderDetails = OrderInfo<Balance, CurrencyId, FixedU128>;
 	type OrderId = SwapId;
 	type Ratio = FixedU128;
 }

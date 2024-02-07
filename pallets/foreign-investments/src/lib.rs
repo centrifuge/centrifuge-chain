@@ -106,9 +106,12 @@ pub fn pool_currency_of<T: pallet::Config>(
 pub mod pallet {
 	use cfg_traits::{
 		investments::{Investment, InvestmentCollector, TrancheCurrency},
-		OrderDetails, PoolInspect, StatusNotificationHook, TokenSwaps,
+		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
-	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
+	use cfg_types::{
+		investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
+		orders::OrderInfo,
+	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 
@@ -171,12 +174,13 @@ pub mod pallet {
 		/// The type which exposes token swap order functionality such as
 		/// placing and cancelling orders
 		type TokenSwaps: TokenSwaps<
-				Self::AccountId,
-				CurrencyId = Self::CurrencyId,
-				Balance = Self::Balance,
-				OrderId = Self::SwapId,
-				Ratio = Self::BalanceRatio,
-			> + OrderDetails<SwapOf<Self>, OrderId = Self::SwapId>;
+			Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Balance = Self::Balance,
+			OrderId = Self::SwapId,
+			Ratio = Self::BalanceRatio,
+			OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::BalanceRatio>,
+		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
 		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
