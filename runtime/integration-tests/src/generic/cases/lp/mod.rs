@@ -11,7 +11,15 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Balance, CFG, SECONDS_PER_HOUR};
+use cfg_types::domain_address::Domain;
 use ethabi::{ethereum_types::U256, Token, Uint};
+use frame_support::{assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, BoundedVec};
+use liquidity_pools_gateway_routers::{
+	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
+};
+use pallet_evm::FeeCalculator;
+use sp_core::H256;
+use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	generic::{
@@ -41,6 +49,9 @@ pub const EVM_ROUTER: &str = "0x1111111111111111111111111111111111111111";
 
 /// The faked domain name the LP messages are coming from and going to.
 pub const EVM_DOMAIN: &str = "TestDomain";
+
+/// The test domain ChainId for the tests.
+pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
 pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
@@ -708,6 +719,37 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 
 	// ------------------ Substrate Side ----------------------- //
 	// Create router
+	let (base_fee, _) =
+		env.parachain_state(<T as pallet_evm::Config>::FeeCalculator::min_gas_price);
+
+	let evm_domain = EVMDomain {
+		target_contract_address: sp_core::H160::from(env.deployed("router").address().0),
+		target_contract_hash: BlakeTwo256::hash_of(&env.deployed("router").deployed_bytecode),
+		fee_values: FeeValues {
+			value: sp_core::U256::zero(),
+			gas_limit: sp_core::U256::from(500_000),
+			gas_price: sp_core::U256::from(base_fee),
+		},
+	};
+
+	let axelar_evm_router = AxelarEVMRouter::<T>::new(
+		EVMRouter::new(evm_domain),
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			EVM_DOMAIN.as_bytes().to_vec(),
+		)
+		.unwrap(),
+		sp_core::H160::from(env.deployed("router").address().0),
+	);
+
+	env.parachain_state_mut(|| {
+		assert_ok!(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+				RawOrigin::Root.into(),
+				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
+			)
+		);
+	});
 
 	// AddCurrency
 	// * register in OrmlAssetRegistry

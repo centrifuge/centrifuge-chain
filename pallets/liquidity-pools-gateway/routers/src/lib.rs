@@ -139,6 +139,20 @@ where
 impl<T> EVMRouter<T>
 where
 	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
+{
+	pub fn new(evm_domain: EVMDomain) -> Self {
+		Self {
+			evm_domain,
+			_marker: Default::default(),
+		}
+	}
+}
+
+impl<T> EVMRouter<T>
+where
+	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
