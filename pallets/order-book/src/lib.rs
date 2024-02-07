@@ -108,7 +108,7 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Balance type for incomming values
+		/// Balance type for incoming values
 		type BalanceIn: Member
 			+ Parameter
 			+ FixedPointOperand
@@ -119,7 +119,7 @@ pub mod pallet {
 			+ Into<BalanceOf<Self>>
 			+ From<BalanceOf<Self>>;
 
-		/// Balance type for outcomming values
+		/// Balance type for outgoing values
 		type BalanceOut: Member
 			+ Parameter
 			+ FixedPointOperand

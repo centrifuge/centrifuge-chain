@@ -201,8 +201,11 @@ pub mod pallet {
 			BalanceIn = Self::SwapBalance,
 			BalanceOut = Self::SwapBalance,
 			OrderId = Self::SwapId,
-			Ratio = Self::BalanceRatio,
-			OrderDetails = OrderInfo<Self::SwapBalance, Self::CurrencyId, Self::BalanceRatio>,
+			OrderDetails = OrderInfo<
+				Self::SwapBalance,
+				Self::CurrencyId,
+				<Self::TokenSwaps as TokenSwaps<Self::AccountId>>::Ratio,
+			>,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.

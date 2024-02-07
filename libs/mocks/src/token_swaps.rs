@@ -76,17 +76,17 @@ pub mod pallet {
 		}
 
 		pub fn mock_fill_order(
-			f: impl Fn(T::AccountId, T::OrderId, T::Balance) -> DispatchResult + 'static,
+			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c))
 		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
-		type BalanceIn = T::BalanceOut;
-		type BalanceOut = T::BalanceIn;
+		type BalanceIn = T::BalanceIn;
+		type BalanceOut = T::BalanceOut;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::Ratio>;
+		type OrderDetails = OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
 
@@ -128,7 +128,7 @@ pub mod pallet {
 			execute_call!((a, b, c))
 		}
 
-		fn fill_order(a: T::AccountId, b: Self::OrderId, c: T::Balance) -> DispatchResult {
+		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

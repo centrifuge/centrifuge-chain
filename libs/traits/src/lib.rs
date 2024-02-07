@@ -538,10 +538,15 @@ pub trait TokenSwaps<Account> {
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
+	/// Fill an existing order up to the provided amount.
+	///  * If `amount` equals the `order.amount_out`, the order is completely
+	///    fulfilled.
+	///  * Else, the order is partially fulfilled for `amount /
+	///    order.amount_out`%.
 	fn fill_order(
 		account: Account,
 		order_id: Self::OrderId,
-		amount: Self::Balance,
+		amount: Self::BalanceOut,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair

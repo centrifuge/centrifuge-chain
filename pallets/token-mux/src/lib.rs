@@ -45,10 +45,17 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
-	use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand};
+	use sp_arithmetic::{
+		traits::{AtLeast32BitUnsigned, EnsureDiv, EnsureMul},
+		FixedPointOperand,
+	};
 	use sp_runtime::traits::{AccountIdConversion, EnsureFixedPointNumber, One};
 
 	use super::*;
+
+	pub type BalanceOf<T> = <<T as Config>::Tokens as fungibles::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -70,15 +77,27 @@ pub mod pallet {
 			AssetId = Self::CurrencyId,
 		>;
 
-		/// The source of truth for the balance of accounts
-		type Balance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
+		/// Balance type for incoming values
+		type BalanceIn: Member
+			+ Parameter
 			+ FixedPointOperand
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+			+ AtLeast32BitUnsigned
+			+ EnsureMul
+			+ EnsureDiv
+			+ MaxEncodedLen
+			+ Into<BalanceOf<Self>>
+			+ From<BalanceOf<Self>>;
+
+		/// Balance type for outgoing values
+		type BalanceOut: Member
+			+ Parameter
+			+ FixedPointOperand
+			+ AtLeast32BitUnsigned
+			+ EnsureMul
+			+ EnsureDiv
+			+ MaxEncodedLen
+			+ Into<BalanceOf<Self>>
+			+ From<BalanceOf<Self>>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
@@ -104,15 +123,16 @@ pub mod pallet {
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
-		type Tokens: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+		type Tokens: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId>
+			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId>;
 
 		/// The type for retrieving and fulfilling swap orders.
 		type Swaps: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
-			Balance = Self::Balance,
-			OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::BalanceRatio>,
+			BalanceIn = Self::BalanceIn,
+			BalanceOut = Self::BalanceOut,
+			OrderDetails = OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::BalanceRatio>,
 			OrderId = Self::OrderId,
 			Ratio = Self::BalanceRatio,
 		>;
@@ -127,17 +147,17 @@ pub mod pallet {
 			who: T::AccountId,
 			currency_out: T::CurrencyId,
 			currency_in: T::CurrencyId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		},
 		Burned {
 			who: T::AccountId,
 			currency_out: T::CurrencyId,
 			currency_in: T::CurrencyId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		},
 		SwapMatched {
 			id: T::OrderId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		},
 	}
 
@@ -172,7 +192,7 @@ pub mod pallet {
 		pub fn deposit(
 			origin: OriginFor<T>,
 			currency_out: T::CurrencyId,
-			amount_out: T::Balance,
+			amount_out: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -195,7 +215,7 @@ pub mod pallet {
 		pub fn burn(
 			origin: OriginFor<T>,
 			currency_out: T::CurrencyId,
-			amount_out: T::Balance,
+			amount_out: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -218,7 +238,7 @@ pub mod pallet {
 		pub fn match_swap(
 			origin: OriginFor<T>,
 			order_id: T::OrderId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -253,7 +273,7 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					T::Tokens::mint_into(local, &Self::account(), amount)?;
+					T::Tokens::mint_into(local, &Self::account(), amount.into())?;
 					T::Swaps::fill_order(Self::account(), order_id.clone(), amount)?;
 				}
 				// Exchange foreign for local and burn local
@@ -267,7 +287,7 @@ pub mod pallet {
 					T::Tokens::burn_from(
 						local,
 						&Self::account(),
-						amount,
+						amount.into(),
 						Precision::Exact,
 						Fortitude::Polite,
 					)?;
@@ -292,32 +312,38 @@ pub mod pallet {
 			who: &T::AccountId,
 			local: T::CurrencyId,
 			variant: T::CurrencyId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		) -> DispatchResult {
 			T::Tokens::transfer(
 				variant,
 				&who,
 				&Self::account(),
-				amount,
+				amount.into(),
 				Preservation::Expendable,
 			)?;
 
-			T::Tokens::mint_into(local, &who, amount).map(|_| ())
+			T::Tokens::mint_into(local, &who, amount.into()).map(|_| ())
 		}
 
 		fn burn_route(
 			who: &T::AccountId,
 			local: T::CurrencyId,
 			variant: T::CurrencyId,
-			amount: T::Balance,
+			amount: T::BalanceOut,
 		) -> DispatchResult {
-			T::Tokens::burn_from(local, &who, amount, Precision::Exact, Fortitude::Polite)?;
+			T::Tokens::burn_from(
+				local,
+				&who,
+				amount.into(),
+				Precision::Exact,
+				Fortitude::Polite,
+			)?;
 
 			T::Tokens::transfer(
 				variant,
 				&Self::account(),
 				&who,
-				amount,
+				amount.into(),
 				Preservation::Expendable,
 			)
 			.map(|_| ())

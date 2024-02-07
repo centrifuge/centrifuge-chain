@@ -99,7 +99,8 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_mock_token_swaps::Config for Runtime {
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type CurrencyId = CurrencyId;
 	type OrderDetails = OrderInfo<Balance, CurrencyId, Ratio>;
 	type OrderId = SwapId;
@@ -132,7 +133,8 @@ parameter_types! {
 
 impl pallet_token_mux::Config for Runtime {
 	type AssetRegistry = MockRegistry;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type LocalAssetId = LocalAssetId;
