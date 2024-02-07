@@ -33,10 +33,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
 	use cfg_traits::{OrderRatio, TokenSwaps};
-	use cfg_types::{
-		orders::OrderInfo,
-		tokens::{CustomMetadata, LocalAssetId},
-	};
+	use cfg_types::{orders::OrderInfo, tokens::CustomMetadata};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, *},
 		traits::{
@@ -48,17 +45,11 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
-	use sp_arithmetic::FixedPointOperand;
+	use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 	use sp_runtime::traits::{AccountIdConversion, EnsureFixedPointNumber, One};
 
 	use super::*;
 
-	pub type BalanceFor<T> = <<T as Config>::Tokens as fungibles::Inspect<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-	pub type CurrencyFor<T> = <<T as Config>::Tokens as fungibles::Inspect<
-		<T as frame_system::Config>::AccountId,
-	>>::AssetId;
 	pub type OrderIdFor<T> =
 		<<T as Config>::Swaps as TokenSwaps<<T as frame_system::Config>::AccountId>>::OrderId;
 	pub type RatioFor<T> =
@@ -71,27 +62,51 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config
-	where
-		CurrencyFor<Self>: From<LocalAssetId> + TryInto<LocalAssetId>,
-	{
+	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// The source of truth for the existence and potential local
+		/// representation of assets.
 		type AssetRegistry: asset_registry::Inspect<
 			CustomMetadata = CustomMetadata,
-			AssetId = CurrencyFor<Self>,
+			AssetId = Self::CurrencyId,
 		>;
 
-		type Tokens: fungibles::Inspect<Self::AccountId> + Mutate<Self::AccountId>;
+		/// The source of truth for the balance of accounts
+		type Balance: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ FixedPointOperand
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
 
+		/// The general asset type
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaxEncodedLen
+			+ From<Self::LocalAssetId>
+			+ TryInto<Self::LocalAssetId>;
+
+		/// The local asset type
+		type LocalAssetId: From<cfg_types::tokens::LocalAssetId>;
+
+		/// The type for handling transfers, burning and minting of
+		/// multi-assets.
+		type Tokens: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+
+		/// The type for retrieving and fulfilling swap orders.
 		type Swaps: TokenSwaps<
 			Self::AccountId,
-			CurrencyId = CurrencyFor<Self>,
-			Balance = BalanceFor<Self>,
-			OrderDetails = OrderInfo<BalanceFor<Self>, CurrencyFor<Self>, RatioFor<Self>>,
+			CurrencyId = Self::CurrencyId,
+			Balance = Self::Balance,
+			OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, RatioFor<Self>>,
 		>;
 
 		type WeightInfo: WeightInfo;
@@ -99,25 +114,22 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config>
-	where
-		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
-	{
+	pub enum Event<T: Config> {
 		Deposited {
 			who: T::AccountId,
-			currency_out: CurrencyFor<T>,
-			currency_in: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			currency_out: T::CurrencyId,
+			currency_in: T::CurrencyId,
+			amount: T::Balance,
 		},
 		Burned {
 			who: T::AccountId,
-			currency_out: CurrencyFor<T>,
-			currency_in: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			currency_out: T::CurrencyId,
+			currency_in: T::CurrencyId,
+			amount: T::Balance,
 		},
 		SwapMatched {
 			id: OrderIdFor<T>,
-			amount: BalanceFor<T>,
+			amount: T::Balance,
 		},
 	}
 
@@ -146,17 +158,13 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
-		BalanceFor<T>: FixedPointOperand,
-	{
+	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
-			currency_out: CurrencyFor<T>,
-			amount_out: BalanceFor<T>,
+			currency_out: T::CurrencyId,
+			amount_out: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -178,8 +186,8 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
-			currency_out: CurrencyFor<T>,
-			amount_out: BalanceFor<T>,
+			currency_out: T::CurrencyId,
+			amount_out: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -202,7 +210,7 @@ pub mod pallet {
 		pub fn match_swap(
 			origin: OriginFor<T>,
 			order_id: OrderIdFor<T>,
-			amount: BalanceFor<T>,
+			amount: T::Balance,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -267,19 +275,16 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T>
-	where
-		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
-	{
+	impl<T: Config> Pallet<T> {
 		pub(crate) fn account() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
 		fn mint_route(
 			who: &T::AccountId,
-			local: CurrencyFor<T>,
-			variant: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			local: T::CurrencyId,
+			variant: T::CurrencyId,
+			amount: T::Balance,
 		) -> DispatchResult {
 			T::Tokens::transfer(
 				variant,
@@ -294,9 +299,9 @@ pub mod pallet {
 
 		fn burn_route(
 			who: &T::AccountId,
-			local: CurrencyFor<T>,
-			variant: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			local: T::CurrencyId,
+			variant: T::CurrencyId,
+			amount: T::Balance,
 		) -> DispatchResult {
 			T::Tokens::burn_from(local, &who, amount, Precision::Exact, Fortitude::Polite)?;
 
@@ -310,17 +315,17 @@ pub mod pallet {
 			.map(|_| ())
 		}
 
-		pub(crate) fn try_local(
-			currency: &CurrencyFor<T>,
-		) -> Result<CurrencyFor<T>, DispatchError> {
+		pub(crate) fn try_local(currency: &T::CurrencyId) -> Result<T::CurrencyId, DispatchError> {
 			let meta_variant =
 				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MetadataNotFound)?;
 
-			let local: CurrencyFor<T> = meta_variant
-				.additional
-				.local_representation
-				.ok_or(Error::<T>::NoLocalRepresentation)?
-				.into();
+			let local: T::CurrencyId = T::LocalAssetId::from(
+				meta_variant
+					.additional
+					.local_representation
+					.ok_or(Error::<T>::NoLocalRepresentation)?,
+			)
+			.into();
 
 			let meta_local =
 				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MetadataNotFound)?;
