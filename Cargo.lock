@@ -7238,6 +7238,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-swaps",
  "parity-scale-codec 3.6.9",
  "scale-info",
  "sp-core",
@@ -8216,6 +8217,7 @@ dependencies = [
  "frame-system",
  "parity-scale-codec 3.6.9",
  "scale-info",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

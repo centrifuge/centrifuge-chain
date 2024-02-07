@@ -600,6 +600,7 @@ pub struct SwapState<AmountIn, AmountOut, Currency> {
 /// Used as result of `Pallet::apply_swap()`
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SwapStatus<Amount> {
 	/// The incoming amount already swapped and available to use.
 	pub swapped: Amount,
@@ -643,6 +644,15 @@ pub trait Swaps<AccountId> {
 
 	/// Check that validates that if swapping pair is supported.
 	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+
+	/// Makes a conversion between 2 currencies using the market ratio between
+	/// them
+	// TODO: Should be removed after #1723
+	fn convert_by_market(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::Amount,
+	) -> Result<Self::Amount, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

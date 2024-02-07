@@ -14,6 +14,16 @@
 //! # Swaps pallet: Enables applying swaps independiently of previous swaps in the same or opposite
 //! directions.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+pub use pallet::*;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
@@ -33,19 +43,13 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Represents an amount that can be swapped
-		type Balance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+		type Balance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 
 		/// An identification for a swap
-		type SwapId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+		type SwapId: Parameter + Member + Copy + Ord + MaxEncodedLen;
 
 		/// An identification for an order
-		type OrderId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
 
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
@@ -57,7 +61,6 @@ pub mod pallet {
 			BalanceIn = Self::Balance,
 			BalanceOut = Self::Balance,
 			OrderId = Self::OrderId,
-			OrderDetails = Swap<Self::Balance, Self::CurrencyId>,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled the swap
@@ -103,7 +106,7 @@ pub mod pallet {
 			SwapIdToOrderId::<T>::get((account, swap_id)).ok_or(Error::<T>::OrderNotFound.into())
 		}
 
-		fn update_id(
+		pub(crate) fn update_id(
 			who: &T::AccountId,
 			swap_id: T::SwapId,
 			new_order_id: Option<T::OrderId>,
@@ -279,6 +282,14 @@ pub mod pallet {
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
 			T::OrderBook::valid_pair(currency_in, currency_out)
+		}
+
+		fn convert_by_market(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+			amount_out: Self::Amount,
+		) -> Result<Self::Amount, DispatchError> {
+			T::OrderBook::convert_by_market(currency_in, currency_out, amount_out)
 		}
 	}
 
