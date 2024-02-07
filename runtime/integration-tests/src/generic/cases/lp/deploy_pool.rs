@@ -10,10 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::generic::{
-	config::Runtime,
-	env::{Env, EvmEnv},
-};
+use crate::generic::config::Runtime;
 
 #[test]
 fn _test() {
@@ -21,7 +18,7 @@ fn _test() {
 }
 
 fn deploy<T: Runtime>() {
-	let mut env = super::setup::<T>();
+	let env = super::setup::<T>();
 }
 
 crate::test_for_runtimes!(all, deploy);

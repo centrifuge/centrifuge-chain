@@ -191,10 +191,13 @@ impl<T: Runtime> RuntimeEnv<T> {
 			.clone();
 		let input = contract_info
 			.contract
-			.function(function.into().as_ref())
+			.functions_by_name(function.into().as_ref())
 			.expect(ESSENTIAL)
-			.encode_input(args.unwrap_or_default())
-			.expect(ESSENTIAL);
+			.iter()
+			.filter_map(|f| f.encode_input(args.unwrap_or_default()).ok())
+			.collect::<Vec<_>>()
+			.pop()
+			.expect("No matching function Signature found.");
 
 		self.parachain_state_mut(|| {
 			let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();

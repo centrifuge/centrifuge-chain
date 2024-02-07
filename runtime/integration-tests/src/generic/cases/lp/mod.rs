@@ -29,6 +29,16 @@ pub mod deploy_pool;
 
 const DEFAULT_BALANCE: Balance = 100 * CFG;
 
+/// The faked router address on the EVM side. Needed for the precompile to
+/// verify the origin of messages.
+///
+/// NOTE: This is NOT the real address of the
+/// router, but the one we are faking on the EVM side.
+pub const EVM_ROUTER: &str = "0x1111111111111111111111111111111111111111";
+
+/// The faked domain name the LP messages are coming from and going to.
+pub const EVM_DOMAIN: &str = "TestDomain";
+
 pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -37,6 +47,7 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	)
 	.load_contracts();
 
+	// ------------------ EVM Side ----------------------- //
 	// The flow is based in the following code from the Solidity and needs to be
 	// adapted if this deployment script changes in the future
 	// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L17-L31
@@ -156,58 +167,352 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 
 	// PART: Wire router + file gateway
 	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L71-L98
-	/*
-	   pauseAdmin = new PauseAdmin(address(root));
-	   delayedAdmin = new DelayedAdmin(address(root), address(pauseAdmin));
-	   gateway = new Gateway(address(root), address(investmentManager), address(poolManager), address(router));
+	env.deploy(
+		"PauseAdmin",
+		"pause_admin",
+		Keyring::Alice,
+		Some(&[Token::Address(env.deployed("root").address())]),
+	);
+	env.deploy(
+		"DelayedAdmin",
+		"delay_admin",
+		Keyring::Alice,
+		Some(&[
+			Token::Address(env.deployed("root").address()),
+			Token::Address(env.deployed("pause_admin").address()),
+		]),
+	);
+	// Enable once https://github.com/foundry-rs/foundry/issues/7032 is resolved
+	env.deploy(
+		"Gateway",
+		"gateway",
+		Keyring::Alice,
+		Some(&[
+			Token::Address(env.deployed("root").address()),
+			Token::Address(env.deployed("investment_manager").address()),
+			Token::Address(env.deployed("pool_manager").address()),
+			Token::Address(env.deployed("router").address()),
+		]),
+	);
 
-	   pauseAdmin.rely(address(delayedAdmin));
-	   root.rely(address(pauseAdmin));
-	   root.rely(address(delayedAdmin));
-	   root.rely(address(gateway));
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pause_admin",
+		"rely",
+		Some(&[Token::Address(env.deployed("delay_admin").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"root",
+		"rely",
+		Some(&[Token::Address(env.deployed("delay_admin").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"root",
+		"rely",
+		Some(&[Token::Address(env.deployed("pause_admin").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"root",
+		"rely",
+		Some(&[Token::Address(env.deployed("gateway").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"investment_manager",
+		"file",
+		Some(&[
+			Token::FixedBytes("poolManager".as_bytes().to_vec()),
+			Token::Address(env.deployed("pool_manager").address()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"file",
+		Some(&[
+			Token::FixedBytes("investmentManager".as_bytes().to_vec()),
+			Token::Address(env.deployed("investment_manager").address()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"investment_manager",
+		"file",
+		Some(&[
+			Token::FixedBytes("gateway".as_bytes().to_vec()),
+			Token::Address(env.deployed("gateway").address()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"file",
+		Some(&[
+			Token::FixedBytes("gateway".as_bytes().to_vec()),
+			Token::Address(env.deployed("gateway").address()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"investment_manager",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"investment_manager",
+		"rely",
+		Some(&[Token::Address(env.deployed("pool_manager").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"gateway",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"router",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	 */
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"escrow",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"escrow",
+		"rely",
+		Some(&[Token::Address(env.deployed("investment_manager").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"user_escrow",
+		"rely",
+		Some(&[Token::Address(env.deployed("root").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"user_escrow",
+		"rely",
+		Some(&[Token::Address(env.deployed("investment_manager").address())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"escrow",
+		"rely",
+		Some(&[Token::Address(env.deployed("pool_manager").address())]),
+	)
+	.unwrap();
 
-	   investmentManager.file("poolManager", address(poolManager));
-	   poolManager.file("investmentManager", address(investmentManager));
-	   investmentManager.file("gateway", address(gateway));
-	   poolManager.file("gateway", address(gateway));
-	   investmentManager.rely(address(root));
-	   investmentManager.rely(address(poolManager));
-	   poolManager.rely(address(root));
-	   gateway.rely(address(root));
-	   AuthLike(router).rely(address(root));
-	   AuthLike(address(escrow)).rely(address(root));
-	   AuthLike(address(escrow)).rely(address(investmentManager));
-	   AuthLike(address(userEscrow)).rely(address(root));
-	   AuthLike(address(userEscrow)).rely(address(investmentManager));
-	   AuthLike(address(escrow)).rely(address(poolManager));
-	*/
+	// PART: File LocalRouter
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"router",
+		"file",
+		Some(&[
+			Token::FixedBytes("gateway".as_bytes().to_vec()),
+			Token::Address(env.deployed("gateway").address()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"router",
+		"file",
+		Some(&[
+			Token::FixedBytes("sourceChain".as_bytes().to_vec()),
+			Token::String(EVM_DOMAIN.to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"router",
+		"file",
+		Some(&[
+			Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
+			Token::String(EVM_ROUTER.to_string()),
+		]),
+	)
+	.unwrap();
 
-	// PART: Give admin access
+	// PART: Give admin access - Keyring::Admin in our case
 	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L100-L106
-	/*
-		delayedAdmin.rely(address(admin));
-
-		for (uint256 i = 0; i < pausers.length; i++) {
-			pauseAdmin.addPauser(pausers[i]);
-		}
-	*/
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"delay_admin",
+		"rely",
+		Some(&[Token::Address(Keyring::Admin.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pause_admin",
+		"addPauser",
+		Some(&[Token::Address(Keyring::Admin.into())]),
+	)
+	.unwrap();
 
 	// PART: Remove deployer access
 	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L108-L121
-	/*
-	   AuthLike(router).deny(deployer);
-	   AuthLike(liquidityPoolFactory).deny(deployer);
-	   AuthLike(trancheTokenFactory).deny(deployer);
-	   AuthLike(restrictionManagerFactory).deny(deployer);
-	   root.deny(deployer);
-	   investmentManager.deny(deployer);
-	   poolManager.deny(deployer);
-	   escrow.deny(deployer);
-	   userEscrow.deny(deployer);
-	   gateway.deny(deployer);
-	   pauseAdmin.deny(deployer);
-	   delayedAdmin.deny(deployer);
+	/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"router",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
 	*/
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"lp_pool_factory",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"tranche_token_factory",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"restriction_manager_factory",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"root",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"investment_manager",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"escrow",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"user_escrow",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"gateway",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"pause_admin",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Alice,
+		Default::default(),
+		"delay_admin",
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+
+	// ------------------ Substrate Side ----------------------- //
+	// Create router
+
+	// Create pool
 
 	env
 }

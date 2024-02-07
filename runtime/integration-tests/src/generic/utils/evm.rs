@@ -114,7 +114,8 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 						.expect(ESSENTIAL)
 						.as_str()
 						.expect(ESSENTIAL)
-						.trim_start_matches("0x"),
+						.trim_start_matches("0x")
+						.replace(IRREGULAR, ""),
 				)
 				.map_err(|e| {
 					println!(
@@ -132,7 +133,8 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 							.expect(ESSENTIAL)
 							.as_str()
 							.expect(ESSENTIAL)
-							.trim_start_matches("0x"),
+							.trim_start_matches("0x")
+							.replace(IRREGULAR, ""),
 					)
 					.map_err(|e| {
 						println!(
