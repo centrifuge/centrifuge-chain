@@ -6,6 +6,7 @@ use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
 };
 use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::Zero;
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
@@ -216,6 +217,7 @@ mod swaps {
 					&USER,
 					INVESTMENT_ID,
 					Action::Investment,
+					Zero::zero(),
 					Swap {
 						currency_in: POOL_CURR,
 						currency_out: FOREIGN_CURR,
@@ -263,6 +265,7 @@ mod swaps {
 					&USER,
 					INVESTMENT_ID,
 					Action::Investment,
+					Zero::zero(),
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
@@ -314,6 +317,7 @@ mod swaps {
 					&USER,
 					INVESTMENT_ID,
 					Action::Investment,
+					Zero::zero(),
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
@@ -360,6 +364,7 @@ mod swaps {
 					&USER,
 					INVESTMENT_ID,
 					Action::Investment,
+					Zero::zero(),
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
@@ -423,6 +428,7 @@ mod swaps {
 					&USER,
 					INVESTMENT_ID,
 					Action::Investment,
+					Zero::zero(),
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,

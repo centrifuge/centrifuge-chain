@@ -90,6 +90,7 @@ impl<T: Config> Swaps<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		action: Action,
+		inverse_cancelation: T::SwapBalance,
 		new_swap: SwapOf<T>,
 	) -> Result<SwapStatus<T>, DispatchError> {
 		// Bypassing the swap if both currencies are the same
@@ -102,10 +103,92 @@ impl<T: Config> Swaps<T> {
 		}
 
 		let swap_id = ForeignIdToSwapId::<T>::get((who, investment_id, action));
-		let status = Swaps::<T>::apply_over_swap(who, new_swap.clone(), swap_id)?;
+		let status = if !inverse_cancelation.is_zero() {
+			let (swapped, swap_id) =
+				Swaps::<T>::cancel(who, inverse_cancelation, swap_id.unwrap())?;
+			Swaps::<T>::update_id(who, investment_id, action, swap_id)?;
+
+			let mut status = SwapStatus {
+				swapped,
+				pending: Zero::zero(),
+				swap_id,
+			};
+
+			if !new_swap.amount_out.is_zero() {
+				let (pending, swap_id) = Swaps::<T>::append(who, new_swap.clone(), swap_id)?;
+				status.pending = pending;
+				status.swap_id = Some(swap_id);
+			}
+
+			status
+		} else {
+			Swaps::<T>::apply_over_swap(who, new_swap.clone(), swap_id)?
+		};
+
 		Swaps::<T>::update_id(who, investment_id, action, status.swap_id)?;
 
 		Ok(status)
+	}
+
+	pub fn cancel(
+		who: &T::AccountId,
+		cancel_amount: T::SwapBalance,
+		swap_id: T::SwapId,
+	) -> Result<(T::SwapBalance, Option<T::SwapId>), DispatchError> {
+		let inverse_swap =
+			T::TokenSwaps::get_order_details(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+
+		match inverse_swap.amount_out.cmp(&cancel_amount) {
+			Ordering::Greater => {
+				let amount_to_swap = inverse_swap.amount_out.ensure_sub(cancel_amount)?;
+
+				T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
+
+				Ok((cancel_amount, Some(swap_id)))
+			}
+			Ordering::Equal => {
+				T::TokenSwaps::cancel_order(swap_id)?;
+
+				Ok((cancel_amount, None))
+			}
+			Ordering::Less => {
+				todo!("err")
+			}
+		}
+	}
+
+	pub fn append(
+		who: &T::AccountId,
+		new_swap: SwapOf<T>,
+		over_swap_id: Option<T::SwapId>,
+	) -> Result<(T::SwapBalance, T::SwapId), DispatchError> {
+		match over_swap_id {
+			None => {
+				let swap_id = T::TokenSwaps::place_order(
+					who.clone(),
+					new_swap.currency_in,
+					new_swap.currency_out,
+					new_swap.amount_out,
+					OrderRatio::Market,
+				)?;
+
+				Ok((new_swap.amount_out, swap_id))
+			}
+			Some(swap_id) => {
+				let swap = T::TokenSwaps::get_order_details(swap_id)
+					.ok_or(Error::<T>::SwapOrderNotFound)?;
+
+				if swap.is_same_direction(&new_swap)? {
+					let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
+
+					T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
+
+					Ok((amount_to_swap, swap_id))
+				} else {
+					todo!("err")
+				}
+			}
+		}
 	}
 
 	/// Apply a swap over a current possible swap state.

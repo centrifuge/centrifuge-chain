@@ -35,7 +35,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 
 			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
-			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+			let status = Swaps::<T>::apply(
+				who,
+				investment_id,
+				Action::Investment,
+				Zero::zero(),
+				swap.clone(),
+			)?;
 
 			let mut msg = None;
 			if !status.swapped.is_zero() {
@@ -80,8 +86,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(foreign_currency)?;
 
-			let swap = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
-			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+			let (swap, cancelation) = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
+			let status = Swaps::<T>::apply(
+				who,
+				investment_id,
+				Action::Investment,
+				cancelation.into(),
+				swap.clone(),
+			)?;
 
 			let mut msg = None;
 			if !status.swapped.is_zero() {
@@ -328,7 +340,8 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 		})?;
 
 		if let Some(swap) = swap {
-			let status = Swaps::<T>::apply(&who, investment_id, Action::Redemption, swap)?;
+			let status =
+				Swaps::<T>::apply(&who, investment_id, Action::Redemption, Zero::zero(), swap)?;
 
 			if !status.swapped.is_zero() {
 				SwapDone::<T>::for_redemption(

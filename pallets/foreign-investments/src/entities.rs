@@ -163,7 +163,7 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		foreign_amount: T::ForeignBalance,
-	) -> Result<SwapOf<T>, DispatchError> {
+	) -> Result<(SwapOf<T>, T::ForeignBalance), DispatchError> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
 		// We do not want to decrease the whole `foreign_amount` from the investment
@@ -183,19 +183,14 @@ impl<T: Config> InvestmentInfo<T> {
 
 		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
 
-		// It's ok to use the market ratio because this amount will be
-		// cancelled in this instant.
-		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
-			pool_currency,
-			self.foreign_currency,
-			min(foreign_amount, increasing_foreign_amount).into(),
-		)?;
-
-		Ok(Swap {
-			currency_in: self.foreign_currency,
-			currency_out: pool_currency,
-			amount_out: increasing_pool_amount.ensure_add(pool_investment_decrement.into())?,
-		})
+		Ok((
+			Swap {
+				currency_in: self.foreign_currency,
+				currency_out: pool_currency,
+				amount_out: pool_investment_decrement.into(),
+			},
+			min(foreign_amount, increasing_foreign_amount),
+		))
 	}
 
 	/// This method is performed after resolve the swap
