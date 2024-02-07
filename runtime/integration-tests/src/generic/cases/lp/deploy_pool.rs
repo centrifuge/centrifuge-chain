@@ -18,7 +18,9 @@ fn _test() {
 }
 
 fn deploy<T: Runtime>() {
-	let env = super::setup::<T>();
+	let _env = super::setup::<T>();
+
+	// Call AddPool
 }
 
 crate::test_for_runtimes!(all, deploy);

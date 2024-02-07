@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Balance, CFG, SECONDS_PER_HOUR};
-use ethabi::{ethereum_types::U256, Token};
+use ethabi::{ethereum_types::U256, Token, Uint};
 
 use crate::{
 	generic::{
@@ -27,7 +27,10 @@ mod utils {}
 
 pub mod deploy_pool;
 
-const DEFAULT_BALANCE: Balance = 100 * CFG;
+const DEFAULT_BALANCE: Balance = 1_000_000;
+
+pub const DECIMALS_6: Balance = 1_000_000;
+pub const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 
 /// The faked router address on the EVM side. Needed for the precompile to
 /// verify the origin of messages.
@@ -42,16 +45,16 @@ pub const EVM_DOMAIN: &str = "TestDomain";
 pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
-			.add(genesis::balances::<T>(DEFAULT_BALANCE))
+			.add(genesis::balances::<T>(DEFAULT_BALANCE * CFG))
 			.storage(),
 	)
 	.load_contracts();
+	/* TODO: Use that but index needed contracts afterwards
+	   env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
+	   env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
+		   .unwrap();
+	*/
 
-	env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
-	env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
-		.unwrap();
-
-	/*
 	// ------------------ EVM Side ----------------------- //
 	// The flow is based in the following code from the Solidity and needs to be
 	// adapted if this deployment script changes in the future
@@ -513,12 +516,223 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 		Some(&[Token::Address(Keyring::Alice.into())]),
 	)
 	.unwrap();
-	 */
+
+	// Create 3x ERC-20 currency as Stablecoins
+	//
+	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
+	env.deploy(
+		"ERC20",
+		"usdc",
+		Keyring::Admin,
+		Some(&[Token::Uint(Uint::from(6))]),
+	);
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"file",
+		Some(&[
+			Token::FixedBytes("name".as_bytes().to_vec()),
+			Token::String("USD Coin".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"file",
+		Some(&[
+			Token::FixedBytes("symbol".as_bytes().to_vec()),
+			Token::String("USDC".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Alice.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Bob.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Charlie.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	env.deploy(
+		"ERC20",
+		"frax",
+		Keyring::Admin,
+		Some(&[Token::Uint(Uint::from(18))]),
+	);
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"file",
+		Some(&[
+			Token::FixedBytes("name".as_bytes().to_vec()),
+			Token::String("Frax Coin".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"file",
+		Some(&[
+			Token::FixedBytes("symbol".as_bytes().to_vec()),
+			Token::String("FRAX".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Alice.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Bob.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Charlie.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	env.deploy(
+		"ERC20",
+		"dai",
+		Keyring::Admin,
+		Some(&[Token::Uint(Uint::from(18))]),
+	);
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"file",
+		Some(&[
+			Token::FixedBytes("name".as_bytes().to_vec()),
+			Token::String("Dai Coin".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"file",
+		Some(&[
+			Token::FixedBytes("symbol".as_bytes().to_vec()),
+			Token::String("DAI".to_string()),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Alice.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Bob.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	env.call_mut(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"mint",
+		Some(&[
+			Token::Address(Keyring::Charlie.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
 
 	// ------------------ Substrate Side ----------------------- //
 	// Create router
 
-	// Create pool
+	// AddCurrency
+	// * register in OrmlAssetRegistry
+	// * trigger `AddCurrency`
+
+	// Create 2x pools
+	// * single tranched pool A
+	// * double tranched pool B
+
+	// AddPool A
+	// AddTranche 1 A
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+
+	// AddPool B
+	// AddTranche 1 B
+	// AddTranche 2 B
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+
+	// ------------------ EVM Side ----------------------- //
+
+	// Deploy LP and more for both pools and all currencies
 
 	env
 }
