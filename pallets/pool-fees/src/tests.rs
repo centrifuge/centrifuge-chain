@@ -294,6 +294,16 @@ mod extrinsics {
 		}
 
 		#[test]
+		fn charge_fee_nothing() {
+			ExtBuilder::default().build().execute_with(|| {
+				assert_noop!(
+					PoolFees::charge_fee(RuntimeOrigin::signed(ANY), 1, 0),
+					Error::<Runtime>::NothingCharged
+				);
+			})
+		}
+
+		#[test]
 		fn charge_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
 				add_fees(vec![default_fixed_fee()]);
@@ -330,6 +340,16 @@ mod extrinsics {
 				assert_noop!(
 					PoolFees::charge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1),
 					DispatchError::Arithmetic(ArithmeticError::Overflow)
+				);
+			})
+		}
+
+		#[test]
+		fn uncharge_fee_nothing() {
+			ExtBuilder::default().build().execute_with(|| {
+				assert_noop!(
+					PoolFees::uncharge_fee(RuntimeOrigin::signed(ANY), 1, 0),
+					Error::<Runtime>::NothingUncharged
 				);
 			})
 		}

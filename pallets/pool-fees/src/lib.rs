@@ -297,6 +297,10 @@ pub mod pallet {
 		UnauthorizedEdit,
 		/// Attempted to charge a fee of unchargeable type.
 		CannotBeCharged,
+		/// Attempted to charge with zero amount
+		NothingCharged,
+		/// Attempted to uncharge with zero amount
+		NothingUncharged,
 	}
 
 	#[pallet::call]
@@ -394,6 +398,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			ensure!(!amount.is_zero(), Error::<T>::NothingCharged);
+
 			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
@@ -430,6 +436,8 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			ensure!(!amount.is_zero(), Error::<T>::NothingUncharged);
 
 			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
