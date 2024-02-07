@@ -130,13 +130,16 @@ pub trait Runtime:
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
 	+ pallet_order_book::Config<
-		Balance = Balance,
+		BalanceIn = Balance,
+		BalanceOut = Balance,
 		CurrencyId = CurrencyId,
 		OrderIdNonce = u64,
 		Ratio = Ratio,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
 	> + pallet_foreign_investments::Config<
-		Balance = Balance,
+		ForeignBalance = Balance,
+		PoolBalance = Balance,
+		TrancheBalance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
 		SwapId = u64,

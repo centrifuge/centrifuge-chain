@@ -8,7 +8,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
-		type Balance;
+		type BalanceIn;
+		type BalanceOut;
 		type Ratio;
 		type OrderId;
 		type OrderDetails;
@@ -31,7 +32,7 @@ pub mod pallet {
 					T::AccountId,
 					T::CurrencyId,
 					T::CurrencyId,
-					T::Balance,
+					T::BalanceOut,
 					OrderRatio<T::Ratio>,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
@@ -40,7 +41,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::OrderId, T::Balance, OrderRatio<T::Ratio>) -> DispatchResult + 'static,
+			f: impl Fn(T::OrderId, T::BalanceOut, OrderRatio<T::Ratio>) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
@@ -64,7 +65,11 @@ pub mod pallet {
 		}
 
 		pub fn mock_convert_by_market(
-			f: impl Fn(T::CurrencyId, T::CurrencyId, T::Balance) -> Result<T::Balance, DispatchError>
+			f: impl Fn(
+					T::CurrencyId,
+					T::CurrencyId,
+					T::BalanceOut,
+				) -> Result<T::BalanceIn, DispatchError>
 				+ 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
@@ -78,7 +83,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
-		type Balance = T::Balance;
+		type BalanceIn = T::BalanceOut;
+		type BalanceOut = T::BalanceIn;
 		type CurrencyId = T::CurrencyId;
 		type OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::Ratio>;
 		type OrderId = T::OrderId;
@@ -92,7 +98,7 @@ pub mod pallet {
 			a: T::AccountId,
 			b: Self::CurrencyId,
 			c: Self::CurrencyId,
-			d: Self::Balance,
+			d: Self::BalanceOut,
 			e: OrderRatio<Self::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
 			execute_call!((a, b, c, d, e))
@@ -100,7 +106,7 @@ pub mod pallet {
 
 		fn update_order(
 			a: Self::OrderId,
-			b: Self::Balance,
+			b: Self::BalanceOut,
 			c: OrderRatio<Self::Ratio>,
 		) -> DispatchResult {
 			execute_call!((a, b, c))
@@ -117,8 +123,8 @@ pub mod pallet {
 		fn convert_by_market(
 			a: Self::CurrencyId,
 			b: Self::CurrencyId,
-			c: Self::Balance,
-		) -> Result<Self::Balance, DispatchError> {
+			c: Self::BalanceOut,
+		) -> Result<Self::BalanceIn, DispatchError> {
 			execute_call!((a, b, c))
 		}
 

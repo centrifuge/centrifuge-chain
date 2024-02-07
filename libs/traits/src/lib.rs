@@ -512,7 +512,8 @@ pub enum OrderRatio<Ratio> {
 
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
-	type Balance;
+	type BalanceOut;
+	type BalanceIn;
 	type Ratio;
 	type OrderId;
 	type OrderDetails;
@@ -526,14 +527,14 @@ pub trait TokenSwaps<Account> {
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		amount_out: Self::Balance,
+		amount_out: Self::BalanceOut,
 		ratio: OrderRatio<Self::Ratio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
 	fn update_order(
 		order_id: Self::OrderId,
-		amount_out: Self::Balance,
+		amount_out: Self::BalanceOut,
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
@@ -556,8 +557,8 @@ pub trait TokenSwaps<Account> {
 	fn convert_by_market(
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		amount_out: Self::Balance,
-	) -> Result<Self::Balance, DispatchError>;
+		amount_out: Self::BalanceOut,
+	) -> Result<Self::BalanceIn, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
@@ -627,9 +628,10 @@ pub trait TryConvert<A, B> {
 // TODO: Remove usage for the one from frame_support::traits::tokens once we are
 // on the same Polkadot version
 pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
-	type Error;
-	fn to_asset_balance(balance: InBalance, asset_id: AssetId)
-		-> Result<AssetBalance, Self::Error>;
+	fn to_asset_balance(
+		balance: InBalance,
+		asset_id: AssetId,
+	) -> Result<AssetBalance, DispatchError>;
 }
 
 /// Converts an asset balance value into balance.

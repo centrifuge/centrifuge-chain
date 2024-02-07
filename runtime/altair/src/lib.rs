@@ -1726,7 +1726,8 @@ parameter_types! {
 impl pallet_order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DecimalConverter =
@@ -2182,7 +2183,7 @@ impl_runtime_apis! {
 			let nav_loans = Loans::update_nav(pool_id).ok()?;
 			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
 			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
-			let total = nav.total(pool.reserve.total).ok()?;
+			let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
 
 			Some(PoolNav { nav_aum: nav.nav_aum, nav_fees: nav.nav_fees, reserve: pool.reserve.total, total })
 		}

@@ -337,6 +337,7 @@ pub fn pay_single_fee_and_assert(
 	if !fee_amount.is_zero() {
 		System::assert_last_event(
 			Event::Paid {
+				pool_id: POOL,
 				fee_id,
 				amount: fee_amount,
 				destination: DESTINATION,

@@ -129,6 +129,7 @@ mod extrinsics {
 					assert_pending_fee(fee_id, fee.clone(), 1000, 0, 0);
 					System::assert_last_event(
 						Event::<Runtime>::Charged {
+							pool_id: POOL,
 							fee_id,
 							amount: 1000,
 							pending: 1000,
@@ -144,6 +145,7 @@ mod extrinsics {
 					assert_pending_fee(fee_id, fee.clone(), 1337, 0, 0);
 					System::assert_last_event(
 						Event::<Runtime>::Charged {
+							pool_id: POOL,
 							fee_id,
 							amount: 337,
 							pending: 1337,
@@ -181,6 +183,7 @@ mod extrinsics {
 
 					System::assert_last_event(
 						Event::<Runtime>::Uncharged {
+							pool_id: POOL,
 							fee_id,
 							amount: uncharge_amount,
 							pending: charge_amount - uncharge_amount,
@@ -1186,6 +1189,7 @@ mod disbursements {
 				);
 				System::assert_has_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: 1,
 						amount: fixed_fee_amount,
 						destination: DESTINATION,
@@ -1194,6 +1198,7 @@ mod disbursements {
 				);
 				System::assert_has_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: charged_fee_ids[0],
 						amount: charged_y1[0],
 						destination: DESTINATION,
@@ -1202,6 +1207,7 @@ mod disbursements {
 				);
 				System::assert_last_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: charged_fee_ids[1],
 						amount: payable[1],
 						destination: DESTINATION,
@@ -1267,6 +1273,7 @@ mod disbursements {
 
 				System::assert_has_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: 1,
 						amount: fixed_fee_amount,
 						destination: DESTINATION,
@@ -1275,6 +1282,7 @@ mod disbursements {
 				);
 				System::assert_has_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: charged_fee_ids[0],
 						amount: charged_y2[0],
 						destination: DESTINATION,
@@ -1283,6 +1291,7 @@ mod disbursements {
 				);
 				System::assert_last_event(
 					Event::Paid {
+						pool_id: POOL,
 						fee_id: charged_fee_ids[1],
 						amount: 1,
 						destination: DESTINATION,

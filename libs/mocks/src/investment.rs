@@ -7,6 +7,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Amount;
+		type TrancheAmount;
 		type CurrencyId;
 		type InvestmentId;
 	}
@@ -42,7 +43,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_redemption(
-			f: impl Fn(&T::AccountId, T::InvestmentId, T::Amount) -> DispatchResult + 'static,
+			f: impl Fn(&T::AccountId, T::InvestmentId, T::TrancheAmount) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
@@ -54,7 +55,8 @@ pub mod pallet {
 		}
 
 		pub fn mock_redemption(
-			f: impl Fn(&T::AccountId, T::InvestmentId) -> Result<T::Amount, DispatchError> + 'static,
+			f: impl Fn(&T::AccountId, T::InvestmentId) -> Result<T::TrancheAmount, DispatchError>
+				+ 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
@@ -89,6 +91,7 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 		type Error = DispatchError;
 		type InvestmentId = T::InvestmentId;
+		type TrancheAmount = T::TrancheAmount;
 
 		fn update_investment(
 			a: &T::AccountId,
@@ -112,7 +115,7 @@ pub mod pallet {
 		fn update_redemption(
 			a: &T::AccountId,
 			b: Self::InvestmentId,
-			c: Self::Amount,
+			c: Self::TrancheAmount,
 		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
@@ -124,7 +127,7 @@ pub mod pallet {
 		fn redemption(
 			a: &T::AccountId,
 			b: Self::InvestmentId,
-		) -> Result<Self::Amount, Self::Error> {
+		) -> Result<Self::TrancheAmount, Self::Error> {
 			execute_call!((a, b))
 		}
 

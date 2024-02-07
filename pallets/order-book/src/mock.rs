@@ -129,7 +129,7 @@ impl cfg_mocks::fees::pallet::Config for Runtime {
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
-	type Status = SwapState<Balance, CurrencyId>;
+	type Status = SwapState<Balance, Balance, CurrencyId>;
 }
 
 parameter_types! {
@@ -207,8 +207,6 @@ parameter_types! {
 
 pub struct DecimalConverter;
 impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter {
-	type Error = DispatchError;
-
 	fn to_asset_balance(
 		balance: Balance,
 		currency_in: CurrencyId,
@@ -224,7 +222,8 @@ impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = RegistryMock;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DecimalConverter = DecimalConverter;

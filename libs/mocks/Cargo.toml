@@ -24,6 +24,7 @@ cfg-primitives = { path = "../primitives", default-features = false }
 cfg-traits = { path = "../traits", default-features = false }
 cfg-types = { path = "../types", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
+xcm = { workspace = true }
 
 mock-builder = { workspace = true }
 
@@ -42,6 +43,7 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "orml-traits/std",
+  "xcm/std",
   "mock-builder/std",
 ]
 runtime-benchmarks = [

@@ -95,10 +95,12 @@ impl pallet_mock_investment::Config for Runtime {
 	type Amount = Balance;
 	type CurrencyId = CurrencyId;
 	type InvestmentId = InvestmentId;
+	type TrancheAmount = Balance;
 }
 
 impl pallet_mock_token_swaps::Config for Runtime {
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type CurrencyId = CurrencyId;
 	type OrderDetails = OrderInfo<Balance, CurrencyId, FixedU128>;
 	type OrderId = SwapId;
@@ -114,13 +116,13 @@ impl pallet_mock_status_notification::Config<Hook1> for Runtime {
 type Hook2 = pallet_mock_status_notification::Instance2;
 impl pallet_mock_status_notification::Config<Hook2> for Runtime {
 	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
+	type Status = ExecutedForeignCollect<Balance, Balance, Balance, CurrencyId>;
 }
 
 type Hook3 = pallet_mock_status_notification::Instance3;
 impl pallet_mock_status_notification::Config<Hook3> for Runtime {
 	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
+	type Status = ExecutedForeignCollect<Balance, Balance, Balance, CurrencyId>;
 }
 
 impl pallet_mock_pools::Config for Runtime {
@@ -133,17 +135,19 @@ impl pallet_mock_pools::Config for Runtime {
 }
 
 impl pallet_foreign_investments::Config for Runtime {
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = MockCollectInvestHook;
 	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
+	type ForeignBalance = Balance;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
+	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
+	type SwapBalance = Balance;
 	type SwapId = SwapId;
 	type TokenSwaps = MockTokenSwaps;
+	type TrancheBalance = Balance;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
