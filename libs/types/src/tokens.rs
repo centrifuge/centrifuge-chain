@@ -486,7 +486,7 @@ mod tests {
 	use frame_support::parameter_types;
 
 	use super::*;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche, AUSD};
+	use crate::tokens::CurrencyId::{ForeignAsset, LocalAsset, Native, Staking, Tranche, AUSD};
 
 	const FOREIGN: CurrencyId = ForeignAsset(1u32);
 
@@ -616,6 +616,7 @@ mod tests {
 			AUSD,
 			ForeignAsset(89),
 			Staking(StakingCurrency::BlockRewards),
+			LocalAsset(LocalAssetId(103)),
 		]
 		.into_iter()
 		.for_each(|x| assert_eq!(x.encode(), expected_encoded_value(x)));
@@ -639,6 +640,11 @@ mod tests {
 					r
 				}
 				Staking(StakingCurrency::BlockRewards) => vec![5, 0],
+				LocalAsset(LocalAssetId(id)) => {
+					let mut r: Vec<u8> = vec![6];
+					r.append(&mut id.encode());
+					r
+				}
 			}
 		}
 	}
