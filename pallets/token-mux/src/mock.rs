@@ -133,8 +133,10 @@ parameter_types! {
 impl pallet_token_mux::Config for Runtime {
 	type AssetRegistry = MockRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type LocalAssetId = LocalAssetId;
+	type OrderId = SwapId;
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Swaps = MockTokenSwaps;

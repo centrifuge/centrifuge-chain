@@ -26,7 +26,6 @@ use frame_support::{
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
@@ -514,14 +513,8 @@ pub enum OrderRatio<Ratio> {
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
-	type Ratio: FixedPointNumber;
-	type OrderId: Parameter
-		+ Member
-		+ AtLeast32BitUnsigned
-		+ Copy
-		+ MaybeSerializeDeserialize
-		+ TypeInfo
-		+ MaxEncodedLen;
+	type Ratio;
+	type OrderId;
 	type OrderDetails;
 
 	/// Retrieve information of the given order.

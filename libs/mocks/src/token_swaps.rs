@@ -4,20 +4,13 @@ pub mod pallet {
 	use cfg_types::orders::OrderInfo;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
-	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
 		type Balance;
-		type Ratio: FixedPointNumber;
-		type OrderId: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type Ratio;
+		type OrderId;
 		type OrderDetails;
 	}
 

@@ -50,11 +50,6 @@ pub mod pallet {
 
 	use super::*;
 
-	pub type OrderIdFor<T> =
-		<<T as Config>::Swaps as TokenSwaps<<T as frame_system::Config>::AccountId>>::OrderId;
-	pub type RatioFor<T> =
-		<<T as Config>::Swaps as TokenSwaps<<T as frame_system::Config>::AccountId>>::Ratio;
-
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
@@ -85,6 +80,17 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		/// Type for price ratio for cost of incoming currency relative to
+		/// outgoing
+		type BalanceRatio: Parameter
+			+ Member
+			+ sp_runtime::FixedPointNumber
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+
+		/// The token swap order identifying type
+		type OrderId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+
 		/// The general asset type
 		type CurrencyId: Parameter
 			+ Member
@@ -106,7 +112,9 @@ pub mod pallet {
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
-			OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, RatioFor<Self>>,
+			OrderDetails = OrderInfo<Self::Balance, Self::CurrencyId, Self::BalanceRatio>,
+			OrderId = Self::OrderId,
+			Ratio = Self::BalanceRatio,
 		>;
 
 		type WeightInfo: WeightInfo;
@@ -128,7 +136,7 @@ pub mod pallet {
 			amount: T::Balance,
 		},
 		SwapMatched {
-			id: OrderIdFor<T>,
+			id: T::OrderId,
 			amount: T::Balance,
 		},
 	}
@@ -209,7 +217,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::match_swap())]
 		pub fn match_swap(
 			origin: OriginFor<T>,
-			order_id: OrderIdFor<T>,
+			order_id: T::OrderId,
 			amount: T::Balance,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
@@ -218,7 +226,7 @@ pub mod pallet {
 				T::Swaps::get_order_details(order_id.clone()).ok_or(Error::<T>::SwapNotFound)?;
 
 			let ratio = match order.ratio {
-				OrderRatio::Market => RatioFor::<T>::ensure_from_rational(
+				OrderRatio::Market => T::BalanceRatio::ensure_from_rational(
 					amount,
 					T::Swaps::convert_by_market(
 						order.swap.currency_in.clone(),
