@@ -13,8 +13,6 @@ use crate::generic::utils::ESSENTIAL;
 /// All needed contracts can be loaded from here
 pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to populate environment variable LP_SOL_SOURCES pointing to solidity source files.");
 
-pub const IRREGULAR: &str = "__$a334d32fe50f4079904586988e51d312a5$__";
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeployedContractInfo {
 	pub contract: Contract,
@@ -114,8 +112,7 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 						.expect(ESSENTIAL)
 						.as_str()
 						.expect(ESSENTIAL)
-						.trim_start_matches("0x")
-						.replace(IRREGULAR, ""),
+						.trim_start_matches("0x"),
 				)
 				.map_err(|e| {
 					println!(
@@ -133,8 +130,7 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 							.expect(ESSENTIAL)
 							.as_str()
 							.expect(ESSENTIAL)
-							.trim_start_matches("0x")
-							.replace(IRREGULAR, ""),
+							.trim_start_matches("0x"),
 					)
 					.map_err(|e| {
 						println!(
