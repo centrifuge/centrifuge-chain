@@ -557,20 +557,22 @@ pub mod pallet {
 
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
-					T::Tokens::transfer(
-						pool_currency,
-						&T::PalletId::get().into_account_truncating(),
-						&fee.destination,
-						fee.amounts.disbursement,
-						Preservation::Expendable,
-					)?;
+					if !fee.amounts.disbursement.is_zero() {
+						T::Tokens::transfer(
+							pool_currency,
+							&T::PalletId::get().into_account_truncating(),
+							&fee.destination,
+							fee.amounts.disbursement,
+							Preservation::Expendable,
+						)?;
 
-					Self::deposit_event(Event::<T>::Paid {
-						pool_id,
-						fee_id: fee.id,
-						amount: fee.amounts.disbursement,
-						destination: fee.destination.clone(),
-					});
+						Self::deposit_event(Event::<T>::Paid {
+							pool_id,
+							fee_id: fee.id,
+							amount: fee.amounts.disbursement,
+							destination: fee.destination.clone(),
+						});
+					}
 
 					fee.amounts.disbursement = T::Balance::zero();
 				}
