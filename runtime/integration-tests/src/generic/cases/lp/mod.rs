@@ -47,6 +47,11 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	)
 	.load_contracts();
 
+	env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
+	env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
+		.unwrap();
+
+	/*
 	// ------------------ EVM Side ----------------------- //
 	// The flow is based in the following code from the Solidity and needs to be
 	// adapted if this deployment script changes in the future
@@ -508,6 +513,7 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 		Some(&[Token::Address(Keyring::Alice.into())]),
 	)
 	.unwrap();
+	 */
 
 	// ------------------ Substrate Side ----------------------- //
 	// Create router
