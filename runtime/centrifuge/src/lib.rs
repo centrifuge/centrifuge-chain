@@ -1824,7 +1824,7 @@ impl pallet_order_book::Config for Runtime {
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
@@ -1832,6 +1832,15 @@ impl pallet_order_book::Config for Runtime {
 	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
 impl pallet_transfer_allowlist::Config for Runtime {
@@ -1900,7 +1909,7 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		// Removed: Claims = 92
+		Swaps: pallet_swaps::{Pallet, Storage} = 92,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,

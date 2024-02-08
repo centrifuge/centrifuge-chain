@@ -1819,7 +1819,7 @@ impl pallet_order_book::Config for Runtime {
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
@@ -1827,6 +1827,15 @@ impl pallet_order_book::Config for Runtime {
 	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
 parameter_types! {
@@ -1886,7 +1895,7 @@ construct_runtime!(
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		// Removed: Claims = 92
+		Swaps: pallet_swaps::{Pallet, Storage} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
