@@ -279,6 +279,7 @@ pallet-pool-system = { path = "pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-features = false }
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
+pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 
 # Centrifuge libs
