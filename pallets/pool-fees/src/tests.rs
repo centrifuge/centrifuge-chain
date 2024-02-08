@@ -497,6 +497,15 @@ mod disbursements {
 							res_post_fees
 						));
 						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+						System::assert_has_event(
+							Event::Accrued {
+								pool_id: POOL,
+								fee_id,
+								pending: 0,
+								disbursement: fee_amount,
+							}
+							.into(),
+						);
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -515,6 +524,8 @@ mod disbursements {
 						let res_pre_fees = NAV / 100;
 						let res_post_fees = &mut res_pre_fees.clone();
 						let annual_rate = Rate::saturating_from_rational(1, 10);
+						let disbursement = NAV / 100;
+						let pending = NAV / 100 * 9;
 
 						let fee = new_fee(PoolFeeType::Fixed {
 							limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
@@ -528,6 +539,15 @@ mod disbursements {
 							res_post_fees
 						));
 						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+						System::assert_has_event(
+							Event::Accrued {
+								pool_id: POOL,
+								fee_id,
+								pending,
+								disbursement,
+							}
+							.into(),
+						);
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
@@ -566,6 +586,15 @@ mod disbursements {
 							res_post_fees
 						));
 						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+						System::assert_has_event(
+							Event::Accrued {
+								pool_id: POOL,
+								fee_id,
+								pending: 0,
+								disbursement: fee_amount,
+							}
+							.into(),
+						);
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -597,6 +626,15 @@ mod disbursements {
 							res_post_fees
 						));
 						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+						System::assert_has_event(
+							Event::Accrued {
+								pool_id: POOL,
+								fee_id,
+								pending: res_pre_fees,
+								disbursement: res_pre_fees,
+							}
+							.into(),
+						);
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
@@ -629,7 +667,8 @@ mod disbursements {
 
 				mod share_of_portfolio {
 					use super::*;
-					use crate::mock::assert_pending_fee;
+					use crate::mock::{assert_accrued_event_did_not_dispatch, assert_pending_fee};
+
 					#[test]
 					fn empty_charge_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
@@ -651,6 +690,7 @@ mod disbursements {
 								res_post_fees
 							));
 							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+							assert_accrued_event_did_not_dispatch();
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
@@ -688,6 +728,7 @@ mod disbursements {
 								res_post_fees
 							));
 							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+							assert_accrued_event_did_not_dispatch();
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
@@ -826,7 +867,7 @@ mod disbursements {
 					use cfg_traits::EpochTransitionHook;
 
 					use super::*;
-					use crate::mock::assert_pending_fee;
+					use crate::mock::{assert_accrued_event_did_not_dispatch, assert_pending_fee};
 
 					#[test]
 					fn empty_charge_scfa() {
@@ -849,6 +890,7 @@ mod disbursements {
 								res_post_fees
 							));
 							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+							assert_accrued_event_did_not_dispatch();
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
@@ -886,6 +928,7 @@ mod disbursements {
 								res_post_fees
 							));
 							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
+							assert_accrued_event_did_not_dispatch();
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);

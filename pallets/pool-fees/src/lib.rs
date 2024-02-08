@@ -269,6 +269,13 @@ pub mod pallet {
 			amount: T::Balance,
 			destination: T::AccountId,
 		},
+		/// A fixed pool fee accrued
+		Accrued {
+			pool_id: T::PoolId,
+			fee_id: T::FeeId,
+			pending: T::Balance,
+			disbursement: T::Balance,
+		},
 		/// The portfolio valuation for a pool was updated.
 		PortfolioValuationUpdated {
 			pool_id: T::PoolId,
@@ -641,6 +648,16 @@ pub mod pallet {
 						fee.amounts.payable =
 							PayableFeeAmount::UpTo(payable.ensure_sub(disbursement)?)
 					};
+
+					// Dispatch event for fixed fees
+					if let PoolFeeType::Fixed { .. } = fee.amounts.fee_type {
+						Self::deposit_event(Event::<T>::Accrued {
+							pool_id,
+							fee_id: fee.id,
+							pending: fee.amounts.pending,
+							disbursement: fee.amounts.disbursement,
+						});
+					}
 				}
 				Ok::<(), DispatchError>(())
 			})?;
