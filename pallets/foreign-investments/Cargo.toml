@@ -30,7 +30,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 
 cfg-mocks = { path = "../../libs/mocks" }
-pallet-swaps = {workspace = true, default-features = true}
+pallet-swaps = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
