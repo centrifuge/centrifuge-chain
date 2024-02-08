@@ -128,6 +128,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[allow(clippy::type_complexity)]
 		fn apply_over_swap(
 			who: &T::AccountId,
 			new_swap: Swap<T::Balance, T::CurrencyId>,
