@@ -4132,9 +4132,10 @@ mod development {
 						msg.clone()
 					));
 
+					let swap_order_id = default_order_id::<T>(&investor);
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						default_order_id::<T>(&investor),
+						swap_order_id,
 						invest_amount_pool_denominated / 2
 					));
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
