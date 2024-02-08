@@ -14,29 +14,29 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { version = "1.0.119" }
+serde = { workspace = true }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 ## Benchmarking dependencies
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-permissions = { path = "../permissions", default-features = false, optional = true }
+cfg-types = { workspace = true, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
+orml-tokens = { workspace = true, optional = true }
+orml-traits = { workspace = true, optional = true }
+pallet-balances = { workspace = true, optional = true }
+pallet-permissions = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-types = { path = "../../libs/types" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+cfg-types = { workspace = true, default_features = true }
+orml-tokens = { workspace = true, default_features = true }
+orml-traits = { workspace = true, default_features = true }
+pallet-balances = { workspace = true, default_features = true }
+sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

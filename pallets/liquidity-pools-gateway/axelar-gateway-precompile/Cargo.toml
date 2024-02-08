@@ -3,12 +3,10 @@ name = "axelar-gateway-precompile"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-hex = { version = "0.4.3", default-features = false }
+hex = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-core = { workspace = true }
@@ -18,15 +16,15 @@ sp-std = { workspace = true }
 
 frame-benchmarking = { workspace = true, optional = true }
 
-ethabi = { version = "18.0.0", default-features = false }
+ethabi = { workspace = true }
 fp-evm = { workspace = true }
 pallet-evm = { workspace = true }
 precompile-utils = { workspace = true }
 
-cfg-traits = { path = "../../../libs/traits", default-features = false }
-cfg-types = { path = "../../../libs/types", default-features = false }
-cfg-utils = { path = "../../../libs/utils", default-features = false }
-pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
+pallet-liquidity-pools-gateway = { workspace = true }
 
 [features]
 default = ["std"]

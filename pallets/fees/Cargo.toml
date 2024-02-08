@@ -14,7 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
-cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-traits = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -24,7 +24,7 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = true }

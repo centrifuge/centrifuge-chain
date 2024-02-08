@@ -17,7 +17,7 @@ parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
 # Substrae dependencies
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, tag = "polkadot-v1.1.0" }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-balances = { workspace = true }
@@ -26,14 +26,14 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # Local dependencies
-cfg-traits = { path = "../../libs/traits", default_features = false }
+cfg-traits = { workspace = true }
 
 [dev-dependencies]
-cfg-types = { path = "../../libs/types" }
-pallet-vesting = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-serde = { version = "1.0.119" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+cfg-types = { workspace = true, default_features = true }
+pallet-vesting = { workspace = true, default_features = true }
+serde = { workspace = true }
+sp-core = { workspace = true, default_features = true }
+sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

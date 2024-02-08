@@ -41,6 +41,24 @@ sp-io = { workspace = true }
 
 [features]
 default = ["std"]
+std = [
+  "frame-benchmarking/std",
+  "num-traits/std",
+  "scale-info/std",
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "parity-scale-codec/std",
+  "log/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-collator-selection/std",
+  "pallet-rewards/std",
+  "pallet-session/std",
+  "sp-runtime/std",
+  "sp-staking/std",
+  "sp-std/std",
+]
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
@@ -61,22 +79,4 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "sp-staking/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
-]
-std = [
-  "frame-benchmarking/std",
-  "num-traits/std",
-  "scale-info/std",
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "parity-scale-codec/std",
-  "log/std",
-  "frame-support/std",
-  "frame-system/std",
-  "pallet-collator-selection/std",
-  "pallet-rewards/std",
-  "pallet-session/std",
-  "sp-runtime/std",
-  "sp-staking/std",
-  "sp-std/std",
 ]

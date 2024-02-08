@@ -13,7 +13,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { version = "1.0.119" }
+serde = { workspace = true }
 
 # substrate primitives dependencies
 sp-arithmetic = { workspace = true }
@@ -32,18 +32,11 @@ pallet-collective = { workspace = true }
 cumulus-primitives-core = { workspace = true }
 
 # XCM primitives dependencies
-xcm = { package = "staging-xcm",  workspace = true }
-xcm-executor = { package = "staging-xcm-executor", workspace = true }
+xcm = { workspace = true }
+xcm-executor = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-collective/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "cumulus-primitives-core/std",
@@ -60,6 +53,13 @@ std = [
   "sp-std/std",
   "xcm-executor/std",
   "xcm/std",
+]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-collective/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

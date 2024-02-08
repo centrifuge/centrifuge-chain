@@ -527,7 +527,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "ethabi 18.0.0",
+ "ethabi",
  "fp-evm",
  "frame-benchmarking",
  "frame-support",
@@ -2911,20 +2911,6 @@ dependencies = [
  "ethereum-types 0.12.1",
  "hex",
  "sha3 0.9.1",
- "thiserror",
- "uint",
-]
-
-[[package]]
-name = "ethabi"
-version = "18.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
-dependencies = [
- "ethereum-types 0.14.1",
- "hex",
- "serde",
- "sha3 0.10.8",
  "thiserror",
  "uint",
 ]
@@ -5639,7 +5625,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cumulus-primitives-core",
- "ethabi 16.0.0",
+ "ethabi",
  "frame-support",
  "frame-system",
  "hex",
@@ -7333,7 +7319,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "pallet-timestamp",
  "parity-scale-codec 3.6.9",
  "scale-info",
@@ -7393,7 +7378,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "ethabi 16.0.0",
+ "ethabi",
  "fp-self-contained",
  "frame-benchmarking",
  "frame-support",
@@ -7766,7 +7751,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -7779,7 +7763,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
 ]
 
 [[package]]
@@ -7870,8 +7853,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "lazy_static",
- "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -10977,7 +10958,7 @@ dependencies = [
  "cumulus-primitives-parachain-inherent",
  "cumulus-test-relay-sproof-builder",
  "development-runtime",
- "ethabi 16.0.0",
+ "ethabi",
  "ethereum",
  "fp-self-contained",
  "frame-support",

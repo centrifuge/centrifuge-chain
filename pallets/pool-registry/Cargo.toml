@@ -17,33 +17,33 @@ scale-info = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
+orml-asset-registry = { workspace = true }
+orml-traits = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-xcm = { package = "staging-xcm",  workspace = true }
+xcm = { workspace = true }
 
 # Benchmarking dependencies - optional
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-investments = { path = "../investments", default-features = false, optional = true }
-pallet-pool-fees = { workspace = true, default-features = false, optional = true }
-pallet-pool-system = { path = "../pool-system", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
+frame-benchmarking = { workspace = true, optional = true }
+pallet-investments = { workspace = true, optional = true }
+pallet-pool-fees = { workspace = true, optional = true }
+pallet-pool-system = { workspace = true, optional = true }
+pallet-timestamp = { workspace = true, optional = true }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks" }
-cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v1.1.0" }
+cfg-mocks = { workspace = true, default-features = true }
+cfg-test-utils = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
-pallet-permissions = { path = "../../pallets/permissions", default-features = true }
-pallet-pool-system = { path = "../pool-system" }
+pallet-permissions = { workspace = true, default-features = true }
+pallet-pool-system = { workspace = true }
 pallet-timestamp = { workspace = true, default-features = true }
 parachain-info = { workspace = true, default-features = true }
-serde = { version = "1.0.102" }
+serde = { workspace = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 

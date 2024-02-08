@@ -13,11 +13,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-hex = { version = "0.4.3", default_features = false }
+hex = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-timestamp = { workspace = true }
 parity-scale-codec = { workspace = true }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+scale-info = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -36,14 +36,12 @@ std = [
   "sp-consensus-aura/std",
   "hex/std",
 ]
-
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
-
 try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",

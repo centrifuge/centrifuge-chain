@@ -15,18 +15,18 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
-cfg-traits = { path = "../../libs/traits", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, tag = "polkadot-v1.1.0" }
+cfg-traits = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # benchmarking
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
+cfg-types = { workspace = true, optional = true }
 
 [dev-dependencies]
-bitflags = "1.3"
+bitflags = { workspace = true }
 
 [features]
 default = ["std"]

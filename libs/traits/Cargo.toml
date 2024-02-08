@@ -11,30 +11,23 @@ version = "0.1.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-primitives = { path = "../primitives", default-features = false }
+cfg-primitives = { workspace = true }
 frame-support = { workspace = true }
-impl-trait-for-tuples = "0.2.1"
+impl-trait-for-tuples = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-arithmetic = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-strum = { workspace = true, default-features = false }
+strum = { workspace = true }
 
 [dev-dependencies]
-cfg-mocks = { path = "../mocks" }
-cfg-types = { path = "../types" }
-mock-builder = { workspace = true }
+cfg-mocks = { workspace = true, default_features = true }
+cfg-types = { workspace = true, default_features = true }
+mock-builder = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -44,6 +37,13 @@ std = [
   "cfg-primitives/std",
   "scale-info/std",
   "strum/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

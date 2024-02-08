@@ -20,9 +20,9 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-cfg-primitives = { path = "../primitives", default-features = false }
-cfg-traits = { path = "../traits", default-features = false }
-cfg-types = { path = "../types", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 
 xcm = { workspace = true }
 orml-traits = { workspace = true }

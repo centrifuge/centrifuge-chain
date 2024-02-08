@@ -26,24 +26,18 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
-# Benchmark dependencies
-## Orml crates
-orml-asset-registry = { workspace = true, optional = true }
 orml-traits = { workspace = true }
 
+# Benchmark dependencies
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks" }
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 pallet-restricted-tokens = { path = "../restricted-tokens", default-features = false }
-# Orml crates
-orml-asset-registry = { workspace = true }
-orml-tokens = { workspace = true, optional = true }
-# Parity crates
+orml-tokens = { workspace = true }
 pallet-balances = { workspace = true }
 sp-io = { workspace = true }
-xcm = { workspace = true }
 
 [features]
 default = ["std"]
@@ -72,7 +66,6 @@ runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
