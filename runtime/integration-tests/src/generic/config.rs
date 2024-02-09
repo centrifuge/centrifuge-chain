@@ -60,6 +60,7 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		PoolId = PoolId,
+		Rate = Rate,
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
@@ -67,6 +68,7 @@ pub trait Runtime:
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
+		InterestRate = Rate,
 		Balance = Balance,
 		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,

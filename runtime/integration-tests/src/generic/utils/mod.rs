@@ -12,29 +12,21 @@ pub mod currency;
 pub mod democracy;
 pub mod evm;
 pub mod genesis;
+pub mod pool;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
-use cfg_traits::{investments::TrancheCurrency as _, Seconds};
+use cfg_traits::investments::TrancheCurrency as _;
 use cfg_types::{
 	fixed_point::Ratio,
 	oracles::OracleKey,
-	permissions::{PermissionScope, PoolRole, Role},
-	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_support::BoundedVec;
 use frame_system::RawOrigin;
 use pallet_oracle_collection::types::CollectionInfo;
-use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use runtime_common::oracle::Feeder;
-use sp_runtime::{
-	traits::{One, StaticLookup},
-	Perquintill,
-};
+use sp_runtime::traits::StaticLookup;
 
-use crate::generic::config::{Runtime, RuntimeKind};
-
-pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
+use crate::generic::config::Runtime;
 
 pub const ESSENTIAL: &str =
 	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
@@ -87,68 +79,6 @@ pub fn give_tokens<T: Runtime>(dest: AccountId, currency_id: CurrencyId, amount:
 		data.reserved,
 	)
 	.unwrap();
-}
-
-pub fn give_pool_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
-	pallet_permissions::Pallet::<T>::add(
-		RawOrigin::Root.into(),
-		Role::PoolRole(role),
-		dest,
-		PermissionScope::Pool(pool_id),
-		Role::PoolRole(role),
-	)
-	.unwrap();
-}
-
-pub fn create_empty_pool<T: Runtime>(admin: AccountId, pool_id: PoolId, currency_id: CurrencyId) {
-	pallet_pool_registry::Pallet::<T>::register(
-		match T::KIND {
-			RuntimeKind::Development => RawOrigin::Signed(admin.clone()).into(),
-			_ => RawOrigin::Root.into(),
-		},
-		admin,
-		pool_id,
-		vec![
-			TrancheInput {
-				tranche_type: TrancheType::Residual,
-				seniority: None,
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::default(),
-					token_symbol: BoundedVec::default(),
-				},
-			},
-			TrancheInput {
-				tranche_type: TrancheType::NonResidual {
-					interest_rate_per_sec: One::one(),
-					min_risk_buffer: Perquintill::from_percent(0),
-				},
-				seniority: None,
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::default(),
-					token_symbol: BoundedVec::default(),
-				},
-			},
-		],
-		currency_id,
-		Balance::MAX,
-		None,
-		BoundedVec::default(),
-		vec![],
-	)
-	.unwrap();
-
-	// In order to later close the epoch fastly,
-	// we mofify here that requirement to significalty reduce the testing time.
-	// The only way to do it is breaking the integration tests rules mutating
-	// this state directly.
-	pallet_pool_system::Pool::<T>::mutate(pool_id, |pool| {
-		pool.as_mut().unwrap().parameters.min_epoch_time = POOL_MIN_EPOCH_TIME;
-	});
-}
-
-pub fn close_pool_epoch<T: Runtime>(admin: AccountId, pool_id: PoolId) {
-	pallet_pool_system::Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id)
-		.unwrap();
 }
 
 pub fn invest<T: Runtime>(

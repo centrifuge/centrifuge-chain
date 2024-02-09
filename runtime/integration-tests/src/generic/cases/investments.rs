@@ -20,7 +20,7 @@ use crate::{
 			self,
 			currency::{cfg, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
-			POOL_MIN_EPOCH_TIME,
+			pool::POOL_MIN_EPOCH_TIME,
 		},
 	},
 	utils::accounts::Keyring,
@@ -49,12 +49,12 @@ mod common {
 		env.parachain_state_mut(|| {
 			// Create a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
+			utils::pool::create_empty::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
 
 			// Grant permissions
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
-			utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
+			utils::pool::give_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
 		});
 
 		env
@@ -95,7 +95,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 	// Execute epoch to move pending to claimable pool currency
 	env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
 	env.parachain_state_mut(|| {
-		utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
+		utils::pool::close_epoch::<T>(POOL_ADMIN.id(), POOL_A);
 	});
 	investment_portfolio = env.parachain_state_mut(|| T::Api::investment_portfolio(INVESTOR.id()));
 	assert_eq!(
@@ -139,7 +139,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 	// Execute epoch to move pending tranche tokens to claimable pool currency
 	env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
 	env.parachain_state_mut(|| {
-		utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
+		utils::pool::close_epoch::<T>(POOL_ADMIN.id(), POOL_A);
 	});
 	investment_portfolio = env.parachain_state_mut(|| T::Api::investment_portfolio(INVESTOR.id()));
 	assert_eq!(

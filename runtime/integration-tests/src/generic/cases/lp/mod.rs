@@ -11,22 +11,32 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Balance, CFG, SECONDS_PER_HOUR};
-use cfg_types::domain_address::Domain;
+use cfg_types::{
+	domain_address::Domain,
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+};
 use ethabi::{ethereum_types::U256, Token, Uint};
-use frame_support::{assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, BoundedVec};
+use frame_support::{
+	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::PalletInfo, BoundedVec,
+};
 use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
+use orml_traits::asset_registry::AssetMetadata;
 use pallet_evm::FeeCalculator;
-use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
+use xcm::v3::{
+	Junction::{AccountKey20, GlobalConsensus, PalletInstance},
+	Junctions::X3,
+	NetworkId,
+};
 
 use crate::{
 	generic::{
 		config::Runtime,
 		env::{Env, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
-		utils::{genesis, genesis::Genesis},
+		utils::{genesis, genesis::Genesis, ESSENTIAL},
 	},
 	utils::accounts::Keyring,
 };
@@ -754,6 +764,143 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	// AddCurrency
 	// * register in OrmlAssetRegistry
 	// * trigger `AddCurrency`
+	/*
+	{
+			PalletInstance: 103
+		  }
+		  {
+			GlobalConsensus: {
+			  Ethereum: {
+				chainId: 1
+			  }
+			}
+		  }
+		  {
+			AccountKey20: {
+			  network: null
+			  key: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+			}
+		  }
+		]
+	  }
+	 */
+	let usdc_address = env.deployed("usdc").address();
+	env.parachain_state_mut(|| {
+		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+			RawOrigin::Root.into(),
+			AssetMetadata {
+				decimals: 6,
+				name: "USD Coin".into(),
+				symbol: "USDC".into(),
+				existential_deposit: 10_000,
+				location: Some(
+					X3(
+						PalletInstance(
+							<T as frame_system::Config>::PalletInfo::index::<
+								pallet_liquidity_pools::Pallet<T>,
+							>()
+							.expect(ESSENTIAL)
+							.try_into()
+							.unwrap()
+						),
+						GlobalConsensus(NetworkId::Ethereum {
+							chain_id: EVM_DOMAIN_CHAIN_ID
+						}),
+						AccountKey20 {
+							key: usdc_address.0,
+							network: None,
+						}
+					)
+					.into()
+				),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					mintable: false,
+					permissioned: false,
+					pool_currency: true
+				}
+			},
+			Some(CurrencyId::ForeignAsset(100_001)),
+		));
+	});
+	let dai_address = env.deployed("dai").address();
+	env.parachain_state_mut(|| {
+		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+			RawOrigin::Root.into(),
+			AssetMetadata {
+				decimals: 18,
+				name: "Dai Coin".into(),
+				symbol: "DAI".into(),
+				existential_deposit: 100_000_000_000_000,
+				location: Some(
+					X3(
+						PalletInstance(
+							<T as frame_system::Config>::PalletInfo::index::<
+								pallet_liquidity_pools::Pallet<T>,
+							>()
+							.expect(ESSENTIAL)
+							.try_into()
+							.unwrap()
+						),
+						GlobalConsensus(NetworkId::Ethereum {
+							chain_id: EVM_DOMAIN_CHAIN_ID
+						}),
+						AccountKey20 {
+							key: dai_address.0,
+							network: None,
+						}
+					)
+					.into()
+				),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					mintable: false,
+					permissioned: false,
+					pool_currency: true
+				}
+			},
+			Some(CurrencyId::ForeignAsset(100_002)),
+		));
+	});
+	let frax_address = env.deployed("frax").address();
+	env.parachain_state_mut(|| {
+		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+			RawOrigin::Root.into(),
+			AssetMetadata {
+				decimals: 18,
+				name: "Frax Coin".into(),
+				symbol: "FRAX".into(),
+				existential_deposit: 100_000_000_000_000,
+				location: Some(
+					X3(
+						PalletInstance(
+							<T as frame_system::Config>::PalletInfo::index::<
+								pallet_liquidity_pools::Pallet<T>,
+							>()
+							.expect(ESSENTIAL)
+							.try_into()
+							.unwrap()
+						),
+						GlobalConsensus(NetworkId::Ethereum {
+							chain_id: EVM_DOMAIN_CHAIN_ID
+						}),
+						AccountKey20 {
+							key: frax_address.0,
+							network: None,
+						}
+					)
+					.into()
+				),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					mintable: false,
+					permissioned: false,
+					pool_currency: true
+				}
+			},
+			Some(CurrencyId::ForeignAsset(100_003)),
+		));
+	});
 
 	// Create 2x pools
 	// * single tranched pool A

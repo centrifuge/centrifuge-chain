@@ -607,7 +607,7 @@ mod development {
 					DEFAULT_VALIDITY,
 				)),
 			) {
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					investor.clone(),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -703,7 +703,7 @@ mod development {
 			);
 
 			// Make investor the MembersListAdmin of this Pool
-			crate::generic::utils::give_pool_role::<T>(
+			crate::generic::utils::pool::give_role::<T>(
 				investor.clone(),
 				pool_id,
 				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -1053,7 +1053,7 @@ mod development {
 				);
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -4536,7 +4536,7 @@ mod development {
 				// Whitelist destination as TrancheInvestor of this Pool
 				let valid_until = u64::MAX;
 
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
@@ -4649,7 +4649,7 @@ mod development {
 				));
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					receiver.clone(),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
@@ -4700,12 +4700,12 @@ mod development {
 				assert!(pallet_pool_system::Pallet::<T>::pool(invalid_pool_id).is_none());
 
 				// Make Keyring::Bob the MembersListAdmin of both pools
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					Keyring::Bob.into(),
 					valid_pool_id,
 					PoolRole::InvestorAdmin,
 				);
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					Keyring::Bob.into(),
 					invalid_pool_id,
 					PoolRole::InvestorAdmin,
@@ -4713,12 +4713,12 @@ mod development {
 
 				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
 				// (invalid_pool_id, valid_tranche_id)
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
 					invalid_pool_id,
 					PoolRole::TrancheInvestor(valid_tranche_id, valid_until),
 				);
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
 					valid_pool_id,
 					PoolRole::TrancheInvestor(invalid_tranche_id, valid_until),
