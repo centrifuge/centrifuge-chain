@@ -63,10 +63,10 @@ pub mod pallet {
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
 
 		/// The type which exposes token swap order functionality
-		type OrderBook<BalanceFrom, BalanceTo>: TokenSwaps<
+		type OrderBook<BalanceTo, BalanceFrom>: TokenSwaps<
 			Self::AccountId,
-			BalanceFrom,
 			BalanceTo,
+			BalanceFrom,
 			CurrencyId = Self::CurrencyId,
 			OrderId = Self::OrderId,
 		>;
