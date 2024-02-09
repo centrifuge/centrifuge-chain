@@ -20,8 +20,8 @@ use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
-pub const CURRENCY_IN: u32 = 1;
-pub const CURRENCY_OUT: u32 = 2;
+const CURRENCY_IN: u32 = 1;
+const CURRENCY_OUT: u32 = 2;
 const RATIO: u32 = 2; // x2
 const FEEDER: u32 = 23;
 
@@ -33,7 +33,7 @@ fn init_mocks() {
 	MockRatioProvider::mock_get(|_, _| Ok(Some(Ratio::saturating_from_integer(RATIO))));
 }
 
-pub struct Helper<T>(sp_std::marker::PhantomData<T>);
+struct Helper<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> Helper<T>
 where
@@ -42,11 +42,9 @@ where
 	T::FeederId: From<u32>,
 	T::AssetRegistry: Mutate,
 {
-	/// Registers both currencies with different decimals and default custom
-	/// metadata.
-	pub fn setup_currencies(currency_out: u32, currency_in: u32) {
+	pub fn setup_currencies() {
 		T::AssetRegistry::register_asset(
-			Some(currency_in.into()),
+			Some(CURRENCY_IN.into()),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: "CURRENCY IN".as_bytes().to_vec(),
@@ -59,7 +57,7 @@ where
 		.unwrap();
 
 		T::AssetRegistry::register_asset(
-			Some(currency_out.into()),
+			Some(CURRENCY_OUT.into()),
 			orml_asset_registry::AssetMetadata {
 				decimals: 3,
 				name: "CURRENCY OUT".as_bytes().to_vec(),
@@ -72,51 +70,38 @@ where
 		.unwrap();
 	}
 
-	/// Funds two accounts with the sufficient amounts of the corresponding
-	/// currency (in or out) and returns them.
-	pub fn setup_accounts(
-		currency_out: u32,
-		currency_in: u32,
-		ratio: u32,
-	) -> (T::AccountId, T::AccountId) {
+	pub fn setup_accounts() -> (T::AccountId, T::AccountId) {
 		let expected_amount_in = Pallet::<T>::convert_with_ratio(
-			currency_out.into(),
-			currency_in.into(),
-			T::Ratio::saturating_from_integer(ratio),
-			Self::amount_out(currency_out),
+			CURRENCY_OUT.into(),
+			CURRENCY_IN.into(),
+			T::Ratio::saturating_from_integer(RATIO),
+			Self::amount_out(),
 		)
 		.unwrap();
 
 		let account_out = account::<T::AccountId>("account_out", 0, 0);
 		let account_in = account::<T::AccountId>("account_in", 0, 0);
 
-		T::Currency::mint_into(
-			currency_out.into(),
-			&account_out,
-			Self::amount_out(currency_out).into(),
-		)
-		.unwrap();
-		T::Currency::mint_into(currency_in.into(), &account_in, expected_amount_in.into()).unwrap();
+		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out().into())
+			.unwrap();
+		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in.into()).unwrap();
 
 		(account_out, account_in)
 	}
 
-	/// Registers currencies and sets up accounts
-	pub fn setup(currency_out: u32, currency_in: u32, ratio: u32) -> (T::AccountId, T::AccountId) {
-		Self::setup_currencies(currency_out, currency_in);
-		Self::setup_accounts(currency_out, currency_in, ratio)
+	pub fn setup() -> (T::AccountId, T::AccountId) {
+		Self::setup_currencies();
+		Self::setup_accounts()
 	}
 
-	/// Calculates the default amount for the outgoing currency based on the
-	/// registry metadata.
-	pub fn amount_out(currency_out: u32) -> T::BalanceOut {
+	pub fn amount_out() -> T::BalanceOut {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
 			T::MinFulfillmentAmountNative::get(),
-			currency_out.into(),
+			CURRENCY_OUT.into(),
 		)
 		.unwrap();
 
-		let decimals_out = T::AssetRegistry::metadata(&currency_out.into())
+		let decimals_out = T::AssetRegistry::metadata(&CURRENCY_OUT.into())
 			.unwrap()
 			.decimals as usize;
 
@@ -125,38 +110,33 @@ where
 		min_fulfillment + T::BalanceOut::from(5u32) * zeros
 	}
 
-	pub fn add_trading_pair(currency_out: u32, currency_in: u32) {
+	pub fn add_trading_pair() {
 		Pallet::<T>::add_trading_pair(
 			RawOrigin::Root.into(),
-			currency_in.into(),
-			currency_out.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			Zero::zero(),
 		)
 		.unwrap();
 	}
 
-	pub fn place_order(
-		currency_out: u32,
-		currency_in: u32,
-		account_out: &T::AccountId,
-		order_ratio: OrderRatio<T::Ratio>,
-	) -> T::OrderIdNonce {
+	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
 		<Pallet<T> as TokenSwaps<T::AccountId>>::place_order(
 			account_out.clone(),
-			currency_in.into(),
-			currency_out.into(),
-			Self::amount_out(currency_out),
-			order_ratio,
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
+			Self::amount_out(),
+			OrderRatio::Market,
 		)
 		.unwrap()
 	}
 
-	pub fn feed_market(currency_out: u32, currency_in: u32, ratio: u32) {
+	pub fn feed_market() {
 		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
 		T::RatioProvider::set(
 			&FEEDER.into(),
-			&(currency_out.into(), currency_in.into()),
-			T::Ratio::saturating_from_integer(ratio),
+			&(CURRENCY_OUT.into(), CURRENCY_IN.into()),
+			T::Ratio::saturating_from_integer(RATIO),
 		);
 	}
 }
@@ -164,7 +144,7 @@ where
 #[benchmarks(
     where
         T::CurrencyId: From<u32>,
-        T::AssetRegistry: Mutate,
+        T::AssetRegistry: orml_traits::asset_registry::Mutate,
         T::FeederId: From<u32>,
 )]
 mod benchmarks {
@@ -175,16 +155,15 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup(CURRENCY_OUT, CURRENCY_IN, RATIO);
-		Helper::<T>::add_trading_pair(CURRENCY_OUT, CURRENCY_IN);
-		let amount_out = Helper::<T>::amount_out(CURRENCY_OUT);
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
 
 		#[extrinsic_call]
 		place_order(
 			RawOrigin::Signed(account_out.clone()),
 			CURRENCY_IN.into(),
 			CURRENCY_OUT.into(),
-			amount_out,
+			Helper::<T>::amount_out(),
 			OrderRatio::Market, // Market is the expensive one
 		);
 
@@ -196,17 +175,15 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup(CURRENCY_OUT, CURRENCY_IN, RATIO);
-		Helper::<T>::add_trading_pair(CURRENCY_OUT, CURRENCY_IN);
-		let order_id =
-			Helper::<T>::place_order(CURRENCY_OUT, CURRENCY_IN, &account_out, OrderRatio::Market);
-		let amount_out = Helper::<T>::amount_out(CURRENCY_OUT) - 1u32.into();
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
 		update_order(
 			RawOrigin::Signed(account_out),
 			order_id,
-			amount_out,
+			Helper::<T>::amount_out() - 1u32.into(),
 			OrderRatio::Market,
 		);
 
@@ -218,10 +195,9 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup(CURRENCY_OUT, CURRENCY_IN, RATIO);
-		Helper::<T>::add_trading_pair(CURRENCY_OUT, CURRENCY_IN);
-		let order_id =
-			Helper::<T>::place_order(CURRENCY_OUT, CURRENCY_IN, &account_out, OrderRatio::Market);
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
 		cancel_order(RawOrigin::Signed(account_out), order_id);
@@ -234,16 +210,18 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, account_in) = Helper::<T>::setup(CURRENCY_OUT, CURRENCY_IN, RATIO);
-		Helper::<T>::add_trading_pair(CURRENCY_OUT, CURRENCY_IN);
-		let order_id =
-			Helper::<T>::place_order(CURRENCY_OUT, CURRENCY_IN, &account_out, OrderRatio::Market);
-		let amount_out = Helper::<T>::amount_out(CURRENCY_OUT);
+		let (account_out, account_in) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
 
-		Helper::<T>::feed_market(CURRENCY_OUT, CURRENCY_IN, RATIO);
+		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
-		fill_order(RawOrigin::Signed(account_in), order_id, amount_out);
+		fill_order(
+			RawOrigin::Signed(account_in),
+			order_id,
+			Helper::<T>::amount_out(),
+		);
 
 		Ok(())
 	}
