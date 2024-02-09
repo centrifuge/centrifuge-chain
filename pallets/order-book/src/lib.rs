@@ -879,6 +879,20 @@ pub mod pallet {
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_trading_pair(
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			min_order: T::BalanceOut,
+		) -> DispatchResult {
+			Self::add_trading_pair(
+				frame_support::dispatch::RawOrigin::Root.into(),
+				currency_in,
+				currency_out,
+				min_order,
+			)
+		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]

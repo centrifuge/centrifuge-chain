@@ -21,7 +21,7 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
@@ -43,7 +43,7 @@ use crate::{
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub type AccountId = u64;
+pub type AccountId = AccountId32;
 pub type Balance = u128;
 pub type SwapId = u64;
 pub type Ratio = FixedU128;

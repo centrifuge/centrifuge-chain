@@ -558,12 +558,20 @@ pub trait TokenSwaps<Account> {
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Makes a conversion between 2 currencies using the market ratio between
-	/// them
+	/// them.
 	fn convert_by_market(
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		amount_out: Self::BalanceOut,
 	) -> Result<Self::BalanceIn, DispatchError>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	/// Adds a valid trading pair.
+	fn add_trading_pair(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		min_order: Self::BalanceOut,
+	) -> DispatchResult;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

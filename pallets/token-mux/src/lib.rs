@@ -18,7 +18,7 @@
 mod mock;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;

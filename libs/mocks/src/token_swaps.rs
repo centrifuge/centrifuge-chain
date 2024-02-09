@@ -80,6 +80,13 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c))
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_add_trading_pair(
+			f: impl Fn(T::CurrencyId, T::CurrencyId, T::BalanceOut) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c))
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
@@ -129,6 +136,15 @@ pub mod pallet {
 		}
 
 		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_trading_pair(
+			a: Self::CurrencyId,
+			b: Self::CurrencyId,
+			c: Self::BalanceOut,
+		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

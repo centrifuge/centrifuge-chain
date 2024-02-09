@@ -13,6 +13,7 @@
 use cfg_types::tokens::LocalAssetId;
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
+use sp_core::crypto::AccountId32;
 
 use crate::{
 	mock::{
@@ -23,7 +24,7 @@ use crate::{
 	Event::{Burned, Deposited},
 };
 
-const ORDER_ID: SwapId = 1;
+pub const ORDER_ID: SwapId = 1;
 pub const USDC_1: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const USDC_2: CurrencyId = CurrencyId::ForeignAsset(2);
 pub const NON_USDC: CurrencyId = CurrencyId::ForeignAsset(4);
@@ -32,17 +33,17 @@ pub const UNREGISTERED_ASSET: CurrencyId = CurrencyId::ForeignAsset(5);
 pub const USDC_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
 pub const USDC_LOCAL: CurrencyId = CurrencyId::LocalAsset(USDC_LOCAL_ASSET_ID);
 
-pub const USER_1: AccountId = 1;
-pub const USER_2: AccountId = 2;
-pub const USER_NON: AccountId = 4;
-pub const USER_UNREGISTERED: AccountId = 5;
-pub const USER_LOCAL: AccountId = 6;
+pub const USER_1: AccountId = AccountId32::new([1u8; 32]);
+pub const USER_2: AccountId = AccountId32::new([2u8; 32]);
+pub const USER_NON: AccountId = AccountId32::new([4u8; 32]);
+pub const USER_UNREGISTERED: AccountId = AccountId32::new([5u8; 32]);
+pub const USER_LOCAL: AccountId = AccountId32::new([6u8; 32]);
 
 pub const INITIAL_AMOUNT: Balance = token(1000);
 pub const fn token(amount: Balance) -> Balance {
 	amount * (10 as Balance).pow(USDC_DECIMALS)
 }
-const AMOUNT: Balance = token(10);
+pub const AMOUNT: Balance = token(1000);
 
 mod deposit {
 	use super::*;
@@ -300,7 +301,7 @@ pub(crate) mod try_local {
 	}
 }
 
-mod swaps {
+pub(crate) mod swaps {
 	use cfg_types::orders::OrderInfo;
 
 	use super::*;
@@ -311,7 +312,7 @@ mod swaps {
 		Event::SwapMatched,
 	};
 
-	mod utils {
+	pub(crate) mod utils {
 		use cfg_traits::OrderRatio;
 		use cfg_types::investments::Swap;
 		use frame_support::traits::tokens::{fungibles::Mutate, Preservation};
@@ -370,7 +371,7 @@ mod swaps {
 			mock_fill_order(USDC_LOCAL, USER_1, USDC_1, TokenMux::account());
 		}
 
-		fn mock_swap(
+		pub fn mock_swap(
 			currency_1: CurrencyId,
 			account_1: &AccountId,
 			currency_2: CurrencyId,
