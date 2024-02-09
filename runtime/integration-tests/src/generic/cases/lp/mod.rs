@@ -17,8 +17,13 @@ use cfg_types::{
 };
 use ethabi::{ethereum_types::U256, Token, Uint};
 use frame_support::{
-	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::PalletInfo, BoundedVec,
+	assert_ok,
+	dispatch::RawOrigin,
+	pallet_prelude::ConstU32,
+	traits::{OriginTrait, PalletInfo},
+	BoundedVec,
 };
+use frame_system::pallet_prelude::OriginFor;
 use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
@@ -49,6 +54,10 @@ const DEFAULT_BALANCE: Balance = 1_000_000;
 
 pub const DECIMALS_6: Balance = 1_000_000;
 pub const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
+
+pub const USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
+pub const DAI: CurrencyId = CurrencyId::ForeignAsset(100_002);
+pub const FRAX: CurrencyId = CurrencyId::ForeignAsset(100_003);
 
 /// The faked router address on the EVM side. Needed for the precompile to
 /// verify the origin of messages.
@@ -764,26 +773,6 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	// AddCurrency
 	// * register in OrmlAssetRegistry
 	// * trigger `AddCurrency`
-	/*
-	{
-			PalletInstance: 103
-		  }
-		  {
-			GlobalConsensus: {
-			  Ethereum: {
-				chainId: 1
-			  }
-			}
-		  }
-		  {
-			AccountKey20: {
-			  network: null
-			  key: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
-			}
-		  }
-		]
-	  }
-	 */
 	let usdc_address = env.deployed("usdc").address();
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
@@ -820,7 +809,7 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 					pool_currency: true
 				}
 			},
-			Some(CurrencyId::ForeignAsset(100_001)),
+			Some(USDC),
 		));
 	});
 	let dai_address = env.deployed("dai").address();
@@ -859,7 +848,7 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 					pool_currency: true
 				}
 			},
-			Some(CurrencyId::ForeignAsset(100_002)),
+			Some(DAI),
 		));
 	});
 	let frax_address = env.deployed("frax").address();
@@ -898,7 +887,22 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 					pool_currency: true
 				}
 			},
-			Some(CurrencyId::ForeignAsset(100_003)),
+			Some(FRAX),
+		));
+	});
+
+	env.parachain_state_mut(|| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			USDC
+		));
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			DAI
+		));
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			FRAX
 		));
 	});
 

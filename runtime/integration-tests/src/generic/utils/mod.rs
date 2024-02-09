@@ -30,6 +30,7 @@ use crate::generic::config::Runtime;
 
 pub const ESSENTIAL: &str =
 	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
+
 fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
 where
 	T::RuntimeEventExt: TryInto<E>,
