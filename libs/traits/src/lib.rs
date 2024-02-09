@@ -523,7 +523,7 @@ pub struct Swap<Amount, Currency> {
 	pub amount_out: Amount,
 }
 
-impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
+impl<Amount: Clone, Currency: PartialEq + Clone> Swap<Amount, Currency> {
 	pub fn has_same_currencies(&self) -> bool {
 		self.currency_in == self.currency_out
 	}
@@ -537,12 +537,18 @@ impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
 			Err(DispatchError::Other("Swap contains different currencies"))
 		}
 	}
+
+	pub fn map<T>(&self, f: impl FnOnce(Amount) -> T) -> Swap<T, Currency> {
+		Swap {
+			currency_in: self.currency_in.clone(),
+			currency_out: self.currency_out.clone(),
+			amount_out: f(self.amount_out.clone()),
+		}
+	}
 }
 
-pub trait TokenSwaps<Account> {
+pub trait TokenSwaps<Account, AmountIn, AmountOut> {
 	type CurrencyId;
-	type BalanceOut;
-	type BalanceIn;
 	type Ratio;
 	type OrderId;
 
@@ -552,14 +558,14 @@ pub trait TokenSwaps<Account> {
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		amount_out: Self::BalanceOut,
+		amount_out: AmountOut,
 		ratio: OrderRatio<Self::Ratio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
 	fn update_order(
 		order_id: Self::OrderId,
-		amount_out: Self::BalanceOut,
+		amount_out: AmountOut,
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
@@ -572,15 +578,15 @@ pub trait TokenSwaps<Account> {
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>>;
+	fn get_order_details(order: Self::OrderId) -> Option<Swap<AmountOut, Self::CurrencyId>>;
 
 	/// Makes a conversion between 2 currencies using the market ratio between
 	/// them
 	fn convert_by_market(
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		amount_out: Self::BalanceOut,
-	) -> Result<Self::BalanceIn, DispatchError>;
+		amount_out: AmountOut,
+	) -> Result<AmountIn, DispatchError>;
 }
 
 /// A representation of a currency swap in process.
@@ -601,17 +607,16 @@ pub struct SwapState<AmountIn, AmountOut, Currency> {
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SwapStatus<Amount> {
+pub struct SwapStatus<AmountIn, AmountOut> {
 	/// The incoming amount already swapped and available to use.
-	pub swapped: Amount,
+	pub swapped: AmountIn,
 
 	/// The outgoing amount pending to be swapped
-	pub pending: Amount,
+	pub pending: AmountOut,
 }
 
 /// Trait to perform swaps without handling directly an order book
-pub trait Swaps<AccountId> {
-	type Amount;
+pub trait Swaps<AccountId, AmountIn, AmountOut> {
 	type CurrencyId;
 	type SwapId;
 
@@ -630,8 +635,8 @@ pub trait Swaps<AccountId> {
 	fn apply_swap(
 		who: &AccountId,
 		swap_id: Self::SwapId,
-		swap: Swap<Self::Amount, Self::CurrencyId>,
-	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
+		swap: Swap<AmountOut, Self::CurrencyId>,
+	) -> Result<SwapStatus<AmountIn, AmountOut>, DispatchError>;
 
 	/// Returns the pending amount for a pending swap. The direction of the swap
 	/// is determined by the `from_currency` parameter. The amount returned is
@@ -640,7 +645,7 @@ pub trait Swaps<AccountId> {
 		who: &AccountId,
 		swap_id: Self::SwapId,
 		from_currency: Self::CurrencyId,
-	) -> Result<Self::Amount, DispatchError>;
+	) -> Result<AmountOut, DispatchError>;
 
 	/// Check that validates that if swapping pair is supported.
 	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
@@ -651,8 +656,8 @@ pub trait Swaps<AccountId> {
 	fn convert_by_market(
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		amount_out: Self::Amount,
-	) -> Result<Self::Amount, DispatchError>;
+		amount_out: AmountOut,
+	) -> Result<AmountIn, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

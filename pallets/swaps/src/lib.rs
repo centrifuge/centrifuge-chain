@@ -42,8 +42,16 @@ pub mod pallet {
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// Represents an amount that has been swapped
+		type BalanceIn: Parameter + Member + AtLeast32BitUnsigned + Copy + MaxEncodedLen;
+
 		/// Represents an amount that can be swapped
-		type Balance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
+		type BalanceOut: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Copy
+			+ MaxEncodedLen
+			+ Into<Self::BalanceIn>;
 
 		/// An identification for a swap
 		type SwapId: Parameter + Member + Copy + Ord + MaxEncodedLen;
@@ -55,18 +63,18 @@ pub mod pallet {
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
 
 		/// The type which exposes token swap order functionality
-		type OrderBook: TokenSwaps<
+		type OrderBook<BalanceFrom, BalanceTo>: TokenSwaps<
 			Self::AccountId,
+			BalanceFrom,
+			BalanceTo,
 			CurrencyId = Self::CurrencyId,
-			BalanceIn = Self::Balance,
-			BalanceOut = Self::Balance,
 			OrderId = Self::OrderId,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled the swap
 		type FulfilledSwap: StatusNotificationHook<
 			Id = (Self::AccountId, Self::SwapId),
-			Status = SwapState<Self::Balance, Self::Balance, Self::CurrencyId>,
+			Status = SwapState<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 	}
@@ -131,12 +139,12 @@ pub mod pallet {
 		#[allow(clippy::type_complexity)]
 		fn apply_over_swap(
 			who: &T::AccountId,
-			new_swap: Swap<T::Balance, T::CurrencyId>,
+			new_swap: Swap<T::BalanceOut, T::CurrencyId>,
 			over_swap_id: Option<T::OrderId>,
-		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
+		) -> Result<(SwapStatus<T::BalanceIn, T::BalanceOut>, Option<T::OrderId>), DispatchError> {
 			match over_swap_id {
 				None => {
-					let order_id = T::OrderBook::place_order(
+					let order_id = T::OrderBook::<T::BalanceIn, T::BalanceOut>::place_order(
 						who.clone(),
 						new_swap.currency_in,
 						new_swap.currency_out,
@@ -146,29 +154,34 @@ pub mod pallet {
 
 					Ok((
 						SwapStatus {
-							swapped: T::Balance::zero(),
+							swapped: T::BalanceIn::zero(),
 							pending: new_swap.amount_out,
 						},
 						Some(order_id),
 					))
 				}
 				Some(order_id) => {
-					let swap = T::OrderBook::get_order_details(order_id)
-						.ok_or(Error::<T>::OrderNotFound)?;
+					let swap =
+						T::OrderBook::<T::BalanceIn, T::BalanceOut>::get_order_details(order_id)
+							.ok_or(Error::<T>::OrderNotFound)?;
 
 					if swap.is_same_direction(&new_swap)? {
 						let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
-						T::OrderBook::update_order(order_id, amount_to_swap, OrderRatio::Market)?;
+						T::OrderBook::<T::BalanceIn, T::BalanceOut>::update_order(
+							order_id,
+							amount_to_swap,
+							OrderRatio::Market,
+						)?;
 
 						Ok((
 							SwapStatus {
-								swapped: T::Balance::zero(),
+								swapped: T::BalanceIn::zero(),
 								pending: amount_to_swap,
 							},
 							Some(order_id),
 						))
 					} else {
-						let inverse_swap = swap;
+						let inverse_swap = swap.map(Into::into);
 
 						let new_swap_amount_in = T::OrderBook::convert_by_market(
 							new_swap.currency_in,
@@ -181,7 +194,7 @@ pub mod pallet {
 								let amount_to_swap =
 									inverse_swap.amount_out.ensure_sub(new_swap_amount_in)?;
 
-								T::OrderBook::update_order(
+								T::OrderBook::<T::BalanceOut, T::BalanceIn>::update_order(
 									order_id,
 									amount_to_swap,
 									OrderRatio::Market,
@@ -190,24 +203,28 @@ pub mod pallet {
 								Ok((
 									SwapStatus {
 										swapped: new_swap_amount_in,
-										pending: T::Balance::zero(),
+										pending: T::BalanceOut::zero(),
 									},
 									Some(order_id),
 								))
 							}
 							Ordering::Equal => {
-								T::OrderBook::cancel_order(order_id)?;
+								T::OrderBook::<T::BalanceIn, T::BalanceOut>::cancel_order(
+									order_id,
+								)?;
 
 								Ok((
 									SwapStatus {
 										swapped: new_swap_amount_in,
-										pending: T::Balance::zero(),
+										pending: T::BalanceOut::zero(),
 									},
 									None,
 								))
 							}
 							Ordering::Less => {
-								T::OrderBook::cancel_order(order_id)?;
+								T::OrderBook::<T::BalanceOut, T::BalanceIn>::cancel_order(
+									order_id,
+								)?;
 
 								let inverse_swap_amount_in = T::OrderBook::convert_by_market(
 									inverse_swap.currency_in,
@@ -218,13 +235,14 @@ pub mod pallet {
 								let amount_to_swap =
 									new_swap.amount_out.ensure_sub(inverse_swap_amount_in)?;
 
-								let order_id = T::OrderBook::place_order(
-									who.clone(),
-									new_swap.currency_in,
-									new_swap.currency_out,
-									amount_to_swap,
-									OrderRatio::Market,
-								)?;
+								let order_id =
+									T::OrderBook::<T::BalanceIn, T::BalanceOut>::place_order(
+										who.clone(),
+										new_swap.currency_in,
+										new_swap.currency_out,
+										amount_to_swap,
+										OrderRatio::Market,
+									)?;
 
 								Ok((
 									SwapStatus {
@@ -242,21 +260,20 @@ pub mod pallet {
 	}
 
 	/// Trait to perform swaps without handling directly an order book
-	impl<T: Config> Swaps<T::AccountId> for Pallet<T> {
-		type Amount = T::Balance;
+	impl<T: Config> Swaps<T::AccountId, T::BalanceIn, T::BalanceOut> for Pallet<T> {
 		type CurrencyId = T::CurrencyId;
 		type SwapId = T::SwapId;
 
 		fn apply_swap(
 			who: &T::AccountId,
 			swap_id: Self::SwapId,
-			swap: Swap<T::Balance, T::CurrencyId>,
-		) -> Result<SwapStatus<Self::Amount>, DispatchError> {
+			swap: Swap<T::BalanceOut, T::CurrencyId>,
+		) -> Result<SwapStatus<T::BalanceIn, T::BalanceOut>, DispatchError> {
 			// Bypassing the swap if both currencies are the same
 			if swap.currency_in == swap.currency_out {
 				return Ok(SwapStatus {
-					swapped: swap.amount_out,
-					pending: T::Balance::zero(),
+					swapped: swap.amount_out.into(),
+					pending: T::BalanceOut::zero(),
 				});
 			}
 
@@ -273,23 +290,23 @@ pub mod pallet {
 			who: &T::AccountId,
 			swap_id: Self::SwapId,
 			from_currency: Self::CurrencyId,
-		) -> Result<Self::Amount, DispatchError> {
+		) -> Result<T::BalanceOut, DispatchError> {
 			Ok(SwapIdToOrderId::<T>::get((who, swap_id))
-				.and_then(T::OrderBook::get_order_details)
+				.and_then(T::OrderBook::<T::BalanceIn, T::BalanceOut>::get_order_details)
 				.filter(|swap| swap.currency_out == from_currency)
 				.map(|swap| swap.amount_out)
-				.unwrap_or_default())
+				.unwrap_or(Zero::zero()))
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
-			T::OrderBook::valid_pair(currency_in, currency_out)
+			T::OrderBook::<T::BalanceIn, T::BalanceOut>::valid_pair(currency_in, currency_out)
 		}
 
 		fn convert_by_market(
 			currency_in: Self::CurrencyId,
 			currency_out: Self::CurrencyId,
-			amount_out: Self::Amount,
-		) -> Result<Self::Amount, DispatchError> {
+			amount_out: T::BalanceOut,
+		) -> Result<T::BalanceIn, DispatchError> {
 			T::OrderBook::convert_by_market(currency_in, currency_out, amount_out)
 		}
 	}
@@ -297,12 +314,9 @@ pub mod pallet {
 	impl<T: Config> StatusNotificationHook for Pallet<T> {
 		type Error = DispatchError;
 		type Id = T::OrderId;
-		type Status = SwapState<T::Balance, T::Balance, T::CurrencyId>;
+		type Status = SwapState<T::BalanceIn, T::BalanceOut, T::CurrencyId>;
 
-		fn notify_status_change(
-			order_id: T::OrderId,
-			swap_state: SwapState<T::Balance, T::Balance, T::CurrencyId>,
-		) -> DispatchResult {
+		fn notify_status_change(order_id: Self::Id, swap_state: Self::Status) -> DispatchResult {
 			if let Ok((who, swap_id)) = Self::swap_id(order_id) {
 				if swap_state.remaining.amount_out.is_zero() {
 					Self::update_id(&who, swap_id, None)?;
