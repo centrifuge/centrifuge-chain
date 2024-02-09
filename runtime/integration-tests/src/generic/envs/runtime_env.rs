@@ -5,7 +5,7 @@ use cfg_types::ParaId;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use ethabi::Token;
+use ethabi::{ethereum_types, Log, RawLog, Token};
 use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
@@ -60,6 +60,35 @@ const VALIDATE: bool = true;
 const TRANSACTIONAL: bool = true;
 
 impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
+	fn find_events(&self, contract: impl Into<String>, event: impl Into<String>) -> Vec<Log> {
+		let contract = self.contract(contract).contract;
+		let event = contract
+			.event(Into::<String>::into(event).as_ref())
+			.unwrap();
+
+		self.parachain_state(|| {
+			pallet_ethereum::Pending::<T>::get()
+				.into_iter()
+				.map(|(_, status, _)| status.logs)
+				.flatten()
+				.collect::<Vec<_>>()
+				.into_iter()
+				.filter_map(|log| {
+					event
+						.parse_log(RawLog {
+							topics: log
+								.topics
+								.into_iter()
+								.map(|h| ethereum_types::H256::from(h.0))
+								.collect(),
+							data: log.data,
+						})
+						.ok()
+				})
+				.collect()
+		})
+	}
+
 	fn load_contracts(mut self) -> Self {
 		self.sol_contracts = Some(evm::fetch_contracts());
 		self
@@ -132,6 +161,8 @@ impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
 
 		let runtime_code =
 			self.parachain_state(|| pallet_evm::AccountCodes::<T>::get(create_info.value));
+
+		assert_eq!(runtime_code, info.deployed_bytecode);
 
 		self.deployed_contracts.insert(
 			name.into(),

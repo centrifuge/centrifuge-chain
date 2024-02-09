@@ -121,18 +121,18 @@ pub struct GeneralCurrencyIndex<Index, Prefix> {
 	_phantom: PhantomData<Prefix>,
 }
 
-impl<Index, Prefix> TryInto<GeneralCurrencyIndex<Index, Prefix>> for CurrencyId
+impl<Index, Prefix> TryFrom<CurrencyId> for GeneralCurrencyIndex<Index, Prefix>
 where
 	Index: From<u128>,
 	Prefix: Get<[u8; 12]>,
 {
 	type Error = DispatchError;
 
-	fn try_into(self) -> Result<GeneralCurrencyIndex<Index, Prefix>, Self::Error> {
+	fn try_from(value: CurrencyId) -> Result<GeneralCurrencyIndex<Index, Prefix>, Self::Error> {
 		let mut bytes = [0u8; 16];
 		bytes[..12].copy_from_slice(&Prefix::get());
 
-		let currency_bytes: [u8; 4] = match &self {
+		let currency_bytes: [u8; 4] = match &value {
 			CurrencyId::ForeignAsset(id32) => Ok(id32.to_be_bytes()),
 			_ => Err(DispatchError::Token(TokenError::Unsupported)),
 		}?;

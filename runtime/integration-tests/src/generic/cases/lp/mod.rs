@@ -29,6 +29,7 @@ use liquidity_pools_gateway_routers::{
 };
 use orml_traits::asset_registry::AssetMetadata;
 use pallet_evm::FeeCalculator;
+use sp_core::Get;
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use xcm::v3::{
 	Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -41,14 +42,14 @@ use crate::{
 		config::Runtime,
 		env::{Env, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
-		utils::{genesis, genesis::Genesis, ESSENTIAL},
+		utils::{genesis, genesis::Genesis, give_balance, last_event, ESSENTIAL},
 	},
 	utils::accounts::Keyring,
 };
 
 mod utils {}
 
-pub mod deploy_pool;
+pub mod pool_management;
 
 const DEFAULT_BALANCE: Balance = 1_000_000;
 
@@ -72,6 +73,25 @@ pub const EVM_DOMAIN: &str = "TestDomain";
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
+pub fn process_outbound<T: Runtime>() {
+	pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
+		.map(|(nonce, _)| nonce)
+		.collect::<Vec<_>>()
+		.into_iter()
+		.for_each(|nonce| {
+			pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
+				OriginFor::<T>::signed(Keyring::Alice.into()),
+				nonce,
+			)
+			.unwrap();
+
+			assert!(matches!(
+				last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
+				pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
+			));
+		});
+}
+
 pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -79,6 +99,14 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 			.storage(),
 	)
 	.load_contracts();
+
+	// Fund gateway sender
+	env.parachain_state_mut(|| {
+		give_balance::<T>(
+			<T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+			DEFAULT_BALANCE * CFG,
+		)
+	});
 	/* TODO: Use that but index needed contracts afterwards
 	   env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
 	   env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
@@ -775,120 +803,22 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	// * trigger `AddCurrency`
 	let usdc_address = env.deployed("usdc").address();
 	env.parachain_state_mut(|| {
-		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-			RawOrigin::Root.into(),
-			AssetMetadata {
-				decimals: 6,
-				name: "USD Coin".into(),
-				symbol: "USDC".into(),
-				existential_deposit: 10_000,
-				location: Some(
-					X3(
-						PalletInstance(
-							<T as frame_system::Config>::PalletInfo::index::<
-								pallet_liquidity_pools::Pallet<T>,
-							>()
-							.expect(ESSENTIAL)
-							.try_into()
-							.unwrap()
-						),
-						GlobalConsensus(NetworkId::Ethereum {
-							chain_id: EVM_DOMAIN_CHAIN_ID
-						}),
-						AccountKey20 {
-							key: usdc_address.0,
-							network: None,
-						}
-					)
-					.into()
-				),
-				additional: CustomMetadata {
-					transferability: CrossChainTransferability::LiquidityPools,
-					mintable: false,
-					permissioned: false,
-					pool_currency: true
-				}
-			},
-			Some(USDC),
-		));
+		register_asset::<T>("USD Coin", "USDC", 6, 10_000, usdc_address, USDC)
 	});
 	let dai_address = env.deployed("dai").address();
 	env.parachain_state_mut(|| {
-		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-			RawOrigin::Root.into(),
-			AssetMetadata {
-				decimals: 18,
-				name: "Dai Coin".into(),
-				symbol: "DAI".into(),
-				existential_deposit: 100_000_000_000_000,
-				location: Some(
-					X3(
-						PalletInstance(
-							<T as frame_system::Config>::PalletInfo::index::<
-								pallet_liquidity_pools::Pallet<T>,
-							>()
-							.expect(ESSENTIAL)
-							.try_into()
-							.unwrap()
-						),
-						GlobalConsensus(NetworkId::Ethereum {
-							chain_id: EVM_DOMAIN_CHAIN_ID
-						}),
-						AccountKey20 {
-							key: dai_address.0,
-							network: None,
-						}
-					)
-					.into()
-				),
-				additional: CustomMetadata {
-					transferability: CrossChainTransferability::LiquidityPools,
-					mintable: false,
-					permissioned: false,
-					pool_currency: true
-				}
-			},
-			Some(DAI),
-		));
+		register_asset::<T>("Dai Coin", "DAI", 18, 100_000_000_000_000, dai_address, DAI)
 	});
 	let frax_address = env.deployed("frax").address();
 	env.parachain_state_mut(|| {
-		assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-			RawOrigin::Root.into(),
-			AssetMetadata {
-				decimals: 18,
-				name: "Frax Coin".into(),
-				symbol: "FRAX".into(),
-				existential_deposit: 100_000_000_000_000,
-				location: Some(
-					X3(
-						PalletInstance(
-							<T as frame_system::Config>::PalletInfo::index::<
-								pallet_liquidity_pools::Pallet<T>,
-							>()
-							.expect(ESSENTIAL)
-							.try_into()
-							.unwrap()
-						),
-						GlobalConsensus(NetworkId::Ethereum {
-							chain_id: EVM_DOMAIN_CHAIN_ID
-						}),
-						AccountKey20 {
-							key: frax_address.0,
-							network: None,
-						}
-					)
-					.into()
-				),
-				additional: CustomMetadata {
-					transferability: CrossChainTransferability::LiquidityPools,
-					mintable: false,
-					permissioned: false,
-					pool_currency: true
-				}
-			},
-			Some(FRAX),
-		));
+		register_asset::<T>(
+			"Frax Coin",
+			"FRAX",
+			18,
+			100_000_000_000_000,
+			frax_address,
+			FRAX,
+		)
 	});
 
 	env.parachain_state_mut(|| {
@@ -904,6 +834,8 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 			OriginFor::<T>::signed(Keyring::Alice.into()),
 			FRAX
 		));
+
+		process_outbound::<T>()
 	});
 
 	// Create 2x pools
@@ -927,5 +859,54 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 
 	// Deploy LP and more for both pools and all currencies
 
+	// TODO: Does panic... Have we ever tested that? Building a block would be super
+	// useful to flush the pending of the evm side
+	// env.__priv_build_block(1);
 	env
+}
+
+pub fn register_asset<T: Runtime>(
+	name: impl Into<Vec<u8>>,
+	symbol: impl Into<Vec<u8>>,
+	decimals: u32,
+	existential_deposit: Balance,
+	address: impl Into<[u8; 20]>,
+	currency: CurrencyId,
+) {
+	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+		RawOrigin::Root.into(),
+		AssetMetadata {
+			decimals: decimals,
+			name: name.into(),
+			symbol: symbol.into(),
+			existential_deposit: existential_deposit,
+			location: Some(
+				X3(
+					PalletInstance(
+						<T as frame_system::Config>::PalletInfo::index::<
+							pallet_liquidity_pools::Pallet<T>,
+						>()
+						.unwrap()
+						.try_into()
+						.unwrap()
+					),
+					GlobalConsensus(NetworkId::Ethereum {
+						chain_id: EVM_DOMAIN_CHAIN_ID
+					}),
+					AccountKey20 {
+						key: address.into(),
+						network: None,
+					}
+				)
+				.into()
+			),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::LiquidityPools,
+				mintable: false,
+				permissioned: false,
+				pool_currency: true
+			}
+		},
+		Some(currency),
+	));
 }

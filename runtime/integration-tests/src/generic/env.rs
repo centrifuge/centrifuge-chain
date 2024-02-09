@@ -1,6 +1,6 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
-use ethabi::Token;
+use ethabi::{Event, Log, Token};
 use pallet_evm::CallInfo;
 use parity_scale_codec::Encode;
 use sp_core::U256;
@@ -168,6 +168,8 @@ pub trait Env<T: Runtime>: Default {
 }
 
 pub trait EvmEnv<T: Runtime>: Env<T> {
+	fn find_events(&self, contract: impl Into<String>, event: impl Into<String>) -> Vec<Log>;
+
 	fn load_contracts(self) -> Self;
 
 	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo;

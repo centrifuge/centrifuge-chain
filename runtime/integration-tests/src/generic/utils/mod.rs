@@ -31,7 +31,7 @@ use crate::generic::config::Runtime;
 pub const ESSENTIAL: &str =
 	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
 
-fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
+pub fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
 where
 	T::RuntimeEventExt: TryInto<E>,
 {
@@ -40,6 +40,19 @@ where
 		.rev()
 		.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
 		.flatten()
+}
+
+pub fn last_event<T: Runtime, E>() -> E
+where
+	T::RuntimeEventExt: TryInto<E>,
+{
+	frame_system::Pallet::<T>::events()
+		.pop()
+		.unwrap()
+		.event
+		.try_into()
+		.ok()
+		.unwrap()
 }
 
 pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (CollectionId, ItemId)) {
