@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # Swaps pallet: Enables applying swaps independiently of previous swaps in the same or opposite
+//! # Swaps pallet: Enables applying swaps independently of previous swaps in the same or opposite
 //! directions.
 
 #![cfg_attr(not(feature = "std"), no_std)]
