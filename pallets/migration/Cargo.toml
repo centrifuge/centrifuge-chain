@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Migration pallet for the runtime"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-migration-manager"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Migration pallet for the runtime"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -27,19 +29,10 @@ sp-std = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true, default-features = true }
-rand = { workspace = true }
+rand = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-  "pallet-proxy/runtime-benchmarks",
-  "pallet-vesting/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -53,6 +46,15 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-proxy/runtime-benchmarks",
+  "pallet-vesting/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

@@ -1,12 +1,13 @@
 [package]
 name = "pallet-permissions"
 description = "Pallet for storing and retrieving permissions of accounts."
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -30,15 +31,6 @@ bitflags = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
-
 std = [
   "parity-scale-codec/std",
   "scale-info/std",
@@ -49,6 +41,14 @@ std = [
   "sp-std/std",
   "cfg-traits/std",
   "cfg-types/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-traits/try-runtime",

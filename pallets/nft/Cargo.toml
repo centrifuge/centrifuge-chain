@@ -1,12 +1,13 @@
 [package]
 name = "pallet-nft"
 description = "Pallet for non-fungible token (NFT) processing"
-authors = ["The Centrifugians Tribe"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -25,41 +26,21 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # Centrifuge Chain dependencies
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 chainbridge = { workspace = true }
-pallet-anchors = { path = "../anchors", default-features = false }
-proofs = { path = "../../libs/proofs", default-features = false }
+pallet-anchors = { workspace = true }
+proofs = { workspace = true }
 
 [dev-dependencies]
-# Testing and mocking dependencies
-pallet-anchors = { path = "../anchors", default-features = true }
-pallet-authorship = { workspace = true }
-pallet-timestamp = { workspace = true }
-proofs = { path = "../../libs/proofs", default-features = true }
+pallet-authorship = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
 
-sp-core = { workspace = true }
-sp-runtime = { workspace = true }
-sp-std = { workspace = true }
-
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "chainbridge/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "pallet-anchors/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "scale-info/std",
@@ -78,6 +59,19 @@ std = [
   "cfg-primitives/std",
   "cfg-types/std",
   "frame-benchmarking/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "chainbridge/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "pallet-anchors/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

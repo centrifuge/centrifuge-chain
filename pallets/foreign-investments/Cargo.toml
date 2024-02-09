@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Pallet to enable investments and redemptions via a foreign interface"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-foreign-investments"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Pallet to enable investments and redemptions via a foreign interface"
 version = "1.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -14,8 +16,8 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -26,10 +28,10 @@ sp-std = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-core = { workspace = true }
-sp-io = { workspace = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

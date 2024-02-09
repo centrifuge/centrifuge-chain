@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Provides orders for assests and allows user to collect these orders"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-investments"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Provides orders for assests and allows user to collect these orders"
 version = "1.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -38,17 +40,6 @@ sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "cfg-primitives/std",
   "cfg-traits/std",
@@ -61,6 +52,17 @@ std = [
   "serde/std",
   "sp-runtime/std",
   "sp-std/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

@@ -1,16 +1,17 @@
 [package]
 name = "pallet-restricted-xtokens"
-authors.workspace = true
 description = "A wrapper pallet around orml-xtokens to allow restricting transfers"
+version = "0.0.1"
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
+homepage.workspace = true
 repository.workspace = true
-version = "0.0.1"
+documentation.workspace = true
 
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { workspace = true, optional = true }
 
 # substrate
 frame-support = { workspace = true }
@@ -30,7 +31,6 @@ cfg-traits = { workspace = true }
 [features]
 default = ["std"]
 std = [
-  "serde",
   "parity-scale-codec/std",
   "sp-std/std",
   "cfg-traits/std",
@@ -41,7 +41,6 @@ std = [
   "orml-traits/std",
   "xcm/std",
 ]
-
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "frame-support/runtime-benchmarks",

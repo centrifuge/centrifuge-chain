@@ -1,11 +1,13 @@
 [package]
 name = "pallet-anchors"
-authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Anchors pallet for runtime"
-edition = "2021"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -13,9 +15,9 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { version = "1.0.119" }
+serde = { workspace = true }
 
-cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-traits = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-balances = { workspace = true }
@@ -26,19 +28,36 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # optional dependencies for benchmarking
-cfg-utils = { path = "../../libs/utils", default-features = false, optional = true }
+cfg-utils = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 pallet-aura = { workspace = true }
 
 [dev-dependencies]
-pallet-authorship = { workspace = true }
-sp-consensus-aura = { workspace = true }
-sp-io = { workspace = true }
+pallet-authorship = { workspace = true, default-features = true }
+sp-consensus-aura = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
+std = [
+  "cfg-traits/std",
+  "cfg-utils/std",
+  "parity-scale-codec/std",
+  "frame-benchmarking/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-aura/std",
+  "pallet-timestamp/std",
+  "pallet-balances/std",
+  "scale-info/std",
+  "serde/std",
+  "sp-arithmetic/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
+]
 runtime-benchmarks = [
   "cfg-mocks/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
@@ -61,21 +80,4 @@ try-runtime = [
   "pallet-balances/try-runtime",
   "pallet-timestamp/try-runtime",
   "sp-runtime/try-runtime",
-]
-std = [
-  "cfg-traits/std",
-  "cfg-utils/std",
-  "parity-scale-codec/std",
-  "frame-benchmarking/std",
-  "frame-support/std",
-  "frame-system/std",
-  "pallet-aura/std",
-  "pallet-timestamp/std",
-  "pallet-balances/std",
-  "scale-info/std",
-  "serde/std",
-  "sp-arithmetic/std",
-  "sp-core/std",
-  "sp-runtime/std",
-  "sp-std/std",
 ]

@@ -1,12 +1,13 @@
 [package]
 name = "pallet-restricted-tokens"
 description = "Pallet for handling token-transfers. Allows to restrict specific token usage to some users."
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -40,19 +41,6 @@ sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "orml-tokens/runtime-benchmarks",
-  "orml-traits",
-  "pallet-balances/runtime-benchmarks",
-  "pallet-permissions/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "cfg-primitives/std",
   "cfg-traits/std",
@@ -66,6 +54,19 @@ std = [
   "serde/std",
   "sp-runtime/std",
   "sp-std/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
+  "orml-traits",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

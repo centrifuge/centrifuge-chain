@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Fees pallet for runtime"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-fees"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Fees pallet for runtime"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -34,13 +36,6 @@ sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "scale-info/std",
@@ -52,6 +47,13 @@ std = [
   "pallet-authorship/std",
   "pallet-treasury/std",
   "frame-benchmarking/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-traits/try-runtime",

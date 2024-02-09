@@ -1,12 +1,13 @@
 [package]
 name = "pallet-order-book"
-description = "Pallet to add order book for currency exchanges. Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
+description = "Pallet to add order book for currency exchanges"
 version = "0.1.0"
-authors = ["Centrifuge <admin@centrifuge.io>"]
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -16,15 +17,15 @@ frame-support = { workspace = true }
 frame-system = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { version = "1.0.119" }
+serde = { workspace = true }
 sp-arithmetic = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 
 orml-traits = { workspace = true }
 
@@ -32,12 +33,12 @@ orml-traits = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks" }
-cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
-pallet-restricted-tokens = { path = "../restricted-tokens", default-features = false }
-orml-tokens = { workspace = true }
-pallet-balances = { workspace = true }
-sp-io = { workspace = true }
+cfg-mocks = { workspace = true, default-features = true }
+cfg-test-utils = { workspace = true, default-features = true }
+pallet-restricted-tokens = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

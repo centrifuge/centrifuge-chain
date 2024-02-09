@@ -1,20 +1,22 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Centrifuge Liquidity Pools Pallet"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-liquidity-pools"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Centrifuge Liquidity Pools Pallet"
 version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-ethabi = { version = "16.0", default-features = false }
+ethabi = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-hex = { version = "0.4.3", default_features = false }
+hex = { workspace = true }
 orml-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
@@ -31,10 +33,10 @@ pallet-balances = { workspace = true, optional = true }
 pallet-uniques = { workspace = true, optional = true }
 
 # Our custom pallets
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-cfg-utils = { path = "../../libs/utils", default-features = false }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
 
 # Polkadot
 xcm = { workspace = true }
@@ -44,8 +46,8 @@ pallet-ethereum = { workspace = true }
 xcm-primitives = { workspace = true }
 
 [dev-dependencies]
-hex = "0.4.3"
-serde = { version = "1.0.102" }
+hex = { workspace = true, default-features = true }
+serde = { workspace = true }
 
 # Substrate crates & pallets
 pallet-balances = { workspace = true }
@@ -56,20 +58,6 @@ sp-io = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-  "orml-tokens/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-utils/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-ethereum/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "cfg-types/std",
@@ -91,6 +79,20 @@ std = [
   "frame-benchmarking/std",
   "scale-info/std",
   "fp-self-contained/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

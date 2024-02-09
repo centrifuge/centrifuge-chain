@@ -1,11 +1,13 @@
 [package]
 name = "cfg-test-utils"
+description = "Utilities for testing"
 version = "0.1.0"
-edition = "2021"
-authors = ["Centrifuge"]
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

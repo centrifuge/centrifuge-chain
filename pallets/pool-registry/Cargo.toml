@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Pools Registration for runtime"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-pool-registry"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Pools Registration for runtime"
 version = "1.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -23,16 +25,16 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 xcm = { workspace = true }
 
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+
 # Benchmarking dependencies - optional
 frame-benchmarking = { workspace = true, optional = true }
 pallet-investments = { workspace = true, optional = true }
 pallet-pool-fees = { workspace = true, optional = true }
 pallet-pool-system = { workspace = true, optional = true }
 pallet-timestamp = { workspace = true, optional = true }
-
-cfg-primitives = { workspace = true }
-cfg-traits = { workspace = true }
-cfg-types = { workspace = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
@@ -49,22 +51,6 @@ sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "pallet-investments/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-test-utils/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "pallet-pool-fees/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "pallet-pool-system/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -82,6 +68,22 @@ std = [
   "xcm/std",
   "pallet-pool-fees/std",
   "pallet-pool-system/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

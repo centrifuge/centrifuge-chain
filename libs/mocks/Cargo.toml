@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Generic mocks built with mock-builder for traits"
-edition = "2021"
-license = "LGPL-3.0"
 name = "cfg-mocks"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Generic mocks built with mock-builder for traits"
 version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

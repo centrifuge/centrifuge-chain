@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "NFT Sales pallet"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-nft-sales"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "NFT Sales pallet"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -19,31 +21,42 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # Optional dependencies for benchmarking
-cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = true }
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
+cfg-primitives = { workspace = true, optional = true }
+cfg-types = { workspace = true, optional = true }
 orml-tokens = { workspace = true, optional = true }
 orml-traits = { workspace = true, optional = true }
 pallet-balances = { workspace = true, optional = true }
 pallet-uniques = { workspace = true, optional = true }
 
 [dev-dependencies]
-# Substrate crates & pallets
-pallet-balances = { workspace = true }
-pallet-uniques = { workspace = true }
-sp-core = { workspace = true }
-sp-io = { workspace = true }
+cfg-primitives = { workspace = true, default-features = true }
+cfg-types = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-uniques = { workspace = true, default-features = true }
 
-# Orml crates
-orml-tokens = { workspace = true }
-orml-traits = { workspace = true }
-
-# Local crates
-cfg-primitives = { path = "../../libs/primitives" }
-cfg-types = { path = "../../libs/types" }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
+std = [
+  "parity-scale-codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "orml-tokens?/std",
+  "orml-traits?/std",
+  "cfg-types?/std",
+  "cfg-primitives?/std",
+  "frame-benchmarking?/std",
+  "pallet-uniques?/std",
+  "pallet-balances?/std",
+]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
@@ -55,22 +68,6 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-]
-std = [
-  "parity-scale-codec/std",
-  "cfg-types/std",
-  "frame-support/std",
-  "frame-system/std",
-  "sp-std/std",
-  "sp-runtime/std",
-  "orml-tokens/std",
-  "orml-traits/std",
-  "pallet-balances/std",
-  "cfg-primitives/std",
-  "frame-benchmarking/std",
-  "scale-info/std",
-  "pallet-uniques?/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

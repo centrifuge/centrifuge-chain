@@ -1,21 +1,22 @@
 [package]
 name = "pallet-liquidity-rewards"
-version = "0.1.0"
-authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Liquidity Rewards pallet"
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-traits = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-num-traits = { version = "0.2", default-features = false }
+num-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }
@@ -25,27 +26,13 @@ sp-std = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-core = { workspace = true }
-sp-io = { workspace = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-try-runtime = [
-  "cfg-traits/try-runtime",
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "sp-runtime/try-runtime",
-]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -56,4 +43,18 @@ std = [
   "frame-benchmarking/std",
   "num-traits/std",
   "scale-info/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
 ]

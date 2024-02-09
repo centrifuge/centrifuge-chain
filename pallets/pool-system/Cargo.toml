@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Centrifuge Pool System pallet"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-pool-system"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Centrifuge Pool System pallet"
 version = "3.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -46,29 +48,13 @@ pallet-balances = { workspace = true, default-features = true }
 pallet-investments = { workspace = true, default-features = true }
 pallet-restricted-tokens = { workspace = true, default-features = true }
 parachain-info = { workspace = true, default-features = true }
-rand = { workspace = true }
+rand = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 xcm = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-mocks/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-test-utils/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "pallet-investments/runtime-benchmarks",
-  "pallet-permissions/runtime-benchmarks",
-  "pallet-pool-fees/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "cfg-primitives/std",
   "cfg-traits/std",
@@ -88,6 +74,22 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "strum/std",
+]
+runtime-benchmarks = [
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-mocks/try-runtime",

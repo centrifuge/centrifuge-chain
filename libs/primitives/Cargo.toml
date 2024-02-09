@@ -1,11 +1,13 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Primitive types for Centrifuge"
-edition = "2021"
-license = "LGPL-3.0"
 name = "cfg-primitives"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Primitive types for Centrifuge"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
