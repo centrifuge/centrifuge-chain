@@ -47,6 +47,7 @@ const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
 	mintable: false,
 	permissioned: false,
 	pool_currency: false,
+	local_representation: None,
 };
 
 pub fn find_metadata(currency_id: CurrencyId) -> AssetMetadata<Balance, CustomMetadata> {

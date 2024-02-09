@@ -1255,6 +1255,7 @@ mod development {
 							mintable: false,
 							permissioned: false,
 							pool_currency: false,
+							local_representation: None,
 						},
 					},
 					Some(currency_id)
@@ -1285,9 +1286,7 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Disallow liquidityPools transferability
 						transferability: CrossChainTransferability::Xcm(Default::default()),
-						mintable: Default::default(),
-						permissioned: Default::default(),
-						pool_currency: Default::default(),
+						..Default::default()
 					}),
 				));
 
@@ -1311,9 +1310,7 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Disallow cross chain transferability entirely
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
-						pool_currency: Default::default(),
+						..Default::default()
 					})
 				));
 
@@ -1367,9 +1364,8 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidity_pools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						pool_currency: true,
+						..Default::default()
 					})
 				));
 
@@ -1434,10 +1430,8 @@ mod development {
 						location: None,
 						existential_deposit: 1_000_000,
 						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
 							pool_currency: true,
+							..Default::default()
 						},
 					},
 					Some(currency_id)
@@ -1490,10 +1484,9 @@ mod development {
 					Some(CustomMetadata {
 						// Disallow any cross chain transferability
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Changed: Allow to be usable as pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
@@ -1518,10 +1511,9 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidityPools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Still allow to be pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
@@ -1602,9 +1594,8 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidity_pools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						pool_currency: true,
+						..Default::default()
 					})
 				));
 
@@ -1669,10 +1660,8 @@ mod development {
 						location: None,
 						existential_deposit: 1_000_000,
 						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
 							pool_currency: true,
+							..Default::default()
 						},
 					},
 					Some(currency_id)
@@ -1725,10 +1714,9 @@ mod development {
 					Some(CustomMetadata {
 						// Disallow any cross chain transferability
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Changed: Allow to be usable as pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
@@ -1753,10 +1741,9 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidityPools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Still allow to be pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(

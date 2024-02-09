@@ -99,6 +99,7 @@ async fn axelar_precompile_execute() {
 			mintable: true,
 			permissioned: false,
 			pool_currency: false,
+			local_representation: None,
 		},
 	};
 
