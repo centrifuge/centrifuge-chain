@@ -726,7 +726,7 @@ pub mod pallet {
 		/// ```ignore
 		/// NAV(PoolFees) = sum(pending_fee_amount) = sum(epoch_amount - disbursement)
 		/// ```
-		fn update_portfolio_valuation_for_pool(
+		pub fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
 			reserve: &mut T::Balance,
 		) -> Result<(T::Balance, u32), DispatchError> {
@@ -788,6 +788,13 @@ pub mod pallet {
 			});
 
 			Ok(())
+		}
+
+		// Returns all fees of a pool divided by the buckets
+		pub fn get_pool_fees(pool_id: T::PoolId) -> Vec<(PoolFeeBucket, Vec<PoolFeeOf<T>>)> {
+			PoolFeeBucket::iter()
+				.map(|bucket| (bucket, ActiveFees::<T>::get(pool_id, bucket).into_inner()))
+				.collect()
 		}
 	}
 
