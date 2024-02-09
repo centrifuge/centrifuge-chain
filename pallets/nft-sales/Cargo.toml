@@ -21,9 +21,9 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # Optional dependencies for benchmarking
-frame-benchmarking = { workspace = true, optional = true }
 cfg-primitives = { workspace = true, optional = true }
 cfg-types = { workspace = true, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
 orml-tokens = { workspace = true, optional = true }
 orml-traits = { workspace = true, optional = true }
 pallet-balances = { workspace = true, optional = true }

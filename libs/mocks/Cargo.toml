@@ -26,8 +26,8 @@ cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 
-xcm = { workspace = true }
 orml-traits = { workspace = true }
+xcm = { workspace = true }
 
 mock-builder = { workspace = true }
 
