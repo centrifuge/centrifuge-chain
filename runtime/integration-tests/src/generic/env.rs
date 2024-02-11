@@ -1,6 +1,6 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
-use ethabi::{Event, Log, Token};
+use ethabi::{Log, Token};
 use pallet_evm::CallInfo;
 use parity_scale_codec::Encode;
 use sp_core::U256;

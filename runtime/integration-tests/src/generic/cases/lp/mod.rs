@@ -42,16 +42,27 @@ use crate::{
 		config::Runtime,
 		env::{Env, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
-		utils::{genesis, genesis::Genesis, give_balance, last_event, ESSENTIAL},
+		utils::{genesis, genesis::Genesis, give_balance, last_event},
 	},
 	utils::accounts::Keyring,
 };
 
-mod utils {}
+pub mod utils {
+	use cfg_primitives::Balance;
+	use ethabi::ethereum_types::H160;
+
+	pub fn to_h160(mut data: Vec<u8>) -> H160 {
+		H160::from(cfg_utils::vec_to_fixed_array(data.split_off(12)))
+	}
+
+	pub fn to_balance(mut data: Vec<u8>) -> Balance {
+		Balance::from_be_bytes(cfg_utils::vec_to_fixed_array(data.split_off(16).to_vec()))
+	}
+}
 
 pub mod pool_management;
 
-const DEFAULT_BALANCE: Balance = 1_000_000;
+pub const DEFAULT_BALANCE: Balance = 1_000_000;
 
 pub const DECIMALS_6: Balance = 1_000_000;
 pub const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
@@ -92,7 +103,7 @@ pub fn process_outbound<T: Runtime>() {
 		});
 }
 
-pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
+pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::balances::<T>(DEFAULT_BALANCE * CFG))
@@ -107,6 +118,7 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 			DEFAULT_BALANCE * CFG,
 		)
 	});
+
 	/* TODO: Use that but index needed contracts afterwards
 	   env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
 	   env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
@@ -575,6 +587,72 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	)
 	.unwrap();
 
+	// ------------------ Substrate Side ----------------------- //
+	// Create router
+	let (base_fee, _) =
+		env.parachain_state(<T as pallet_evm::Config>::FeeCalculator::min_gas_price);
+
+	let evm_domain = EVMDomain {
+		target_contract_address: sp_core::H160::from(env.deployed("router").address().0),
+		target_contract_hash: BlakeTwo256::hash_of(&env.deployed("router").deployed_bytecode),
+		fee_values: FeeValues {
+			value: sp_core::U256::zero(),
+			gas_limit: sp_core::U256::from(500_000),
+			gas_price: sp_core::U256::from(base_fee),
+		},
+	};
+
+	let axelar_evm_router = AxelarEVMRouter::<T>::new(
+		EVMRouter::new(evm_domain),
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			EVM_DOMAIN.as_bytes().to_vec(),
+		)
+		.unwrap(),
+		sp_core::H160::from(env.deployed("router").address().0),
+	);
+
+	env.parachain_state_mut(|| {
+		assert_ok!(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+				RawOrigin::Root.into(),
+				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
+			)
+		);
+	});
+
+	additional(&mut env);
+
+	// TODO: Does panic... Have we ever tested that? Building a block would be super
+	//       useful to flush the pending of the evm side
+	// env.__priv_build_block(1);
+	env
+}
+
+pub fn setup_pools<T: Runtime>(_env: &mut impl EvmEnv<T>) {
+	// Create 2x pools
+	// * single tranched pool A
+	// * double tranched pool B
+
+	// AddPool A
+	// AddTranche 1 A
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+
+	// AddPool B
+	// AddTranche 1 B
+	// AddTranche 2 B
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+
+	// ------------------ EVM Side ----------------------- //
+
+	// Deploy LP and more for both pools and all currencies
+}
+
+pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// Create 3x ERC-20 currency as Stablecoins
 	//
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
@@ -764,40 +842,6 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	)
 	.unwrap();
 
-	// ------------------ Substrate Side ----------------------- //
-	// Create router
-	let (base_fee, _) =
-		env.parachain_state(<T as pallet_evm::Config>::FeeCalculator::min_gas_price);
-
-	let evm_domain = EVMDomain {
-		target_contract_address: sp_core::H160::from(env.deployed("router").address().0),
-		target_contract_hash: BlakeTwo256::hash_of(&env.deployed("router").deployed_bytecode),
-		fee_values: FeeValues {
-			value: sp_core::U256::zero(),
-			gas_limit: sp_core::U256::from(500_000),
-			gas_price: sp_core::U256::from(base_fee),
-		},
-	};
-
-	let axelar_evm_router = AxelarEVMRouter::<T>::new(
-		EVMRouter::new(evm_domain),
-		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
-			EVM_DOMAIN.as_bytes().to_vec(),
-		)
-		.unwrap(),
-		sp_core::H160::from(env.deployed("router").address().0),
-	);
-
-	env.parachain_state_mut(|| {
-		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
-				RawOrigin::Root.into(),
-				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
-				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
-			)
-		);
-	});
-
 	// AddCurrency
 	// * register in OrmlAssetRegistry
 	// * trigger `AddCurrency`
@@ -837,32 +881,6 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 
 		process_outbound::<T>()
 	});
-
-	// Create 2x pools
-	// * single tranched pool A
-	// * double tranched pool B
-
-	// AddPool A
-	// AddTranche 1 A
-	// AllowInvestmentCurrency 1
-	// AllowInvestmentCurrency 2
-	// AllowInvestmentCurrency 3
-
-	// AddPool B
-	// AddTranche 1 B
-	// AddTranche 2 B
-	// AllowInvestmentCurrency 1
-	// AllowInvestmentCurrency 2
-	// AllowInvestmentCurrency 3
-
-	// ------------------ EVM Side ----------------------- //
-
-	// Deploy LP and more for both pools and all currencies
-
-	// TODO: Does panic... Have we ever tested that? Building a block would be super
-	// useful to flush the pending of the evm side
-	// env.__priv_build_block(1);
-	env
 }
 
 pub fn register_asset<T: Runtime>(

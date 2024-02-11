@@ -11,17 +11,14 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::CurrencyId;
-use ethabi::{ethereum_types::H160, Token, Uint};
-use frame_support::{
-	assert_ok,
-	traits::{OriginTrait, PalletInfo},
-};
+use ethabi::{Token, Uint};
+use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 
 use crate::{
 	generic::{
-		cases::lp::process_outbound,
+		cases::lp::{process_outbound, utils},
 		config::Runtime,
 		env::{Env, EvmEnv},
 	},
@@ -34,7 +31,7 @@ fn _test() {
 }
 
 fn add_currency<T: Runtime>() {
-	let mut env = super::setup::<T>();
+	let mut env = super::setup::<T>(|_| {});
 
 	env.deploy(
 		"ERC20",
@@ -68,7 +65,7 @@ fn add_currency<T: Runtime>() {
 
 	// Verify the  test currencies are correctly added to the pool manager
 	assert_eq!(
-		H160::from(cfg_utils::vec_to_fixed_array(
+		utils::to_h160(
 			env.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -77,13 +74,12 @@ fn add_currency<T: Runtime>() {
 			)
 			.unwrap()
 			.value
-			.split_off(12)
-		)),
+		),
 		test_erc20_address
 	);
 
 	assert_eq!(
-		u128::from_be_bytes(cfg_utils::vec_to_fixed_array(
+		utils::to_balance(
 			env.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -92,11 +88,44 @@ fn add_currency<T: Runtime>() {
 			)
 			.unwrap()
 			.value
-			.split_off(16)
-			.to_vec()
-		)),
+		),
 		index.index
 	);
 }
 
+fn add_pool<T: Runtime>() {
+	todo!()
+}
+
+fn add_tranche<T: Runtime>() {
+	todo!()
+}
+
+fn allow_investment_currency<T: Runtime>() {
+	todo!()
+}
+
+fn disallow_investment_currency<T: Runtime>() {
+	todo!()
+}
+
+fn update_member<T: Runtime>() {
+	todo!()
+}
+
+fn update_tranche_token_metadata<T: Runtime>() {
+	todo!()
+}
+
+fn update_tranche_token_price<T: Runtime>() {
+	todo!()
+}
+
 crate::test_for_runtimes!(all, add_currency);
+crate::test_for_runtimes!(all, add_pool);
+crate::test_for_runtimes!(all, add_tranche);
+crate::test_for_runtimes!(all, allow_investment_currency);
+crate::test_for_runtimes!(all, disallow_investment_currency);
+crate::test_for_runtimes!(all, update_member);
+crate::test_for_runtimes!(all, update_tranche_token_metadata);
+crate::test_for_runtimes!(all, update_tranche_token_price);
