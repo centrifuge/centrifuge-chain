@@ -2251,6 +2251,15 @@ impl_runtime_apis! {
 		}
 	}
 
+	// PoolFeesApi
+	impl runtime_common::apis::PoolFeesApi<Block, PoolId, PoolFeeId, AccountId, Balance, Rate> for Runtime {
+		fn list_fees(pool_id: PoolId) -> Option<cfg_types::pools::PoolFeesList<PoolFeeId, AccountId, Balance, Rate>> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			PoolFees::update_portfolio_valuation_for_pool(pool_id, &mut pool.reserve.total.clone()).ok()?;
+			Some(PoolFees::get_pool_fees(pool_id))
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
