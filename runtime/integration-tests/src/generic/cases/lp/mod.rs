@@ -208,6 +208,16 @@ pub fn process_outbound<T: Runtime>() {
 		});
 }
 
+pub fn setup_full<T: Runtime>() -> impl EvmEnv<T> {
+	setup::<T>(|env| {
+		setup_currencies(env);
+		setup_pools(env);
+		setup_tranches(env);
+		setup_investment_currencies(env);
+		setup_deploy_lps(env);
+	})
+}
+
 pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -732,27 +742,40 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 	env
 }
 
-pub fn setup_pools<T: Runtime>(_env: &mut impl EvmEnv<T>) {
+pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	// Pool 1, Tranche 1
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+
+	// Pool 2, Tranche 2
+	// AllowInvestmentCurrency 1
+	// AllowInvestmentCurrency 2
+	// AllowInvestmentCurrency 3
+}
+
+pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	// ------------------ EVM Side ----------------------- //
+	// Deploy LP and more for both pools and all currencies
+}
+
+pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	// AddTranche 1 A
+
+	// AddTranche 1 B
+	// AddTranche 2 B
+}
+
+pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	setup_currencies(env);
+
 	// Create 2x pools
 	// * single tranched pool A
 	// * double tranched pool B
 
 	// AddPool A
-	// AddTranche 1 A
-	// AllowInvestmentCurrency 1
-	// AllowInvestmentCurrency 2
-	// AllowInvestmentCurrency 3
 
 	// AddPool B
-	// AddTranche 1 B
-	// AddTranche 2 B
-	// AllowInvestmentCurrency 1
-	// AllowInvestmentCurrency 2
-	// AllowInvestmentCurrency 3
-
-	// ------------------ EVM Side ----------------------- //
-
-	// Deploy LP and more for both pools and all currencies
 }
 
 pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {

@@ -155,15 +155,28 @@ fn add_pool<T: Runtime>() {
 }
 
 fn add_tranche<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(|env| {
+		super::setup_currencies(env);
+		super::setup_pools(env);
+	});
 }
 
 fn allow_investment_currency<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(|env| {
+		super::setup_currencies(env);
+		super::setup_pools(env);
+		super::setup_tranches(env);
+	});
 }
 
 fn disallow_investment_currency<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(|env| {
+		super::setup_currencies(env);
+		super::setup_pools(env);
+		super::setup_tranches(env);
+		super::setup_investment_currencies(env);
+		super::setup_deploy_lps(env);
+	});
 }
 
 fn update_member<T: Runtime>() {
@@ -171,11 +184,19 @@ fn update_member<T: Runtime>() {
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(|env| {
+		super::setup_currencies(env);
+		super::setup_pools(env);
+		super::setup_tranches(env);
+	});
 }
 
 fn update_tranche_token_price<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(|env| {
+		super::setup_currencies(env);
+		super::setup_pools(env);
+		super::setup_tranches(env);
+	});
 }
 
 crate::test_for_runtimes!(all, add_currency);
