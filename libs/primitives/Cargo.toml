@@ -1,49 +1,44 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Primitive types for Centrifuge"
-edition = "2021"
-license = "LGPL-3.0"
 name = "cfg-primitives"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Primitive types for Centrifuge"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.119" }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
 
 # substrate primitives dependencies
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-arithmetic = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # substrate frame dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-collective = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+pallet-collective = { workspace = true }
 
 # cumulus primitives dependencies
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-primitives-core = { workspace = true }
 
 # XCM primitives dependencies
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+xcm = { workspace = true }
+xcm-executor = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-collective/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "cumulus-primitives-core/std",
@@ -60,6 +55,13 @@ std = [
   "sp-std/std",
   "xcm-executor/std",
   "xcm/std",
+]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-collective/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

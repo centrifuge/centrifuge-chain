@@ -1,39 +1,35 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Collator allowlist pallet"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-collator-allowlist"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Collator allowlist pallet"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
+pallet-balances = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "scale-info/std",
@@ -42,6 +38,12 @@ std = [
   "sp-std/std",
   "sp-runtime/std",
   "frame-benchmarking/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

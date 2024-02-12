@@ -1,44 +1,36 @@
 [package]
 name = "pallet-permissions"
 description = "Pallet for storing and retrieving permissions of accounts."
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
 
-cfg-traits = { path = "../../libs/traits", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+cfg-traits = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # benchmarking
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
+cfg-types = { workspace = true, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-bitflags = "1.3"
+bitflags = { workspace = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
-
 std = [
   "parity-scale-codec/std",
   "scale-info/std",
@@ -49,6 +41,14 @@ std = [
   "sp-std/std",
   "cfg-traits/std",
   "cfg-types/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-traits/try-runtime",
