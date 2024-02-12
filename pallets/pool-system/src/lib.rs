@@ -692,6 +692,8 @@ pub mod pallet {
 				// Get the orders
 				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
 				if orders.all_are_zero() {
+					T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
+
 					pool.tranches.combine_with_mut_residual_top(
 						&epoch_tranche_prices,
 						|tranche, price| {

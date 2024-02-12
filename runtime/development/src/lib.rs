@@ -2311,6 +2311,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	// LoansApi
 	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
 		fn portfolio(
 			pool_id: PoolId
@@ -2333,15 +2334,26 @@ impl_runtime_apis! {
 		}
 	}
 
+	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
 		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
 			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
 		}
 	}
 
+	// OrderBookApi
 	impl runtime_common::apis::OrderBookApi<Block, CurrencyId, Balance> for Runtime {
 		fn min_fulfillment_amount(currency_id: CurrencyId) -> Option<Balance> {
 			OrderBook::min_fulfillment_amount(currency_id).ok()
+		}
+	}
+
+	// PoolFeesApi
+	impl runtime_common::apis::PoolFeesApi<Block, PoolId, PoolFeeId, AccountId, Balance, Rate> for Runtime {
+		fn list_fees(pool_id: PoolId) -> Option<cfg_types::pools::PoolFeesList<PoolFeeId, AccountId, Balance, Rate>> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			PoolFees::update_portfolio_valuation_for_pool(pool_id, &mut pool.reserve.total.clone()).ok()?;
+			Some(PoolFees::get_pool_fees(pool_id))
 		}
 	}
 
