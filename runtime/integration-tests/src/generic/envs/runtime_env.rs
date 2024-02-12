@@ -106,7 +106,7 @@ impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
 			.as_ref()
 			.expect("Need to load_contracts first")
 			.get(&name.into())
-			.expect("Not deployed")
+			.expect("Not loaded")
 			.clone()
 	}
 
@@ -465,7 +465,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 		}
 	}
 
-	fn prepare_block(i: BlockNumber) {
+	pub fn prepare_block(i: BlockNumber) {
 		let slot = Slot::from(i as u64);
 		let digest = Digest {
 			logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],

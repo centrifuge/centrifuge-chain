@@ -10,15 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::CurrencyId;
-use ethabi::{Token, Uint};
+use cfg_primitives::{Balance, PoolId};
+use cfg_traits::TimeAsSecs;
+use cfg_types::{domain_address::Domain, tokens::CurrencyId};
+use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 
 use crate::{
 	generic::{
-		cases::lp::{process_outbound, utils},
+		cases::lp::{process_outbound, utils, utils::Decoder, EVM_DOMAIN_CHAIN_ID, USDC},
 		config::Runtime,
 		env::{Env, EvmEnv},
 	},
@@ -27,7 +29,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	add_currency::<centrifuge_runtime::Runtime>()
+	add_pool::<centrifuge_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -65,8 +67,8 @@ fn add_currency<T: Runtime>() {
 
 	// Verify the  test currencies are correctly added to the pool manager
 	assert_eq!(
-		utils::to_h160(
-			env.view(
+		Decoder::<H160>::decode(
+			&env.view(
 				Keyring::Alice,
 				"pool_manager",
 				"currencyIdToAddress",
@@ -79,8 +81,8 @@ fn add_currency<T: Runtime>() {
 	);
 
 	assert_eq!(
-		utils::to_balance(
-			env.view(
+		Decoder::<Balance>::decode(
+			&env.view(
 				Keyring::Alice,
 				"pool_manager",
 				"currencyAddressToId",
@@ -94,7 +96,62 @@ fn add_currency<T: Runtime>() {
 }
 
 fn add_pool<T: Runtime>() {
-	todo!()
+	let mut env = super::setup::<T>(super::setup_currencies);
+	const POOL: PoolId = 1;
+
+	env.parachain_state_mut(|| {
+		crate::generic::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL, USDC);
+
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		process_outbound::<T>()
+	});
+
+	let creation_time = env.parachain_state(<pallet_timestamp::Pallet<T> as TimeAsSecs>::now);
+
+	// Compare the pool.created_at field that is returned
+	assert_eq!(
+		Decoder::<Uint>::decode(
+			&env.view(
+				Keyring::Alice,
+				"pool_manager",
+				"pools",
+				Some(&[Token::Uint(Uint::from(POOL))]),
+			)
+			.unwrap()
+			.value
+		),
+		Uint::from(creation_time)
+	);
+
+	env.parachain_state_mut(|| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		process_outbound::<T>()
+	});
+
+	// Adding a pool again DOES NOT change creation time - i.e. not override storage
+	assert_eq!(
+		Decoder::<Uint>::decode(
+			&env.view(
+				Keyring::Alice,
+				"pool_manager",
+				"pools",
+				Some(&[Token::Uint(Uint::from(POOL))]),
+			)
+			.unwrap()
+			.value
+		),
+		Uint::from(creation_time)
+	);
 }
 
 fn add_tranche<T: Runtime>() {

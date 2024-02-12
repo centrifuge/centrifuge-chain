@@ -48,15 +48,120 @@ use crate::{
 };
 
 pub mod utils {
-	use cfg_primitives::Balance;
-	use ethabi::ethereum_types::H160;
+	use std::cmp::min;
 
-	pub fn to_h160(mut data: Vec<u8>) -> H160 {
-		H160::from(cfg_utils::vec_to_fixed_array(data.split_off(12)))
+	use cfg_primitives::Balance;
+	use ethabi::{
+		ethereum_types::{H160, H256, U256},
+		Log, Token,
+	};
+	use frame_support::traits::Len;
+	use pallet_evm::CallInfo;
+	use sp_runtime::DispatchError;
+
+	pub fn to_fixed_array<const S: usize>(src: &[u8]) -> [u8; S] {
+		let mut dest = [0; S];
+		let len = min(src.len(), S);
+		dest[..len].copy_from_slice(&src[..len]);
+
+		dest
 	}
 
-	pub fn to_balance(mut data: Vec<u8>) -> Balance {
-		Balance::from_be_bytes(cfg_utils::vec_to_fixed_array(data.split_off(16).to_vec()))
+	/*
+	struct TokenWrapper(Token);
+
+	impl From<Token> for TokenWrapper {
+		fn from(value: Token) -> Self {
+			TokenWrapper(value)
+		}
+	}
+
+	impl Input for dyn Into<TokenWrapper> {
+		fn input(&self) -> &[u8] {
+			let wrapper: TokenWrapper = self.into();
+			match wrapper.0 {
+				Token::Address(addr) => addr.as_bytes(),
+				Token::FixedBytes(bytes) => bytes.as_slice(),
+				Token::Bytes(bytes) => bytes.as_slice(),
+				Token::Int(int) => int.0.as_slice(),
+				Token::Uint(uint) => uint.0.as_slice(),
+				Token::Bool(b) => {
+					if b {
+						&[1]
+					} else {
+						&[0]
+					}
+				}
+				Token::String(str) => str.as_bytes(),
+				Token::FixedArray(fixed) => {
+					todo!()
+				}
+				Token::Array(arr) => arr.as_slice(),
+				Token::Tuple(t) => {
+					todo!()
+				}
+			}
+		}
+	}
+	*/
+
+	trait Input {
+		fn input(&self) -> &[u8];
+	}
+
+	impl Input for Vec<u8> {
+		fn input(&self) -> &[u8] {
+			self.as_slice()
+		}
+	}
+
+	pub trait Decoder<T> {
+		fn decode(&self) -> T;
+	}
+
+	impl<T: Input> Decoder<H160> for T {
+		fn decode(&self) -> H160 {
+			assert!(self.input().len() == 32);
+
+			H160::from(to_fixed_array(&self.input()[12..]))
+		}
+	}
+
+	impl<T: Input> Decoder<H256> for T {
+		fn decode(&self) -> H256 {
+			assert!(self.input().len() == 32);
+
+			H256::from(to_fixed_array(self.input()))
+		}
+	}
+
+	impl<T: Input> Decoder<Balance> for T {
+		fn decode(&self) -> Balance {
+			assert!(self.input().len() == 32);
+
+			Balance::from_be_bytes(to_fixed_array(&self.input()[16..]))
+		}
+	}
+
+	impl<T: Input> Decoder<U256> for T {
+		fn decode(&self) -> U256 {
+			let len = self.input().len();
+			if len == 1 {
+				U256::from(u8::from_be_bytes(to_fixed_array(&self.input())))
+			} else if len == 2 {
+				U256::from(u16::from_be_bytes(to_fixed_array(&self.input())))
+			} else if len == 4 {
+				U256::from(u32::from_be_bytes(to_fixed_array(&self.input())))
+			} else if len == 8 {
+				U256::from(u64::from_be_bytes(to_fixed_array(&self.input())))
+			} else if len == 16 {
+				U256::from(u128::from_be_bytes(to_fixed_array(&self.input())))
+			} else if len == 32 {
+				U256::from_big_endian(to_fixed_array::<32>(&self.input()).as_slice())
+			} else {
+				panic!("Invalid slice length.")
+			}
+		}
 	}
 }
 
@@ -623,9 +728,7 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 
 	additional(&mut env);
 
-	// TODO: Does panic... Have we ever tested that? Building a block would be super
-	//       useful to flush the pending of the evm side
-	// env.__priv_build_block(1);
+	env.__priv_build_block(2);
 	env
 }
 
