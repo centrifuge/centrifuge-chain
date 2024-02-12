@@ -1,30 +1,20 @@
 [package]
+name = "pallet-pool-fees"
+description = "Pool Fees Pallet"
+version = "0.0.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
-name = "pallet-pool-fees"
-description = "Pool Fees Pallet"
-version = "0.0.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
-[dev-dependencies]
-cfg-mocks = { workspace = true, default-features = true }
-cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
-orml-tokens = { workspace = true, default-features = true }
-orml-traits = { workspace = true, default-features = true }
-pallet-balances = { workspace = true, default-features = true }
-pallet-timestamp = { workspace = true, default-features = true }
-rand = "0.8.5"
-
 [dependencies]
-log = { workspace = true }
 parity-scale-codec = { workspace = true }
-scale-info = { workspace = true, features = ["derive"] }
+scale-info = { workspace = true }
 strum = { workspace = true }
 
 frame-benchmarking.workspace = true
@@ -40,18 +30,17 @@ cfg-primitives.workspace = true
 cfg-traits.workspace = true
 cfg-types.workspace = true
 
+[dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
+cfg-test-utils = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
+rand = { workspace = true, default-features = true }
+
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "cfg-mocks/std",
   "cfg-primitives/std",
@@ -61,7 +50,6 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking/std",
-  "log/std",
   "orml-tokens/std",
   "orml-traits/std",
   "pallet-balances/std",
@@ -72,6 +60,16 @@ std = [
   "sp-arithmetic/std",
   "sp-std/std",
   "strum/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

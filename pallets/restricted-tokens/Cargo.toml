@@ -1,58 +1,46 @@
 [package]
 name = "pallet-restricted-tokens"
 description = "Pallet for handling token-transfers. Allows to restrict specific token usage to some users."
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.119" }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 ## Benchmarking dependencies
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-permissions = { path = "../permissions", default-features = false, optional = true }
+cfg-types = { workspace = true, optional = true }
+frame-benchmarking = { workspace = true, optional = true }
+orml-tokens = { workspace = true, optional = true }
+orml-traits = { workspace = true, optional = true }
+pallet-balances = { workspace = true, optional = true }
+pallet-permissions = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-types = { path = "../../libs/types" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+cfg-types = { workspace = true, default_features = true }
+orml-tokens = { workspace = true, default_features = true }
+orml-traits = { workspace = true, default_features = true }
+pallet-balances = { workspace = true, default_features = true }
+sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "orml-tokens/runtime-benchmarks",
-  "orml-traits",
-  "pallet-balances/runtime-benchmarks",
-  "pallet-permissions/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "cfg-primitives/std",
   "cfg-traits/std",
@@ -66,6 +54,19 @@ std = [
   "serde/std",
   "sp-runtime/std",
   "sp-std/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
+  "orml-traits",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
