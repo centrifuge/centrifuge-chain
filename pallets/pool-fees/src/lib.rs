@@ -34,7 +34,7 @@ pub mod pallet {
 	use cfg_types::{
 		pools::{
 			PayableFeeAmount, PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeEditor, PoolFeeInfo,
-			PoolFeeType,
+			PoolFeeType, PoolFeesList, PoolFeesOfBucket,
 		},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
@@ -791,9 +791,14 @@ pub mod pallet {
 		}
 
 		// Returns all fees of a pool divided by the buckets
-		pub fn get_pool_fees(pool_id: T::PoolId) -> Vec<(PoolFeeBucket, Vec<PoolFeeOf<T>>)> {
+		pub fn get_pool_fees(
+			pool_id: T::PoolId,
+		) -> PoolFeesList<T::FeeId, T::AccountId, T::Balance, T::Rate> {
 			PoolFeeBucket::iter()
-				.map(|bucket| (bucket, ActiveFees::<T>::get(pool_id, bucket).into_inner()))
+				.map(|bucket| PoolFeesOfBucket {
+					bucket,
+					fees: ActiveFees::<T>::get(pool_id, bucket).into_inner(),
+				})
 				.collect()
 		}
 	}

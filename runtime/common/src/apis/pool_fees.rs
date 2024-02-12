@@ -10,11 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::fee::PoolFeeBucket;
-use cfg_types::pools::{PoolFee, PoolFeeAmounts};
+use cfg_types::pools::PoolFeesList;
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
-use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime for pallet-pool-fees.
@@ -29,7 +27,7 @@ decl_runtime_apis! {
 		Balance: Codec,
 		Rate: Codec,
 	{
-		/// Simulate update of active fees and returns as list divded by buckets
-		fn list_fees(pool_id: PoolId) -> Option<Vec<(PoolFeeBucket, Vec<PoolFee<AccountId, FeeId, PoolFeeAmounts<Balance, Rate>>>)>>;
+		/// Simulate update of active fees and returns as list divided by buckets
+		fn list_fees(pool_id: PoolId) -> Option<PoolFeesList<FeeId, AccountId, Balance, Rate>>;
 	}
 }
