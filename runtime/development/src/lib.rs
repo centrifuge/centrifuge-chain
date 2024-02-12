@@ -507,11 +507,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
-					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
-					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
-					// Specifically omitting NftSales `buy`
 					// Specifically omitting Bridge
-					// Specifically omitting Nfts
 					RuntimeCall::Keystore(..) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
@@ -523,7 +519,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
-					// Specifically omitting Migration
 					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
 					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
 				)
@@ -902,20 +897,6 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
-}
-
-impl pallet_nft_sales::Config for Runtime {
-	type CollectionId = CollectionId;
-	type Fungibles = Tokens;
-	type ItemId = ItemId;
-	type NonFungibles = Uniques;
-	type PalletId = NftSalesPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
-}
-
-parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 
@@ -1203,23 +1184,6 @@ impl PoolUpdateGuard for UpdateGuard {
 
 		true
 	}
-}
-
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-// Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the
-// migration folder
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -1596,19 +1560,6 @@ impl chainbridge::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub ResourceHashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub const NftProofValidationFeeKey: FeeKey = FeeKey::NftProofValidation;
-}
-
-impl pallet_nft::Config for Runtime {
-	type ChainId = chainbridge::ChainId;
-	type NftProofValidationFeeKey = NftProofValidationFeeKey;
-	type ResourceHashId = ResourceHashId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
@@ -1894,10 +1845,10 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
-		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
+		// Removed: NftSales = 100
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
-		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
+		// Removed: Nft = 103
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		LiquidityRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
@@ -1937,8 +1888,7 @@ construct_runtime!(
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
-		// migration pallet
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
+		// Removed: Migration = 199
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 
@@ -2641,7 +2591,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
@@ -2659,7 +2608,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
-			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
@@ -2701,7 +2649,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
@@ -2719,7 +2666,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
-			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
