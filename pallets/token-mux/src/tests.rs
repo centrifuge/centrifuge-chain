@@ -10,39 +10,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::LocalAssetId;
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
-use sp_core::crypto::AccountId32;
 
 use crate::{
 	mock::{
-		new_test_ext, AccountId, Balance, CurrencyId, MockTokenSwaps, OrmlTokens, Runtime,
-		RuntimeEvent, RuntimeOrigin, SwapId, System, TokenMux, USDC_DECIMALS,
+		new_test_ext, token, Balance, CurrencyId, MockTokenSwaps, OrmlTokens, Runtime,
+		RuntimeEvent, RuntimeOrigin, SwapId, System, TokenMux, INITIAL_AMOUNT, NON_USDC,
+		UNREGISTERED_ASSET, USDC_1, USDC_2, USDC_LOCAL, USER_1, USER_2, USER_LOCAL, USER_NON,
+		USER_UNREGISTERED,
 	},
 	Error,
 	Event::{Burned, Deposited},
 };
 
 pub const ORDER_ID: SwapId = 1;
-pub const USDC_1: CurrencyId = CurrencyId::ForeignAsset(1);
-pub const USDC_2: CurrencyId = CurrencyId::ForeignAsset(2);
-pub const NON_USDC: CurrencyId = CurrencyId::ForeignAsset(4);
-pub const UNREGISTERED_ASSET: CurrencyId = CurrencyId::ForeignAsset(5);
 
-pub const USDC_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
-pub const USDC_LOCAL: CurrencyId = CurrencyId::LocalAsset(USDC_LOCAL_ASSET_ID);
-
-pub const USER_1: AccountId = AccountId32::new([1u8; 32]);
-pub const USER_2: AccountId = AccountId32::new([2u8; 32]);
-pub const USER_NON: AccountId = AccountId32::new([4u8; 32]);
-pub const USER_UNREGISTERED: AccountId = AccountId32::new([5u8; 32]);
-pub const USER_LOCAL: AccountId = AccountId32::new([6u8; 32]);
-
-pub const INITIAL_AMOUNT: Balance = token(1000);
-pub const fn token(amount: Balance) -> Balance {
-	amount * (10 as Balance).pow(USDC_DECIMALS)
-}
 pub const AMOUNT: Balance = token(1000);
 
 mod deposit {
@@ -247,14 +230,11 @@ mod burn {
 }
 
 pub(crate) mod try_local {
-	use cfg_types::tokens::LocalAssetId;
-
 	use super::*;
-	use crate::mock::new_test_ext_invalid_assets;
+	use crate::mock::{
+		new_test_ext_invalid_assets, HAS_UNREGISTERED_LOCAL_ASSET, USDC_WRONG_DECIMALS,
+	};
 
-	pub const HAS_UNREGISTERED_LOCAL_ASSET: CurrencyId = CurrencyId::ForeignAsset(6);
-	pub const USDC_WRONG_DECIMALS: CurrencyId = CurrencyId::ForeignAsset(7);
-	pub const UNREGISTERED_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(2u32);
 	#[test]
 	fn try_local_works() {
 		new_test_ext().execute_with(|| {

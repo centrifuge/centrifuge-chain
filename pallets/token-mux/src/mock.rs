@@ -29,16 +29,7 @@ use sp_runtime::{
 	FixedU128,
 };
 
-use crate::{
-	pallet as pallet_token_mux,
-	tests::{
-		try_local::{
-			HAS_UNREGISTERED_LOCAL_ASSET, UNREGISTERED_LOCAL_ASSET_ID, USDC_WRONG_DECIMALS,
-		},
-		INITIAL_AMOUNT, NON_USDC, UNREGISTERED_ASSET, USDC_1, USDC_2, USDC_LOCAL,
-		USDC_LOCAL_ASSET_ID, USER_1, USER_2, USER_LOCAL, USER_NON, USER_UNREGISTERED,
-	},
-};
+use crate::pallet as pallet_token_mux;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -50,6 +41,30 @@ pub type Ratio = FixedU128;
 pub type CurrencyId = cfg_types::tokens::CurrencyId;
 
 pub const USDC_DECIMALS: u32 = 6;
+
+pub const USDC_1: CurrencyId = CurrencyId::ForeignAsset(1);
+pub const USDC_2: CurrencyId = CurrencyId::ForeignAsset(2);
+pub const NON_USDC: CurrencyId = CurrencyId::ForeignAsset(4);
+pub const UNREGISTERED_ASSET: CurrencyId = CurrencyId::ForeignAsset(5);
+
+pub const USDC_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
+pub const USDC_LOCAL: CurrencyId = CurrencyId::LocalAsset(USDC_LOCAL_ASSET_ID);
+
+pub const HAS_UNREGISTERED_LOCAL_ASSET: CurrencyId = CurrencyId::ForeignAsset(6);
+pub const USDC_WRONG_DECIMALS: CurrencyId = CurrencyId::ForeignAsset(7);
+pub const UNREGISTERED_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(2u32);
+
+pub const USER_1: AccountId = AccountId32::new([1u8; 32]);
+pub const USER_2: AccountId = AccountId32::new([2u8; 32]);
+pub const USER_NON: AccountId = AccountId32::new([4u8; 32]);
+pub const USER_UNREGISTERED: AccountId = AccountId32::new([5u8; 32]);
+pub const USER_LOCAL: AccountId = AccountId32::new([6u8; 32]);
+
+pub const fn token(amount: Balance) -> Balance {
+	amount * (10 as Balance).pow(USDC_DECIMALS)
+}
+
+pub const INITIAL_AMOUNT: Balance = token(1000);
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
