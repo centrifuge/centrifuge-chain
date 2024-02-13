@@ -18,6 +18,14 @@ use sp_core::{Get, H160};
 use sp_runtime::traits::Convert;
 use xcm::*;
 
+pub fn to_evm_address(account: &AccountId) -> H160 {
+	// EVM AccountId20 addresses are right-padded to 32 bytes
+	let mut bytes20 = [0; 20];
+	let account_32: [u8; 32] = account.clone().into();
+	bytes20.copy_from_slice(&account_32);
+	H160::from(bytes20)
+}
+
 /// Common converter code for translating accounts across different
 /// domains and chains.
 pub struct AccountConverter<R, XcmConverter>(core::marker::PhantomData<(R, XcmConverter)>);

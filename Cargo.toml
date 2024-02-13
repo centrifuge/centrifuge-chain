@@ -84,6 +84,7 @@ rand = { version = "0.8.5", default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
 impl-trait-for-tuples = "0.2.1"
 num-traits = { version = "0.2", default-features = false }
+num_enum = { version = "0.5.3", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -244,6 +245,7 @@ moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbea
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
 # Centrifuge organization
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }

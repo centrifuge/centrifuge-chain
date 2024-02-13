@@ -12,129 +12,66 @@
 
 use core::marker::PhantomData;
 
-use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use hex_literal::hex;
-use pallet_evm::{
-	IsPrecompileResult, Precompile, PrecompileHandle, PrecompileResult, PrecompileSet,
-};
+use frame_support::traits::Get;
+use pallet_evm_precompile_balances_erc20::{Erc20BalancesPrecompile, Erc20Metadata};
 use pallet_evm_precompile_blake2::Blake2F;
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
 use pallet_evm_precompile_dispatch::Dispatch;
 use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_sha3fips::Sha3FIPS256;
 use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
-use parity_scale_codec::Decode;
-use sp_core::H160;
+use precompile_utils::precompile_set::*;
 
-/// `pallet_evm::AccountCodes` must be populated for precompiles as
-/// otherwise `OPCODE::EXTCODESIZE` will make the EVM error upon calling an
-/// precompile.
-///
-/// The following bytes represent: `PUSH1 00`, `PUSH1 00`, `REVERT`.
-pub const PRECOMPILE_CODE_STORAGE: [u8; 5] = hex!("60006000fd");
+pub struct NativeErc20Metadata<Symbol>(PhantomData<Symbol>);
+impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
+	fn name() -> &'static str {
+		Symbol::get()
+	}
 
-// 0000->1023: Standard Ethereum precompiles
-pub const ECRECOVER_ADDR: Addr = addr(1);
-pub const SHA256_ADDR: Addr = addr(2);
-pub const RIPEMD160_ADDR: Addr = addr(3);
-pub const IDENTITY_ADDR: Addr = addr(4);
-pub const MODEXP_ADDR: Addr = addr(5);
-pub const BN128ADD_ADDR: Addr = addr(6);
-pub const BN128MUL_ADDR: Addr = addr(7);
-pub const BN128PAIRING_ADDR: Addr = addr(8);
-pub const BLAKE2F_ADDR: Addr = addr(9);
-// 1024->2047: Nonstandard precompiles shared with other chains (such
-// as Moonbeam). See
-// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
-pub const SHA3FIPS256_ADDR: Addr = addr(1024);
-pub const DISPATCH_ADDR: Addr = addr(1025);
-pub const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
-// 2048-XXXX: Nonstandard precompiles that are specific to our chain.
+	fn symbol() -> &'static str {
+		Symbol::get()
+	}
 
-/// The address of our local Axelar gateway. This is the address that
-/// Liquidity-Pool contracts on other domains must use in order to hit the
-/// Liquidity-Pool logic on centrifuge.
-///
-/// The precompile implements
-pub const LP_AXELAR_GATEWAY: Addr = addr(2048);
+	fn decimals() -> u8 {
+		18
+	}
 
-pub struct CentrifugePrecompiles<R>(PhantomData<R>);
-
-impl<R> CentrifugePrecompiles<R> {
-	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
-	pub fn new() -> Self {
-		Self(Default::default())
+	fn is_native_currency() -> bool {
+		true
 	}
 }
 
-impl<R> PrecompileSet for CentrifugePrecompiles<R>
-where
-	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
-	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
-	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
-	axelar_gateway_precompile::Pallet<R>: Precompile,
-{
-	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		match handle.code_address().0 {
-			ECRECOVER_ADDR => Some(ECRecover::execute(handle)),
-			SHA256_ADDR => Some(Sha256::execute(handle)),
-			RIPEMD160_ADDR => Some(Ripemd160::execute(handle)),
-			IDENTITY_ADDR => Some(Identity::execute(handle)),
-			MODEXP_ADDR => Some(Modexp::execute(handle)),
-			BN128ADD_ADDR => Some(Bn128Add::execute(handle)),
-			BN128MUL_ADDR => Some(Bn128Mul::execute(handle)),
-			BN128PAIRING_ADDR => Some(Bn128Pairing::execute(handle)),
-			BLAKE2F_ADDR => Some(Blake2F::execute(handle)),
-			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
-			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
-			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
-			LP_AXELAR_GATEWAY => {
-				Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
-			}
-			_ => None,
-		}
-	}
+type EthereumPrecompilesChecks = (AcceptDelegateCall, CallableByContract, CallableByPrecompile);
 
-	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
-		IsPrecompileResult::Answer {
-			is_precompile: matches!(
-				address.0,
-				ECRECOVER_ADDR
-					| SHA256_ADDR | RIPEMD160_ADDR
-					| IDENTITY_ADDR | MODEXP_ADDR
-					| BN128ADD_ADDR | BN128MUL_ADDR
-					| BN128PAIRING_ADDR | BLAKE2F_ADDR
-					| SHA3FIPS256_ADDR | DISPATCH_ADDR
-					| ECRECOVERPUBLICKEY_ADDR
-					| LP_AXELAR_GATEWAY
-			),
-			extra_cost: 0,
-		}
-	}
-}
+#[precompile_utils::precompile_name_from_address]
+pub type RuntimePrecompilesAt<R, Symbol> = (
+	// Ethereum precompiles:
+	// We allow DELEGATECALL to stay compliant with Ethereum behavior.
+	PrecompileAt<AddressU64<0x1>, ECRecover, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x2>, Sha256, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x3>, Ripemd160, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x4>, Identity, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x5>, Modexp, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x6>, Bn128Add, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x7>, Bn128Mul, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x8>, Bn128Pairing, EthereumPrecompilesChecks>,
+	PrecompileAt<AddressU64<0x9>, Blake2F, EthereumPrecompilesChecks>,
+	// Non-Moonbeam specific nor Ethereum precompiles:
+	PrecompileAt<AddressU64<0x400>, Sha3FIPS256, (CallableByContract, CallableByPrecompile)>,
+	PrecompileAt<AddressU64<0x401>, Dispatch<R>, (CallableByContract, CallableByPrecompile)>,
+	PrecompileAt<AddressU64<0x402>, ECRecoverPublicKey, (CallableByContract, CallableByPrecompile)>,
+	// Moonbeam specific precompiles:
+	PrecompileAt<
+		AddressU64<0x802>,
+		Erc20BalancesPrecompile<R, NativeErc20Metadata<Symbol>>,
+		(CallableByContract, CallableByPrecompile),
+	>,
+	// Centrifuge specific precompiles:
+	PrecompileAt<
+		AddressU64<0x800>,
+		axelar_gateway_precompile::Pallet<R>,
+		(CallableByContract, CallableByPrecompile),
+	>,
+);
 
-/// Altair's precompiles
-/// For now, Altair uses the exact same set of precompiles used in Development.
-pub type Altair<R> = CentrifugePrecompiles<R>;
-
-/// A set of precompiles. This set might contain
-/// not yet mainnet ready precompiles in order to test
-/// those in development or staging environment without touching
-/// the mainnet set.
-pub type Development<R> = CentrifugePrecompiles<R>;
-
-// H160 cannot be used in a match statement due to its hand-rolled
-// PartialEq implementation. This just gives a nice name to the
-// internal array of bytes that an H160 wraps.
-type Addr = [u8; 20];
-
-// This is a reimplementation of the upstream u64->H160 conversion
-// function, made `const` to make our precompile address `const`s a
-// bit cleaner. It can be removed when upstream has a const conversion
-// function.
-const fn addr(a: u64) -> Addr {
-	let b = a.to_be_bytes();
-	[
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-	]
-}
+pub type Precompiles<R, Symbol> = PrecompileSetBuilder<R, RuntimePrecompilesAt<R, Symbol>>;

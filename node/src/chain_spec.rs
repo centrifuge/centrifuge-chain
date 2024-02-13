@@ -26,7 +26,8 @@ use std::collections::BTreeMap;
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
-	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
+	currency_decimals, parachains, AccountId, Balance, BlockNumber, CFG, MILLI_CFG,
+	SAFE_XCM_VERSION,
 };
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -45,7 +46,7 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160, U256};
+use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use xcm::{
 	latest::MultiLocation,
@@ -58,6 +59,10 @@ pub type CentrifugeChainSpec =
 	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
+
+use altair_runtime::evm::AltairPrecompiles;
+use centrifuge_runtime::evm::CentrifugePrecompiles;
+use development_runtime::evm::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -666,7 +671,7 @@ fn centrifuge_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(),
+			accounts: precompile_account_genesis(CentrifugePrecompiles::used_addresses()),
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
@@ -780,7 +785,7 @@ fn altair_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(),
+			accounts: precompile_account_genesis(AltairPrecompiles::used_addresses()),
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
@@ -943,7 +948,7 @@ fn development_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(),
+			accounts: precompile_account_genesis(DevelopmentPrecompiles::used_addresses()),
 		},
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
@@ -1020,84 +1025,28 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 	]
 }
 
-fn precompile_account_genesis() -> BTreeMap<H160, fp_evm::GenesisAccount> {
-	use fp_evm::GenesisAccount;
-	use runtime_common::evm::precompile::*;
+fn precompile_account_genesis(
+	addresses: impl Iterator<Item = AccountId>,
+) -> BTreeMap<H160, fp_evm::GenesisAccount> {
+	// From Moonbeam:
+	//   This is the simplest bytecode to revert without returning any data.
+	//   We will pre-deploy it under all of our precompiles to ensure they can be
+	//   called from within contracts.
+	//
+	//   (PUSH1 0x00 PUSH1 0x00 REVERT)
+	let revert_bytecode = vec![0x60, 0x00, 0x60, 0x00, 0xFD];
 
-	let mut map = BTreeMap::new();
-	/*
-		pub struct GenesisAccount {
-		/// Account nonce.
-		pub nonce: U256,
-		/// Account balance.
-		pub balance: U256,
-		/// Full account storage.
-		pub storage: std::collections::BTreeMap<sp_core::H256, sp_core::H256>,
-		/// Account code.
-		pub code: Vec<u8>,
-	}
-		 */
-	let to_genesis_account = |code: [u8; 5]| -> GenesisAccount {
-		GenesisAccount {
-			nonce: U256::zero(),
-			balance: U256::zero(),
-			storage: BTreeMap::new(),
-			code: code.to_vec(),
-		}
-	};
-
-	map.insert(
-		H160::from(ECRECOVER_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(SHA256_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(RIPEMD160_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(IDENTITY_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(MODEXP_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(BN128ADD_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(BN128MUL_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(BN128PAIRING_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(BLAKE2F_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(SHA3FIPS256_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(DISPATCH_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(ECRECOVERPUBLICKEY_ADDR),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-	map.insert(
-		H160::from(LP_AXELAR_GATEWAY),
-		to_genesis_account(PRECOMPILE_CODE_STORAGE),
-	);
-
-	map
+	addresses
+		.map(|addr| {
+			(
+				runtime_common::account_conversion::to_evm_address(&addr),
+				fp_evm::GenesisAccount {
+					nonce: Default::default(),
+					balance: Default::default(),
+					storage: Default::default(),
+					code: revert_bytecode.clone(),
+				},
+			)
+		})
+		.collect()
 }

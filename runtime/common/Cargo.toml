@@ -15,6 +15,7 @@ parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
 smallvec = { workspace = true }
+num_enum = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -38,6 +39,8 @@ pallet-evm-precompile-dispatch = { workspace = true }
 pallet-evm-precompile-modexp = { workspace = true }
 pallet-evm-precompile-sha3fips = { workspace = true }
 pallet-evm-precompile-simple = { workspace = true }
+pallet-evm-precompile-balances-erc20 = { workspace = true }
+precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
 
