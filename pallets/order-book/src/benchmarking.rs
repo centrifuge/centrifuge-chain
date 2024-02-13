@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{ConversionToAssetBalance, ValueProvider};
-use cfg_types::tokens::CustomMetadata;
+use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
 use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
@@ -45,7 +45,7 @@ where
 	pub fn setup_currencies() {
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_IN.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadata {
 				decimals: 6,
 				name: "CURRENCY IN".as_bytes().to_vec(),
 				symbol: "IN".as_bytes().to_vec(),
@@ -58,7 +58,7 @@ where
 
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_OUT.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadata {
 				decimals: 3,
 				name: "CURRENCY OUT".as_bytes().to_vec(),
 				symbol: "OUT".as_bytes().to_vec(),

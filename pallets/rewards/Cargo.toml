@@ -1,45 +1,39 @@
 [package]
 name = "pallet-rewards"
-version = "0.1.0"
-authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Rewards pallet"
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-log = { version = "0.4.17", default-features = false }
-num-traits = { version = "0.2", default-features = false }
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+log = { workspace = true }
+num-traits = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 [dev-dependencies]
-lazy_static = "1.4"
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
-serde = "1.0"
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+lazy_static = { workspace = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
+serde = { workspace = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
-try-runtime = [
-  "cfg-traits/try-runtime",
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "cfg-types/try-runtime",
-  "sp-runtime/try-runtime",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -51,6 +45,13 @@ std = [
   "num-traits/std",
   "cfg-types/std",
   "scale-info/std",
+]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "cfg-types/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",

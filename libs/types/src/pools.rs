@@ -10,11 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{fee::FeeAmountProration, Seconds};
+use cfg_traits::{
+	fee::{FeeAmountProration, PoolFeeBucket},
+	Seconds,
+};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
+use sp_std::vec::Vec;
 
 use crate::fixed_point::FixedPointNumberExtension;
 
@@ -248,6 +252,19 @@ pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 		cfg_primitives::SECONDS_PER_YEAR,
 	))
 }
+
+/// Represents all active fees of a pool fee bucket
+#[derive(Decode, Encode, TypeInfo)]
+pub struct PoolFeesOfBucket<FeeId, AccountId, Balance, Rate> {
+	/// The corresponding pool fee bucket
+	pub bucket: PoolFeeBucket,
+	/// The list of active fees for the bucket
+	pub fees: Vec<PoolFee<AccountId, FeeId, PoolFeeAmounts<Balance, Rate>>>,
+}
+
+/// Represent all active fees of a pool divided by buckets
+pub type PoolFeesList<FeeId, AccountId, Balance, Rate> =
+	Vec<PoolFeesOfBucket<FeeId, AccountId, Balance, Rate>>;
 
 #[cfg(test)]
 mod tests {

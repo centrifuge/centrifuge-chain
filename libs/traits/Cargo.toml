@@ -1,40 +1,35 @@
 [package]
 name = "cfg-traits"
-authors = ["The Centrifugians Tribe"]
-edition = "2021"
-homepage = "https://centrifuge.io"
-license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Interfaces implemented by pallets"
 version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-primitives = { path = "../primitives", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-impl-trait-for-tuples = "0.2.1"
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-strum = { workspace = true, default-features = false }
+cfg-primitives = { workspace = true }
+frame-support = { workspace = true }
+impl-trait-for-tuples = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+strum = { workspace = true }
 
 [dev-dependencies]
-cfg-mocks = { path = "../mocks" }
-cfg-types = { path = "../types" }
-mock-builder = { workspace = true }
+cfg-mocks = { workspace = true, default_features = true }
+cfg-types = { workspace = true, default_features = true }
+mock-builder = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-primitives/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-]
 std = [
   "parity-scale-codec/std",
   "frame-support/std",
@@ -44,6 +39,13 @@ std = [
   "cfg-primitives/std",
   "scale-info/std",
   "strum/std",
+]
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

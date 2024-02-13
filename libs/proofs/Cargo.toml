@@ -1,22 +1,24 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Proofs"
-edition = "2021"
-license = "LGPL-3.0"
 name = "proofs"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Proofs"
 version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-std = { workspace = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
+sp-core = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

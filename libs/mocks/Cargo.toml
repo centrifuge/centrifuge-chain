@@ -1,29 +1,32 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Generic mocks built with mock-builder for traits"
-edition = "2021"
-license = "LGPL-3.0"
 name = "cfg-mocks"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+description = "Generic mocks built with mock-builder for traits"
 version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-parity-scale-codec = { default-features = false, version = "3.0.0", features = ["derive"] }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
-cfg-primitives = { path = "../primitives", default-features = false }
-cfg-traits = { path = "../traits", default-features = false }
-cfg-types = { path = "../types", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+
+orml-traits = { workspace = true }
 xcm = { workspace = true }
 
 mock-builder = { workspace = true }
