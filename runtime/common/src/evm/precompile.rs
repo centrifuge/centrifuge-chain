@@ -68,7 +68,7 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	PrecompileAt<
 		AddressU64<0x802>,
 		Erc20BalancesPrecompile<R, NativeErc20Metadata<Symbol>>,
-		(CallableByContract, CallableByPrecompile),
+		(AcceptDelegateCall, CallableByContract, CallableByPrecompile),
 	>,
 	// Centrifuge specific precompiles:
 	PrecompileAt<
