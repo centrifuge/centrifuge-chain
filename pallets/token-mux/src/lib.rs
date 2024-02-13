@@ -45,10 +45,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
-	use sp_arithmetic::{
-		traits::{AtLeast32BitUnsigned, EnsureDiv, EnsureMul},
-		FixedPointOperand,
-	};
+	use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 	use sp_runtime::traits::{AccountIdConversion, EnsureFixedPointNumber, One};
 
 	use super::*;
@@ -82,8 +79,6 @@ pub mod pallet {
 			+ Parameter
 			+ FixedPointOperand
 			+ AtLeast32BitUnsigned
-			+ EnsureMul
-			+ EnsureDiv
 			+ MaxEncodedLen
 			+ Into<BalanceOf<Self>>
 			+ From<BalanceOf<Self>>;
@@ -93,22 +88,16 @@ pub mod pallet {
 			+ Parameter
 			+ FixedPointOperand
 			+ AtLeast32BitUnsigned
-			+ EnsureMul
-			+ EnsureDiv
 			+ MaxEncodedLen
 			+ Into<BalanceOf<Self>>
 			+ From<BalanceOf<Self>>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
-		type BalanceRatio: Parameter
-			+ Member
-			+ sp_runtime::FixedPointNumber
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+		type BalanceRatio: Parameter + Member + sp_runtime::FixedPointNumber + MaxEncodedLen;
 
 		/// The token swap order identifying type
-		type OrderId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
 
 		/// The general asset type
 		type CurrencyId: Parameter
