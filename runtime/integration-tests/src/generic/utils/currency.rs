@@ -10,7 +10,7 @@ use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 use xcm::VersionedMultiLocation;
 
-use crate::generic::{config::Runtime, envs::fudge_env::FudgeSupport};
+use crate::generic::config::Runtime;
 
 pub const fn cfg(amount: Balance) -> Balance {
 	amount * CFG
@@ -32,7 +32,7 @@ pub trait CurrencyInfo {
 			name: Self::NAME.as_bytes().to_vec(),
 			symbol: Self::SYMBOL.as_bytes().to_vec(),
 			existential_deposit: Self::ED,
-			location: None,
+			location: Self::LOCATION,
 			additional: CustomMetadata {
 				pool_currency: true,
 				..Default::default()
@@ -114,9 +114,7 @@ pub const fn usd18(amount: Balance) -> Balance {
 	amount * Usd18::UNIT
 }
 
-pub fn register_currency<T: Runtime + FudgeSupport, C: CurrencyInfo>(
-	location: Option<VersionedMultiLocation>,
-) {
+pub fn register_currency<T: Runtime, C: CurrencyInfo>(location: Option<VersionedMultiLocation>) {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: C::DECIMALS,
 		name: C::NAME.into(),

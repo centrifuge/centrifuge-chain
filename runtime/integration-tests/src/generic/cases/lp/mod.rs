@@ -17,32 +17,27 @@ use cfg_types::{
 };
 use ethabi::{ethereum_types::U256, Token, Uint};
 use frame_support::{
-	assert_ok,
-	dispatch::RawOrigin,
-	pallet_prelude::ConstU32,
-	traits::{OriginTrait, PalletInfo},
-	BoundedVec,
+	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
 };
 use frame_system::pallet_prelude::OriginFor;
 use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
-use orml_traits::asset_registry::AssetMetadata;
 use pallet_evm::FeeCalculator;
 use sp_core::Get;
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use xcm::v3::{
-	Junction::{AccountKey20, GlobalConsensus, PalletInstance},
-	Junctions::X3,
-	NetworkId,
-};
 
 use crate::{
 	generic::{
 		config::Runtime,
-		env::{Env, EvmEnv},
+		env::{Blocks, Env, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
-		utils::{genesis, genesis::Genesis, give_balance, last_event},
+		utils::{
+			currency::{register_currency, CurrencyInfo},
+			genesis,
+			genesis::Genesis,
+			give_balance,
+		},
 	},
 	utils::accounts::Keyring,
 };
@@ -51,13 +46,60 @@ pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::Balance;
-	use ethabi::{
-		ethereum_types::{H160, H256, U256},
-		Log, Token,
+	use ethabi::ethereum_types::{H160, H256, U256};
+	use frame_support::traits::{OriginTrait, PalletInfo};
+	use frame_system::pallet_prelude::OriginFor;
+	use xcm::{
+		v3::{
+			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
+			Junctions::X3,
+			NetworkId,
+		},
+		VersionedMultiLocation,
 	};
-	use frame_support::traits::Len;
-	use pallet_evm::CallInfo;
-	use sp_runtime::DispatchError;
+
+	use crate::{
+		generic::{cases::lp::EVM_DOMAIN_CHAIN_ID, config::Runtime, utils::last_event},
+		utils::accounts::Keyring,
+	};
+
+	pub fn lp_asset_location<T: Runtime>(address: H160) -> VersionedMultiLocation {
+		X3(
+			PalletInstance(
+				<T as frame_system::Config>::PalletInfo::index::<pallet_liquidity_pools::Pallet<T>>()
+					.unwrap()
+					.try_into()
+					.unwrap(),
+			),
+			GlobalConsensus(NetworkId::Ethereum {
+				chain_id: EVM_DOMAIN_CHAIN_ID,
+			}),
+			AccountKey20 {
+				key: address.into(),
+				network: None,
+			},
+		)
+			.into()
+	}
+
+	pub fn process_outbound<T: Runtime>() {
+		pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
+			.map(|(nonce, _)| nonce)
+			.collect::<Vec<_>>()
+			.into_iter()
+			.for_each(|nonce| {
+				pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
+					OriginFor::<T>::signed(Keyring::Alice.into()),
+					nonce,
+				)
+				.unwrap();
+
+				assert!(matches!(
+					last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
+					pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
+				));
+			});
+	}
 
 	pub fn to_fixed_array<const S: usize>(src: &[u8]) -> [u8; S] {
 		let mut dest = [0; S];
@@ -66,44 +108,6 @@ pub mod utils {
 
 		dest
 	}
-
-	/*
-	struct TokenWrapper(Token);
-
-	impl From<Token> for TokenWrapper {
-		fn from(value: Token) -> Self {
-			TokenWrapper(value)
-		}
-	}
-
-	impl Input for dyn Into<TokenWrapper> {
-		fn input(&self) -> &[u8] {
-			let wrapper: TokenWrapper = self.into();
-			match wrapper.0 {
-				Token::Address(addr) => addr.as_bytes(),
-				Token::FixedBytes(bytes) => bytes.as_slice(),
-				Token::Bytes(bytes) => bytes.as_slice(),
-				Token::Int(int) => int.0.as_slice(),
-				Token::Uint(uint) => uint.0.as_slice(),
-				Token::Bool(b) => {
-					if b {
-						&[1]
-					} else {
-						&[0]
-					}
-				}
-				Token::String(str) => str.as_bytes(),
-				Token::FixedArray(fixed) => {
-					todo!()
-				}
-				Token::Array(arr) => arr.as_slice(),
-				Token::Tuple(t) => {
-					todo!()
-				}
-			}
-		}
-	}
-	*/
 
 	trait Input {
 		fn input(&self) -> &[u8];
@@ -168,13 +172,69 @@ pub mod utils {
 pub mod pool_management;
 
 pub const DEFAULT_BALANCE: Balance = 1_000_000;
+const DECIMALS_6: Balance = 1_000_000;
+const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 
-pub const DECIMALS_6: Balance = 1_000_000;
-pub const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
+#[allow(non_camel_case_types)]
+pub struct USDC;
+impl CurrencyInfo for USDC {
+	const CUSTOM: CustomMetadata = CustomMetadata {
+		pool_currency: true,
+		transferability: CrossChainTransferability::LiquidityPools,
+		permissioned: false,
+		mintable: false,
+	};
+	const DECIMALS: u32 = 6;
+	const ED: Balance = 10_000;
+	const ID: CurrencyId = CurrencyId::ForeignAsset(100_001);
+	const SYMBOL: &'static str = "USDC";
+}
 
-pub const USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
-pub const DAI: CurrencyId = CurrencyId::ForeignAsset(100_002);
-pub const FRAX: CurrencyId = CurrencyId::ForeignAsset(100_003);
+#[allow(non_camel_case_types)]
+pub struct DAI;
+impl CurrencyInfo for DAI {
+	const CUSTOM: CustomMetadata = CustomMetadata {
+		pool_currency: true,
+		transferability: CrossChainTransferability::LiquidityPools,
+		permissioned: false,
+		mintable: false,
+	};
+	const DECIMALS: u32 = 18;
+	const ED: Balance = 100_000_000_000_000;
+	const ID: CurrencyId = CurrencyId::ForeignAsset(100_002);
+	const SYMBOL: &'static str = "DAI";
+}
+
+#[allow(non_camel_case_types)]
+pub struct FRAX;
+impl CurrencyInfo for FRAX {
+	const CUSTOM: CustomMetadata = CustomMetadata {
+		pool_currency: true,
+		transferability: CrossChainTransferability::LiquidityPools,
+		permissioned: false,
+		mintable: false,
+	};
+	const DECIMALS: u32 = 18;
+	const ED: Balance = 100_000_000_000_000;
+	const ID: CurrencyId = CurrencyId::ForeignAsset(100_003);
+	const SYMBOL: &'static str = "FRAX";
+}
+
+#[allow(non_camel_case_types)]
+pub struct LocalUSDC;
+impl CurrencyInfo for LocalUSDC {
+	const CUSTOM: CustomMetadata = CustomMetadata {
+		pool_currency: true,
+		transferability: CrossChainTransferability::None,
+		permissioned: false,
+		mintable: false,
+	};
+	const DECIMALS: u32 = 6;
+	const ED: Balance = 10_000;
+	const ID: CurrencyId = CurrencyId::ForeignAsset(1);
+	// TODO: Change to CurrencyId::Local(), once https://github.com/centrifuge/centrifuge-chain/pull/1713 is merged
+	const SYMBOL: &'static str = "LocalUSDC";
+}
 
 /// The faked router address on the EVM side. Needed for the precompile to
 /// verify the origin of messages.
@@ -188,25 +248,6 @@ pub const EVM_DOMAIN: &str = "TestDomain";
 
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
-
-pub fn process_outbound<T: Runtime>() {
-	pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
-		.map(|(nonce, _)| nonce)
-		.collect::<Vec<_>>()
-		.into_iter()
-		.for_each(|nonce| {
-			pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
-				OriginFor::<T>::signed(Keyring::Alice.into()),
-				nonce,
-			)
-			.unwrap();
-
-			assert!(matches!(
-				last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-				pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
-			));
-		});
-}
 
 pub fn setup_full<T: Runtime>() -> impl EvmEnv<T> {
 	setup::<T>(|env| {
@@ -226,12 +267,15 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 	)
 	.load_contracts();
 
-	// Fund gateway sender
 	env.parachain_state_mut(|| {
+		// Fund gateway sender
 		give_balance::<T>(
 			<T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 			DEFAULT_BALANCE * CFG,
-		)
+		);
+
+		// Register general local pool-currency
+		register_currency::<T, LocalUSDC>(None);
 	});
 
 	/* TODO: Use that but index needed contracts afterwards
@@ -738,7 +782,7 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 
 	additional(&mut env);
 
-	env.__priv_build_block(2);
+	env.pass(Blocks::ByNumber(1));
 	env
 }
 
@@ -767,8 +811,6 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 }
 
 pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	setup_currencies(env);
-
 	// Create 2x pools
 	// * single tranched pool A
 	// * double tranched pool B
@@ -973,84 +1015,33 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// * trigger `AddCurrency`
 	let usdc_address = env.deployed("usdc").address();
 	env.parachain_state_mut(|| {
-		register_asset::<T>("USD Coin", "USDC", 6, 10_000, usdc_address, USDC)
+		register_currency::<T, USDC>(Some(utils::lp_asset_location::<T>(usdc_address)));
 	});
+
 	let dai_address = env.deployed("dai").address();
 	env.parachain_state_mut(|| {
-		register_asset::<T>("Dai Coin", "DAI", 18, 100_000_000_000_000, dai_address, DAI)
+		register_currency::<T, DAI>(Some(utils::lp_asset_location::<T>(dai_address)));
 	});
+
 	let frax_address = env.deployed("frax").address();
 	env.parachain_state_mut(|| {
-		register_asset::<T>(
-			"Frax Coin",
-			"FRAX",
-			18,
-			100_000_000_000_000,
-			frax_address,
-			FRAX,
-		)
+		register_currency::<T, FRAX>(Some(utils::lp_asset_location::<T>(frax_address)));
 	});
 
 	env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			USDC
+			USDC::ID
 		));
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			DAI
+			DAI::ID
 		));
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			FRAX
+			FRAX::ID
 		));
 
-		process_outbound::<T>()
+		utils::process_outbound::<T>()
 	});
-}
-
-pub fn register_asset<T: Runtime>(
-	name: impl Into<Vec<u8>>,
-	symbol: impl Into<Vec<u8>>,
-	decimals: u32,
-	existential_deposit: Balance,
-	address: impl Into<[u8; 20]>,
-	currency: CurrencyId,
-) {
-	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-		RawOrigin::Root.into(),
-		AssetMetadata {
-			decimals: decimals,
-			name: name.into(),
-			symbol: symbol.into(),
-			existential_deposit: existential_deposit,
-			location: Some(
-				X3(
-					PalletInstance(
-						<T as frame_system::Config>::PalletInfo::index::<
-							pallet_liquidity_pools::Pallet<T>,
-						>()
-						.unwrap()
-						.try_into()
-						.unwrap()
-					),
-					GlobalConsensus(NetworkId::Ethereum {
-						chain_id: EVM_DOMAIN_CHAIN_ID
-					}),
-					AccountKey20 {
-						key: address.into(),
-						network: None,
-					}
-				)
-				.into()
-			),
-			additional: CustomMetadata {
-				transferability: CrossChainTransferability::LiquidityPools,
-				mintable: false,
-				permissioned: false,
-				pool_currency: true
-			}
-		},
-		Some(currency),
-	));
 }

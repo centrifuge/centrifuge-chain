@@ -12,7 +12,10 @@
 
 use cfg_primitives::{Balance, PoolId};
 use cfg_traits::TimeAsSecs;
-use cfg_types::{domain_address::Domain, tokens::CurrencyId};
+use cfg_types::{
+	domain_address::Domain,
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+};
 use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
@@ -20,9 +23,10 @@ use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 
 use crate::{
 	generic::{
-		cases::lp::{process_outbound, utils, utils::Decoder, EVM_DOMAIN_CHAIN_ID, USDC},
+		cases::lp::{utils, utils::Decoder, LocalUSDC, EVM_DOMAIN_CHAIN_ID, USDC},
 		config::Runtime,
-		env::{Env, EvmEnv},
+		env::{Blocks, Env, EvmEnv},
+		utils::currency::{register_currency, CurrencyInfo},
 	},
 	utils::accounts::Keyring,
 };
@@ -35,35 +39,42 @@ fn _test() {
 fn add_currency<T: Runtime>() {
 	let mut env = super::setup::<T>(|_| {});
 
+	#[allow(non_camel_case_types)]
+	pub struct TestCurrency;
+	impl CurrencyInfo for TestCurrency {
+		const CUSTOM: CustomMetadata = CustomMetadata {
+			pool_currency: true,
+			transferability: CrossChainTransferability::LiquidityPools,
+			permissioned: false,
+			mintable: false,
+		};
+		const DECIMALS: u32 = 12;
+		const ED: Balance = 10_000_000_000;
+		const ID: CurrencyId = CurrencyId::ForeignAsset(200_001);
+		const SYMBOL: &'static str = "FRAX";
+	}
+
 	env.deploy(
 		"ERC20",
 		"test_erc20",
 		Keyring::Admin,
-		Some(&[Token::Uint(Uint::from(12))]),
+		Some(&[Token::Uint(Uint::from(TestCurrency::DECIMALS))]),
 	);
 
 	let test_erc20_address = env.deployed("test_erc20").address();
-	let test_foreign = CurrencyId::ForeignAsset(200_001);
 
 	env.parachain_state_mut(|| {
-		super::register_asset::<T>(
-			"Test Coin",
-			"TEST",
-			18,
-			10_000,
-			test_erc20_address,
-			test_foreign,
-		);
+		register_currency::<T, USDC>(Some(utils::lp_asset_location::<T>(test_erc20_address)));
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			test_foreign
+			TestCurrency::ID
 		));
 
-		process_outbound::<T>()
+		utils::process_outbound::<T>()
 	});
 
-	let index = GeneralCurrencyIndexOf::<T>::try_from(test_foreign).unwrap();
+	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency::ID).unwrap();
 
 	// Verify the  test currencies are correctly added to the pool manager
 	assert_eq!(
@@ -96,11 +107,15 @@ fn add_currency<T: Runtime>() {
 }
 
 fn add_pool<T: Runtime>() {
-	let mut env = super::setup::<T>(super::setup_currencies);
+	let mut env = super::setup::<T>(|_| {});
 	const POOL: PoolId = 1;
 
 	env.parachain_state_mut(|| {
-		crate::generic::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL, USDC);
+		crate::generic::utils::pool::create_one_tranched::<T>(
+			Keyring::Admin.into(),
+			POOL,
+			LocalUSDC::ID,
+		);
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -108,7 +123,7 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		process_outbound::<T>()
+		utils::process_outbound::<T>()
 	});
 
 	let creation_time = env.parachain_state(<pallet_timestamp::Pallet<T> as TimeAsSecs>::now);
@@ -128,6 +143,8 @@ fn add_pool<T: Runtime>() {
 		Uint::from(creation_time)
 	);
 
+	env.pass(Blocks::ByNumber(1));
+
 	env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -135,8 +152,12 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		process_outbound::<T>()
+		utils::process_outbound::<T>()
 	});
+
+	// TODO: Actually find the revert event here. NOTE: That is really relevant for
+	//       the router too. We need to check `Pending` and see for errors
+	// unfortuntately
 
 	// Adding a pool again DOES NOT change creation time - i.e. not override storage
 	assert_eq!(
