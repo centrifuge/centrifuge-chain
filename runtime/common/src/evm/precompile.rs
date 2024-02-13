@@ -43,6 +43,10 @@ impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
 
 type EthereumPrecompilesChecks = (AcceptDelegateCall, CallableByContract, CallableByPrecompile);
 
+// Address numbers comes from:
+// - https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
+// - https://github.com/centrifuge/liquidity-pools/blob/release-v1.0/src/gateway/routers/axelar/Forwarder.sol#L29
+
 #[precompile_utils::precompile_name_from_address]
 pub type RuntimePrecompilesAt<R, Symbol> = (
 	// Ethereum precompiles:

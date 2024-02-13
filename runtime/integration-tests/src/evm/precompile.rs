@@ -48,9 +48,6 @@ use crate::{
 	},
 };
 
-/// Defined at:
-/// https://github.com/centrifuge/liquidity-pools/blob/20289e0a20116336e376188c78fb5ac7a7be050c/src/gateway/routers/axelar/Forwarder.sol#L29
-
 const ED: Balance = 1_234;
 
 #[tokio::test]
@@ -61,7 +58,10 @@ async fn axelar_precompile_execute() {
 
 	let currency_id = CurrencyId::ForeignAsset(123456);
 
+	// Address number comes from:
+	// - https://github.com/centrifuge/liquidity-pools/blob/release-v1.0/src/gateway/routers/axelar/Forwarder.sol#L29
 	let lp_axelar_gateway = H160::from_low_u64_be(0x800);
+
 	let sender_address = H160::from_low_u64_be(1_000_002);
 
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
