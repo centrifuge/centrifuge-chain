@@ -21,6 +21,7 @@ use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_sha3fips::Sha3FIPS256;
 use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
 use precompile_utils::precompile_set::*;
+use sp_core::H160;
 
 pub struct NativeErc20Metadata<Symbol>(PhantomData<Symbol>);
 impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
@@ -81,3 +82,13 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 );
 
 pub type Precompiles<R, Symbol> = PrecompileSetBuilder<R, RuntimePrecompilesAt<R, Symbol>>;
+
+pub trait H160Addresses {
+	fn h160_addresses() -> impl Iterator<Item = H160>;
+}
+
+impl<R, P: PrecompileSetFragment> H160Addresses for PrecompileSetBuilder<R, P> {
+	fn h160_addresses() -> impl Iterator<Item = H160> {
+		P::new().used_addresses().into_iter()
+	}
+}

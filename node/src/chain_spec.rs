@@ -26,8 +26,7 @@ use std::collections::BTreeMap;
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, BlockNumber, CFG, MILLI_CFG,
-	SAFE_XCM_VERSION,
+	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
 };
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -42,7 +41,7 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{account_conversion::AccountConverter, evm::precompile::H160Addresses};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -671,7 +670,7 @@ fn centrifuge_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(CentrifugePrecompiles::used_addresses()),
+			accounts: precompile_account_genesis::<CentrifugePrecompiles>(),
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
@@ -785,7 +784,7 @@ fn altair_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(AltairPrecompiles::used_addresses()),
+			accounts: precompile_account_genesis::<AltairPrecompiles>(),
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
@@ -948,7 +947,7 @@ fn development_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis(DevelopmentPrecompiles::used_addresses()),
+			accounts: precompile_account_genesis::<DevelopmentPrecompiles>(),
 		},
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
@@ -1025,8 +1024,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 	]
 }
 
-fn precompile_account_genesis(
-	addresses: impl Iterator<Item = AccountId>,
+fn precompile_account_genesis<PrecompileSet: H160Addresses>(
 ) -> BTreeMap<H160, fp_evm::GenesisAccount> {
 	// From Moonbeam:
 	//   This is the simplest bytecode to revert without returning any data.
@@ -1036,10 +1034,10 @@ fn precompile_account_genesis(
 	//   (PUSH1 0x00 PUSH1 0x00 REVERT)
 	let revert_bytecode = vec![0x60, 0x00, 0x60, 0x00, 0xFD];
 
-	addresses
+	PrecompileSet::h160_addresses()
 		.map(|addr| {
 			(
-				runtime_common::account_conversion::to_evm_address(&addr),
+				addr,
 				fp_evm::GenesisAccount {
 					nonce: Default::default(),
 					balance: Default::default(),
