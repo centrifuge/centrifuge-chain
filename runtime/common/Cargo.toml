@@ -146,6 +146,7 @@ std = [
   "pallet-base-fee/std",
   "pallet-ethereum/std",
   "pallet-evm-chain-id/std",
+  "pallet-evm-precompile-balances-erc20/std",
   "pallet-evm-precompile-blake2/std",
   "pallet-evm-precompile-bn128/std",
   "pallet-evm-precompile-dispatch/std",
@@ -174,12 +175,6 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
-  "pallet-evm-precompile-blake2/std",
-  "pallet-evm-precompile-bn128/std",
-  "pallet-evm-precompile-dispatch/std",
-  "pallet-evm-precompile-modexp/std",
-  "pallet-evm-precompile-sha3fips/std",
-  "pallet-evm-precompile-simple/std",
 
   # Locals
   "cfg-primitives/std",
