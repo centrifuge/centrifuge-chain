@@ -244,24 +244,24 @@ pub mod migrate_pool_currency {
 
 	const LOG_PREFIX: &str = "MigratePoolCurrency";
 
-	pub struct Migration<T, TargetPoolId, FromAsset, ToAsset>(
-		sp_std::marker::PhantomData<(T, TargetPoolId, FromAsset, ToAsset)>,
+	pub struct Migration<T, TargetPoolId, CurrencyOut, CurrencyIn>(
+		sp_std::marker::PhantomData<(T, TargetPoolId, CurrencyOut, CurrencyIn)>,
 	);
 
-	impl<T, TargetPoolId, FromAsset, ToAsset> OnRuntimeUpgrade
-		for Migration<T, TargetPoolId, FromAsset, ToAsset>
+	impl<T, TargetPoolId, CurrencyOut, CurrencyIn> OnRuntimeUpgrade
+		for Migration<T, TargetPoolId, CurrencyOut, CurrencyIn>
 	where
 		T: pallet_pool_system::Config
 			+ orml_asset_registry::Config<CustomMetadata = CustomMetadata, AssetId = CurrencyId>,
 		TargetPoolId: Get<<T as pallet_pool_system::Config>::PoolId>,
-		FromAsset: Get<CurrencyId>,
-		ToAsset: Get<CurrencyId>,
+		CurrencyOut: Get<CurrencyId>,
+		CurrencyIn: Get<CurrencyId>,
 		<T as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
 		<T as pallet_pool_system::Config>::CurrencyId: From<CurrencyId>,
 	{
 		fn on_runtime_upgrade() -> Weight {
-			let to = ToAsset::get();
-			let from = FromAsset::get();
+			let to = CurrencyIn::get();
+			let from = CurrencyOut::get();
 			let mut weight = T::DbWeight::get().reads(2);
 
 			if let Some(true) = check_local_coupling::<T>(from, to) {
@@ -282,12 +282,13 @@ pub mod migrate_pool_currency {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			assert!(
-				check_local_coupling::<T>(FromAsset::get().into(), ToAsset::get().into()).unwrap()
+				check_local_coupling::<T>(CurrencyOut::get().into(), CurrencyIn::get().into())
+					.unwrap()
 			);
 
 			let pool =
 				pallet_pool_system::Pool::<T>::get(TargetPoolId::get()).expect("Pool should exist");
-			assert!(pool.currency == FromAsset::get().into());
+			assert!(pool.currency == CurrencyOut::get().into());
 
 			log::info!("{LOG_PREFIX} PRE UPGRADE: Finished");
 
@@ -298,7 +299,7 @@ pub mod migrate_pool_currency {
 		fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
 			let pool =
 				pallet_pool_system::Pool::<T>::get(TargetPoolId::get()).expect("Pool should exist");
-			assert!(pool.currency == ToAsset::get().into());
+			assert!(pool.currency == CurrencyIn::get().into());
 
 			log::info!("{LOG_PREFIX} POST UPGRADE: Finished");
 
@@ -325,19 +326,115 @@ pub mod migrate_pool_currency {
 					Some(true)
 				} else {
 					log::error!(
-						"{LOG_PREFIX} FromAsset does not have ToAsset set as local currency"
+						"{LOG_PREFIX} CurrencyOut does not have CurrencyIn set as local currency"
 					);
 					Some(false)
 				}
 			}
 			(Some(_), None) => {
-				log::error!("{LOG_PREFIX} ToAsset is not registered");
+				log::error!("{LOG_PREFIX} CurrencyIn is not registered");
 				None
 			}
 			_ => {
-				log::error!("{LOG_PREFIX} FromAsset is not registered");
+				log::error!("{LOG_PREFIX} CurrencyOut is not registered");
 				None
 			}
+		}
+	}
+}
+
+pub mod add_bidirectional_trading_pair {
+	use cfg_primitives::Balance;
+	#[cfg(feature = "try-runtime")]
+	use cfg_traits::TokenSwaps;
+	use frame_support::dispatch::RawOrigin;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
+
+	use super::*;
+
+	const LOG_PREFIX: &str = "AddBidirectionalTradingPair";
+
+	pub struct Migration<T, CurrencyOne, CurrencyTwo, MinOrderAmount>(
+		sp_std::marker::PhantomData<(T, CurrencyOne, CurrencyTwo, MinOrderAmount)>,
+	);
+
+	impl<T, CurrencyOne, CurrencyTwo, MinOrderAmount> OnRuntimeUpgrade
+		for Migration<T, CurrencyOne, CurrencyTwo, MinOrderAmount>
+	where
+		T: pallet_order_book::Config<
+			CurrencyId = CurrencyId,
+			BalanceIn = Balance,
+			BalanceOut = Balance,
+		>,
+		CurrencyOne: Get<CurrencyId>,
+		CurrencyTwo: Get<CurrencyId>,
+		MinOrderAmount: Get<Balance>,
+	{
+		fn on_runtime_upgrade() -> Weight {
+			pallet_order_book::Pallet::<T>::add_trading_pair(
+				RawOrigin::Root.into(),
+				CurrencyTwo::get(),
+				CurrencyOne::get(),
+				MinOrderAmount::get(),
+			)
+			.map_err(|e| {
+				log::info!(
+					"{LOG_PREFIX} Failed to add trading pair from {:?} to {:?} due to error {:?}",
+					CurrencyTwo::get(),
+					CurrencyOne::get(),
+					e
+				);
+			})
+			.ok();
+			pallet_order_book::Pallet::<T>::add_trading_pair(
+				RawOrigin::Root.into(),
+				CurrencyOne::get(),
+				CurrencyTwo::get(),
+				MinOrderAmount::get(),
+			)
+			.map_err(|e| {
+				log::info!(
+					"{LOG_PREFIX} Failed to add trading pair from {:?} to {:?} due to error {:?}",
+					CurrencyOne::get(),
+					CurrencyTwo::get(),
+					e
+				);
+			})
+			.ok();
+
+			log::info!("{LOG_PREFIX} UPGRADE: Finished");
+			T::DbWeight::get().writes(2)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+			assert!(!pallet_order_book::Pallet::<T>::valid_pair(
+				CurrencyTwo::get(),
+				CurrencyOne::get()
+			));
+			assert!(!pallet_order_book::Pallet::<T>::valid_pair(
+				CurrencyOne::get(),
+				CurrencyTwo::get()
+			));
+			log::info!("{LOG_PREFIX} PRE UPGRADE: Finished");
+
+			Ok(vec![])
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
+			assert!(pallet_order_book::Pallet::<T>::valid_pair(
+				CurrencyTwo::get(),
+				CurrencyOne::get()
+			));
+			assert!(pallet_order_book::Pallet::<T>::valid_pair(
+				CurrencyOne::get(),
+				CurrencyTwo::get()
+			));
+			log::info!("{LOG_PREFIX} POST UPGRADE: Finished");
+
+			Ok(())
 		}
 	}
 }

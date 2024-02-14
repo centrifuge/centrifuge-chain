@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::PoolId;
+use cfg_primitives::{Balance, PoolId, CFG};
 use cfg_types::tokens::{
 	usdc::{
 		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
@@ -26,6 +26,12 @@ frame_support::parameter_types! {
 	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
 	pub const PoolIdAnemoy: PoolId = 4_139_607_887;
 	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
+	pub const UsdcDot: CurrencyId = CURRENCY_ID_DOT_NATIVE;
+	pub const UsdcEth: CurrencyId = CURRENCY_ID_LP_ETH;
+	pub const UsdcBase: CurrencyId = CURRENCY_ID_LP_BASE;
+	pub const UsdcArb: CurrencyId = CURRENCY_ID_LP_ARB;
+	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
+	pub const MinOrderAmount: Balance = 10 * CFG;
 }
 
 pub type UpgradeCentrifuge1025 = (
@@ -55,6 +61,37 @@ pub type UpgradeCentrifuge1025 = (
 		PoolIdAnemoy,
 		PoolCurrencyAnemoy,
 		LocalCurrencyIdUsdc,
+	>,
+	// Register trading pairs one by one
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcDot,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcEth,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcBase,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcArb,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcCelo,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
 	>,
 );
 
