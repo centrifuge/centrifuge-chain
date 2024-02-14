@@ -157,11 +157,6 @@ pub mod pallet {
 		/// The given currency has no local representation and can hence not be
 		/// deposited to receive a local representation.
 		NoLocalRepresentation,
-		/// The given currency is not a local currency
-		NotLocalCurrency,
-		/// The provided local currency does not match the local representation
-		/// of the currency to be unlocked
-		LocalCurrencyMismatch,
 		/// Swap could not be found by id
 		SwapNotFound,
 		/// Matching orders does only work if there is a one-to-one conversion
