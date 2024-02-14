@@ -1034,7 +1034,7 @@ fn precompile_account_genesis<PrecompileSet: H160Addresses>(
 					nonce: Default::default(),
 					balance: Default::default(),
 					storage: Default::default(),
-					code: runtime_common::evm::precompile::utils::REVERT_BYTECODE,
+					code: runtime_common::evm::precompile::utils::REVERT_BYTECODE.to_vec(),
 				},
 			)
 		})
