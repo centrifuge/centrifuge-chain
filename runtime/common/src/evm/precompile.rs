@@ -43,9 +43,11 @@ impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
 
 type EthereumPrecompilesChecks = (AcceptDelegateCall, CallableByContract, CallableByPrecompile);
 
-// Address numbers comes from:
+// Address numbers linked with:
 // - https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
 // - https://github.com/centrifuge/liquidity-pools/blob/release-v1.0/src/gateway/routers/axelar/Forwarder.sol#L29
+
+pub const LP_AXELAR_GATEWAY: u64 = 0x800;
 
 #[precompile_utils::precompile_name_from_address]
 pub type RuntimePrecompilesAt<R, Symbol> = (
@@ -62,7 +64,7 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	PrecompileAt<AddressU64<0x9>, Blake2F, EthereumPrecompilesChecks>,
 	// Non-Moonbeam specific nor Ethereum precompiles:
 	PrecompileAt<AddressU64<0x400>, Sha3FIPS256, (CallableByContract, CallableByPrecompile)>,
-	PrecompileAt<AddressU64<0x401>, Dispatch<R>, (CallableByContract, CallableByPrecompile)>,
+	PrecompileAt<AddressU64<0x401>, Dispatch<R>>,
 	PrecompileAt<AddressU64<0x402>, ECRecoverPublicKey, (CallableByContract, CallableByPrecompile)>,
 	// Moonbeam specific precompiles:
 	PrecompileAt<
@@ -72,9 +74,9 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	>,
 	// Centrifuge specific precompiles:
 	PrecompileAt<
-		AddressU64<0x800>,
+		AddressU64<LP_AXELAR_GATEWAY>,
 		axelar_gateway_precompile::Pallet<R>,
-		(CallableByContract, CallableByPrecompile),
+		CallableByContract,
 	>,
 );
 

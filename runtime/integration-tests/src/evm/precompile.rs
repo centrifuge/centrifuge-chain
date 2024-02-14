@@ -29,7 +29,7 @@ use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
 use pallet_evm::{AddressMapping, FeeCalculator};
 use pallet_liquidity_pools::Message;
 use parity_scale_codec::Encode;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY};
 use sp_core::{Get, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use tokio::runtime::Handle;
@@ -58,10 +58,7 @@ async fn axelar_precompile_execute() {
 
 	let currency_id = CurrencyId::ForeignAsset(123456);
 
-	// Address number comes from:
-	// - https://github.com/centrifuge/liquidity-pools/blob/release-v1.0/src/gateway/routers/axelar/Forwarder.sol#L29
-	let lp_axelar_gateway = H160::from_low_u64_be(0x800);
-
+	let lp_axelar_gateway = H160::from_low_u64_be(LP_AXELAR_GATEWAY);
 	let sender_address = H160::from_low_u64_be(1_000_002);
 
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
