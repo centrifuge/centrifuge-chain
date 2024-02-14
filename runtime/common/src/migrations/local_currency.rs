@@ -48,7 +48,7 @@ pub mod register {
 					decimals: 6,
 					// TODO: Ask others
 					name: "Local USDC".as_bytes().to_vec(),
-					symbol: "cfgUSDC".as_bytes().to_vec(),
+					symbol: "localUSDC".as_bytes().to_vec(),
 					existential_deposit: Zero::zero(),
 					location: None,
 					additional: CustomMetadata {

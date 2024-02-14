@@ -33,7 +33,7 @@ use cfg_types::{
 	tokens::{
 		usdc::{
 			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI,
-			CURRENCY_ID_LP_ETH_GOERLI,
+			CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH_GOERLI,
 		},
 		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
 	},
@@ -1002,6 +1002,24 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					permissioned: false,
 					pool_currency: true,
 					transferability: CrossChainTransferability::Xcm(Default::default()),
+					local_representation: None,
+				},
+			}
+			.encode(),
+		),
+		(
+			CURRENCY_ID_LOCAL,
+			AssetMetadata::<Balance, CustomMetadata> {
+				decimals: 6,
+				name: b"Local USDC".to_vec(),
+				symbol: b"localUSDC".to_vec(),
+				existential_deposit: 0u128,
+				location: None,
+				additional: CustomMetadata {
+					mintable: true,
+					permissioned: false,
+					pool_currency: true,
+					transferability: CrossChainTransferability::None,
 					local_representation: None,
 				},
 			}

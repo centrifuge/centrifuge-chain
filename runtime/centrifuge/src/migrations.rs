@@ -11,19 +11,21 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::PoolId;
-use cfg_types::tokens::{CurrencyId, LocalAssetId};
-
-const LOCAL_ASSET_ID_USDC: LocalAssetId = LocalAssetId(1u32);
-const LOCAL_CURRENCY_ID_USDC: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID_USDC);
+use cfg_types::tokens::{
+	usdc::{
+		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
+		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID,
+	},
+	CurrencyId, LocalAssetId,
+};
 
 frame_support::parameter_types! {
 	pub const ClaimsPalletName: &'static str = "Claims";
-	// Polkadot USDC, Axelar USDC, LpEthUSDC, LpBaseUSDC, LpArbUSDC, LpCeloUSDC,
-	pub const UsdcVariants: [CurrencyId; 6] = [CurrencyId::ForeignAsset(6), CurrencyId::ForeignAsset(2), CurrencyId::ForeignAsset(100_001), CurrencyId::ForeignAsset(100_002), CurrencyId::ForeignAsset(100_003), CurrencyId::ForeignAsset(100_004)];
-	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID_USDC;
-	pub const LocalCurrencyIdUsdc: CurrencyId = LOCAL_CURRENCY_ID_USDC;
+	pub const UsdcVariants: [CurrencyId; 6] = [CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_AXELAR, CURRENCY_ID_LP_ETH, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO];
+	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
+	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
 	pub const PoolIdAnemoy: PoolId = 4_139_607_887;
-	pub const PoolCurrencyAnemoy: CurrencyId = CurrencyId::ForeignAsset(6);
+	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
 }
 
 pub type UpgradeCentrifuge1025 = (

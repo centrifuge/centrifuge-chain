@@ -250,6 +250,10 @@ pub mod translate_asset_metadata {
 		traits::Get,
 		Twox64Concat,
 	};
+	#[cfg(feature = "try-runtime")]
+	use sp_runtime::DispatchError;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
 
 	use super::*;
 
@@ -373,6 +377,8 @@ mod ausd_to_foreign {
 	};
 	use orml_tokens::AccountData;
 	use parity_scale_codec::{Decode, Encode};
+	#[cfg(feature = "try-runtime")]
+	use sp_runtime::traits::Zero;
 	#[cfg(feature = "try-runtime")]
 	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;

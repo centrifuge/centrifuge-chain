@@ -418,12 +418,15 @@ pub mod usdc {
 	pub const DECIMALS: u32 = 6;
 	pub const EXISTENTIAL_DEPOSIT: Balance = 1000;
 
+	pub const CURRENCY_ID_AXELAR: CurrencyId = CurrencyId::ForeignAsset(2);
 	pub const CURRENCY_ID_DOT_NATIVE: CurrencyId = CurrencyId::ForeignAsset(6);
 	pub const CURRENCY_ID_LP_ETH: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_ETH_GOERLI: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_BASE: CurrencyId = CurrencyId::ForeignAsset(100_002);
 	pub const CURRENCY_ID_LP_ARB: CurrencyId = CurrencyId::ForeignAsset(100_003);
 	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_004);
+	pub const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
+	pub const CURRENCY_ID_LOCAL: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID);
 
 	pub const CHAIN_ID_ETHEREUM_MAINNET: EVMChainId = 1;
 	pub const CHAIN_ID_ETH_GOERLI_TESTNET: EVMChainId = 5;
@@ -474,8 +477,7 @@ pub mod usdc {
 				mintable: false,
 				permissioned: false,
 				pool_currency,
-				// TODO: When moved to chain_spec.rs, add local representation here
-				local_representation: None,
+				local_representation: Some(LOCAL_ASSET_ID),
 			},
 		}
 	}
