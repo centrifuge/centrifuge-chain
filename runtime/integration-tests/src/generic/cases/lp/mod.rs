@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, CFG, SECONDS_PER_HOUR};
+use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR};
 use cfg_types::{
 	domain_address::Domain,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
@@ -170,6 +170,9 @@ pub mod utils {
 }
 
 pub mod pool_management;
+
+pub const POOL_A: PoolId = 1;
+pub const POOL_B: PoolId = 2;
 
 pub const DEFAULT_BALANCE: Balance = 1_000_000;
 const DECIMALS_6: Balance = 1_000_000;
@@ -813,11 +816,32 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// Create 2x pools
 	// * single tranched pool A
+	crate::generic::utils::pool::create_one_tranched::<T>(
+		Keyring::Admin.into(),
+		POOL_A,
+		LocalUSDC::ID,
+	);
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_A,
+		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+	));
+
 	// * double tranched pool B
+	crate::generic::utils::pool::create_two_tranched::<T>(
+		Keyring::Admin.into(),
+		POOL_B,
+		LocalUSDC::ID,
+	);
 
-	// AddPool A
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_B,
+		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+	));
 
-	// AddPool B
+	utils::process_outbound::<T>()
 }
 
 pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {

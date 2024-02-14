@@ -23,7 +23,7 @@ use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 
 use crate::{
 	generic::{
-		cases::lp::{utils, utils::Decoder, LocalUSDC, EVM_DOMAIN_CHAIN_ID, USDC},
+		cases::lp::{utils, utils::Decoder, LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC},
 		config::Runtime,
 		env::{Blocks, Env, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
@@ -155,9 +155,11 @@ fn add_pool<T: Runtime>() {
 		utils::process_outbound::<T>()
 	});
 
-	// TODO: Actually find the revert event here. NOTE: That is really relevant for
-	//       the router too. We need to check `Pending` and see for errors
-	// unfortuntately
+	// TODO: Actually find the revert event here.
+	//
+	// NOTE: That is really relevant for the router too.
+	//     We need to check `Pending` and see for errors
+	//     unfortuntately and then error in the router instead of returning success.
 
 	// Adding a pool again DOES NOT change creation time - i.e. not override storage
 	assert_eq!(
@@ -179,6 +181,23 @@ fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T>(|env| {
 		super::setup_currencies(env);
 		super::setup_pools(env);
+	});
+
+	env.parachain_state_mut(|| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_A,
+			pallet_pool_system::Pallet::<T>::pool(POOL_A)
+				.unwrap()
+				.tranches
+				.ids
+				.last()
+				.unwrap()
+				.clone(),
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>()
 	});
 }
 
