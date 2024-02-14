@@ -1,0 +1,19 @@
+[package]
+name = "wasm-gen-bt"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+path="src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { workspace = true, default-features = true }
+serde_json = { workspace = true, default-features = true }
+
+wasm-utils = { workspace = true, default-features = true }
