@@ -1834,6 +1834,26 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
+}
+
+impl pallet_token_mux::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type LocalAssetId = LocalAssetId;
+	type OrderId = OrderId;
+	type PalletId = TokenMuxPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Swaps = OrderBook;
+	type Tokens = OrmlTokens;
+	// TODO(william): Change to weights once they exist
+	type WeightInfo = ();
+}
+
 impl pallet_transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = AllowanceDeposit<Fees>;
@@ -1922,6 +1942,7 @@ construct_runtime!(
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
+		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2027,7 +2048,11 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::{locations::Location, pools::PoolNav, tokens::FilterCurrency};
+use cfg_types::{
+	locations::Location,
+	pools::PoolNav,
+	tokens::{FilterCurrency, LocalAssetId},
+};
 use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2567,6 +2592,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
 			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
+			list_benchmark!(list, extra, pallet_token_mux, TokenMux);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2646,6 +2672,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 			add_benchmark!(params, batches,	pallet_pool_fees, PoolFees);
+			add_benchmark!(params, batches,	pallet_token_mux, TokenMux);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
