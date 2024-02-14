@@ -24,6 +24,8 @@ pub type UpgradeCentrifuge1025 = (
 	runtime_common::migrations::transfer_allowlist_currency::Migration<super::Runtime>,
 	// Removes tinlake reward claims pallet
 	runtime_common::migrations::nuke::KillPallet<ClaimsPalletName, crate::RocksDbWeight>,
+	// Sets account codes for all precompiles
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).

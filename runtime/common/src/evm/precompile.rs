@@ -92,3 +92,34 @@ impl<R, P: PrecompileSetFragment> H160Addresses for PrecompileSetBuilder<R, P> {
 		P::new().used_addresses().into_iter()
 	}
 }
+
+pub mod utils {
+	use super::H160Addresses;
+
+	// From Moonbeam:
+	//   This is the simplest bytecode to revert without returning any data.
+	//   We will pre-deploy it under all of our precompiles to ensure they can be
+	//   called from within contracts.
+	//
+	//   (PUSH1 0x00 PUSH1 0x00 REVERT)
+	pub const REVERT_BYTECODE: [u8; 5] = [0x60, 0x00, 0x60, 0x00, 0xFD];
+
+	/// Initialize all required accounts for precompiles.
+	/// Used for migrations
+	#[allow(dead_code)]
+	pub fn initialize_accounts<T>() -> (u64, u64)
+	where
+		T: pallet_evm::Config,
+		<T as pallet_evm::Config>::PrecompilesType: H160Addresses,
+	{
+		let (mut reads, mut writes) = (0, 0);
+		for addr in T::PrecompilesType::h160_addresses() {
+			reads += 1;
+			if !pallet_evm::AccountCodes::<T>::contains_key(addr) {
+				writes += 1;
+				pallet_evm::AccountCodes::<T>::insert(addr, REVERT_BYTECODE.to_vec());
+			}
+		}
+		(reads, writes)
+	}
+}
