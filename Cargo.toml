@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "node",
+  "node/data-extension/worker",
   "libs/mocks",
   "libs/primitives",
   "libs/proofs",
@@ -61,6 +62,7 @@ hex-literal = { version = "0.3.4" }
 hex = { version = "0.4.3", default-features = false }
 smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
+serde_json = "1.0.113"
 parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 log = { version = "0.4", default-features = false }
@@ -309,6 +311,9 @@ centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 vergen = "3.0.4"
+
+# Data extension
+data-extension-worker = { path = "node/data-extension/worker", default-features = false }
 
 #
 # Cargo patch rules for all the paritytech/ based crates.

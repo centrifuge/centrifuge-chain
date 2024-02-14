@@ -27,6 +27,15 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
+use data_extension_worker::{
+	config::{get_data_extension_worker_request_response_config, DataExtensionWorkerConfiguration},
+	service::{P2PService, Service},
+	types::{
+		CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument,
+		DataExtensionWorkerMessageSender, Document as DocumentT,
+	},
+	worker::DataExtensionWorker,
+};
 use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
@@ -36,7 +45,6 @@ use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::{future, StreamExt};
-use futures_channel::oneshot;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
@@ -56,15 +64,6 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
-use crate::data_extension_worker::{
-	config::{get_data_extension_worker_request_response_config, DataExtensionWorkerConfiguration},
-	service::{P2PService, Service},
-	types::{
-		CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument,
-		DataExtensionWorkerMessageSender, Document as DocumentT,
-	},
-	worker::DataExtensionWorker,
-};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]

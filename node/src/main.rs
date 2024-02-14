@@ -6,7 +6,6 @@
 mod chain_spec;
 mod cli;
 mod command;
-mod data_extension_worker;
 mod rpc;
 #[macro_use]
 mod service;

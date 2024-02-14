@@ -8,7 +8,7 @@ use jsonrpsee::{
 	types::{error::CallError, ErrorObject},
 };
 
-use crate::data_extension_worker::types::{
+use crate::types::{
 	Batch as BatchT, DataExtensionWorkerMessage, DataExtensionWorkerMessageSender,
 	Document as DocumentT, PoolInfo as PoolInfoT,
 };

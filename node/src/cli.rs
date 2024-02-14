@@ -17,11 +17,9 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use data_extension_worker::config::DataExtensionWorkerConfiguration;
 
-use crate::{
-	chain_spec, data_extension_worker::config::DataExtensionWorkerConfiguration,
-	service::evm::EthConfiguration,
-};
+use crate::{chain_spec, service::evm::EthConfiguration};
 
 #[derive(Debug, Parser)]
 #[allow(clippy::large_enum_variant)]

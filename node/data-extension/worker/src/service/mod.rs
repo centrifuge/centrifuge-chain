@@ -1,6 +1,6 @@
 use std::{future::Future, pin::Pin};
 
-use crate::data_extension_worker::types::BaseError;
+use crate::types::BaseError;
 
 mod document;
 mod p2p;

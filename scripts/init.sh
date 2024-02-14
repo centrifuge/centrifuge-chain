@@ -107,7 +107,7 @@ start-collator-2)
     --rpc-methods=Unsafe \
     --log="info" \
     --database=rocksdb \
-    --bootnodes="/ip4/127.0.0.1/tcp/32355/p2p/12D3KooWDNuHdrRQjd6P2azZxNXqm7YC13UndSz5xvZxBoVNREK1"
+    --bootnodes="/ip4/127.0.0.1/tcp/32355/p2p/12D3KooWAK2x81J14bgEXdp51x8fxHXBaMWdP6DXsMCGMxxJsXwh"
   ;;
 
 onboard-parachain)

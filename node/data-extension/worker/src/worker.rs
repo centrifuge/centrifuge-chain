@@ -2,16 +2,14 @@ use std::{
 	future::Future,
 	marker::PhantomData,
 	pin::Pin,
-	sync::Arc,
 	task::{Context, Poll},
 };
 
 use async_channel::TryRecvError;
 use cumulus_primitives_core::BlockT;
 use sc_network::config::ExHashT;
-use tokio::task::JoinHandle;
 
-use crate::data_extension_worker::{
+use crate::{
 	config::DataExtensionWorkerConfiguration,
 	service::{DBDocumentStorage, DocumentStorage, P2PService},
 	types::{

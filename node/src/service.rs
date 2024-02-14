@@ -21,28 +21,25 @@ use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_primitives_core::ParaId;
+use data_extension_worker::types::{CentrifugePoolInfo, DataExtensionWorkerBatch};
 use fc_db::Backend as FrontierBackend;
 use sc_executor::NativeElseWasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
 
-use crate::{
-	data_extension_worker::types::{CentrifugePoolInfo, DataExtensionWorkerBatch},
-	rpc::{
-		self,
-		anchors::{AnchorApiServer, Anchors},
-		pools::{Pools, PoolsApiServer},
-		rewards::{Rewards, RewardsApiServer},
-	},
+use crate::rpc::{
+	self,
+	anchors::{AnchorApiServer, Anchors},
+	pools::{Pools, PoolsApiServer},
+	rewards::{Rewards, RewardsApiServer},
 };
 
 pub(crate) mod evm;
-use evm::EthConfiguration;
-
-use crate::data_extension_worker::{
+use data_extension_worker::{
 	config::DataExtensionWorkerConfiguration, rpc::DataExtensionWorkerApiServer,
 	types::DataExtensionWorkerDocument,
 };
+use evm::EthConfiguration;
 
 type FullClient<RuntimeApi, Executor> =
 	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
@@ -220,7 +217,7 @@ pub async fn start_altair_node(
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(
-					crate::data_extension_worker::rpc::Api::<
+					data_extension_worker::rpc::Api::<
 						_,
 						DataExtensionWorkerBatch,
 						CentrifugePoolInfo,
@@ -440,7 +437,7 @@ pub async fn start_centrifuge_node(
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(
-					crate::data_extension_worker::rpc::Api::<
+					data_extension_worker::rpc::Api::<
 						_,
 						DataExtensionWorkerBatch,
 						CentrifugePoolInfo,
@@ -664,7 +661,7 @@ pub async fn start_development_node(
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(
-					crate::data_extension_worker::rpc::Api::<
+					data_extension_worker::rpc::Api::<
 						_,
 						DataExtensionWorkerBatch,
 						CentrifugePoolInfo,

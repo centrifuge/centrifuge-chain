@@ -104,6 +104,7 @@ development-runtime = { workspace = true, default-features = true }
 pallet-anchors = { workspace = true, default-features = true }
 pallet-pool-system = { workspace = true, default-features = true }
 runtime-common = { workspace = true, default-features = true }
+data-extension-worker = { workspace = true, default-features = true }
 
 # benchmarking
 frame-benchmarking = { workspace = true, default-features = true, optional = true }

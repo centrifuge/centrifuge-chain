@@ -1,4 +1,4 @@
-use crate::data_extension_worker::types::{BaseError, Document as DocumentT};
+use crate::types::{BaseError, Document as DocumentT};
 
 mod db;
 

@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, path::PathBuf};
 
-use crate::data_extension_worker::{
+use crate::{
 	service::DocumentStorage,
 	types::{BaseError, Document as DocumentT},
 };

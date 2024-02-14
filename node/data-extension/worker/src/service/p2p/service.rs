@@ -6,9 +6,8 @@ use sc_network::{
 	config::{ExHashT, IncomingRequest, OutgoingResponse},
 	IfDisconnected, NetworkRequest, NetworkService, NetworkStateInfo, PeerId,
 };
-use sc_telemetry::serde_json;
 
-use crate::data_extension_worker::{
+use crate::{
 	config::PROTOCOL_NAME,
 	service::Service,
 	types::{
@@ -55,9 +54,9 @@ impl<B: BlockT + 'static, H: ExHashT, Document: DocumentT> Service for P2PServic
 		let mut handles = Vec::new();
 
 		let peers: Vec<PeerId> = vec![
-			PeerId::from_str("12D3KooWDNuHdrRQjd6P2azZxNXqm7YC13UndSz5xvZxBoVNREK1")
+			PeerId::from_str("12D3KooWAK2x81J14bgEXdp51x8fxHXBaMWdP6DXsMCGMxxJsXwh")
 				.expect("can parse peer ID"),
-			PeerId::from_str("12D3KooWHxgLKo1DeNbTpWDZ3qHEQ1KD36na2NqhYBdQYr9bAsCi")
+			PeerId::from_str("12D3KooWL5BRuUULCorEzZcq2PJYRBpbECeQssnP8Tr1hhBnKpwf")
 				.expect("can parse peer ID"),
 		];
 

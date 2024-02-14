@@ -1,0 +1,28 @@
+[package]
+name = "data-extension-worker"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+clap = { workspace = true, default-features = true }
+log = { workspace = true, default-features = true }
+futures = { workspace = true, default-features = true }
+jsonrpsee = { workspace = true, default-features = true }
+thiserror = { workspace = true, default-features = true }
+tokio = { workspace = true, default-features = true }
+async-channel = { workspace = true, default-features = true }
+futures-channel = { workspace = true, default-features = true }
+serde = { workspace = true, default-features = true }
+serde_json = { workspace = true, default-features = true }
+
+# Substrate
+cumulus-primitives-core = { workspace = true, default-features = true }
+sc-network = { workspace = true, default-features = true }
+
+# Local
+cfg-primitives = { workspace = true, default-features = true }

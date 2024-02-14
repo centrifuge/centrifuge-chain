@@ -1,6 +1,6 @@
 use futures_channel::oneshot;
 
-use crate::data_extension_worker::types::{BaseError, Document as DocumentT};
+use crate::types::{BaseError, Document as DocumentT};
 
 pub type DataExtensionWorkerMessageSender<Document> =
 	async_channel::Sender<DataExtensionWorkerMessage<Document>>;
