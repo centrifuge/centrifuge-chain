@@ -9,13 +9,24 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+use cfg_primitives::{PoolId, TrancheId};
+use cfg_types::tokens::{CurrencyId, CustomMetadata, ForeignAssetId, StakingCurrency};
+use frame_support::{
+	dispatch::{Decode, Encode, MaxEncodedLen, TypeInfo},
+	traits::OnRuntimeUpgrade,
+	weights::Weight,
+	RuntimeDebugNoBound,
+};
+use orml_traits::asset_registry::AssetMetadata;
 
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
-	// FIXME: This migration fails to decode 4 entries against Altair
-	// orml_tokens_migration::CurrencyIdRefactorMigration,
+	// Updates asset custom metadata from mid 2023 to latest (two fields missing/mismatching)
+	translate_asset_metadata::Migration<super::Runtime>,
+	// Removes hardcoded AUSD currency id and migrates balance
+	ausd_to_foreign::CurrencyIdRefactorMigration<super::Runtime>,
 	// At minimum, bumps storage version from 1 to 2
 	runtime_common::migrations::nuke::ResetPallet<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
@@ -53,9 +64,53 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 	// Migrates EpochExecution V1 to V2
 	runtime_common::migrations::epoch_execution::Migration<crate::Runtime>,
-	// Probably not needed, as storage is likely not populated. Mirates currency used in allowlist
+	// Probably not needed, as storage is likely not populated. Migrates currency used in allowlist
 	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
 );
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	RuntimeDebugNoBound,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+pub enum OldCurrencyId {
+	// The Native token, representing AIR in Altair and CFG in Centrifuge.
+	#[default]
+	#[codec(index = 0)]
+	Native,
+
+	/// A Tranche token
+	#[codec(index = 1)]
+	Tranche(PoolId, TrancheId),
+
+	/// DEPRECATED - Will be removed in the next Altair RU 1034 when the
+	/// orml_tokens' balances are migrated to the new CurrencyId for AUSD.
+	#[codec(index = 2)]
+	KSM,
+
+	/// DEPRECATED - Will be removed in the next Altair RU 1034 when the
+	/// orml_tokens' balances are migrated to the new CurrencyId for AUSD.
+	#[codec(index = 3)]
+	AUSD,
+
+	/// A foreign asset
+	#[codec(index = 4)]
+	ForeignAsset(ForeignAssetId),
+
+	/// A staking currency
+	#[codec(index = 5)]
+	Staking(StakingCurrency),
+}
 
 mod asset_registry {
 	use cfg_primitives::Balance;
@@ -187,12 +242,135 @@ mod asset_registry {
 	}
 }
 
-mod orml_tokens_migration {
+pub mod translate_asset_metadata {
+	use cfg_primitives::Balance;
+	use frame_support::{
+		dispatch::{Decode, Encode, MaxEncodedLen, TypeInfo},
+		storage_alias,
+		traits::Get,
+		Twox64Concat,
+	};
+
+	use super::*;
+
+	const LOG_PREFIX: &str = "TranslateMetadata";
+
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	pub struct XcmMetadata {
+		pub fee_per_second: Option<Balance>,
+	}
+
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	struct OldCustomMetadata {
+		pub xcm: XcmMetadata,
+		pub mintable: bool,
+		pub permissioned: bool,
+		pub pool_currency: bool,
+	}
+
+	#[storage_alias]
+	type Metadata<T: orml_asset_registry::Config> = StorageMap<
+		orml_asset_registry::Pallet<T>,
+		Twox64Concat,
+		OldCurrencyId,
+		AssetMetadata<Balance, OldCustomMetadata>,
+	>;
+
+	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T> OnRuntimeUpgrade for Migration<T>
+	where
+		T: orml_asset_registry::Config<
+			CustomMetadata = CustomMetadata,
+			AssetId = CurrencyId,
+			Balance = Balance,
+		>,
+	{
+		fn on_runtime_upgrade() -> Weight {
+			let mut weight = Weight::zero();
+			orml_asset_registry::Metadata::<T>::translate::<
+				AssetMetadata<Balance, OldCustomMetadata>,
+				_,
+			>(|_, meta| {
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
+				Some(AssetMetadata {
+					decimals: meta.decimals,
+					name: meta.name,
+					symbol: meta.symbol,
+					existential_deposit: meta.existential_deposit,
+					location: meta.location,
+					additional: CustomMetadata {
+						mintable: meta.additional.mintable,
+						permissioned: meta.additional.permissioned,
+						pool_currency: meta.additional.pool_currency,
+						..Default::default()
+					},
+				})
+			});
+			log::info!("{LOG_PREFIX} Done translating asset metadata");
+
+			weight
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+			let num_assets = Metadata::<T>::iter_keys().count() as u32;
+			log::info!(
+				"{LOG_PREFIX} PRE UPGRADE: Finished with {} registered assets",
+				num_assets
+			);
+
+			Ok(num_assets.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), DispatchError> {
+			let n_pre: u32 = Decode::decode(&mut pre_state.as_slice())
+				.expect("pre_ugprade provides a valid state; qed");
+			let n = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
+			assert_eq!(n_pre, n);
+
+			log::info!("{LOG_PREFIX} POST UPGRADE: Finished");
+
+			Ok(())
+		}
+	}
+}
+
+mod ausd_to_foreign {
 	use cfg_primitives::{AccountId, Balance};
 	use cfg_types::tokens::CurrencyId;
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
-	use frame_support::traits::tokens::{Fortitude, Precision};
+	use frame_support::{
+		pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
+	};
 	use orml_tokens::AccountData;
 	use parity_scale_codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
@@ -202,14 +380,15 @@ mod orml_tokens_migration {
 	use super::*;
 	use crate::Runtime;
 
-	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+	const DEPRECATED_AUSD_CURRENCY_ID: OldCurrencyId = OldCurrencyId::AUSD;
 	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+	const LOG_PREFIX: &str = "MigrateAUSD";
 
 	/// As we dropped `CurrencyId::KSM` and `CurrencyId::AUSD`, we need to
 	/// migrate the balances under the dropped variants in favour of the new,
 	/// corresponding `CurrencyId::ForeignAsset`. We have never transferred KSM
 	/// so we only need to deal with AUSD.
-	pub struct CurrencyIdRefactorMigration;
+	pub struct CurrencyIdRefactorMigration<T>(sp_std::marker::PhantomData<T>);
 
 	#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
 	pub struct OldState {
@@ -217,18 +396,38 @@ mod orml_tokens_migration {
 		pub entries: Vec<(AccountId, AccountData<Balance>)>,
 	}
 
-	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
+	#[storage_alias]
+	type TotalIssuance<T: orml_tokens::Config> =
+		StorageMap<orml_tokens::Pallet<T>, Twox64Concat, OldCurrencyId, Balance, ValueQuery>;
+
+	#[storage_alias]
+	type Accounts<T: orml_tokens::Config> = StorageDoubleMap<
+		orml_tokens::Pallet<T>,
+		Blake2_128Concat,
+		AccountId,
+		Twox64Concat,
+		OldCurrencyId,
+		AccountData<Balance>,
+		ValueQuery,
+	>;
+
+	impl<T> OnRuntimeUpgrade for CurrencyIdRefactorMigration<T>
+	where
+		T: orml_asset_registry::Config<AssetId = CurrencyId, Balance = Balance>
+			+ orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+			+ frame_system::Config<AccountId = AccountId>,
+	{
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			let total_issuance =
-				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
-			let entries: Vec<(AccountId, AccountData<Balance>)> =
-				orml_tokens::Accounts::<Runtime>::iter()
-					.filter(|(_, old_currency_id, _)| {
-						*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
-					})
-					.map(|(account, _, account_data)| (account, account_data))
-					.collect::<_>();
+			let total_issuance = TotalIssuance::<T>::get(DEPRECATED_AUSD_CURRENCY_ID);
+			let entries: Vec<(AccountId, AccountData<Balance>)> = Accounts::<T>::iter()
+				.filter(|(_, old_currency_id, _)| *old_currency_id == DEPRECATED_AUSD_CURRENCY_ID)
+				.map(|(account, _, account_data)| (account, account_data))
+				.collect::<_>();
+
+			log::info!(
+				"{LOG_PREFIX} PRE-UPGRADE: Counted accounts to be migrated is {} with total issuance of {total_issuance}", entries.iter().count()
+			);
 
 			Ok(OldState {
 				total_issuance,
@@ -239,25 +438,33 @@ mod orml_tokens_migration {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(state: Vec<u8>) -> Result<(), DispatchError> {
-			use crate::OrmlTokens;
-
 			let old_state = OldState::decode(&mut state.as_ref())
 				.map_err(|_| "Error decoding pre-upgrade state")?;
 
-			let new_total_issuance =
-				orml_tokens::TotalIssuance::<Runtime>::get(NEW_AUSD_CURRENCY_ID);
+			let new_total_issuance = orml_tokens::TotalIssuance::<T>::get(NEW_AUSD_CURRENCY_ID);
 
 			ensure!(
 				old_state.total_issuance == new_total_issuance,
 				"The old AUSD issuance differs from the new one"
 			);
+			ensure!(
+				TotalIssuance::<T>::get(DEPRECATED_AUSD_CURRENCY_ID).is_zero(),
+				"The total issuance of old AUSD is not zero!"
+			);
 
 			for (account, account_data) in old_state.entries {
 				ensure!(
-					OrmlTokens::accounts(&account, NEW_AUSD_CURRENCY_ID) == account_data.clone(),
+					orml_tokens::Pallet::<T>::accounts(&account, NEW_AUSD_CURRENCY_ID)
+						== account_data.clone(),
 					"The account data under the new AUSD Currency does NOT match the old one"
 				);
+				ensure!(
+					Accounts::<T>::get(&account, DEPRECATED_AUSD_CURRENCY_ID) == Default::default(),
+					"The account data for old AUSD is not cleared"
+				);
 			}
+
+			log::info!("{LOG_PREFIX} POST-UPGRADE: Done");
 
 			Ok(())
 		}
@@ -268,29 +475,21 @@ mod orml_tokens_migration {
 			let mut migrated_entries: u64 = 0;
 
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
-			orml_tokens::Accounts::<Runtime>::iter()
+			Accounts::<T>::iter()
 				.filter(|(_, old_currency_id, _)| *old_currency_id == DEPRECATED_AUSD_CURRENCY_ID)
 				.for_each(|(account, _, account_data)| {
+					log::info!(
+						"{LOG_PREFIX} Migrating account with balance: {}",
+						account_data.free
+					);
+
 					let balance = account_data.free;
-					// Burn the amount under the old, hardcoded CurrencyId
-					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(
-						DEPRECATED_AUSD_CURRENCY_ID,
-						&account,
-						balance,
-						Precision::Exact,
-						Fortitude::Force,
-					)
-					.map_err(|e| {
-						log::error!(
-							"Failed to call burn_from({:?}, {:?}, {balance}): {:?}",
-							DEPRECATED_AUSD_CURRENCY_ID,
-							account,
-							e
-						)
-					})
-					.ok();
+
+					// Remove account data and reduce total issuance manually at the end
+					Accounts::<T>::remove(account.clone(), DEPRECATED_AUSD_CURRENCY_ID);
+
 					// Now mint the amount under the new CurrencyID
-					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(
+					<orml_tokens::Pallet<T> as Mutate<AccountId>>::mint_into(
 						NEW_AUSD_CURRENCY_ID,
 						&account,
 						balance,
@@ -307,12 +506,19 @@ mod orml_tokens_migration {
 
 					migrated_entries += 1;
 				});
+			log::info!(
+				"{LOG_PREFIX} Number of migrated accounts: {:?} ",
+				migrated_entries
+			);
+
+			TotalIssuance::<T>::remove(DEPRECATED_AUSD_CURRENCY_ID);
+			log::info!("{LOG_PREFIX} Done");
 
 			// Approximate weight given for every entry migration there are two calls being
 			// made, so counting the reads and writes for each call.
 			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(
 				migrated_entries.saturating_mul(5),
-				migrated_entries.saturating_mul(4),
+				migrated_entries.saturating_mul(4).saturating_add(1),
 			)
 		}
 	}
