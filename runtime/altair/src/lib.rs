@@ -1816,10 +1816,10 @@ construct_runtime!(
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 70,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 72,
 
-		// our pallets
+		// our pallets (part 1)
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Swaps: pallet_swaps::{Pallet, Storage} = 92,
+		// Removed: Claims = 92
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
@@ -1872,6 +1872,8 @@ construct_runtime!(
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 
+		// Our pallets (part 2)
+		Swaps: pallet_swaps::{Pallet, Storage} = 200,
 	}
 );
 

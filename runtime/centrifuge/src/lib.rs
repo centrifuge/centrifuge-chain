@@ -1909,7 +1909,7 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Swaps: pallet_swaps::{Pallet, Storage} = 92,
+		// Removed: Claims = 92
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
@@ -1967,6 +1967,7 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
+		Swaps: pallet_swaps::{Pallet, Storage} = 188,
 	}
 );
 
