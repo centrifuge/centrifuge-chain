@@ -28,7 +28,6 @@ pub mod pallet_investments;
 pub mod pallet_keystore;
 pub mod pallet_liquidity_rewards;
 pub mod pallet_loans;
-pub mod pallet_migration_manager;
 pub mod pallet_multisig;
 pub mod pallet_oracle_collection;
 pub mod pallet_oracle_feed;

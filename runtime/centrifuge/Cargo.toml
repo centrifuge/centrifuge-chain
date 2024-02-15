@@ -110,10 +110,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
-pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
-pallet-nft = { workspace = true }
-pallet-nft-sales = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
@@ -241,10 +238,7 @@ std = [
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-membership/std",
-  "pallet-migration-manager/std",
   "pallet-multisig/std",
-  "pallet-nft/std",
-  "pallet-nft-sales/std",
   "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
@@ -330,10 +324,7 @@ runtime-benchmarks = [
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
-  "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
-  "pallet-nft/runtime-benchmarks",
-  "pallet-nft-sales/runtime-benchmarks",
   "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
@@ -420,10 +411,7 @@ try-runtime = [
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-membership/try-runtime",
-  "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
-  "pallet-nft/try-runtime",
-  "pallet-nft-sales/try-runtime",
   "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",

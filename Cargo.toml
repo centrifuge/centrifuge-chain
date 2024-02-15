@@ -27,9 +27,6 @@ members = [
   "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
-  "pallets/migration",
-  "pallets/nft",
-  "pallets/nft-sales",
   "pallets/oracle-feed",
   "pallets/oracle-collection",
   "pallets/order-book",
@@ -85,6 +82,7 @@ rand = { version = "0.8.5", default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
 impl-trait-for-tuples = "0.2.1"
 num-traits = { version = "0.2", default-features = false }
+num_enum = { version = "0.5.3", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -222,8 +220,12 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
+pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
 pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-blake2 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-bn128 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -245,6 +247,7 @@ moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbea
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
 # Centrifuge organization
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }
@@ -274,9 +277,6 @@ pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = 
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
-pallet-migration-manager = { path = "pallets/migration", default-features = false }
-pallet-nft = { path = "pallets/nft", default-features = false }
-pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
 pallet-oracle-collection = { path = "pallets/oracle-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }

@@ -181,20 +181,6 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 36;
 }
 
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
-}
-
 // system support impls
 impl frame_system::Config for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction
@@ -647,7 +633,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
 					// Specifically omitting Bridge
-					// Specifically omitting Nfts
 					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
@@ -1077,22 +1062,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
-}
-
-parameter_types! {
-	pub ResourceHashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub const NftProofValidationFeeKey: FeeKey = FeeKey::NftProofValidation;
-}
-
-impl pallet_nft::Config for Runtime {
-	type ChainId = chainbridge::ChainId;
-	type NftProofValidationFeeKey = NftProofValidationFeeKey;
-	type ResourceHashId = ResourceHashId;
-	type RuntimeEvent = RuntimeEvent;
-	// NOTE: No benchmarks available.
-	//       BUT will be deprecated once Tinlake
-	//       is wind down.
-	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1910,9 +1879,9 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		// Removed: Claims = 92
-		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
+		// Removed: Nfts = 93
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
+		// Removed: Migration = 95
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 96,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 97,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 98,
@@ -2552,7 +2521,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
@@ -2631,7 +2599,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);

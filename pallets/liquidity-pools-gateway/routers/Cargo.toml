@@ -13,7 +13,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-hex = { version = "0.4.3", default-features = false }
+hex = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-std = { workspace = true }
@@ -28,39 +28,38 @@ xcm = { workspace = true }
 xcm-primitives = { workspace = true }
 
 # EVM
-ethabi = { version = "16.0", default-features = false }
+ethabi = { workspace = true }
 pallet-ethereum = { workspace = true }
 pallet-evm = { workspace = true }
 
 # Custom crates
-cfg-traits = { path = "../../../libs/traits", default-features = false }
-cfg-types = { path = "../../../libs/types", default-features = false }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 
 # Local pallets
-pallet-ethereum-transaction = { path = "../../ethereum-transaction", default-features = false }
-pallet-liquidity-pools-gateway = { path = "../.", default-features = false }
+pallet-ethereum-transaction = { workspace = true }
+pallet-liquidity-pools-gateway = { workspace = true }
 
 [dev-dependencies]
-lazy_static = "1.4.0"
+lazy_static = { workspace = true }
 
-cumulus-primitives-core = { workspace = true }
+cumulus-primitives-core = { workspace = true, default-features = true }
 
-xcm-builder = { workspace = true }
-xcm-executor = { workspace = true }
+xcm-builder = { workspace = true, default-features = true }
+xcm-executor = { workspace = true, default-features = true }
 
-pallet-evm-chain-id = { workspace = true }
-pallet-evm-precompile-simple = { workspace = true }
+pallet-evm-chain-id = { workspace = true, default-features = true }
+pallet-evm-precompile-simple = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 
-sp-core = { workspace = true }
-sp-io = { workspace = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
-# TODO(william): Used to be "https://github.com/moonbeam-foundation/open-runtime-module-library", branch = "moonbeam-polkadot-v0.9.43"
-orml-traits = { workspace = true }
+orml-traits = { workspace = true, default-features = true }
 
-cfg-mocks = { path = "../../../libs/mocks" }
-cfg-primitives = { path = "../../../libs/primitives" }
-pallet-balances = { workspace = true }
+cfg-mocks = { workspace = true, default-features = true }
+cfg-primitives = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
