@@ -17,7 +17,6 @@ use frame_support::{
 	weights::Weight,
 };
 use orml_traits::asset_registry::AssetMetadata;
-use sp_arithmetic::traits::Zero;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
@@ -25,6 +24,7 @@ use sp_std::vec;
 use sp_std::vec::Vec;
 
 pub mod register {
+	use cfg_primitives::Balance;
 	#[cfg(feature = "try-runtime")]
 	use cfg_types::tokens::LocalAssetId;
 	use cfg_types::tokens::{CrossChainTransferability, CurrencyId};
@@ -38,7 +38,11 @@ pub mod register {
 
 	impl<T, LocalCurrency> OnRuntimeUpgrade for Migration<T, LocalCurrency>
 	where
-		T: orml_asset_registry::Config<CustomMetadata = CustomMetadata, AssetId = CurrencyId>,
+		T: orml_asset_registry::Config<
+			CustomMetadata = CustomMetadata,
+			AssetId = CurrencyId,
+			Balance = Balance,
+		>,
 		LocalCurrency: Get<CurrencyId>,
 	{
 		fn on_runtime_upgrade() -> Weight {
@@ -49,7 +53,7 @@ pub mod register {
 					// TODO: Ask others
 					name: "Local USDC".as_bytes().to_vec(),
 					symbol: "localUSDC".as_bytes().to_vec(),
-					existential_deposit: Zero::zero(),
+					existential_deposit: 1000u128,
 					location: None,
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::None,
