@@ -498,11 +498,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
-					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
-					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
-					// Specifically omitting NftSales `buy`
 					// Specifically omitting Bridge
-					// Specifically omitting Nfts
 					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
@@ -511,7 +507,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
-					// Specifically omitting Migration
 					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
 					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..}) |
 					RuntimeCall::BlockRewards(..)
@@ -966,23 +961,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-// Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the
-// migration folder
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
-}
-
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
@@ -1175,20 +1153,6 @@ impl orml_asset_registry::Config for Runtime {
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
-}
-
-impl pallet_nft_sales::Config for Runtime {
-	type CollectionId = CollectionId;
-	type Fungibles = Tokens;
-	type ItemId = ItemId;
-	type NonFungibles = Uniques;
-	type PalletId = NftSalesPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
 }
 
 // XCM
@@ -1835,7 +1799,7 @@ construct_runtime!(
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 96,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
-		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
+		// Removed: NftSales = 98
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 101,
@@ -1880,7 +1844,7 @@ construct_runtime!(
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// Our pallets part 2
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
+		// Removed: Migration = 199
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 200,
 	}
 );
@@ -2542,9 +2506,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans, Loans);
@@ -2624,9 +2586,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, Loans);

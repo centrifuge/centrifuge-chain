@@ -21,6 +21,7 @@ use cfg_types::tokens::{
 
 frame_support::parameter_types! {
 	pub const ClaimsPalletName: &'static str = "Claims";
+	pub const MigrationPalletName: &'static str = "Migration";
 	pub const UsdcVariants: [CurrencyId; 6] = [CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_AXELAR, CURRENCY_ID_LP_ETH, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO];
 	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
 	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
@@ -93,6 +94,8 @@ pub type UpgradeCentrifuge1025 = (
 		LocalCurrencyIdUsdc,
 		MinOrderAmount,
 	>,
+	// Removes unused migration pallet
+	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).

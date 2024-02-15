@@ -20,6 +20,11 @@ use frame_support::{
 };
 use orml_traits::asset_registry::AssetMetadata;
 
+frame_support::parameter_types! {
+	pub const NftSalesPalletName: &'static str = "NftSales";
+	pub const MigrationPalletName: &'static str = "Migration";
+}
+
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
@@ -66,6 +71,10 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::epoch_execution::Migration<crate::Runtime>,
 	// Probably not needed, as storage is likely not populated. Migrates currency used in allowlist
 	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
+	// Removes unused nft-sales pallet
+	runtime_common::migrations::nuke::KillPallet<NftSalesPalletName, crate::RocksDbWeight>,
+	// Removes unused migration pallet
+	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
 );
 
 #[allow(clippy::upper_case_acronyms)]

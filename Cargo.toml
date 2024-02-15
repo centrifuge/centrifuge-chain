@@ -27,9 +27,6 @@ members = [
   "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
-  "pallets/migration",
-  "pallets/nft",
-  "pallets/nft-sales",
   "pallets/oracle-feed",
   "pallets/oracle-collection",
   "pallets/order-book",
@@ -274,9 +271,6 @@ pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = 
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
-pallet-migration-manager = { path = "pallets/migration", default-features = false }
-pallet-nft = { path = "pallets/nft", default-features = false }
-pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
 pallet-oracle-collection = { path = "pallets/oracle-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
