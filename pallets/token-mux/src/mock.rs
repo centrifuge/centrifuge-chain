@@ -153,10 +153,10 @@ impl pallet_token_mux::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type LocalAssetId = LocalAssetId;
+	type OrderBook = MockTokenSwaps;
 	type OrderId = SwapId;
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type Swaps = MockTokenSwaps;
 	type Tokens = OrmlTokens;
 	type WeightInfo = ();
 }

@@ -1791,10 +1791,10 @@ impl pallet_token_mux::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type LocalAssetId = LocalAssetId;
+	type OrderBook = OrderBook;
 	type OrderId = OrderId;
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type Swaps = OrderBook;
 	type Tokens = OrmlTokens;
 	// TODO(william): Change to weights once they exist
 	type WeightInfo = ();

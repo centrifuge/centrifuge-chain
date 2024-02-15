@@ -125,7 +125,8 @@ where
 	}
 
 	fn add_trading_pair(currency_out: CurrencyId, currency_in: CurrencyId) {
-		T::Swaps::add_trading_pair(currency_in.into(), currency_out.into(), Zero::zero()).unwrap();
+		T::OrderBook::add_trading_pair(currency_in.into(), currency_out.into(), Zero::zero())
+			.unwrap();
 	}
 
 	fn place_order(
@@ -133,7 +134,7 @@ where
 		currency_in: CurrencyId,
 		account: &T::AccountId,
 	) -> T::OrderId {
-		T::Swaps::place_order(
+		T::OrderBook::place_order(
 			account.clone(),
 			currency_in.into(),
 			currency_out.into(),

@@ -116,7 +116,7 @@ pub mod pallet {
 			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId>;
 
 		/// The type for retrieving and fulfilling swap orders.
-		type Swaps: TokenSwaps<
+		type OrderBook: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
 			BalanceIn = Self::BalanceIn,
@@ -226,12 +226,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			let order = T::Swaps::get_order_details(order_id).ok_or(Error::<T>::SwapNotFound)?;
+			let order =
+				T::OrderBook::get_order_details(order_id).ok_or(Error::<T>::SwapNotFound)?;
 
 			let ratio = match order.ratio {
 				OrderRatio::Market => T::BalanceRatio::ensure_from_rational(
 					amount,
-					T::Swaps::convert_by_market(
+					T::OrderBook::convert_by_market(
 						order.swap.currency_in,
 						order.swap.currency_out,
 						amount,
@@ -257,7 +258,7 @@ pub mod pallet {
 					);
 
 					T::Tokens::mint_into(local, &Self::account(), amount.into())?;
-					T::Swaps::fill_order(Self::account(), order_id, amount)?;
+					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
 				}
 				// Exchange foreign for local and burn local
 				(Err(_), Ok(local)) => {
@@ -266,7 +267,7 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					T::Swaps::fill_order(Self::account(), order_id, amount)?;
+					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
 					T::Tokens::burn_from(
 						local,
 						&Self::account(),
