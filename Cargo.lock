@@ -181,10 +181,7 @@ dependencies = [
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
- "pallet-migration-manager",
  "pallet-multisig",
- "pallet-nft",
- "pallet-nft-sales",
  "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
@@ -1060,10 +1057,7 @@ dependencies = [
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
- "pallet-migration-manager",
  "pallet-multisig",
- "pallet-nft",
- "pallet-nft-sales",
  "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
@@ -2516,10 +2510,7 @@ dependencies = [
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
- "pallet-migration-manager",
  "pallet-multisig",
- "pallet-nft",
- "pallet-nft-sales",
  "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
@@ -7506,26 +7497,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-migration-manager"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "pallet-balances",
- "pallet-proxy",
- "pallet-vesting",
- "parity-scale-codec 3.6.9",
- "rand 0.8.5",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-mmr"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
@@ -7553,52 +7524,6 @@ dependencies = [
  "log",
  "parity-scale-codec 3.6.9",
  "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-nft"
-version = "2.0.0"
-dependencies = [
- "cfg-mocks",
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "chainbridge",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-anchors",
- "pallet-authorship",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec 3.6.9",
- "proofs",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-nft-sales"
-version = "2.0.0"
-dependencies = [
- "cfg-primitives",
- "cfg-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-uniques",
- "parity-scale-codec 3.6.9",
- "scale-info",
- "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -10890,10 +10815,7 @@ dependencies = [
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
- "pallet-migration-manager",
  "pallet-multisig",
- "pallet-nft",
- "pallet-nft-sales",
  "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
@@ -11008,10 +10930,7 @@ dependencies = [
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
- "pallet-migration-manager",
  "pallet-multisig",
- "pallet-nft",
- "pallet-nft-sales",
  "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
