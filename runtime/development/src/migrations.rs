@@ -11,15 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::{
-	usdc::{
-		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
-		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID,
-	},
+	usdc::{CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID},
 	CurrencyId, LocalAssetId,
 };
 
 frame_support::parameter_types! {
-	pub const UsdcVariants: [CurrencyId; 6] = [CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_AXELAR, CURRENCY_ID_LP_ETH, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO];
+	pub const UsdcVariants: [CurrencyId; 1] = [CURRENCY_ID_LP_ETH];
 	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
 	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
 	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
@@ -36,5 +33,14 @@ pub type UpgradeDevelopment1041 = (
 		super::Runtime,
 		UsdcVariants,
 		LocalAssetIdUsdc,
+	>,
+	// Migrate EpochExecution struct
+	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
+	// Reset pallets
+	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<
+		crate::TransferAllowList,
+		crate::RocksDbWeight,
+		0,
 	>,
 );
