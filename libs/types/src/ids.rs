@@ -31,7 +31,6 @@ pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"chnbrdge");
 pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
 pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = PalletId(*b"cc/claim");
 pub const TREASURY_PALLET_ID: PalletId = PalletId(*b"py/trsry");
-pub const NFT_SALES_PALLET_ID: PalletId = PalletId(*b"pal/nfts");
 pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 pub const BLOCK_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/blrw");
 pub const LIQUIDITY_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/lqrw");
