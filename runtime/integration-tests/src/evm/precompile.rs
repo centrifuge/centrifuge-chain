@@ -58,6 +58,7 @@ async fn axelar_precompile_execute() {
 
 	let currency_id = CurrencyId::ForeignAsset(123456);
 
+	let lp_axelar_gateway = H160::from_low_u64_be(LP_AXELAR_GATEWAY);
 	let sender_address = H160::from_low_u64_be(1_000_002);
 
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
@@ -216,7 +217,7 @@ async fn axelar_precompile_execute() {
 		assert_ok!(pallet_evm::Pallet::<Runtime>::call(
 			RawOrigin::Signed(derived_sender_account.clone()).into(),
 			sender_address,
-			LP_AXELAR_GATEWAY.into(),
+			lp_axelar_gateway,
 			test_input.to_vec(),
 			U256::from(0),
 			0x100000,
