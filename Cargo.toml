@@ -82,6 +82,7 @@ rand = { version = "0.8.5", default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
 impl-trait-for-tuples = "0.2.1"
 num-traits = { version = "0.2", default-features = false }
+num_enum = { version = "0.5.3", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -219,8 +220,12 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
+pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
 pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-blake2 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-bn128 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -242,6 +247,7 @@ moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbea
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
 # Centrifuge organization
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }

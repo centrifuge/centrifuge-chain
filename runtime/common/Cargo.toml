@@ -11,6 +11,7 @@ documentation.workspace = true
 [dependencies]
 hex-literal = { workspace = true }
 log = { workspace = true }
+num_enum = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
@@ -32,12 +33,14 @@ xcm-executor = { workspace = true }
 
 orml-traits = { workspace = true }
 
+pallet-evm-precompile-balances-erc20 = { workspace = true }
 pallet-evm-precompile-blake2 = { workspace = true }
 pallet-evm-precompile-bn128 = { workspace = true }
 pallet-evm-precompile-dispatch = { workspace = true }
 pallet-evm-precompile-modexp = { workspace = true }
 pallet-evm-precompile-sha3fips = { workspace = true }
 pallet-evm-precompile-simple = { workspace = true }
+precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
 
@@ -140,6 +143,7 @@ std = [
   "pallet-base-fee/std",
   "pallet-ethereum/std",
   "pallet-evm-chain-id/std",
+  "pallet-evm-precompile-balances-erc20/std",
   "pallet-evm-precompile-blake2/std",
   "pallet-evm-precompile-bn128/std",
   "pallet-evm-precompile-dispatch/std",
@@ -168,12 +172,6 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
-  "pallet-evm-precompile-blake2/std",
-  "pallet-evm-precompile-bn128/std",
-  "pallet-evm-precompile-dispatch/std",
-  "pallet-evm-precompile-modexp/std",
-  "pallet-evm-precompile-sha3fips/std",
-  "pallet-evm-precompile-simple/std",
 
   # Locals
   "cfg-primitives/std",

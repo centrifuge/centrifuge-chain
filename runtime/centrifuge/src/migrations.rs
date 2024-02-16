@@ -96,6 +96,8 @@ pub type UpgradeCentrifuge1025 = (
 	>,
 	// Removes unused migration pallet
 	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
+	// Sets account codes for all precompiles
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).

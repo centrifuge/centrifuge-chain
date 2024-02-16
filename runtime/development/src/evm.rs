@@ -17,7 +17,7 @@ use pallet_ethereum::PostLogContent;
 use pallet_evm::EnsureAddressTruncated;
 use runtime_common::{
 	account_conversion::AccountConverter,
-	evm::{precompile::Development, BaseFeeThreshold, WEIGHT_PER_GAS},
+	evm::{precompile::Precompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
@@ -42,9 +42,11 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	}
 }
 
+pub type DevelopmentPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: Development<Runtime> = Development::<_>::new();
+	pub PrecompilesValue: DevelopmentPrecompiles = Precompiles::<_, _>::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
 	//
 	// pub GasLimitPovSizeRatio: u64 = {
@@ -66,6 +68,7 @@ parameter_types! {
 	//       in their staging environment. As we can not constantly assert this value we hardcode
 	//       it for now.
 	pub const GasLimitStorageGrowthRatio: u64 = 366;
+	pub const TokenSymbol: &'static str = "DCFG";
 }
 
 impl pallet_evm::Config for Runtime {
@@ -82,7 +85,7 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = Development<Self>;
+	type PrecompilesType = DevelopmentPrecompiles;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
