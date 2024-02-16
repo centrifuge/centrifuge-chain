@@ -10,6 +10,9 @@ on:
       - .github/workflows/try-runtime.yml
 jobs:
   try-runtime:
+    permissions:
+      id-token: write
+      contents: read    
     strategy:
       matrix:
         chain: [altair, centrifuge]
