@@ -56,20 +56,11 @@ jobs:
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu 
 
-      - name: Install try-runtime-cli
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
+      # - name: Install try-runtime-cli
+      #   run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
       
       - name: Run try-runtime 
-        run: |
-          if [ "${{ matrix.chain }}" == "altair" ]; then
-            RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
-            cargo run --release --features try-runtime try-runtime \
-            --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
-            --chain altair on-runtime-upgrade live \
-            --uri wss://fullnode.altair.centrifuge.io:443
-          elif [ "${{ matrix.chain }}" == "centrifuge" ]; then
-            RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
-            cargo run --release --features try-runtime try-runtime \
-            --runtime target/release/wbuild/centrifuge-runtime/centrifuge_runtime.wasm \
-            --chain centrifuge on-runtime-upgrade live --uri wss://fullnode.centrifuge.io:443
-          fi
+        run: ./ci/run-check.sh "${{ matrix.chain }}"
+        env:
+          TARGET: try-runtime
+          RUSTC_WRAPPER: "sccache"
