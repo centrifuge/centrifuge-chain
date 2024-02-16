@@ -1,15 +1,19 @@
 on:
   schedule:
-    - cron: '0 0 * * 0' # At 00:00 on Sunday
+    - cron: '0 6 * * 0' # At 00:00 on Sunday
   pull_request:
     types: [labeled]
     paths:
       - '**.rs'
       - .github/workflows/try-runtime.yml
 jobs:
-  try-runtime-altair:
-    if: contains(github.event.pull_request.labels.*.name, 'D8-migration')
+  try-runtime:
+    strategy:
+      matrix:
+        chain: [altair, centrifuge]
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'D8-migration')
     runs-on: ubuntu-latest-4-cores
+    name: try-runtime "${{ matrix.chain }}"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -20,31 +24,17 @@ jobs:
       - name: Install try-runtime-cli
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
       
-      - name: Run try-runtime
+      - name: Run try-runtime 
         run: |
-          RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
-          cargo run --release --features try-runtime try-runtime \
-          --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
-          --chain altair on-runtime-upgrade live \
-          --uri wss://fullnode.altair.centrifuge.io:443
-
-  try-runtime-centrifuge:
-      if: contains(github.event.pull_request.labels.*.name, 'D8-migration')
-      runs-on: ubuntu-latest-4-cores
-      steps:
-        - name: Check out code
-          uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-
-        - name: Prep build on Ubuntu
-          uses: ./.github/actions/prep-ubuntu 
-
-        - name: Install try-runtime-cli
-          run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
-        
-        - name: Run try-runtime
-          run: |
+          if [ "${{ matrix.chain }}" == "altair" ]; then
+            RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
+            cargo run --release --features try-runtime try-runtime \
+            --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
+            --chain altair on-runtime-upgrade live \
+            --uri wss://fullnode.altair.centrifuge.io:443
+          elif [ "${{ matrix.chain }}" == "centrifuge" ]; then
             RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
             cargo run --release --features try-runtime try-runtime \
             --runtime target/release/wbuild/centrifuge-runtime/centrifuge_runtime.wasm \
             --chain centrifuge on-runtime-upgrade live --uri wss://fullnode.centrifuge.io:443
-# centrifuge y altair -> run on both chains
+          fi
