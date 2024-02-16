@@ -2,11 +2,9 @@ use std::{future::Future, pin::Pin};
 
 use crate::types::BaseError;
 
-mod document;
 mod p2p;
 mod storage;
 
-pub use document::*;
 pub use p2p::*;
 pub use storage::*;
 

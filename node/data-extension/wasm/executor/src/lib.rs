@@ -1,6 +1,5 @@
+use wasm_utils::{checked_range, unpack_ptr_and_len};
 use wasmtime::{AsContext, AsContextMut, Config, Engine, Instance, Module, Store};
-
-use crate::{checked_range, unpack_ptr_and_len};
 
 pub(crate) type InnerError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -137,41 +136,10 @@ mod test {
 		vec: Vec<u8>,
 	}
 
-	/// The wasm tested here was generated from:
-	///
-	/// ```no_run
-	/// use std::slice::from_raw_parts;
-	/// use serde::{Serialize, Deserialize};
-	///
-	/// #[derive(Debug, Serialize, Deserialize)]
-	/// pub struct TestStruct {
-	///     vec: Vec<u8>,
-	/// }
-	///
-	/// #[no_mangle]
-	/// pub unsafe fn test_slice(input_ptr: *mut u8, input_len: usize) -> u64 {
-	///     let ret = if input_len == 0 { &[0u8; 0] } else { unsafe { from_raw_parts(input_ptr, input_len) } };
-	///
-	///     let mut r: TestStruct = serde_json::from_slice(ret).expect("can decode TestStruct");
-	///
-	///     r.vec.push(11);
-	///
-	///     let res = serde_json::to_vec(&r).expect("can encode test struct");
-	///
-	///     return_from_wasm(res.as_slice())
-	/// }
-	///
-	/// pub fn return_from_wasm(value: &[u8]) -> u64 {
-	///     let ptr = value.as_ptr() as u64;
-	///     let length = value.len() as u64;
-	///     let res = ptr | (length << 32);
-	///
-	///     res
-	/// }
-	/// ```
+	// The wasm tested here was generated from the `test-wasm` crate.
 	#[test]
 	fn call_works() {
-		let wasm_bytes = fs::read("./src/test/test.wasm").unwrap();
+		let wasm_bytes = fs::read("./src/test/test_wasm.wasm").unwrap();
 
 		let ex = InMemoryWasmExecutor::new(wasm_bytes.as_slice()).expect("can build wasm executor");
 
@@ -181,7 +149,7 @@ mod test {
 		let test_bytes = serde_json::to_vec(&test_struct).expect("can serialize test struct");
 
 		let res = ex
-			.call_fn("test_slice", test_bytes.as_slice())
+			.call_fn("test_fn", test_bytes.as_slice())
 			.expect("can call wasm fn");
 
 		let second_struct: TestStruct =

@@ -7,12 +7,3 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 documentation.workspace = true
-
-[dependencies]
-thiserror = { workspace = true, default-features = true }
-wasmtime = { workspace = true, default-features = true }
-serde = { version = "1.0.195", features = ["derive"] }
-
-[dev-dependencies]
-serde = { workspace = true, default-features = true }
-serde_json = { workspace = true, default-features = true }

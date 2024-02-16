@@ -14107,6 +14107,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
+name = "test-wasm"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wasm-utils",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14955,12 +14964,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-gen-bt"
+name = "wasm-executor"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "thiserror",
  "wasm-utils",
+ "wasmtime 17.0.1",
 ]
 
 [[package]]
@@ -15030,12 +15041,6 @@ dependencies = [
 [[package]]
 name = "wasm-utils"
 version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "wasmtime 17.0.1",
-]
 
 [[package]]
 name = "wasmi"

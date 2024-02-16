@@ -1,9 +1,5 @@
 use std::ops::Range;
 
-mod executor;
-
-pub use executor::*;
-
 pub fn checked_range(offset: usize, len: usize, max: usize) -> Option<Range<usize>> {
 	let end = offset.checked_add(len)?;
 	(end <= max).then(|| offset..end)
