@@ -1,8 +1,8 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::{investments::Investment, TokenSwaps};
+use cfg_traits::{investments::Investment, Swap, Swaps};
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };
 use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -18,9 +18,7 @@ use sp_std::cmp::min;
 
 use crate::{
 	pallet::{Config, Error},
-	pool_currency_of,
-	swaps::Swaps,
-	Action, SwapOf,
+	pool_currency_of, Action, SwapOf,
 };
 
 /// Type used to be able to generate conversions from pool to foreign and
@@ -185,7 +183,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 		// It's ok to use the market ratio because this amount will be
 		// cancelled in this instant.
-		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
+		let increasing_pool_amount = T::Swaps::convert_by_market(
 			pool_currency,
 			self.foreign_currency,
 			min(foreign_amount, increasing_foreign_amount).into(),
@@ -378,13 +376,8 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::ForeignBalance, DispatchError> {
-		Ok(Swaps::<T>::pending_amount_for(
-			who,
-			investment_id,
-			Action::Investment,
-			self.foreign_currency,
-		)
-		.into())
+		let swap_id = (investment_id, Action::Investment);
+		Ok(T::Swaps::pending_amount(who, swap_id, self.foreign_currency)?.into())
 	}
 
 	/// In foreign currency denomination
@@ -393,13 +386,9 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::PoolBalance, DispatchError> {
-		Ok(Swaps::<T>::pending_amount_for(
-			who,
-			investment_id,
-			Action::Investment,
-			pool_currency_of::<T>(investment_id)?,
-		)
-		.into())
+		let swap_id = (investment_id, Action::Investment);
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+		Ok(T::Swaps::pending_amount(who, swap_id, pool_currency)?.into())
 	}
 
 	pub fn is_completed(

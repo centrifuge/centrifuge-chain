@@ -1770,7 +1770,7 @@ impl pallet_order_book::Config for Runtime {
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
@@ -1778,6 +1778,15 @@ impl pallet_order_book::Config for Runtime {
 	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
 parameter_types! {
@@ -1895,6 +1904,7 @@ construct_runtime!(
 		// our pallets part 2
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
+		Swaps: pallet_swaps::{Pallet, Storage} = 252,
 	}
 );
 

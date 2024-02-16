@@ -1,5 +1,6 @@
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, CouncilCollective, PoolId, TrancheId,
+	currency_decimals, parachains, AccountId, Balance, CouncilCollective, OrderId, PoolId,
+	TrancheId,
 };
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, OrderManager, TrancheCurrency},
@@ -528,6 +529,15 @@ mod development {
 				POOL_ID,
 				default_tranche_id::<T>(POOL_ID),
 			)
+		}
+
+		pub fn default_order_id<T: Runtime + FudgeSupport>(investor: &AccountId) -> OrderId {
+			let default_swap_id = (
+				default_investment_id::<T>(),
+				pallet_foreign_investments::Action::Investment,
+			);
+			pallet_swaps::Pallet::<T>::order_id(&investor, default_swap_id)
+				.expect("Swap order exists; qed")
 		}
 
 		/// Returns the default investment account derived from the
@@ -2218,7 +2228,6 @@ mod development {
 					// Create new pool
 					create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
 					let investment_currency_id: CurrencyId = default_investment_id::<T>().into();
-
 					// Set permissions and execute initial investment
 					do_initial_increase_investment::<T>(
 						pool_id,
@@ -3829,15 +3838,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader,
@@ -3950,15 +3953,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader.clone(),
@@ -4027,15 +4024,9 @@ mod development {
 					));
 
 					// Swap decreased amount
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated
 					));
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -4105,12 +4096,7 @@ mod development {
 					);
 
 					// Fulfilling order should propagate it from swapping to investing
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
+					let swap_order_id = default_order_id::<T>(&investor);
 					fulfill_swap_into_pool::<T>(
 						pool_id,
 						swap_order_id,
@@ -4146,13 +4132,7 @@ mod development {
 						msg.clone()
 					));
 
-					// Fulfill the decrease swap order
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
+					let swap_order_id = default_order_id::<T>(&investor);
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
 						swap_order_id,
@@ -4236,15 +4216,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader.clone(),
@@ -4264,15 +4238,9 @@ mod development {
 					));
 
 					// Fulfill decrease swap partially
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						3 * invest_amount_pool_denominated / 4
 					));
 

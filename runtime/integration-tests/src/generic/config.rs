@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
-	Index, ItemId, LoanId, PoolId, Signature, TrancheId,
+	Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -136,13 +136,13 @@ pub trait Runtime:
 		OrderIdNonce = u64,
 		Ratio = Ratio,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
-	> + pallet_foreign_investments::Config<
+	> + pallet_swaps::Config<OrderId = OrderId, SwapId = pallet_foreign_investments::SwapId<Self>>
+	+ pallet_foreign_investments::Config<
 		ForeignBalance = Balance,
 		PoolBalance = Balance,
 		TrancheBalance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
-		SwapId = u64,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ConversionToAssetBalance, ValueProvider};
+use cfg_traits::{ConversionToAssetBalance, OrderRatio, TokenSwaps, ValueProvider};
 use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
 use frame_support::traits::{fungibles::Mutate as _, Get};
