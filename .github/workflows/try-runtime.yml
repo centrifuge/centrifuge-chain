@@ -15,6 +15,7 @@ jobs:
       id-token: write
       contents: read    
     strategy:
+      fail-fast: false
       matrix:
         chain: [altair, centrifuge]
     if: >
