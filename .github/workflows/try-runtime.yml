@@ -88,7 +88,7 @@ jobs:
         env:
           SLACK_CHANNEL: eng-protocol-general
           SLACK_COLOR: '#FF0000'
-          SLACK_ICON: ':boom:'
+          SLACK_ICON: "https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
           SLACK_MESSAGE: |
             Weekly try-runtime job failed on main branch. Please check:
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|GHA Job URL>
