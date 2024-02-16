@@ -80,7 +80,7 @@ jobs:
 
   notify-slack:
     needs: try-runtime
-    if: ${{ always() && needs.try-runtime.result == 'failure' }} && github.event_name == 'schedule'
+    if: always() && needs.try-runtime.result == 'failure' && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack
