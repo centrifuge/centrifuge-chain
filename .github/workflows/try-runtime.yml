@@ -55,6 +55,10 @@ jobs:
 
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu 
+        with:
+          cache: enabled
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}        
 
       # - name: Install try-runtime-cli
       #   run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
