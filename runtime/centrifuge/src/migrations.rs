@@ -32,7 +32,7 @@ frame_support::parameter_types! {
 	pub const UsdcBase: CurrencyId = CURRENCY_ID_LP_BASE;
 	pub const UsdcArb: CurrencyId = CURRENCY_ID_LP_ARB;
 	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
-	pub const MinOrderAmount: Balance = 10 * CFG;
+	pub const MinOrderAmount: Balance = 10u128.pow(6);
 }
 
 pub type UpgradeCentrifuge1025 = (
