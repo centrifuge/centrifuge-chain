@@ -117,6 +117,7 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 }
 
 impl cfg_mocks::value_provider::pallet::Config for Runtime {
+	type AssetRegistry = RegistryMock;
 	type Key = (CurrencyId, CurrencyId);
 	type Source = AccountId;
 	type Value = Ratio;

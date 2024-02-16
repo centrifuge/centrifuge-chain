@@ -2,7 +2,10 @@ use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::{Millis, PoolInspect, ValueProvider};
+use cfg_traits::{
+	HasLocalAssetRepresentation, Millis, PoolInspect, ValueProvider,
+	ValueProviderLocalAssetExtension,
+};
 use cfg_types::{
 	fixed_point::{Quantity, Ratio},
 	oracles::OracleKey,
@@ -12,6 +15,7 @@ use frame_support::{traits::OriginTrait, RuntimeDebugNoBound};
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::One;
 use sp_runtime::{traits::EnsureInto, DispatchError};
 use sp_std::marker::PhantomData;
 
@@ -159,5 +163,35 @@ where
 			&OracleKey::ConversionRatio(*from, *to),
 			(ratio, 0),
 		);
+	}
+}
+
+impl<Origin, Provider, AssetInspect>
+	ValueProviderLocalAssetExtension<Feeder<Origin>, (CurrencyId, CurrencyId), AssetInspect>
+	for OracleRatioProvider<Origin, Provider>
+where
+	Origin: OriginTrait,
+	Provider: ValueProvider<Origin, OracleKey, Value = (Ratio, Millis)>,
+	CurrencyId: HasLocalAssetRepresentation<AssetInspect>,
+	AssetInspect: asset_registry::Inspect<
+		AssetId = CurrencyId,
+		Balance = Balance,
+		CustomMetadata = CustomMetadata,
+	>,
+{
+	fn try_get_local((from, to): &(CurrencyId, CurrencyId)) -> Option<Ratio> {
+		match (from, to) {
+			(_, &CurrencyId::LocalAsset(_)) => from.is_local_representation_of(to),
+			(&CurrencyId::LocalAsset(_), _) => to.is_local_representation_of(from),
+			_ => Err(DispatchError::Other("No local coupling possible")),
+		}
+		.ok()
+		.and_then(|is_locally_coupled| {
+			if is_locally_coupled {
+				Some(Ratio::one())
+			} else {
+				None
+			}
+		})
 	}
 }

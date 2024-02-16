@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::ValueProvider;
+	use cfg_traits::{ValueProvider, ValueProviderLocalAssetExtension};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -9,6 +9,7 @@ pub mod pallet {
 		type Source;
 		type Key;
 		type Value;
+		type AssetRegistry;
 	}
 
 	#[pallet::pallet]
@@ -28,6 +29,10 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
+
+		pub fn mock_try_get_local(f: impl Fn(&T::Key) -> Option<T::Value> + 'static) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: Config> ValueProvider<T::Source, T::Key> for Pallet<T> {
@@ -35,6 +40,14 @@ pub mod pallet {
 
 		fn get(a: &T::Source, b: &T::Key) -> Result<Option<Self::Value>, DispatchError> {
 			execute_call!((a, b))
+		}
+	}
+
+	impl<T: Config> ValueProviderLocalAssetExtension<T::Source, T::Key, T::AssetRegistry>
+		for Pallet<T>
+	{
+		fn try_get_local(a: &T::Key) -> Option<Self::Value> {
+			execute_call!(a)
 		}
 	}
 }

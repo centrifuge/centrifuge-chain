@@ -632,6 +632,7 @@ mod market {
 				assert_eq!(*pair, (CURRENCY_A, CURRENCY_B));
 				Ok(Some(DEFAULT_RATIO))
 			});
+			MockRatioProvider::mock_try_get_local(move |_| None);
 
 			let first_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
 			util::expect_notification(order_id, token_a(1), first_amount_in, token_a(9));
@@ -675,6 +676,7 @@ mod market {
 			let order_id = util::create_default_order_market(token_a(10));
 
 			MockRatioProvider::mock_get(move |_, _| Ok(Some(DEFAULT_RATIO)));
+			MockRatioProvider::mock_try_get_local(move |_| None);
 
 			assert_err!(
 				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
@@ -690,6 +692,7 @@ mod market {
 
 			assert_ok!(OrderBook::set_market_feeder(RuntimeOrigin::root(), FEEDER));
 			MockRatioProvider::mock_get(move |_, _| Ok(None));
+			MockRatioProvider::mock_try_get_local(move |_| None);
 
 			assert_err!(
 				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),

@@ -16,7 +16,7 @@ use cfg_primitives::{
 	types::{PoolId, TrancheId},
 	Balance, PalletIndex,
 };
-use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
 pub use orml_asset_registry::AssetMetadata;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -365,6 +365,34 @@ pub enum FilterCurrency {
 impl From<CurrencyId> for FilterCurrency {
 	fn from(value: CurrencyId) -> Self {
 		Self::Specific(value)
+	}
+}
+
+impl<AssetInspect> HasLocalAssetRepresentation<AssetInspect> for CurrencyId
+where
+	AssetInspect: orml_traits::asset_registry::Inspect<
+		AssetId = CurrencyId,
+		Balance = Balance,
+		CustomMetadata = CustomMetadata,
+	>,
+{
+	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError> {
+		let meta_local = AssetInspect::metadata(self).ok_or(DispatchError::CannotLookup)?;
+		let meta_variant =
+			AssetInspect::metadata(variant_currency).ok_or(DispatchError::CannotLookup)?;
+
+		let local: Self = meta_variant
+			.additional
+			.local_representation
+			.ok_or(DispatchError::Other("Missing local representation"))?
+			.into();
+
+		frame_support::ensure!(
+			meta_local.decimals == meta_variant.decimals,
+			DispatchError::Other("Mismatching decimals")
+		);
+
+		Ok(self == &local)
 	}
 }
 
