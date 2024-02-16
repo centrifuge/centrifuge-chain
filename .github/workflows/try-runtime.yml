@@ -1,22 +1,67 @@
 on:
   schedule:
     - cron: '0 6 * * 0' # At 00:00 on Sunday
+  issue_comment:
+    types: [created]
   pull_request:
     types: [labeled]
     paths:
       - '**.rs'
       - .github/workflows/try-runtime.yml
 jobs:
+  comment-checks:
+    if: >
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != '' &&
+      contains(github.event.comment.body, '/try-runtime')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+ 
   try-runtime:
     strategy:
       matrix:
         chain: [altair, centrifuge]
-    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'D8-migration')
+    if: >
+      github.event_name == 'schedule' || 
+      contains(github.event.pull_request.labels.*.name, 'D8-migration') ||
+      (github.event_name == 'issue_comment' && 
+      contains(github.event.comment.body, '/try-runtime') &&
+      github.event.issue.pull_request != '')
+
     runs-on: ubuntu-latest-4-cores
     name: try-runtime "${{ matrix.chain }}"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Get PR author and commenter
+        id: get-users
+        if: github.event_name == 'issue_comment'
+        run: |
+          PR_AUTHOR=$(gh pr view ${{ github.event.issue.number }} --json author --jq .author.login)
+          COMMENT_AUTHOR="${{ github.event.comment.user.login }}"
+          echo "::set-output name=pr_author::$PR_AUTHOR"
+          echo "::set-output name=comment_author::$COMMENT_AUTHOR"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if commenter is PR author and a repo contributor
+        if: >
+          steps.get-users.outputs.pr_author == steps.get-users.outputs.comment_author &&
+          github.event_name == 'issue_comment'
+        run: |
+          if [[ "${{ steps.get-users.outputs.pr_author }}" != "${{ steps.get-users.outputs.comment_author }}" ]]; then
+            echo "PR author is not the comment author."
+            exit 1
+          fi
+          CONTRIBUTOR_CHECK=$(gh api repos/${{ github.repository }}/contributors --jq '.[].login | select(. == "${{ steps.get-users.outputs.comment_author }}")')
+          if [[ -z "$CONTRIBUTOR_CHECK" ]]; then
+            echo "Commenter is not a contributor."
+            exit 1
+          fi
+          echo "Commenter is a contributor and PR author."
 
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu 
