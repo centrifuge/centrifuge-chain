@@ -1016,7 +1016,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
-					mintable: true,
+					mintable: false,
 					permissioned: false,
 					pool_currency: true,
 					transferability: CrossChainTransferability::None,

@@ -50,14 +50,13 @@ pub mod register {
 				Some(LocalCurrency::get()),
 				AssetMetadata {
 					decimals: 6,
-					// TODO: Ask others
 					name: "Local USDC".as_bytes().to_vec(),
 					symbol: "localUSDC".as_bytes().to_vec(),
 					existential_deposit: 1000u128,
 					location: None,
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::None,
-						mintable: true,
+						mintable: false,
 						permissioned: false,
 						pool_currency: true,
 						local_representation: None,
