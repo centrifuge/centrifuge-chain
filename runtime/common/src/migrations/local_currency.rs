@@ -241,7 +241,11 @@ pub mod translate_metadata {
 }
 
 pub mod migrate_pool_currency {
+	use cfg_primitives::{PoolId, TrancheId};
+	use cfg_traits::investments::TrancheCurrency as _;
+	use cfg_types::tokens::TrancheCurrency;
 	use orml_traits::asset_registry::Inspect;
+	use sp_runtime::traits::Zero;
 
 	use super::*;
 
@@ -254,8 +258,12 @@ pub mod migrate_pool_currency {
 	impl<T, TargetPoolId, CurrencyOut, CurrencyIn> OnRuntimeUpgrade
 		for Migration<T, TargetPoolId, CurrencyOut, CurrencyIn>
 	where
-		T: pallet_pool_system::Config
-			+ orml_asset_registry::Config<CustomMetadata = CustomMetadata, AssetId = CurrencyId>,
+		T: pallet_pool_system::Config<
+				TrancheId = TrancheId,
+				PoolId = PoolId,
+				CurrencyId = CurrencyId,
+			> + orml_asset_registry::Config<CustomMetadata = CustomMetadata, AssetId = CurrencyId>
+			+ pallet_investments::Config<InvestmentId = TrancheCurrency>,
 		TargetPoolId: Get<<T as pallet_pool_system::Config>::PoolId>,
 		CurrencyOut: Get<CurrencyId>,
 		CurrencyIn: Get<CurrencyId>,
@@ -265,18 +273,27 @@ pub mod migrate_pool_currency {
 		fn on_runtime_upgrade() -> Weight {
 			let to = CurrencyIn::get();
 			let from = CurrencyOut::get();
-			let mut weight = T::DbWeight::get().reads(2);
+			let mut weight = T::DbWeight::get().reads(3);
 
-			if let Some(true) = check_local_coupling::<T>(from, to) {
-				pallet_pool_system::Pool::<T>::mutate(TargetPoolId::get(), |maybe_pool| {
-					if let Some(pool) = maybe_pool {
-						pool.currency = to.into();
-					}
-				});
-				weight.saturating_accrue(T::DbWeight::get().writes(1));
-				log::info!("{LOG_PREFIX} Migrated pool currency");
-			} else {
-				log::info!("{LOG_PREFIX} Skipping pool currency migration");
+			match (
+				check_local_coupling::<T>(from, to),
+				has_pending_invest_orders::<T>(TargetPoolId::get()),
+			) {
+				(Some(true), false) => {
+					pallet_pool_system::Pool::<T>::mutate(TargetPoolId::get(), |maybe_pool| {
+						if let Some(pool) = maybe_pool {
+							pool.currency = to;
+						}
+					});
+					weight.saturating_accrue(T::DbWeight::get().writes(1));
+					log::info!("{LOG_PREFIX} Migrated pool currency");
+				}
+				(_, false) => {
+					log::info!("{LOG_PREFIX} Skipping pool currency migration due to local coupling issues");
+				}
+				(_, true) => {
+					log::info!("{LOG_PREFIX} Skipping pool currency migration due non-empty active investment orders");
+				}
 			}
 
 			weight
@@ -292,6 +309,7 @@ pub mod migrate_pool_currency {
 			let pool =
 				pallet_pool_system::Pool::<T>::get(TargetPoolId::get()).expect("Pool should exist");
 			assert!(pool.currency == CurrencyOut::get().into());
+			assert!(!has_pending_invest_orders::<T>(TargetPoolId::get()));
 
 			log::info!("{LOG_PREFIX} PRE UPGRADE: Finished");
 
@@ -343,6 +361,27 @@ pub mod migrate_pool_currency {
 				None
 			}
 		}
+	}
+
+	fn has_pending_invest_orders<T>(pool_id: PoolId) -> bool
+	where
+		T: pallet_investments::Config<InvestmentId = TrancheCurrency>,
+		T: pallet_pool_system::Config<
+			PoolId = PoolId,
+			TrancheId = TrancheId,
+			CurrencyId = CurrencyId,
+		>,
+	{
+		let tranches = pallet_pool_system::Pool::<T>::get(pool_id)
+			.expect("Pool exists; qed")
+			.tranches;
+		tranches.ids.into_iter().any(|tranche_id| {
+			!pallet_investments::ActiveInvestOrders::<T>::get(TrancheCurrency::generate(
+				pool_id, tranche_id,
+			))
+			.amount
+			.is_zero()
+		})
 	}
 }
 
