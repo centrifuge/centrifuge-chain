@@ -2,10 +2,7 @@ use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::{
-	HasLocalAssetRepresentation, Millis, PoolInspect, ValueProvider,
-	ValueProviderLocalAssetExtension,
-};
+use cfg_traits::{HasLocalAssetRepresentation, Millis, PoolInspect, ValueProvider};
 use cfg_types::{
 	fixed_point::{Quantity, Ratio},
 	oracles::OracleKey,
@@ -166,12 +163,16 @@ where
 	}
 }
 
-impl<Origin, Provider, AssetInspect>
-	ValueProviderLocalAssetExtension<Feeder<Origin>, (CurrencyId, CurrencyId), AssetInspect>
-	for OracleRatioProvider<Origin, Provider>
+/// An extension of the [OracleRatioProvider] which performs a pre-check when
+/// querying a feeder key value pair.
+pub struct OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>(
+	PhantomData<(Origin, Provider, AssetInspect)>,
+);
+impl<Origin, Provider, AssetInspect> ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId)>
+	for OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>
 where
 	Origin: OriginTrait,
-	Provider: ValueProvider<Origin, OracleKey, Value = (Ratio, Millis)>,
+	Provider: ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId), Value = Ratio>,
 	CurrencyId: HasLocalAssetRepresentation<AssetInspect>,
 	AssetInspect: asset_registry::Inspect<
 		AssetId = CurrencyId,
@@ -179,19 +180,27 @@ where
 		CustomMetadata = CustomMetadata,
 	>,
 {
-	fn try_get_local((from, to): &(CurrencyId, CurrencyId)) -> Option<Ratio> {
-		match (from, to) {
+	type Value = Ratio;
+
+	fn get(
+		feeder: &Feeder<Origin>,
+		(from, to): &(CurrencyId, CurrencyId),
+	) -> Result<Option<Self::Value>, DispatchError> {
+		let locally_coupled_assets = match (from, to) {
 			(_, &CurrencyId::LocalAsset(_)) => from.is_local_representation_of(to),
 			(&CurrencyId::LocalAsset(_), _) => to.is_local_representation_of(from),
-			_ => Err(DispatchError::Other("No local coupling possible")),
+			_ => Ok(false),
+		}?;
+
+		if locally_coupled_assets {
+			Ok(Some(Ratio::one()))
+		} else {
+			Provider::get(feeder, &(*from, *to))
 		}
-		.ok()
-		.and_then(|is_locally_coupled| {
-			if is_locally_coupled {
-				Some(Ratio::one())
-			} else {
-				None
-			}
-		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(feeder: &Feeder<Origin>, (from, to): &(CurrencyId, CurrencyId), ratio: Ratio) {
+		Provider::set(&feeder, &(*from, *to), ratio);
 	}
 }

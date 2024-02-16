@@ -37,10 +37,7 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::{
-		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
-		ValueProviderLocalAssetExtension,
-	};
+	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook, ValueProvider};
 	use cfg_types::{
 		investments::{Swap, SwapState},
 		orders::OrderInfo,
@@ -183,12 +180,11 @@ pub mod pallet {
 		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
 
 		/// A way to obtain conversion ratios for market pairs
-		type RatioProvider: ValueProvider<Self::FeederId, (Self::CurrencyId, Self::CurrencyId), Value = Self::Ratio>
-			+ ValueProviderLocalAssetExtension<
-				Self::FeederId,
-				(Self::CurrencyId, Self::CurrencyId),
-				Self::AssetRegistry,
-			>;
+		type RatioProvider: ValueProvider<
+			Self::FeederId,
+			(Self::CurrencyId, Self::CurrencyId),
+			Value = Self::Ratio,
+		>;
 
 		/// The admin origin of this pallet
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -729,15 +725,10 @@ pub mod pallet {
 			currency_from: T::CurrencyId,
 			currency_to: T::CurrencyId,
 		) -> Result<T::Ratio, DispatchError> {
-			T::RatioProvider::try_get_local(&(currency_from, currency_to)).map_or_else(
-				|| {
-					let feeder = MarketFeederId::<T>::get()?;
+			let feeder = MarketFeederId::<T>::get()?;
 
-					T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
-						.ok_or(Error::<T>::MarketRatioNotFound.into())
-				},
-				Ok,
-			)
+			T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
+				.ok_or(Error::<T>::MarketRatioNotFound.into())
 		}
 
 		/// `ratio` is the value you multiply `amount_from` to obtain

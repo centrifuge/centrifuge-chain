@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, PoolId, CFG};
+use cfg_primitives::{Balance, PoolId};
 use cfg_types::tokens::{
 	usdc::{
 		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,

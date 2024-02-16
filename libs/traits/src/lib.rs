@@ -706,13 +706,6 @@ impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 	}
 }
 
-/// Wrapper of the [ValueProvider] to check for local asset existence
-pub trait ValueProviderLocalAssetExtension<Source, Key, AssetInspect>:
-	ValueProvider<Source, Key>
-{
-	fn try_get_local(key: &Key) -> Option<Self::Value>;
-}
-
 /// Checks whether an asset is the local representation of another one
 pub trait HasLocalAssetRepresentation<AssetRegistry> {
 	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError>;

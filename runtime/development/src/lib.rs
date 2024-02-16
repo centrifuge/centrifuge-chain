@@ -90,7 +90,9 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
+	oracle::{
+		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
+	},
 	permissions::PoolAdminCheck,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -1775,7 +1777,11 @@ impl pallet_order_book::Config for Runtime {
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
+	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+		RuntimeOrigin,
+		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
+		OrmlAssetRegistry,
+	>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
