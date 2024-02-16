@@ -4,6 +4,8 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+use crate::tokens::CurrencyId;
+
 /// [ISIN](https://en.wikipedia.org/wiki/International_Securities_Identification_Number) format.
 pub type Isin = [u8; 12];
 
@@ -23,7 +25,17 @@ pub type Isin = [u8; 12];
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OracleKey {
+	/// Identify a Isin price
 	Isin(Isin),
+
+	/// Identify a conversion from the first currency to the second one
+	ConversionRatio(CurrencyId, CurrencyId),
+}
+
+impl From<(CurrencyId, CurrencyId)> for OracleKey {
+	fn from((from, to): (CurrencyId, CurrencyId)) -> Self {
+		Self::ConversionRatio(from, to)
+	}
 }
 
 #[cfg(feature = "runtime-benchmarks")]

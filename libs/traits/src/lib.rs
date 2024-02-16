@@ -503,98 +503,64 @@ pub trait CurrencyInspect {
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
 
+/// Determines an order price
+#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+pub enum OrderRatio<Ratio> {
+	Market,
+	Custom(Ratio),
+}
+
+/// A simple representation of a currency swap.
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct Swap<Amount, Currency> {
+	/// The incoming currency, i.e. the desired one.
+	pub currency_in: Currency,
+
+	/// The outgoing currency, i.e. the one which should be replaced.
+	pub currency_out: Currency,
+
+	/// The amount of outcoming currency that will be swapped.
+	pub amount_out: Amount,
+}
+
+impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
+	pub fn has_same_currencies(&self) -> bool {
+		self.currency_in == self.currency_out
+	}
+
+	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
+		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
+			Ok(true)
+		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
+			Ok(false)
+		} else {
+			Err(DispatchError::Other("Swap contains different currencies"))
+		}
+	}
+}
+
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
-	type Balance;
-	type SellRatio;
+	type BalanceOut;
+	type BalanceIn;
+	type Ratio;
 	type OrderId;
-	type OrderDetails;
 
-	/// Swap tokens buying a `buy_amount` of `currency_in` using the
-	/// `currency_out` tokens. The implementer of this method should know
-	/// the current market rate between those two currencies.
-	/// `sell_rate_limit` defines the highest price acceptable for
-	/// `currency_in` currency when buying with `currency_out`. This
-	/// protects order placer if market changes unfavourably for swap order.
-	/// For example, with a `sell_rate_limit` of `3/2`, one `asset_in`
-	/// should never cost more than 1.5 units of `asset_out`. Returns `Result`
-	/// with `OrderId` upon successful order creation.
-	///
-	/// NOTE: The minimum fulfillment amount is implicitly set by the
-	/// implementor.
-	///
-	/// Example usage with `pallet_order_book` impl:
-	/// ```ignore
-	/// OrderBook::place_order(
-	///     {AccountId},
-	///     CurrencyId::ForeignAsset(0),
-	///     CurrencyId::ForeignAsset(1),
-	///     100 * FOREIGN_ASSET_0_DECIMALS,
-	///     Quantity::checked_from_rational(3u32, 2u32).unwrap(),
-	///     100 * FOREIGN_ASSET_0_DECIMALS
-	/// )
-	/// ```
-	/// Would return `Ok({OrderId}` and create the following order in storage:
-	/// ```ignore
-	/// Order {
-	///     order_id: {OrderId},
-	///     placing_account: {AccountId},
-	///     asset_in_id: CurrencyId::ForeignAsset(0),
-	///     asset_out_id: CurrencyId::ForeignAsset(1),
-	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     sell_rate_limit: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
-	///     max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS,
-	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
-	/// }
-	/// ```
+	/// Swap tokens selling `amount_out` of `currency_out` and buying
+	/// `currency_in` given an order ratio.
 	fn place_order(
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		buy_amount: Self::Balance,
-		sell_rate_limit: Self::SellRatio,
+		amount_out: Self::BalanceOut,
+		ratio: OrderRatio<Self::Ratio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
-	/// As with creating an order, the `sell_rate_limit` defines the highest
-	/// price acceptable for `currency_in` currency when buying with
-	/// `currency_out`. Returns a Dispatch result.
-	///
-	/// NOTE: The minimum fulfillment amount is implicitly set by the
-	/// implementor.
-	///
-	/// This Can fail for various reasons.
-	///
-	/// Example usage with `pallet_order_book` impl:
-	/// ```ignore
-	/// OrderBook::update_order(
-	///     {AccountId},
-	///     {OrderId},
-	///     15 * FOREIGN_ASSET_0_DECIMALS,
-	///     Quantity::checked_from_integer(2u32).unwrap(),
-	///     6 * FOREIGN_ASSET_0_DECIMALS
-	/// )
-	/// ```
-	/// Would return `Ok(())` and update the following order in storage:
-	/// ```ignore
-	/// Order {
-	///     order_id: {OrderId},
-	///     placing_account: {AccountId},
-	///     asset_in_id: CurrencyId::ForeignAsset(0),
-	///     asset_out_id: CurrencyId::ForeignAsset(1),
-	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
-	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
-	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
-	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
-	/// }
-	/// ```
 	fn update_order(
-		account: Account,
 		order_id: Self::OrderId,
-		buy_amount: Self::Balance,
-		sell_rate_limit: Self::SellRatio,
+		amount_out: Self::BalanceOut,
+		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair
@@ -605,11 +571,88 @@ pub trait TokenSwaps<Account> {
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
-	/// Check if the order is still active.
-	fn is_active(order: Self::OrderId) -> bool;
-
 	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
+	fn get_order_details(order: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>>;
+
+	/// Makes a conversion between 2 currencies using the market ratio between
+	/// them
+	fn convert_by_market(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::BalanceOut,
+	) -> Result<Self::BalanceIn, DispatchError>;
+}
+
+/// A representation of a currency swap in process.
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct SwapState<AmountIn, AmountOut, Currency> {
+	/// Swap not yet processed with the pending outcomming amount
+	pub remaining: Swap<AmountOut, Currency>,
+
+	/// Amount of incoming currency already swapped
+	pub swapped_in: AmountIn,
+
+	/// Amount of incoming currency already swapped denominated in outgoing
+	/// currency
+	pub swapped_out: AmountOut,
+}
+
+/// Used as result of `Pallet::apply_swap()`
+/// Amounts are donominated referenced by the `new_swap` paramenter given to
+/// `apply_swap()`
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct SwapStatus<Amount> {
+	/// The incoming amount already swapped and available to use.
+	pub swapped: Amount,
+
+	/// The outgoing amount pending to be swapped
+	pub pending: Amount,
+}
+
+/// Trait to perform swaps without handling directly an order book
+pub trait Swaps<AccountId> {
+	type Amount;
+	type CurrencyId;
+	type SwapId;
+
+	/// Apply a swap over a current possible swap state.
+	/// - If there was no previous swap, it adds it.
+	/// - If there was a swap in the same direction, it increments it.
+	/// - If there was a swap in the opposite direction:
+	///   - If the amount is smaller, it decrements it.
+	///   - If the amount is the same, it removes the inverse swap.
+	///   - If the amount is greater, it removes the inverse swap and create
+	///     another with the excess
+	///
+	/// The returned status contains the swapped amount after this call
+	/// (denominated in the incoming currency) and the pending amounts to be
+	/// swapped.
+	fn apply_swap(
+		who: &AccountId,
+		swap_id: Self::SwapId,
+		swap: Swap<Self::Amount, Self::CurrencyId>,
+	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
+
+	/// Returns the pending amount for a pending swap. The direction of the swap
+	/// is determined by the `from_currency` parameter. The amount returned is
+	/// denominated in the same currency as the given `from_currency`.
+	fn pending_amount(
+		who: &AccountId,
+		swap_id: Self::SwapId,
+		from_currency: Self::CurrencyId,
+	) -> Result<Self::Amount, DispatchError>;
+
+	/// Check that validates that if swapping pair is supported.
+	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+
+	/// Makes a conversion between 2 currencies using the market ratio between
+	/// them
+	// TODO: Should be removed after #1723
+	fn convert_by_market(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::Amount,
+	) -> Result<Self::Amount, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
@@ -679,9 +722,10 @@ pub trait TryConvert<A, B> {
 // TODO: Remove usage for the one from frame_support::traits::tokens once we are
 // on the same Polkadot version
 pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
-	type Error;
-	fn to_asset_balance(balance: InBalance, asset_id: AssetId)
-		-> Result<AssetBalance, Self::Error>;
+	fn to_asset_balance(
+		balance: InBalance,
+		asset_id: AssetId,
+	) -> Result<AssetBalance, DispatchError>;
 }
 
 /// Converts an asset balance value into balance.

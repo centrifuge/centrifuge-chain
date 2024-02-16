@@ -24,31 +24,30 @@ use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
 use runtime_common::{
-	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
-	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
-	transfer_filter::PreLpTransfer,
+	account_conversion::AccountConverter, gateway::GatewayAccountProvider,
+	liquidity_pools::LiquidityPoolsMessage, transfer_filter::PreLpTransfer,
 };
 
 use crate::{
 	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
-	LiquidityPoolsGateway, LocationToAccountId, OrderBook, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TransferAllowList,
+	LiquidityPoolsGateway, LocationToAccountId, OrmlAssetRegistry, Permissions, PoolSystem,
+	Runtime, RuntimeEvent, RuntimeOrigin, Swaps, Timestamp, Tokens, TransferAllowList,
 	TreasuryAccount,
 };
 
 impl pallet_foreign_investments::Config for Runtime {
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter = IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
+	type ForeignBalance = Balance;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
+	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
-	type SwapId = u64;
-	type TokenSwaps = OrderBook;
+	type SwapBalance = Balance;
+	type Swaps = Swaps;
+	type TrancheBalance = Balance;
 }
 
 parameter_types! {

@@ -172,7 +172,7 @@ pub mod pallet {
 		type CollectedInvestmentHook: StatusNotificationHook<
 			Error = DispatchError,
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = CollectedAmount<Self::Amount>,
+			Status = CollectedAmount<Self::Amount, Self::Amount>,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled order
@@ -181,7 +181,7 @@ pub mod pallet {
 		type CollectedRedemptionHook: StatusNotificationHook<
 			Error = DispatchError,
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = CollectedAmount<Self::Amount>,
+			Status = CollectedAmount<Self::Amount, Self::Amount>,
 		>;
 
 		/// The weight information for this pallet extrinsics.
@@ -629,7 +629,7 @@ impl<T: Config> Pallet<T> {
 			&who,
 			investment_id,
 			|maybe_order| -> Result<
-				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				(CollectedAmount<T::Amount, T::Amount>, PostDispatchInfo),
 				DispatchErrorWithPostInfo,
 			> {
 				// Exit early if order does not exist
@@ -749,7 +749,7 @@ impl<T: Config> Pallet<T> {
 			&who,
 			investment_id,
 			|maybe_order| -> Result<
-				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				(CollectedAmount<T::Amount, T::Amount>, PostDispatchInfo),
 				DispatchErrorWithPostInfo,
 			> {
 				// Exit early if order does not exist
@@ -1087,6 +1087,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
+	type TrancheAmount = T::Amount;
 
 	fn update_investment(
 		who: &T::AccountId,
@@ -1116,7 +1117,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	fn update_redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::TrancheAmount,
 	) -> Result<(), Self::Error> {
 		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
 	}
@@ -1133,7 +1134,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	fn redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error> {
+	) -> Result<Self::TrancheAmount, Self::Error> {
 		Ok(RedeemOrders::<T>::get(who, investment_id)
 			.map_or_else(Zero::zero, |order| order.amount()))
 	}

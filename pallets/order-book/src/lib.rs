@@ -30,18 +30,17 @@ mod benchmarking;
 
 pub mod weights;
 
-pub use cfg_traits::TokenSwaps;
 pub use pallet::*;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-
-	use core::fmt::Debug;
-
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
-	use cfg_types::{investments::Swap, tokens::CustomMetadata};
+	use cfg_traits::{
+		ConversionToAssetBalance, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
+		ValueProvider,
+	};
+	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -54,57 +53,47 @@ pub mod pallet {
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
-	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
+	use sp_arithmetic::traits::CheckedSub;
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
-			EnsureSub, MaybeSerializeDeserialize, One, Zero,
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
+			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Zero,
 		},
-		FixedPointNumber, FixedPointOperand,
+		FixedPointNumber, FixedPointOperand, TokenError,
 	};
-	use sp_std::cmp::Ordering;
+	use sp_std::cmp::{min, Ordering};
 
 	use super::*;
 
-	/// Order of pallet config type
-	pub type OrderOf<T> = Order<
-		<T as Config>::OrderIdNonce,
-		<T as frame_system::Config>::AccountId,
-		<T as Config>::AssetCurrencyId,
-		<T as Config>::Balance,
-		<T as Config>::SellRatio,
-	>;
-	pub type BalanceOf<T> = <T as Config>::Balance;
-
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
+	pub type BalanceOf<T> =
+		<<T as Config>::Currency as AssetInspect<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
-
 	pub struct Pallet<T>(_);
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Asset registry for foreign currencies we can take orders for.
 		type AssetRegistry: asset_registry::Inspect<
-			AssetId = Self::AssetCurrencyId,
-			Balance = Self::Balance,
+			AssetId = Self::CurrencyId,
+			Balance = BalanceOf<Self>,
 			CustomMetadata = CustomMetadata,
 		>;
 
-		/// CurrencyId of Assets that an order can be made for
-		type AssetCurrencyId: AssetId
+		/// CurrencyId that an order can be made for
+		type CurrencyId: AssetId
 			+ Parameter
-			+ Debug
 			+ Default
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+			+ Ord;
 
 		/// Type used for OrderId. OrderIdNonce ensures each
 		/// OrderId is unique. OrderIdNonce incremented with each new order.
@@ -115,34 +104,45 @@ pub mod pallet {
 			+ Copy
 			+ EnsureAdd
 			+ MaybeSerializeDeserialize
-			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// Balance type
-		type Balance: Member
+		/// Balance type for incomming values
+		type BalanceIn: Member
 			+ Parameter
 			+ FixedPointOperand
-			+ BaseArithmetic
+			+ AtLeast32BitUnsigned
 			+ EnsureMul
 			+ EnsureDiv
-			+ TypeInfo
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ Into<BalanceOf<Self>>
+			+ From<BalanceOf<Self>>;
+
+		/// Balance type for outcomming values
+		type BalanceOut: Member
+			+ Parameter
+			+ FixedPointOperand
+			+ AtLeast32BitUnsigned
+			+ EnsureMul
+			+ EnsureDiv
+			+ MaxEncodedLen
+			+ Into<BalanceOf<Self>>
+			+ From<BalanceOf<Self>>;
 
 		/// Type for currency orders can be made for
-		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
+		type Currency: AssetInspect<Self::AccountId, AssetId = Self::CurrencyId>
 			+ InspectHold<Self::AccountId, Reason = ()>
 			+ MutateHold<Self::AccountId>
 			+ Mutate<Self::AccountId>;
 
-		/// Type for price ratio for cost of incoming currency relative to
-		/// outgoing
-		type SellRatio: Parameter
+		/// Type for conversion ratios.
+		/// It will be factor applied to `currency_out` amount to obtain
+		/// `currency_in`
+		type Ratio: Parameter
 			+ Member
 			+ FixedPointNumber
 			+ EnsureMul
 			+ EnsureDiv
 			+ MaybeSerializeDeserialize
-			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// Size of order id bounded vec in storage
@@ -155,24 +155,33 @@ pub mod pallet {
 		/// When applying to a swap order, it will be re-denominated into the
 		/// target currency.
 		#[pallet::constant]
-		type MinFulfillmentAmountNative: Get<Self::Balance>;
+		type MinFulfillmentAmountNative: Get<Self::BalanceOut>;
 
 		/// Type which provides a decimal conversion from native to another
 		/// currency.
 		///
 		/// NOTE: Required for `MinFulfillmentAmountNative`.
 		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
-			Self::Balance,
-			Self::AssetCurrencyId,
-			Self::Balance,
-			Error = DispatchError,
+			Self::BalanceOut,
+			Self::CurrencyId,
+			Self::BalanceOut,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
 			Id = Self::OrderIdNonce,
-			Status = Swap<Self::Balance, Self::AssetCurrencyId>,
+			Status = SwapState<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId>,
 			Error = DispatchError,
+		>;
+
+		/// Type for a market conversion ratio feeder
+		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
+
+		/// A way to obtain conversion ratios for market pairs
+		type RatioProvider: ValueProvider<
+			Self::FeederId,
+			(Self::CurrencyId, Self::CurrencyId),
+			Value = Self::Ratio,
 		>;
 
 		/// The admin origin of this pallet
@@ -181,30 +190,37 @@ pub mod pallet {
 		/// Type for pallet weights
 		type Weights: WeightInfo;
 	}
-	//
-	// Storage and storage types
-	//
+
 	/// Order Storage item.
 	/// Contains fields relevant to order information
-	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, SellRatio> {
-		pub order_id: OrderId,
-		pub placing_account: AccountId,
-		pub asset_in_id: AssetId,
-		pub asset_out_id: AssetId,
-		/// How many tokens of asset in to buy
-		pub buy_amount: ForeignCurrencyBalance,
-		/// Original buy amount, used for tracking amount fulfilled
-		pub initial_buy_amount: ForeignCurrencyBalance,
-		/// Maximum relative price of the asset in being purchased relative to
-		/// asset out ie: Rate::checked_from_rational(3u32, 2u32) would mean
-		/// that 1 asset in would correspond with 1.5 asset out.
-		pub max_sell_rate: SellRatio,
-		/// Minimum amount of an order that can be fulfilled
-		/// for partial fulfillment
-		pub min_fulfillment_amount: ForeignCurrencyBalance,
-		/// Maximum amount of outgoing currency that can be sold
-		pub max_sell_amount: ForeignCurrencyBalance,
+	#[derive(
+		Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo,
+	)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Order<T: Config> {
+		/// Unique Id for this order
+		pub order_id: T::OrderIdNonce,
+
+		/// Associated account to this order
+		pub placing_account: T::AccountId,
+
+		/// Currency id expected to receive
+		pub currency_in: T::CurrencyId,
+
+		/// Currency id expected to give
+		pub currency_out: T::CurrencyId,
+
+		/// Amount in `currency_in` obtained by swaping `amount_out`
+		pub amount_in: T::BalanceIn,
+
+		/// How many tokens of `currency_out` available to sell
+		pub amount_out: T::BalanceOut,
+
+		/// Initial value of amount out, used for tracking amount fulfilled
+		pub amount_out_initial: T::BalanceOut,
+
+		/// Price given for this order,
+		pub ratio: OrderRatio<T::Ratio>,
 	}
 
 	/// Map of Orders to look up orders by their order id.
@@ -213,7 +229,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		T::OrderIdNonce,
-		OrderOf<T>,
+		Order<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -227,7 +243,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::OrderIdNonce,
-		OrderOf<T>,
+		(),
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -239,38 +255,27 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OrderIdNonceStore<T: Config> = StorageValue<_, T::OrderIdNonce, ValueQuery>;
 
-	/// Map of Vec containing OrderIds of same asset in/out pairs.
-	/// Allows looking up orders available corresponding pairs.
-	///
-	/// NOTE: The key order is (currency_in, currency_out).
-	#[pallet::storage]
-	pub type AssetPairOrders<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		BoundedVec<T::OrderIdNonce, T::OrderPairVecSize>,
-		ValueQuery,
-	>;
-
 	/// Storage of valid order pairs.
 	/// Stores:
-	///  - key1 -> AssetIn
-	///  - key2 -> AssetOut
+	///  - key1 -> CurrencyIn
+	///  - key2 -> CurrencyOut
 	///
-	/// Stores the minimum `buy_amount` of `asset_in` when buying
-	/// with `asset_out`
+	/// Stores the minimum `amount_out` of `currency_out`
 	#[pallet::storage]
 	pub type TradingPair<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		T::AssetCurrencyId,
+		T::CurrencyId,
 		Twox64Concat,
-		T::AssetCurrencyId,
-		T::Balance,
+		T::CurrencyId,
+		T::BalanceOut,
 		ResultQuery<Error<T>::InvalidTradingPair>,
 	>;
+
+	/// Stores the market feeder id used to set with market conversion ratios
+	#[pallet::storage]
+	pub type MarketFeederId<T: Config> =
+		StorageValue<_, T::FeederId, ResultQuery<Error<T>::MarketFeederNotFound>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -279,11 +284,11 @@ pub mod pallet {
 		OrderCreated {
 			order_id: T::OrderIdNonce,
 			creator_account: T::AccountId,
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			min_fulfillment_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			amount_out: T::BalanceOut,
+			min_fulfillment_amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -294,9 +299,9 @@ pub mod pallet {
 		OrderUpdated {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
+			min_fulfillment_amount_out: T::BalanceOut,
 		},
 		/// Event emitted when an order is fulfilled.
 		/// Can be for either partial or total fulfillment.
@@ -307,56 +312,39 @@ pub mod pallet {
 			placing_account: T::AccountId,
 			fulfilling_account: T::AccountId,
 			partial_fulfillment: bool,
-			fulfillment_amount: T::Balance,
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			sell_rate_limit: T::SellRatio,
+			fulfillment_amount: T::BalanceOut,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			ratio: T::Ratio,
 		},
 		/// Event emitted when a valid trading pair is added.
 		TradingPairAdded {
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
-			min_order: T::Balance,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			min_order: T::BalanceOut,
 		},
 		/// Event emitted when a valid trading pair is removed.
 		TradingPairRemoved {
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
 		},
-		/// Event emitted when a minimum order amount for a trading pair is
-		/// updated.
-		MinOrderUpdated {
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
-			min_order: T::Balance,
-		},
+		/// Event emitted when a valid trading pair is removed.
+		FeederChanged { feeder_id: T::FeederId },
 	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
-		/// Error when the number of orders for a trading pair has exceeded the
-		/// BoundedVec size for the order pair for the currency pair in
-		/// question.
-		AssetPairOrdersOverflow,
-		/// Error when order is placed attempting to exchange assets of the same
-		/// type.
-		ConflictingAssetIds,
-		/// Error when an account cannot reserve or transfer the amount
-		/// currently `0`.
-		InvalidBuyAmount,
-		/// Error when min order amount is invalid, currently `0`
-		InvalidMinimumFulfillment,
-		/// Error when an account specifies an invalid buy price -- currently
-		/// specified for trade, or amount to be fulfilled.
-		InsufficientAssetFunds,
-		/// Error when Max price ratio is invalid
-		InvalidMaxPrice,
+		/// Error when order is placed attempting to exchange currencies of the
+		/// same type.
+		SameCurrencyIds,
+		/// Error when an account cannot reserve or transfer the amount.
+		BelowMinFulfillmentAmount,
 		/// Error when an order amount is too small
-		InsufficientOrderSize,
+		BelowMinOrderAmount,
 		/// Error when an order is placed with a currency that is not in the
-		/// asset registry.
-		InvalidAssetId,
+		/// `AssetRegistry`.
+		InvalidCurrencyId,
 		/// Error when a trade is using an invalid trading pair.
 		/// Currently can happen when there is not a minimum order size
 		/// defined for the trading pair.
@@ -367,52 +355,37 @@ pub mod pallet {
 		/// Error when a user attempts an action on an order they are not
 		/// authorised to perform, such as cancelling another accounts order.
 		Unauthorised,
-		/// Error when unable to convert fee balance to asset balance when asset
-		/// out matches fee currency
-		BalanceConversionErr,
-		/// Error when the provided partial buy amount is too large.
-		BuyAmountTooLarge,
+		/// Error when the provided amount to fulfill is too large for the
+		/// order.
+		FulfillAmountTooLarge,
+		/// There is not feeder set for market conversion ratios
+		MarketFeederNotFound,
+		/// Expected a market ratio for the given pair of currencies.
+		MarketRatioNotFound,
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::Weights::create_order())]
-		pub fn create_order(
+		pub fn place_order(
 			origin: OriginFor<T>,
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			price: T::SellRatio,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				asset_in,
-			)?;
 
 			Self::inner_place_order(
 				account_id,
-				asset_in,
-				asset_out,
-				buy_amount,
-				price,
-				min_fulfillment_amount,
-				|order| {
-					let min_amount = TradingPair::<T>::get(&asset_in, &asset_out)?;
-					Self::is_valid_order(
-						order.asset_in_id,
-						order.asset_out_id,
-						order.buy_amount,
-						order.max_sell_rate,
-						order.min_fulfillment_amount,
-						min_amount,
-					)
-				},
+				currency_in,
+				currency_out,
+				amount_out,
+				ratio,
+				TradingPair::<T>::get(&currency_in, &currency_out)?,
+				Self::min_fulfillment_amount(currency_out)?,
 			)?;
 
 			Ok(())
@@ -420,76 +393,59 @@ pub mod pallet {
 
 		/// Update an existing order
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::Weights::user_update_order())]
-		pub fn user_update_order(
+		#[pallet::weight(T::Weights::update_order())]
+		pub fn update_order(
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
-			buy_amount: T::Balance,
-			price: T::SellRatio,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = Orders::<T>::get(order_id)?;
-			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				order.asset_in_id,
-			)?;
+
+			ensure!(
+				account_id == order.placing_account,
+				Error::<T>::Unauthorised
+			);
 
 			Self::inner_update_order(
-				account_id.clone(),
-				order_id,
-				buy_amount,
-				price,
-				min_fulfillment_amount,
-				|order| {
-					ensure!(
-						account_id == order.placing_account,
-						Error::<T>::Unauthorised
-					);
-
-					let min_amount =
-						TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
-					Self::is_valid_order(
-						order.asset_in_id,
-						order.asset_out_id,
-						order.buy_amount,
-						order.max_sell_rate,
-						order.min_fulfillment_amount,
-						min_amount,
-					)
-				},
+				order.clone(),
+				amount_out,
+				ratio,
+				TradingPair::<T>::get(&order.currency_in, &order.currency_out)?,
+				Self::min_fulfillment_amount(order.currency_out)?,
 			)
 		}
 
 		///  Cancel an existing order that had been created by calling account.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::Weights::user_cancel_order())]
-		pub fn user_cancel_order(
-			origin: OriginFor<T>,
-			order_id: T::OrderIdNonce,
-		) -> DispatchResult {
+		#[pallet::weight(T::Weights::cancel_order())]
+		pub fn cancel_order(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			// verify order matches account
-			// UserOrders using Resultquery, if signed account
-			// does not match user for order id, we will get an Err Result
 			let order = <Orders<T>>::get(order_id)?;
 
 			ensure!(
 				account_id == order.placing_account,
 				Error::<T>::Unauthorised
 			);
-			Self::cancel_order(order_id)?;
-			Ok(())
+
+			<Self as TokenSwaps<T::AccountId>>::cancel_order(order_id)
 		}
 
-		/// Fill an existing order, fulfilling the entire order.
+		/// Fill an existing order with the given amount.
+		/// The `amount_out` is the amount the originator of this call is
+		/// willing to buy for
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::Weights::fill_order_full())]
-		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
+		#[pallet::weight(T::Weights::fill_order())]
+		pub fn fill_order(
+			origin: OriginFor<T>,
+			order_id: T::OrderIdNonce,
+			amount_out: T::BalanceOut,
+		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
-			let buy_amount = order.buy_amount;
 
-			Self::fulfill_order_with_amount(order, buy_amount, account_id)
+			Self::fulfill_order_with_amount(order, amount_out, account_id)
 		}
 
 		/// Adds a valid trading pair.
@@ -497,18 +453,18 @@ pub mod pallet {
 		#[pallet::weight(T::Weights::add_trading_pair())]
 		pub fn add_trading_pair(
 			origin: OriginFor<T>,
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
-			min_order: T::Balance,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			min_order: T::BalanceOut,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just overwrite as this is an admin action.
-			TradingPair::<T>::insert(asset_in, asset_out, min_order);
+			TradingPair::<T>::insert(currency_in, currency_out, min_order);
 
 			Self::deposit_event(Event::<T>::TradingPairAdded {
-				asset_in,
-				asset_out,
+				currency_in,
+				currency_out,
 				min_order,
 			});
 
@@ -525,147 +481,131 @@ pub mod pallet {
 		#[pallet::weight(T::Weights::rm_trading_pair())]
 		pub fn rm_trading_pair(
 			origin: OriginFor<T>,
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just remove as this is an admin action.
-			TradingPair::<T>::remove(asset_in, asset_out);
+			TradingPair::<T>::remove(currency_in, currency_out);
 
 			Self::deposit_event(Event::<T>::TradingPairRemoved {
-				asset_in,
-				asset_out,
+				currency_in,
+				currency_out,
 			});
 
 			Ok(())
 		}
 
-		/// Sets the minimum order amount for a given trading pair.
-		/// If the trading pair is not yet added this errors out.
-		//
-		// NOTE: We do not need to update any existing orders as fulfillment does
-		//       not verify the validity of the order that is to be fulfilled.
+		/// Set the market feeder for set market ratios.
+		/// The origin must be the admin origin.
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::Weights::update_min_order())]
-		pub fn update_min_order(
-			origin: OriginFor<T>,
-			asset_in: T::AssetCurrencyId,
-			asset_out: T::AssetCurrencyId,
-			min_order: T::Balance,
-		) -> DispatchResult {
+		#[pallet::weight(T::Weights::set_market_feeder())]
+		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			// try_mutate is a pain with the direct error return. But we do want to only
-			// update if the pair exists.
-			let _old_min_order = TradingPair::<T>::get(&asset_in, &asset_out)?;
-			TradingPair::<T>::insert(&asset_in, &asset_out, min_order);
+			MarketFeederId::<T>::put(feeder_id.clone());
 
-			Self::deposit_event(Event::<T>::MinOrderUpdated {
-				asset_in,
-				asset_out,
-				min_order,
-			});
+			Self::deposit_event(Event::<T>::FeederChanged { feeder_id });
 
 			Ok(())
-		}
-
-		/// Fill an existing order, based on the provided partial buy amount.
-		#[pallet::call_index(7)]
-		#[pallet::weight(T::Weights::fill_order_partial())]
-		pub fn fill_order_partial(
-			origin: OriginFor<T>,
-			order_id: T::OrderIdNonce,
-			buy_amount: T::Balance,
-		) -> DispatchResult {
-			let account_id = ensure_signed(origin)?;
-			let order = <Orders<T>>::get(order_id)?;
-
-			Self::fulfill_order_with_amount(order, buy_amount, account_id)
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn fulfill_order_with_amount(
-			order: OrderOf<T>,
-			buy_amount: T::Balance,
-			account_id: T::AccountId,
+		fn inner_place_order(
+			account: T::AccountId,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
+			min_amount_out: T::BalanceOut,
+			min_fulfillment_amount_out: T::BalanceOut,
+		) -> Result<T::OrderIdNonce, DispatchError> {
+			let order_id = OrderIdNonceStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
+				Ok::<_, DispatchError>(*n)
+			})?;
+
+			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
+
+			ensure!(currency_in != currency_out, Error::<T>::SameCurrencyIds);
+
+			T::Currency::hold(currency_out, &(), &account, amount_out.into())?;
+
+			let new_order = Order {
+				order_id,
+				placing_account: account.clone(),
+				currency_in,
+				currency_out,
+				amount_out,
+				ratio,
+				amount_out_initial: amount_out,
+				amount_in: Zero::zero(),
+			};
+
+			Orders::<T>::insert(order_id, new_order.clone());
+			UserOrders::<T>::insert(&account, order_id, ());
+
+			Self::deposit_event(Event::OrderCreated {
+				creator_account: account,
+				ratio,
+				order_id,
+				amount_out,
+				currency_in,
+				currency_out,
+				min_fulfillment_amount_out,
+			});
+
+			Ok(order_id)
+		}
+
+		fn inner_update_order(
+			mut order: Order<T>,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
+			min_amount_out: T::BalanceOut,
+			min_fulfillment_amount_out: T::BalanceOut,
 		) -> DispatchResult {
-			ensure!(
-				buy_amount >= order.min_fulfillment_amount,
-				Error::<T>::InsufficientOrderSize,
-			);
+			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
 
-			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &(), &account_id, buy_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
+			match amount_out.cmp(&order.amount_out) {
+				Ordering::Greater => {
+					let amount_diff = amount_out.ensure_sub(order.amount_out)?;
+					order.amount_out_initial.ensure_add_assign(amount_diff)?;
+					T::Currency::hold(
+						order.currency_out,
+						&(),
+						&order.placing_account,
+						amount_diff.into(),
+					)?;
+				}
+				Ordering::Less => {
+					let amount_diff = order.amount_out.ensure_sub(amount_out)?;
+					order.amount_out_initial.ensure_sub_assign(amount_diff)?;
 
-			let sell_amount = Self::convert_with_ratio(
-				order.asset_in_id,
-				order.asset_out_id,
-				order.max_sell_rate,
-				buy_amount,
-			)?;
-			let remaining_buy_amount = order
-				.buy_amount
-				.checked_sub(&buy_amount)
-				.ok_or(Error::<T>::BuyAmountTooLarge)?;
-			let partial_fulfillment = !remaining_buy_amount.is_zero();
-
-			if partial_fulfillment {
-				Self::update_order_with_fulfillment(
-					order.placing_account.clone(),
-					order.order_id,
-					remaining_buy_amount,
-					order.max_sell_rate,
-					remaining_buy_amount.min(order.min_fulfillment_amount),
-				)?;
-			} else {
-				T::TradeableAsset::release(
-					order.asset_out_id,
-					&(),
-					&order.placing_account,
-					sell_amount,
-					Precision::Exact,
-				)?;
-
-				Self::remove_order(order.order_id)?;
+					T::Currency::release(
+						order.currency_out,
+						&(),
+						&order.placing_account,
+						amount_diff.into(),
+						Precision::Exact,
+					)?;
+				}
+				Ordering::Equal => (),
 			}
 
-			T::TradeableAsset::transfer(
-				order.asset_in_id,
-				&account_id,
-				&order.placing_account,
-				buy_amount,
-				Preservation::Expendable,
-			)?;
-			T::TradeableAsset::transfer(
-				order.asset_out_id,
-				&order.placing_account,
-				&account_id,
-				sell_amount,
-				Preservation::Expendable,
-			)?;
+			order.amount_out = amount_out;
+			order.ratio = ratio;
 
-			T::FulfilledOrderHook::notify_status_change(
-				order.order_id,
-				Swap {
-					amount_in: buy_amount,
-					currency_in: order.asset_in_id,
-					currency_out: order.asset_out_id,
-				},
-			)?;
+			Orders::<T>::insert(order.order_id, order.clone());
 
-			Self::deposit_event(Event::OrderFulfillment {
+			Self::deposit_event(Event::OrderUpdated {
+				account: order.placing_account,
 				order_id: order.order_id,
-				placing_account: order.placing_account,
-				fulfilling_account: account_id,
-				partial_fulfillment,
-				currency_in: order.asset_in_id,
-				currency_out: order.asset_out_id,
-				fulfillment_amount: buy_amount,
-				sell_rate_limit: order.max_sell_rate,
+				amount_out,
+				ratio,
+				min_fulfillment_amount_out,
 			});
 
 			Ok(())
@@ -674,307 +614,188 @@ pub mod pallet {
 		/// Remove an order from storage
 		pub fn remove_order(order_id: T::OrderIdNonce) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
-			<UserOrders<T>>::remove(&order.placing_account, order.order_id);
-			<Orders<T>>::remove(order.order_id);
-			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
-			orders.retain(|o| *o != order.order_id);
-			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
+
+			Orders::<T>::remove(order.order_id);
+			UserOrders::<T>::remove(&order.placing_account, order.order_id);
+
 			Ok(())
 		}
 
-		/// Unreserve funds for an order that is finished either
-		/// through fulfillment or cancellation.
-		pub fn unreserve_order(order: &OrderOf<T>) -> Result<BalanceOf<T>, DispatchError> {
-			T::TradeableAsset::release(
-				order.asset_out_id,
+		fn fulfill_order_with_amount(
+			order: Order<T>,
+			amount_out: T::BalanceOut,
+			fulfilling_account: T::AccountId,
+		) -> DispatchResult {
+			let min_fulfillment_amount_out = min(
+				order.amount_out,
+				Self::min_fulfillment_amount(order.currency_out)?,
+			);
+
+			ensure!(
+				amount_out >= min_fulfillment_amount_out,
+				Error::<T>::BelowMinFulfillmentAmount,
+			);
+
+			let ratio = match order.ratio {
+				OrderRatio::Market => Self::market_ratio(order.currency_out, order.currency_in)?,
+				OrderRatio::Custom(ratio) => ratio,
+			};
+
+			let amount_in =
+				Self::convert_with_ratio(order.currency_out, order.currency_in, ratio, amount_out)?;
+
+			let remaining_amount_out = order
+				.amount_out
+				.checked_sub(&amount_out)
+				.ok_or(Error::<T>::FulfillAmountTooLarge)?;
+
+			let partial_fulfillment = !remaining_amount_out.is_zero();
+			if partial_fulfillment {
+				let mut updated_order = order.clone();
+				updated_order.amount_out = remaining_amount_out;
+				updated_order.amount_in = order.amount_in.ensure_add(amount_in)?;
+
+				Orders::<T>::insert(updated_order.order_id, updated_order.clone());
+			} else {
+				Self::remove_order(order.order_id)?;
+			}
+
+			T::Currency::release(
+				order.currency_out,
 				&(),
 				&order.placing_account,
-				order.max_sell_amount,
+				amount_out.into(),
 				Precision::Exact,
-			)
-		}
+			)?;
 
-		/// Check min order amount
-		pub fn is_valid_min_order(
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-		) -> DispatchResult {
-			let min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
-			match buy_amount.cmp(&min_amount) {
-				Ordering::Less => Err(Error::<T>::InsufficientOrderSize.into()),
-				Ordering::Equal | Ordering::Greater => Ok(()),
+			if T::Currency::balance(order.currency_out, &order.placing_account) < amount_out.into()
+			{
+				Err(DispatchError::Token(TokenError::FundsUnavailable))?
 			}
+
+			if T::Currency::balance(order.currency_in, &fulfilling_account) < amount_in.into() {
+				Err(DispatchError::Token(TokenError::FundsUnavailable))?
+			}
+
+			T::Currency::transfer(
+				order.currency_out,
+				&order.placing_account,
+				&fulfilling_account,
+				amount_out.into(),
+				Preservation::Expendable,
+			)?;
+			T::Currency::transfer(
+				order.currency_in,
+				&fulfilling_account,
+				&order.placing_account,
+				amount_in.into(),
+				Preservation::Expendable,
+			)?;
+
+			T::FulfilledOrderHook::notify_status_change(
+				order.order_id,
+				SwapState {
+					remaining: Swap {
+						amount_out: remaining_amount_out,
+						currency_in: order.currency_in,
+						currency_out: order.currency_out,
+					},
+					swapped_in: amount_in,
+					swapped_out: amount_out,
+				},
+			)?;
+
+			Self::deposit_event(Event::OrderFulfillment {
+				order_id: order.order_id,
+				placing_account: order.placing_account,
+				fulfilling_account,
+				partial_fulfillment,
+				currency_in: order.currency_in,
+				currency_out: order.currency_out,
+				fulfillment_amount: amount_out,
+				ratio,
+			});
+
+			Ok(())
 		}
 
+		pub fn market_ratio(
+			currency_from: T::CurrencyId,
+			currency_to: T::CurrencyId,
+		) -> Result<T::Ratio, DispatchError> {
+			let feeder = MarketFeederId::<T>::get()?;
+
+			T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
+				.ok_or(Error::<T>::MarketRatioNotFound.into())
+		}
+
+		/// `ratio` is the value you multiply `amount_from` to obtain
+		/// `amount_to`
 		pub fn convert_with_ratio(
-			currency_from: T::AssetCurrencyId,
-			currency_to: T::AssetCurrencyId,
-			ratio: T::SellRatio,
-			amount: T::Balance,
-		) -> Result<T::Balance, DispatchError> {
+			currency_from: T::CurrencyId,
+			currency_to: T::CurrencyId,
+			ratio: T::Ratio,
+			amount_from: T::BalanceOut,
+		) -> Result<T::BalanceIn, DispatchError> {
 			let from_decimals = T::AssetRegistry::metadata(&currency_from)
-				.ok_or(Error::<T>::InvalidAssetId)?
+				.ok_or(Error::<T>::InvalidCurrencyId)?
 				.decimals;
 
 			let to_decimals = T::AssetRegistry::metadata(&currency_to)
-				.ok_or(Error::<T>::InvalidAssetId)?
+				.ok_or(Error::<T>::InvalidCurrencyId)?
 				.decimals;
 
-			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
-				.map_err(DispatchError::from)
+			let amount_in = ratio.ensure_mul_int(amount_from)?;
+			Ok(convert_balance_decimals(from_decimals, to_decimals, amount_in.into())?.into())
 		}
-	}
 
-	impl<T: Config> Pallet<T> {
-		fn is_valid_order(
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
-			min_order_amount: T::Balance,
+		fn validate_amount(
+			amount_out: T::BalanceOut,
+			min_fulfillment_amount_out: T::BalanceOut,
+			min_order_amount: T::BalanceOut,
 		) -> DispatchResult {
-			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
-
 			ensure!(
-				buy_amount != <T::Balance>::zero(),
-				Error::<T>::InvalidBuyAmount
+				amount_out >= min_fulfillment_amount_out,
+				Error::<T>::BelowMinFulfillmentAmount
 			);
 
 			ensure!(
-				min_fulfillment_amount != <T::Balance>::zero(),
-				Error::<T>::InvalidMinimumFulfillment
-			);
-			ensure!(
-				sell_rate_limit != T::SellRatio::zero(),
-				Error::<T>::InvalidMaxPrice
-			);
-
-			ensure!(
-				buy_amount >= min_fulfillment_amount,
-				Error::<T>::InvalidBuyAmount
-			);
-
-			ensure!(
-				buy_amount >= min_order_amount,
-				Error::<T>::InsufficientOrderSize
+				amount_out >= min_order_amount,
+				Error::<T>::BelowMinOrderAmount
 			);
 
 			Ok(())
 		}
 
-		fn inner_update_order(
-			account: T::AccountId,
-			order_id: T::OrderIdNonce,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
-			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
-		) -> DispatchResult {
-			let max_sell_amount = <Orders<T>>::try_mutate_exists(
-				order_id,
-				|maybe_order| -> Result<T::Balance, DispatchError> {
-					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
-
-					let max_sell_amount = Self::convert_with_ratio(
-						order.asset_in_id,
-						order.asset_out_id,
-						sell_rate_limit,
-						buy_amount,
-					)?;
-
-					// ensure proper amount can be, and is reserved of outgoing currency for updated
-					// order.
-					// Also minimise reserve/unreserve operations.
-					if buy_amount != order.buy_amount || sell_rate_limit != order.max_sell_rate {
-						if max_sell_amount > order.max_sell_amount {
-							let sell_reserve_diff =
-								max_sell_amount.ensure_sub(order.max_sell_amount)?;
-							T::TradeableAsset::hold(
-								order.asset_out_id,
-								&(),
-								&account,
-								sell_reserve_diff,
-							)?;
-						} else {
-							let sell_reserve_diff =
-								order.max_sell_amount.ensure_sub(max_sell_amount)?;
-							T::TradeableAsset::release(
-								order.asset_out_id,
-								&(),
-								&account,
-								sell_reserve_diff,
-								Precision::Exact,
-							)?;
-						}
-					};
-					order.buy_amount = buy_amount;
-					order.max_sell_rate = sell_rate_limit;
-					order.min_fulfillment_amount = min_fulfillment_amount;
-					order.max_sell_amount = max_sell_amount;
-
-					validate(order)?;
-
-					Ok(max_sell_amount)
-				},
-			)?;
-
-			<UserOrders<T>>::try_mutate_exists(
-				&account,
-				order_id,
-				|maybe_order| -> DispatchResult {
-					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
-					order.buy_amount = buy_amount;
-					order.max_sell_rate = sell_rate_limit;
-					order.min_fulfillment_amount = min_fulfillment_amount;
-					order.max_sell_amount = max_sell_amount;
-					Ok(())
-				},
-			)?;
-			Self::deposit_event(Event::OrderUpdated {
-				account,
-				order_id,
-				buy_amount,
-				sell_rate_limit,
-				min_fulfillment_amount,
-			});
-
-			Ok(())
-		}
-
-		fn inner_place_order(
-			account: T::AccountId,
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
-			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
-		) -> Result<T::OrderIdNonce, DispatchError> {
-			<OrderIdNonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::OrderIdNonce::one())?;
-				Ok::<_, DispatchError>(())
-			})?;
-
-			let max_sell_amount =
-				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
-
-			T::TradeableAsset::hold(currency_out, &(), &account, max_sell_amount)?;
-
-			let order_id = <OrderIdNonceStore<T>>::get();
-			let new_order = Order {
-				order_id,
-				placing_account: account.clone(),
-				asset_in_id: currency_in,
-				asset_out_id: currency_out,
-				buy_amount,
-				max_sell_rate: sell_rate_limit,
-				initial_buy_amount: buy_amount,
-				min_fulfillment_amount,
-				max_sell_amount,
-			};
-
-			validate(&new_order)?;
-
-			<AssetPairOrders<T>>::try_mutate(currency_in, currency_out, |orders| {
-				orders
-					.try_push(order_id)
-					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
-			})?;
-
-			<Orders<T>>::insert(order_id, new_order.clone());
-			<UserOrders<T>>::insert(&account, order_id, new_order);
-			Self::deposit_event(Event::OrderCreated {
-				creator_account: account,
-				sell_rate_limit,
-				order_id,
-				buy_amount,
-				currency_in,
-				currency_out,
-				min_fulfillment_amount,
-			});
-
-			Ok(order_id)
-		}
-
-		/// Update an existing order.
-		///
-		/// Update outgoing asset currency reserved to match new amount or price
-		/// if either have changed.
-		pub(crate) fn update_order_with_fulfillment(
-			account: T::AccountId,
-			order_id: T::OrderIdNonce,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
-		) -> DispatchResult {
-			Self::inner_update_order(
-				account,
-				order_id,
-				buy_amount,
-				sell_rate_limit,
-				min_fulfillment_amount,
-				|order| {
-					// We only check if the trading pair exists not if the minimum amount is
-					// reached.
-					let _min_amount =
-						TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
-					Self::is_valid_order(
-						order.asset_in_id,
-						order.asset_out_id,
-						order.buy_amount,
-						order.max_sell_rate,
-						order.min_fulfillment_amount,
-						T::Balance::zero(),
-					)
-				},
-			)
+		pub fn min_fulfillment_amount(
+			currency: T::CurrencyId,
+		) -> Result<T::BalanceOut, DispatchError> {
+			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
 		}
 	}
 
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
-		type Balance = T::Balance;
-		type CurrencyId = T::AssetCurrencyId;
-		type OrderDetails = Swap<T::Balance, T::AssetCurrencyId>;
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
+		type BalanceIn = T::BalanceIn;
+		type BalanceOut = T::BalanceOut;
+		type CurrencyId = T::CurrencyId;
 		type OrderId = T::OrderIdNonce;
-		type SellRatio = T::SellRatio;
+		type Ratio = T::Ratio;
 
 		fn place_order(
 			account: T::AccountId,
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
-			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				currency_in,
-			)?;
-
 			Self::inner_place_order(
 				account,
 				currency_in,
 				currency_out,
-				buy_amount,
-				sell_rate_limit,
-				min_fulfillment_amount,
-				|order| {
-					// We only check if the trading pair exists not if the minimum amount is
-					// reached.
-					let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
-					Self::is_valid_order(
-						order.asset_in_id,
-						order.asset_out_id,
-						order.buy_amount,
-						order.max_sell_rate,
-						order.min_fulfillment_amount,
-						T::Balance::zero(),
-					)
-				},
+				amount_out,
+				ratio,
+				T::BalanceOut::zero(),
+				T::BalanceOut::zero(),
 			)
 		}
 
@@ -982,7 +803,14 @@ pub mod pallet {
 			let order = <Orders<T>>::get(order)?;
 			let account_id = order.placing_account.clone();
 
-			Self::unreserve_order(&order)?;
+			T::Currency::release(
+				order.currency_out,
+				&(),
+				&order.placing_account,
+				order.amount_out.into(),
+				Precision::Exact,
+			)?;
+
 			Self::remove_order(order.order_id)?;
 			Self::deposit_event(Event::OrderCancelled {
 				account: account_id,
@@ -993,36 +821,27 @@ pub mod pallet {
 		}
 
 		fn update_order(
-			account: T::AccountId,
 			order_id: Self::OrderId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			amount_out: T::BalanceOut,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let order = Orders::<T>::get(order_id)?;
-			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				order.asset_in_id,
-			)?;
 
-			Self::update_order_with_fulfillment(
-				account,
-				order_id,
-				buy_amount,
-				sell_rate_limit,
-				min_fulfillment_amount,
+			Self::inner_update_order(
+				order,
+				amount_out,
+				ratio,
+				T::BalanceOut::zero(),
+				T::BalanceOut::zero(),
 			)
 		}
 
-		fn is_active(order: Self::OrderId) -> bool {
-			<Orders<T>>::contains_key(order)
-		}
-
-		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::AssetCurrencyId>> {
+		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::BalanceOut, T::CurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
-					amount_in: order.buy_amount,
-					currency_in: order.asset_in_id,
-					currency_out: order.asset_out_id,
+					amount_out: order.amount_out,
+					currency_in: order.currency_in,
+					currency_out: order.currency_out,
 				})
 				.ok()
 		}
@@ -1030,62 +849,36 @@ pub mod pallet {
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
 			TradingPair::<T>::get(currency_in, currency_out).is_ok()
 		}
+
+		fn convert_by_market(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+			amount_out: T::BalanceOut,
+		) -> Result<T::BalanceIn, DispatchError> {
+			if currency_in == currency_out {
+				let amount: BalanceOf<T> = amount_out.into();
+				return Ok(amount.into());
+			}
+
+			let ratio = Self::market_ratio(currency_out, currency_in)?;
+			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
+		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> cfg_traits::benchmarking::OrderBookBenchmarkHelper for Pallet<T>
-	where
-		T::AssetRegistry: orml_traits::asset_registry::Mutate<
-			AssetId = T::AssetCurrencyId,
-			Balance = T::Balance,
-			CustomMetadata = CustomMetadata,
-		>,
-	{
-		type AccountId = T::AccountId;
-		type Balance = T::Balance;
-		type CurrencyId = T::AssetCurrencyId;
-		type OrderIdNonce = T::OrderIdNonce;
+	impl<T: Config> ValueProvider<(), (T::CurrencyId, T::CurrencyId)> for Pallet<T> {
+		type Value = T::Ratio;
 
-		fn bench_setup_trading_pair(
-			asset_in: Self::CurrencyId,
-			asset_out: Self::CurrencyId,
-			amount_in: Self::Balance,
-			amount_out: Self::Balance,
-			decimals_in: u32,
-			decimals_out: u32,
-		) -> (Self::AccountId, Self::AccountId) {
-			let account_out: Self::AccountId =
-				frame_benchmarking::account::<Self::AccountId>("account_out", 1, 0);
-			let account_in: Self::AccountId =
-				frame_benchmarking::account::<Self::AccountId>("account_in", 2, 0);
-			crate::benchmarking::Helper::<T>::register_trading_assets(
-				asset_in.into(),
-				asset_out.into(),
-				decimals_in,
-				decimals_out,
-			);
-
-			frame_support::assert_ok!(T::TradeableAsset::mint_into(
-				asset_out,
-				&account_out,
-				amount_out
-			));
-			frame_support::assert_ok!(T::TradeableAsset::mint_into(
-				asset_in,
-				&account_in,
-				amount_in,
-			));
-
-			TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
-
-			(account_out, account_in)
+		fn get(
+			_: &(),
+			(currency_out, currency_in): &(T::CurrencyId, T::CurrencyId),
+		) -> Result<Option<Self::Value>, DispatchError> {
+			Self::market_ratio(*currency_out, *currency_in).map(Some)
 		}
 
-		fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
-			frame_support::assert_ok!(Self::fill_order_full(
-				frame_system::RawOrigin::Signed(trader.clone()).into(),
-				order_id
-			));
+		fn set(_: &(), pair: &(T::CurrencyId, T::CurrencyId), value: Self::Value) {
+			let feeder = MarketFeederId::<T>::get().unwrap();
+			T::RatioProvider::set(&feeder, &pair, value);
 		}
 	}
 }

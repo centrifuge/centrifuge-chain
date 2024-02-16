@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2024 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -11,19 +11,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::weights::Weight;
+use parity_scale_codec::Codec;
+use sp_api::decl_runtime_apis;
 
-pub trait WeightInfo {
-	fn transfer() -> Weight;
-	fn validate_mint() -> Weight;
-}
-
-impl WeightInfo for () {
-	fn transfer() -> Weight {
-		Weight::from_parts(195_000_000, 0)
-	}
-
-	fn validate_mint() -> Weight {
-		Weight::from_parts(195_000_000, 0)
+decl_runtime_apis! {
+	/// Runtime API for the order book pallet.
+	pub trait OrderBookApi<CurrencyId, Balance>
+	where
+		CurrencyId: Codec,
+		Balance: Codec,
+	{
+		fn min_fulfillment_amount(currency: CurrencyId) -> Option<Balance>;
 	}
 }

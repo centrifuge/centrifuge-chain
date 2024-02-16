@@ -1,7 +1,7 @@
 [package]
-name = "pallet-restricted-xtokens"
-description = "A wrapper pallet around orml-xtokens to allow restricting transfers"
-version = "0.0.1"
+description = "Pallet to perform tokens swaps"
+name = "pallet-swaps"
+version = "1.0.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,47 +9,47 @@ homepage.workspace = true
 repository.workspace = true
 documentation.workspace = true
 
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
-# substrate
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-# orml
-orml-traits = { workspace = true }
-orml-xtokens = { workspace = true }
-
-# polkadot
-xcm = { workspace = true }
-
-# local
 cfg-traits = { workspace = true }
+
+[dev-dependencies]
+sp-io = { workspace = true, default-features = true }
+
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
   "parity-scale-codec/std",
-  "sp-std/std",
-  "cfg-traits/std",
+  "scale-info/std",
   "frame-support/std",
   "frame-system/std",
-  "scale-info/std",
-  "orml-xtokens/std",
-  "orml-traits/std",
-  "xcm/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
 ]
 runtime-benchmarks = [
-  "cfg-traits/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "orml-xtokens/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
-  "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
-  "orml-xtokens/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-mocks/try-runtime",
 ]

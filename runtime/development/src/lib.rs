@@ -90,7 +90,7 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::{Feeder, OracleConverterBridge},
+	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
 	permissions::PoolAdminCheck,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -489,7 +489,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Preimage(..) |
 					RuntimeCall::Fees(..) |
 					RuntimeCall::Anchor(..) |
-					RuntimeCall::Claims(..) |
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
@@ -508,11 +507,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
-					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
-					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
-					// Specifically omitting NftSales `buy`
 					// Specifically omitting Bridge
-					// Specifically omitting Nfts
 					RuntimeCall::Keystore(..) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
@@ -524,7 +519,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
-					// Specifically omitting Migration
 					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
 					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
 				)
@@ -903,20 +897,6 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
-}
-
-impl pallet_nft_sales::Config for Runtime {
-	type CollectionId = CollectionId;
-	type Fungibles = Tokens;
-	type ItemId = ItemId;
-	type NonFungibles = Uniques;
-	type PalletId = NftSalesPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
-}
-
-parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 
@@ -1001,22 +981,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
-}
-
-// Parameterize claims pallet
-parameter_types! {
-	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
-	pub const MinimalPayoutAmount: Balance = 5 * CFG;
-}
-
-// Implement claims pallet configuration trait for the centrifuge runtime
-impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Tokens;
-	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = ClaimsPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 // Pool config parameters
@@ -1220,23 +1184,6 @@ impl PoolUpdateGuard for UpdateGuard {
 
 		true
 	}
-}
-
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-// Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the
-// migration folder
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -1613,19 +1560,6 @@ impl chainbridge::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub ResourceHashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub const NftProofValidationFeeKey: FeeKey = FeeKey::NftProofValidation;
-}
-
-impl pallet_nft::Config for Runtime {
-	type ChainId = chainbridge::ChainId;
-	type NftProofValidationFeeKey = NftProofValidationFeeKey;
-	type ResourceHashId = ResourceHashId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
@@ -1828,19 +1762,31 @@ parameter_types! {
 
 impl pallet_order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FeederId = Feeder<RuntimeOrigin>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
+	type Ratio = Ratio;
+	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = Ratio;
-	type TradeableAsset = Tokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
 parameter_types! {
@@ -1900,7 +1846,7 @@ construct_runtime!(
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
+		// Removed: Claims = 92
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
@@ -1908,10 +1854,10 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
-		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
+		// Removed: NftSales = 100
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
-		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
+		// Removed: Nft = 103
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		LiquidityRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
@@ -1951,14 +1897,14 @@ construct_runtime!(
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
-		// migration pallet
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
+		// Removed: Migration = 199
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 
 		// our pallets part 2
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
+		Swaps: pallet_swaps::{Pallet, Storage} = 252,
 	}
 );
 
@@ -2302,7 +2248,7 @@ impl_runtime_apis! {
 			let nav_loans = Loans::update_nav(pool_id).ok()?;
 			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
 			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
-			let total = nav.total(pool.reserve.total).ok()?;
+			let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
 
 			Some(PoolNav { nav_aum: nav.nav_aum, nav_fees: nav.nav_fees, reserve: pool.reserve.total, total })
 		}
@@ -2325,6 +2271,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	// LoansApi
 	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
 		fn portfolio(
 			pool_id: PoolId
@@ -2347,9 +2294,26 @@ impl_runtime_apis! {
 		}
 	}
 
+	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
 		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
 			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+		}
+	}
+
+	// OrderBookApi
+	impl runtime_common::apis::OrderBookApi<Block, CurrencyId, Balance> for Runtime {
+		fn min_fulfillment_amount(currency_id: CurrencyId) -> Option<Balance> {
+			OrderBook::min_fulfillment_amount(currency_id).ok()
+		}
+	}
+
+	// PoolFeesApi
+	impl runtime_common::apis::PoolFeesApi<Block, PoolId, PoolFeeId, AccountId, Balance, Rate> for Runtime {
+		fn list_fees(pool_id: PoolId) -> Option<cfg_types::pools::PoolFeesList<PoolFeeId, AccountId, Balance, Rate>> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			PoolFees::update_portfolio_valuation_for_pool(pool_id, &mut pool.reserve.total.clone()).ok()?;
+			Some(PoolFees::get_pool_fees(pool_id))
 		}
 	}
 
@@ -2637,7 +2601,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
@@ -2655,7 +2618,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
-			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
@@ -2697,7 +2659,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
@@ -2715,7 +2676,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
-			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);

@@ -88,7 +88,6 @@ pallet-balances = { workspace = true }
 pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
 pallet-bridge = { workspace = true }
-pallet-claims = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
@@ -111,10 +110,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
-pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
-pallet-nft = { workspace = true }
-pallet-nft-sales = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
@@ -131,6 +127,7 @@ pallet-rewards = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
 pallet-sudo = { workspace = true }
+pallet-swaps = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-transaction-payment = { workspace = true }
 pallet-transfer-allowlist = { workspace = true }
@@ -219,7 +216,6 @@ std = [
   "pallet-base-fee/std",
   "pallet-block-rewards/std",
   "pallet-bridge/std",
-  "pallet-claims/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
@@ -242,10 +238,7 @@ std = [
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-membership/std",
-  "pallet-migration-manager/std",
   "pallet-multisig/std",
-  "pallet-nft/std",
-  "pallet-nft-sales/std",
   "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
@@ -262,6 +255,7 @@ std = [
   "pallet-scheduler/std",
   "pallet-session/std",
   "pallet-sudo/std",
+  "pallet-swaps/std",
   "pallet-timestamp/std",
   "pallet-transaction-payment/std",
   "pallet-transfer-allowlist/std",
@@ -309,7 +303,6 @@ runtime-benchmarks = [
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
-  "pallet-claims/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
@@ -331,10 +324,7 @@ runtime-benchmarks = [
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
-  "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
-  "pallet-nft/runtime-benchmarks",
-  "pallet-nft-sales/runtime-benchmarks",
   "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
@@ -350,6 +340,7 @@ runtime-benchmarks = [
   "pallet-rewards/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-sudo/runtime-benchmarks",
+  "pallet-swaps/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
@@ -398,7 +389,6 @@ try-runtime = [
   "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",
   "pallet-bridge/try-runtime",
-  "pallet-claims/try-runtime",
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
@@ -421,10 +411,7 @@ try-runtime = [
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-membership/try-runtime",
-  "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
-  "pallet-nft/try-runtime",
-  "pallet-nft-sales/try-runtime",
   "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",
@@ -441,6 +428,7 @@ try-runtime = [
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
   "pallet-sudo/try-runtime",
+  "pallet-swaps/try-runtime",
   "pallet-timestamp/try-runtime",
   "pallet-transaction-payment/try-runtime",
   "pallet-transfer-allowlist/try-runtime",

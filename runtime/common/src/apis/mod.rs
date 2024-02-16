@@ -15,6 +15,8 @@ pub use account_conversion::*;
 pub use anchors::*;
 pub use investments::*;
 pub use loans::*;
+pub use order_book::*;
+pub use pool_fees::*;
 pub use pools::*;
 pub use rewards::*;
 
@@ -22,5 +24,7 @@ mod account_conversion;
 mod anchors;
 mod investments;
 mod loans;
+mod order_book;
+mod pool_fees;
 mod pools;
 mod rewards;

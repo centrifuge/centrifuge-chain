@@ -66,7 +66,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
 	/// Storage: OrderBook UserOrders (r:1 w:1)
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
-	fn user_update_order() -> Weight {
+	fn update_order() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1594`
 		//  Estimated: `7534`
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook AssetPairOrders (max_values: None, max_size: Some(8068), added: 10543, mode: MaxEncodedLen)
 	/// Storage: OrderBook UserOrders (r:0 w:1)
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
-	fn user_cancel_order() -> Weight {
+	fn cancel_order() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1371`
 		//  Estimated: `11533`
@@ -110,7 +110,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: ForeignInvestments ForeignInvestmentInfo (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
 	/// Storage: OrderBook UserOrders (r:0 w:1)
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
-	fn fill_order_full() -> Weight {
+	fn fill_order() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1739`
 		//  Estimated: `11533`
@@ -119,30 +119,6 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(0, 11533))
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
-	}
-	/// Storage: OrderBook Orders (r:1 w:1)
-	/// Proof: OrderBook Orders (max_values: None, max_size: Some(186), added: 2661, mode: MaxEncodedLen)
-	/// Storage: OrmlTokens Accounts (r:4 w:4)
-	/// Proof: OrmlTokens Accounts (max_values: None, max_size: Some(129), added: 2604, mode: MaxEncodedLen)
-	/// Storage: OrmlAssetRegistry Metadata (r:2 w:0)
-	/// Proof Skipped: OrmlAssetRegistry Metadata (max_values: None, max_size: None, mode: Measured)
-	/// Storage: OrderBook TradingPair (r:1 w:0)
-	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
-	/// Storage: OrderBook UserOrders (r:1 w:1)
-	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:2)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	/// Storage: ForeignInvestments ForeignInvestmentInfo (r:1 w:0)
-	/// Proof: ForeignInvestments ForeignInvestmentInfo (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
-	fn fill_order_partial() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1924`
-		//  Estimated: `11406`
-		// Minimum execution time: 173_325_000 picoseconds.
-		Weight::from_parts(175_729_000, 0)
-			.saturating_add(Weight::from_parts(0, 11406))
-			.saturating_add(T::DbWeight::get().reads(12))
-			.saturating_add(T::DbWeight::get().writes(8))
 	}
 	/// Storage: OrderBook TradingPair (r:0 w:1)
 	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
@@ -166,16 +142,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
-	/// Storage: OrderBook TradingPair (r:1 w:1)
-	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
-	fn update_min_order() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `242`
-		//  Estimated: `3547`
-		// Minimum execution time: 20_769_000 picoseconds.
-		Weight::from_parts(21_531_000, 0)
-			.saturating_add(Weight::from_parts(0, 3547))
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
+	fn set_market_feeder() -> Weight {
+        // Pending to be generated
+		Weight::zero()
 	}
 }

@@ -11,19 +11,24 @@
 // GNU General Public License for more details.
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
+frame_support::parameter_types! {
+	pub const NftSalesPalletName: &'static str = "NftSales";
+	pub const MigrationPalletName: &'static str = "Migration";
+}
+
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
 	// At minimum, bumps storage version from 1 to 2
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::PoolSystem, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Investments, crate::RocksDbWeight, 0>,
 	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
@@ -55,6 +60,10 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::epoch_execution::Migration<crate::Runtime>,
 	// Probably not needed, as storage is likely not populated. Mirates currency used in allowlist
 	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
+	// Removes unused nft-sales pallet
+	runtime_common::migrations::nuke::KillPallet<NftSalesPalletName, crate::RocksDbWeight>,
+	// Removes unused migration pallet
+	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
 );
 
 mod asset_registry {

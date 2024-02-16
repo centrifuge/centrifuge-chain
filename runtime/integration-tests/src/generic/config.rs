@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
-	Index, ItemId, LoanId, PoolId, Signature, TrancheId,
+	Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -130,15 +130,19 @@ pub trait Runtime:
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
 	+ pallet_order_book::Config<
-		Balance = Balance,
-		AssetCurrencyId = CurrencyId,
+		BalanceIn = Balance,
+		BalanceOut = Balance,
+		CurrencyId = CurrencyId,
 		OrderIdNonce = u64,
-		SellRatio = Ratio,
-	> + pallet_foreign_investments::Config<
-		Balance = Balance,
+		Ratio = Ratio,
+		FeederId = Feeder<Self::RuntimeOriginExt>,
+	> + pallet_swaps::Config<OrderId = OrderId, SwapId = pallet_foreign_investments::SwapId<Self>>
+	+ pallet_foreign_investments::Config<
+		ForeignBalance = Balance,
+		PoolBalance = Balance,
+		TrancheBalance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
-		SwapId = u64,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
