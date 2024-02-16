@@ -10,7 +10,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::types::Balance;
+use cfg_primitives::{types::Balance, AccountId};
 use cfg_traits::TryConvert;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -18,12 +18,14 @@ use cfg_types::{
 	EVMChainId, ParaId,
 };
 use frame_support::sp_std::marker::PhantomData;
-use sp_runtime::traits::Convert;
+use sp_arithmetic::traits::Zero;
+use sp_runtime::traits::{Convert, Get};
 use xcm::v3::{
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
 	Junctions::{X1, X2},
-	MultiLocation, OriginKind,
+	MultiLocation, NetworkId, OriginKind,
 };
+use xcm_builder::SignedToAccountId32;
 
 use crate::xcm_fees::default_per_second;
 
@@ -117,6 +119,27 @@ where
 			},
 			_ => Err(location),
 		}
+	}
+}
+
+/// No local origins on this chain are allowed to dispatch XCM sends/executions.
+pub type LocalOriginToLocation<R> = SignedToAccountId32<
+	<R as frame_system::Config>::RuntimeOrigin,
+	AccountId,
+	NetworkIdByGenesis<R>,
+>;
+
+pub struct NetworkIdByGenesis<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: frame_system::Config> Get<Option<NetworkId>> for NetworkIdByGenesis<T>
+where
+	<T as frame_system::Config>::Hash: Into<[u8; 32]>,
+{
+	fn get() -> Option<NetworkId> {
+		Some(NetworkId::ByGenesis(
+			frame_system::BlockHash::<T>::get(<T as frame_system::Config>::BlockNumber::zero())
+				.into(),
+		))
 	}
 }
 
