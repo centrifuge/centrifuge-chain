@@ -77,3 +77,21 @@ jobs:
         run: ./ci/run-check.sh "${{ matrix.chain }}"
         env:
           TARGET: try-runtime
+
+  notify-slack:
+    needs: try-runtime
+    if: ${{ always() && needs.try-runtime.result == 'failure' }} && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        uses: rtCamp/action-slack-notify@b24d75fe0e728a4bf9fc42ee217caa686d141ee8 #v2.2.1
+        env:
+          SLACK_CHANNEL: eng-protocol-general
+          SLACK_COLOR: '#FF0000'
+          SLACK_ICON: ':boom:'
+          SLACK_MESSAGE: |
+            Weekly try-runtime job failed on main branch. Please check:
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|GHA Job URL>
+          SLACK_TITLE: 'Job Failure Notification'
+          SLACK_USERNAME: "Centrifuge GHA Bot"
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
