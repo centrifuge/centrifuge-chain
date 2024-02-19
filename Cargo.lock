@@ -200,6 +200,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -1077,6 +1078,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -1225,6 +1227,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "orml-asset-registry",
+ "orml-traits",
  "parity-scale-codec 3.6.9",
  "scale-info",
  "serde",
@@ -2447,7 +2450,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.39"
+version = "0.10.41"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2531,6 +2534,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -8193,6 +8197,35 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-token-mux"
+version = "0.1.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-test-utils",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-order-book",
+ "pallet-restricted-tokens",
+ "parity-scale-codec 3.6.9",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]

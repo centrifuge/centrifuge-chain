@@ -539,6 +539,15 @@ impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
 	}
 }
 
+/// The information of a swap order
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct OrderInfo<Balance, Currency, Ratio> {
+	/// The underlying currency swap
+	pub swap: Swap<Balance, Currency>,
+	/// The ratio at which the swap should happen
+	pub ratio: OrderRatio<Ratio>,
+}
+
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type BalanceOut;
@@ -563,6 +572,17 @@ pub trait TokenSwaps<Account> {
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
+	/// Fill an existing order up to the provided amount.
+	///  * If `amount` equals the `order.amount_out`, the order is completely
+	///    fulfilled.
+	///  * Else, the order is partially fulfilled for `amount /
+	///    order.amount_out`%.
+	fn fill_order(
+		account: Account,
+		order_id: Self::OrderId,
+		amount: Self::BalanceOut,
+	) -> DispatchResult;
+
 	/// A sanity check that can be used for validating that a trading pair
 	/// is supported. Will also be checked when placing an order but might be
 	/// cheaper.
@@ -572,15 +592,25 @@ pub trait TokenSwaps<Account> {
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>>;
+	fn get_order_details(
+		order: Self::OrderId,
+	) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>>;
 
 	/// Makes a conversion between 2 currencies using the market ratio between
-	/// them
+	/// them.
 	fn convert_by_market(
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		amount_out: Self::BalanceOut,
 	) -> Result<Self::BalanceIn, DispatchError>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	/// Adds a valid trading pair.
+	fn add_trading_pair(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		min_order: Self::BalanceOut,
+	) -> DispatchResult;
 }
 
 /// A representation of a currency swap in process.
@@ -785,4 +815,9 @@ impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 	fn get(_: &Source, _: &Key) -> Result<Option<Self::Value>, DispatchError> {
 		Err(DispatchError::Other("No value"))
 	}
+}
+
+/// Checks whether an asset is the local representation of another one
+pub trait HasLocalAssetRepresentation<AssetRegistry> {
+	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError>;
 }

@@ -27,6 +27,7 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 orml-asset-registry = { workspace = true }
+orml-traits = { workspace = true }
 xcm = { workspace = true }
 
 # local dependencies
@@ -47,6 +48,7 @@ std = [
   "parity-scale-codec/std",
   "frame-support/std",
   "orml-asset-registry/std",
+  "orml-traits/std",
   "scale-info/std",
   "serde/std",
   "sp-arithmetic/std",

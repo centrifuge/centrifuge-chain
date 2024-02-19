@@ -271,11 +271,14 @@ mod tests {
 	use super::*;
 
 	mod saturated_proration {
-		use cfg_primitives::SECONDS_PER_YEAR;
-		use sp_arithmetic::traits::{One, Zero};
+		use cfg_primitives::{CFG, DAYS, SECONDS_PER_YEAR};
+		use sp_arithmetic::{
+			traits::{One, Zero},
+			FixedPointNumber,
+		};
 
 		use super::*;
-		use crate::fixed_point::Rate;
+		use crate::fixed_point::{Quantity, Rate};
 
 		type Balance = u128;
 
@@ -369,6 +372,28 @@ mod tests {
 			assert!(
 				saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) < right_bound
 			);
+		}
+
+		#[test]
+		fn precision_quantity_vs_rate() {
+			let period = (DAYS / 4) as Seconds;
+			let nav_multiplier = 1_000_000;
+			let nav = nav_multiplier * CFG;
+
+			let q_proration = saturated_rate_proration::<Quantity>(
+				Quantity::checked_from_rational(1, 100).unwrap(),
+				period,
+			);
+			let r_proration = saturated_rate_proration::<Rate>(
+				Rate::checked_from_rational(1, 100).unwrap(),
+				period,
+			);
+
+			let q_amount = q_proration.saturating_mul_int(nav);
+			let r_amount = r_proration.saturating_mul_int(nav);
+			let r_amount_rounded_up = (r_amount / (nav_multiplier) + 1) * (nav_multiplier);
+
+			assert_eq!(q_amount, r_amount_rounded_up);
 		}
 	}
 }

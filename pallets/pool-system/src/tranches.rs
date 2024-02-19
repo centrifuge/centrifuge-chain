@@ -244,6 +244,7 @@ where
 				permissioned: true,
 				pool_currency: false,
 				transferability: CrossChainTransferability::LiquidityPools,
+				local_representation: None,
 			},
 		}
 	}

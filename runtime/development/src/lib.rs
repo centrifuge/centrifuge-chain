@@ -90,7 +90,9 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
+	oracle::{
+		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
+	},
 	permissions::PoolAdminCheck,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -142,7 +144,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1039,
+	spec_version: 1041,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1756,8 +1758,8 @@ impl pallet_transfer_allowlist::Config for Runtime {
 }
 
 parameter_types! {
-		pub const OrderPairVecSize: u32 = 1_000u32;
-		pub MinFulfillmentAmountNative: Balance = 10 * CFG;
+	pub const OrderPairVecSize: u32 = 1_000u32;
+	pub MinFulfillmentAmountNative: Balance = 10 * CFG;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1775,7 +1777,11 @@ impl pallet_order_book::Config for Runtime {
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
+	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+		RuntimeOrigin,
+		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
+		OrmlAssetRegistry,
+	>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
@@ -1790,7 +1796,27 @@ impl pallet_swaps::Config for Runtime {
 }
 
 parameter_types! {
-		pub const MaxRemarksPerCall: u32 = 10;
+	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
+}
+
+impl pallet_token_mux::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type LocalAssetId = LocalAssetId;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type PalletId = TokenMuxPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Tokens = OrmlTokens;
+	// TODO(william): Change to weights once they exist
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxRemarksPerCall: u32 = 10;
 }
 
 impl pallet_remarks::Config for Runtime {
@@ -1905,6 +1931,7 @@ construct_runtime!(
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
 		Swaps: pallet_swaps::{Pallet, Storage} = 252,
+		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 253,
 	}
 );
 
@@ -1972,7 +1999,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1038,
+	crate::migrations::UpgradeDevelopment1041,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -2064,7 +2091,10 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::{pools::PoolNav, tokens::FilterCurrency};
+use cfg_types::{
+	pools::PoolNav,
+	tokens::{FilterCurrency, LocalAssetId},
+};
 use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2624,6 +2654,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 			add_benchmark!(params, batches,	pallet_pool_fees, PoolFees);
+			add_benchmark!(params, batches,	pallet_token_mux, TokenMux);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2682,6 +2713,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
 			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
+			list_benchmark!(list, extra, pallet_token_mux, TokenMux);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

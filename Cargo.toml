@@ -38,6 +38,7 @@ members = [
   "pallets/restricted-xtokens",
   "pallets/rewards",
   "pallets/swaps",
+  "pallets/token-mux",
   "pallets/transfer-allowlist",
   "runtime/altair",
   "runtime/centrifuge",
@@ -288,6 +289,7 @@ pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-feature
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
 pallet-swaps = { path = "pallets/swaps", default-features = false }
+pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 
 # Centrifuge libs
