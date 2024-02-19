@@ -19,6 +19,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+use cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
@@ -66,6 +67,9 @@ use pallet_evm::{
 	GasWeightMapping, Runner,
 };
 use pallet_investments::OrderType;
+use pallet_liquidity_pools::hooks::{
+	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
+};
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -85,9 +89,12 @@ use runtime_common::{
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
+	gateway::GatewayAccountProvider,
+	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
 	permissions::PoolAdminCheck,
 	remarks::Remark,
+	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
@@ -114,7 +121,6 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
 pub mod constants;
-pub mod liquidity_pools;
 mod migrations;
 mod weights;
 pub mod xcm;
@@ -1720,6 +1726,70 @@ impl pallet_swaps::Config for Runtime {
 	type OrderBook = OrderBook;
 	type OrderId = OrderId;
 	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
+	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
+	type ForeignBalance = Balance;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolBalance = Balance;
+	type PoolInspect = PoolSystem;
+	type SwapBalance = Balance;
+	type Swaps = Swaps;
+	type TrancheBalance = Balance;
+}
+
+parameter_types! {
+	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
+}
+
+impl pallet_liquidity_pools::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
+	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PreTransferFilter = PreLpTransfer<TransferAllowList>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+}
+
+impl pallet_liquidity_pools_gateway::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type InboundQueue = LiquidityPools;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Message = LiquidityPoolsMessage;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
 }
 
 parameter_types! {
