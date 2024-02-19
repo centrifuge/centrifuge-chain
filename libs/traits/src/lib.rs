@@ -548,14 +548,6 @@ pub struct OrderInfo<Balance, Currency, Ratio> {
 	pub ratio: OrderRatio<Ratio>,
 }
 
-// impl<Balance, Currency, Ratio> From<OrderInfo<Balance, Currency, Ratio>>
-// 	for Swap<Balance, Currency>
-// {
-// 	fn from(&self) -> Swap<Balance, Currency> {
-// 		self.swap
-// 	}
-// }
-
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type BalanceOut;
