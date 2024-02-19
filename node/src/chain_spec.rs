@@ -554,15 +554,13 @@ fn centrifuge_genesis(
 ) -> centrifuge_runtime::GenesisConfig {
 	let chain_id: u32 = id.into();
 
-	endowed_accounts.extend(
-		endowed_evm_accounts.into_iter().map(|(addr, id)| {
-			let chain_id = id.unwrap_or_else(|| chain_id.into());
-			AccountConverter::<
+	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
+		let chain_id = id.unwrap_or_else(|| chain_id.into());
+		AccountConverter::<
 				centrifuge_runtime::Runtime,
 				centrifuge_runtime::xcm::LocationToAccountId,
 			>::convert_evm_address(chain_id, addr)
-		}),
-	);
+	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
 	let balances = match total_issuance {
