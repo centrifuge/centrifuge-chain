@@ -10,9 +10,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+//! # Token Mux pallet
+//!
+//! Enables proxying variants of the same foreign assets
+//! to a local asset representation. By locking a variant, the user receives
+//! the corresponding amount of the local representation minted. The reverse
+//! process burns the local asset and transfers back the desired variant
+//! directions.
+//!
+//! ## Assumptions
+//!
+//! - The exchange rate between the local and its variant assets is exactly one.
+//! - Orders can be created for local <> variant asset
 
-// TODO(william): Add pallet description
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
 mod mock;
