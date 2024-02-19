@@ -33,7 +33,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
 	use cfg_traits::{OrderRatio, TokenSwaps};
-	use cfg_types::{orders::OrderInfo, tokens::CustomMetadata};
+	use cfg_types::tokens::CustomMetadata;
 	use frame_support::{
 		pallet_prelude::{DispatchResult, *},
 		traits::{
@@ -121,7 +121,6 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			BalanceIn = Self::BalanceIn,
 			BalanceOut = Self::BalanceOut,
-			OrderDetails = OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::BalanceRatio>,
 			OrderId = Self::OrderId,
 			Ratio = Self::BalanceRatio,
 		>;

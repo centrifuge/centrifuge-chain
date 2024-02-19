@@ -1,5 +1,5 @@
 use cfg_traits::{
-	OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps as TSwaps,
+	OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps as TSwaps,
 };
 use frame_support::assert_ok;
 
@@ -90,10 +90,13 @@ mod swaps {
 			MockTokenSwaps::mock_get_order_details(move |swap_id| {
 				assert_eq!(swap_id, ORDER_ID);
 
-				Some(Swap {
-					currency_in: CURRENCY_B,
-					currency_out: CURRENCY_A,
-					amount_out: PREVIOUS_AMOUNT,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_B,
+						currency_out: CURRENCY_A,
+						amount_out: PREVIOUS_AMOUNT,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
@@ -138,10 +141,13 @@ mod swaps {
 				assert_eq!(swap_id, ORDER_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: CURRENCY_A,
-					currency_out: CURRENCY_B,
-					amount_out: a_to_b(PREVIOUS_AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
@@ -184,10 +190,13 @@ mod swaps {
 				assert_eq!(swap_id, ORDER_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: CURRENCY_A,
-					currency_out: CURRENCY_B,
-					amount_out: a_to_b(AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {
@@ -231,10 +240,13 @@ mod swaps {
 				assert_eq!(swap_id, ORDER_ID);
 
 				// Inverse swap
-				Some(Swap {
-					currency_in: CURRENCY_A,
-					currency_out: CURRENCY_B,
-					amount_out: a_to_b(PREVIOUS_AMOUNT),
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {

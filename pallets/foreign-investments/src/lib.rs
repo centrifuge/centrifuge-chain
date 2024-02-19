@@ -176,7 +176,6 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Amount = Self::SwapBalance,
 			SwapId = SwapId<Self>,
-			OrderDetails = SwapOf<Self>,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.

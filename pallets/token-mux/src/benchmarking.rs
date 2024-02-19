@@ -46,7 +46,7 @@ fn mock_match_swap<T: Config>(who: T::AccountId)
 where
 	AccountId32: From<T::AccountId>,
 {
-	use cfg_types::{investments::Swap, orders::OrderInfo};
+	use cfg_traits::{OrderInfo, Swap};
 	use tests::swaps::utils::mock_swap;
 
 	use crate::mock::MockTokenSwaps;

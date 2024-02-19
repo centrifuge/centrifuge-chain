@@ -282,8 +282,6 @@ pub(crate) mod try_local {
 }
 
 pub(crate) mod swaps {
-	use cfg_types::orders::OrderInfo;
-
 	use super::*;
 	use crate::{
 		tests::swaps::utils::{
@@ -293,8 +291,7 @@ pub(crate) mod swaps {
 	};
 
 	pub(crate) mod utils {
-		use cfg_traits::OrderRatio;
-		use cfg_types::investments::Swap;
+		use cfg_traits::{OrderInfo, OrderRatio, Swap};
 		use frame_support::traits::tokens::{fungibles::Mutate, Preservation};
 		use sp_arithmetic::traits::One;
 

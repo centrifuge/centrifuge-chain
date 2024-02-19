@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderInfo, OrderRatio, Swap, TokenSwaps};
+	use cfg_traits::{OrderInfo, OrderRatio, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 

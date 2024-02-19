@@ -1,6 +1,6 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	StatusNotificationHook, Swap, SwapState, TokenSwaps,
+	OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
@@ -132,7 +132,7 @@ mod util {
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
 		let order_id = Swaps::order_id(&USER, (INVESTMENT_ID, action)).unwrap();
-		let swap = MockTokenSwaps::get_order_details(order_id).unwrap();
+		let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
 			Some(OrderInfo {
 				swap: Swap {

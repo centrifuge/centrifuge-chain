@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::OrderRatio;
 use frame_support::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -21,8 +20,6 @@ use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	vec::Vec,
 };
-
-use crate::investments::Swap;
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
@@ -128,13 +125,4 @@ impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, Orde
 	pub fn submitted_at(&self) -> OrderId {
 		self.submitted_at
 	}
-}
-
-/// The information of a swap order
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct OrderInfo<Balance, Currency, Ratio> {
-	/// The underlying currency swap
-	pub swap: Swap<Balance, Currency>,
-	/// The ratio at which the swap should happen
-	pub ratio: OrderRatio<Ratio>,
 }

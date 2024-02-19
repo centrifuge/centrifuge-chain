@@ -836,7 +836,9 @@ pub mod pallet {
 			)
 		}
 
-		fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails> {
+		fn get_order_details(
+			order: Self::OrderId,
+		) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>> {
 			Orders::<T>::get(order)
 				.map(|order| OrderInfo {
 					swap: Swap {

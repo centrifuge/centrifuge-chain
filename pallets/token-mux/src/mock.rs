@@ -11,10 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_token_swaps;
-use cfg_types::{
-	orders::OrderInfo,
-	tokens::{CustomMetadata, LocalAssetId},
-};
+use cfg_types::tokens::{CustomMetadata, LocalAssetId};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU16, ConstU32, ConstU64, GenesisBuild},
@@ -117,7 +114,6 @@ impl pallet_mock_token_swaps::Config for Runtime {
 	type BalanceIn = Balance;
 	type BalanceOut = Balance;
 	type CurrencyId = CurrencyId;
-	type OrderDetails = OrderInfo<Balance, CurrencyId, Ratio>;
 	type OrderId = SwapId;
 	type Ratio = Ratio;
 }

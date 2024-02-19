@@ -539,6 +539,23 @@ impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
 	}
 }
 
+/// The information of a swap order
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct OrderInfo<Balance, Currency, Ratio> {
+	/// The underlying currency swap
+	pub swap: Swap<Balance, Currency>,
+	/// The ratio at which the swap should happen
+	pub ratio: OrderRatio<Ratio>,
+}
+
+// impl<Balance, Currency, Ratio> From<OrderInfo<Balance, Currency, Ratio>>
+// 	for Swap<Balance, Currency>
+// {
+// 	fn from(&self) -> Swap<Balance, Currency> {
+// 		self.swap
+// 	}
+// }
+
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type BalanceOut;
@@ -583,7 +600,9 @@ pub trait TokenSwaps<Account> {
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>>;
+	fn get_order_details(
+		order: Self::OrderId,
+	) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>>;
 
 	/// Makes a conversion between 2 currencies using the market ratio between
 	/// them.
