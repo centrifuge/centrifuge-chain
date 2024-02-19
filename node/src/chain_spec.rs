@@ -59,9 +59,9 @@ pub type CentrifugeChainSpec =
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
 
-use altair_runtime::evm::AltairPrecompiles;
-use centrifuge_runtime::evm::CentrifugePrecompiles;
-use development_runtime::evm::DevelopmentPrecompiles;
+use altair_runtime::AltairPrecompiles;
+use centrifuge_runtime::CentrifugePrecompiles;
+use development_runtime::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -1014,7 +1014,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			lp_wrapped_usdc_metadata(
 				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
 				"LpEthUSDC".as_bytes().to_vec(),
-				development_runtime::liquidity_pools::LiquidityPoolsPalletIndex::get(),
+				development_runtime::LiquidityPoolsPalletIndex::get(),
 				CHAIN_ID_ETH_GOERLI_TESTNET,
 				CONTRACT_ETH_GOERLI,
 				true,
