@@ -91,8 +91,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
-		type BalanceIn = T::BalanceOut;
-		type BalanceOut = T::BalanceIn;
+		type BalanceIn = T::BalanceIn;
+		type BalanceOut = T::BalanceOut;
 		type CurrencyId = T::CurrencyId;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
