@@ -44,8 +44,8 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, ConstU32, ConstU64, EitherOfDiverse, EqualPrivilegeOnly,
+		InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
 	weights::{
@@ -62,8 +62,11 @@ use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
-use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
+use pallet_ethereum::{Call::transact, PostLogContent, Transaction as EthTransaction};
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressRoot, EnsureAddressTruncated, FeeCalculator,
+	GasWeightMapping, Runner,
+};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -81,8 +84,13 @@ use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpda
 use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
+	evm::{
+		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
+	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
+	origin::EnsureAccountOrRootOr,
 	permissions::PoolAdminCheck,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -109,7 +117,6 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-pub mod evm;
 pub mod liquidity_pools;
 mod migrations;
 mod weights;
@@ -1835,6 +1842,108 @@ impl pallet_remarks::Config for Runtime {
 	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
 }
 
+pub type CentrifugePrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
+	pub PrecompilesValue: CentrifugePrecompiles = Precompiles::<_, _>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
+	pub const TokenSymbol: &'static str = "CFG";
+}
+
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
+	type BlockGasLimit = BlockGasLimit;
+	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
+	type CallOrigin = EnsureAddressRoot<AccountId>;
+	type ChainId = EVMChainId;
+	type Currency = Balances;
+	type FeeCalculator = BaseFee;
+	type FindAuthor = FindAuthorTruncated<Self>;
+	type GasLimitPovSizeRatio = ConstU64<GAS_LIMIT_POV_SIZE_RATIO>;
+	type GasLimitStorageGrowthRatio = ConstU64<GAS_LIMIT_STORAGE_GROWTH_RATIO>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+	type OnChargeTransaction = ();
+	type OnCreate = ();
+	type PrecompilesType = CentrifugePrecompiles;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
+}
+
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+impl pallet_base_fee::Config for Runtime {
+	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
+}
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for Runtime {}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<liquidity_pools::LpAdminAccount, TwoThirdOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// A Block signed with a Justification
+pub type SignedBlock = generic::SignedBlock<Block>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
+);
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic =
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+/// Extrinsic type that has already been checked.
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
+
+/// Executive: handles dispatch to the various modules.
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	migrations::UpgradeCentrifuge1025,
+>;
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1939,41 +2048,6 @@ construct_runtime!(
 		Swaps: pallet_swaps::{Pallet, Storage} = 188,
 	}
 );
-
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// A Block signed with a Justification
-pub type SignedBlock = generic::SignedBlock<Block>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-/// The SignedExtension to the basic transaction logic.
-pub type SignedExtra = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
-);
-/// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
-/// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic =
-	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
-
-/// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1025,
->;
 
 pub struct TransactionConverter;
 

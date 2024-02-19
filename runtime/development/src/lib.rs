@@ -51,8 +51,8 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, ConstU32, ConstU64, EitherOfDiverse, EqualPrivilegeOnly,
+		InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
 	weights::{
@@ -69,8 +69,10 @@ use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
-use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
-use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
+use pallet_ethereum::{Call::transact, PostLogContent, Transaction as EthTransaction};
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, GasWeightMapping, Runner,
+};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -89,6 +91,10 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
 	changes::FastDelay,
+	evm::{
+		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
+	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
 	permissions::PoolAdminCheck,
@@ -119,7 +125,6 @@ use xcm_executor::XcmExecutor;
 
 pub use crate::xcm::*;
 
-pub mod evm;
 pub mod liquidity_pools;
 mod migrations;
 mod weights;
@@ -1802,6 +1807,140 @@ impl pallet_remarks::Config for Runtime {
 	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
 }
 
+/// The config for the Downward Message Passing Queue, i.e., how messages coming
+/// from the relay-chain are handled.
+impl cumulus_pallet_dmp_queue::Config for Runtime {
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+parameter_types! {
+	/// The amount of weight an XCM operation takes. This is a safe overestimate.
+	pub UnitWeightCost: Weight = Weight::from_parts(200_000_000u64, 0);
+	/// Maximum number of instructions in a single XCM message.
+	pub MaxInstructions: u32 = 100;
+}
+
+/// Xcm Weigher shared between multiple Xcm-related configs.
+pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+
+/// XCMP Queue is responsible to handle XCM messages coming directly from
+/// sibling parachains.
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type ChannelInfo = ParachainSystem;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type PriceForSiblingDelivery = ();
+	type RuntimeEvent = RuntimeEvent;
+	type VersionWrapper = PolkadotXcm;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+pub type DevelopmentPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
+	pub PrecompilesValue: DevelopmentPrecompiles = Precompiles::<_, _>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
+	pub const TokenSymbol: &'static str = "DCFG";
+}
+
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
+	type BlockGasLimit = BlockGasLimit;
+	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
+	type CallOrigin = EnsureAddressTruncated;
+	type ChainId = EVMChainId;
+	type Currency = Balances;
+	type FeeCalculator = BaseFee;
+	type FindAuthor = FindAuthorTruncated<Self>;
+	type GasLimitPovSizeRatio = ConstU64<GAS_LIMIT_POV_SIZE_RATIO>;
+	type GasLimitStorageGrowthRatio = ConstU64<GAS_LIMIT_STORAGE_GROWTH_RATIO>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+	type OnChargeTransaction = ();
+	type OnCreate = ();
+	type PrecompilesType = DevelopmentPrecompiles;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
+}
+
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+impl pallet_base_fee::Config for Runtime {
+	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
+}
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for Runtime {}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// A Block signed with a Justification
+pub type SignedBlock = generic::SignedBlock<Block>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
+);
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic =
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+/// Extrinsic type that has already been checked.
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
+
+/// Executive: handles dispatch to the various modules.
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	crate::migrations::UpgradeDevelopment1038,
+>;
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1907,73 +2046,6 @@ construct_runtime!(
 		Swaps: pallet_swaps::{Pallet, Storage} = 252,
 	}
 );
-
-/// The config for the Downward Message Passing Queue, i.e., how messages coming
-/// from the relay-chain are handled.
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
-parameter_types! {
-	/// The amount of weight an XCM operation takes. This is a safe overestimate.
-	pub UnitWeightCost: Weight = Weight::from_parts(200_000_000u64, 0);
-	/// Maximum number of instructions in a single XCM message.
-	pub MaxInstructions: u32 = 100;
-}
-
-/// Xcm Weigher shared between multiple Xcm-related configs.
-pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-
-/// XCMP Queue is responsible to handle XCM messages coming directly from
-/// sibling parachains.
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type ChannelInfo = ParachainSystem;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type PriceForSiblingDelivery = ();
-	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// A Block signed with a Justification
-pub type SignedBlock = generic::SignedBlock<Block>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-/// The SignedExtension to the basic transaction logic.
-pub type SignedExtra = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
-);
-/// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
-/// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic =
-	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
-
-/// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1038,
->;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
