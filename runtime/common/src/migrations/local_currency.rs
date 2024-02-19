@@ -372,16 +372,17 @@ pub mod migrate_pool_currency {
 			CurrencyId = CurrencyId,
 		>,
 	{
-		let tranches = pallet_pool_system::Pool::<T>::get(pool_id)
-			.expect("Pool exists; qed")
-			.tranches;
-		tranches.ids.into_iter().any(|tranche_id| {
-			!pallet_investments::ActiveInvestOrders::<T>::get(TrancheCurrency::generate(
-				pool_id, tranche_id,
-			))
-			.amount
-			.is_zero()
-		})
+		if let Some(t) = pallet_pool_system::Pool::<T>::get(pool_id) {
+			t.tranches.ids.into_iter().any(|tranche_id| {
+				!pallet_investments::ActiveInvestOrders::<T>::get(TrancheCurrency::generate(
+					pool_id, tranche_id,
+				))
+				.amount
+				.is_zero()
+			})
+		} else {
+			false
+		}
 	}
 }
 
