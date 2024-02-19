@@ -198,6 +198,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -1075,6 +1076,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -2530,6 +2532,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -7247,6 +7250,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-swaps",
  "parity-scale-codec 3.6.9",
  "scale-info",
  "sp-core",
@@ -8134,6 +8138,21 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.9",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-swaps"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
  "frame-support",
  "frame-system",
  "parity-scale-codec 3.6.9",
@@ -11010,6 +11029,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transfer-allowlist",

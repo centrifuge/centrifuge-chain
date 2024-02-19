@@ -1,6 +1,6 @@
 [package]
-name = "pallet-foreign-investments"
-description = "Pallet to enable investments and redemptions via a foreign interface"
+description = "Pallet to perform tokens swaps"
+name = "pallet-swaps"
 version = "1.0.0"
 authors.workspace = true
 edition.workspace = true
@@ -16,53 +16,40 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
-cfg-traits = { workspace = true }
-cfg-types = { workspace = true }
-
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-# Benchmarking dependencies - optional
-frame-benchmarking = { workspace = true, optional = true }
+cfg-traits = { workspace = true }
 
 [dev-dependencies]
-sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
 cfg-mocks = { workspace = true, default-features = true }
-pallet-swaps = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
-  "cfg-traits/std",
-  "cfg-types/std",
   "parity-scale-codec/std",
-  "frame-benchmarking?/std",
+  "scale-info/std",
   "frame-support/std",
   "frame-system/std",
-  "scale-info/std",
   "sp-runtime/std",
   "sp-std/std",
+  "cfg-traits/std",
 ]
 runtime-benchmarks = [
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
-  "pallet-swaps/runtime-benchmarks",
 ]
 try-runtime = [
-  "cfg-traits/try-runtime",
-  "cfg-types/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-traits/try-runtime",
   "cfg-mocks/try-runtime",
-  "pallet-swaps/try-runtime",
 ]

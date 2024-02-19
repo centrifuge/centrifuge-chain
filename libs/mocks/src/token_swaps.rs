@@ -1,7 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderRatio, TokenSwaps};
-	use cfg_types::orders::OrderInfo;
+	use cfg_traits::{OrderInfo, OrderRatio, Swap, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -12,7 +11,6 @@ pub mod pallet {
 		type BalanceOut;
 		type Ratio;
 		type OrderId;
-		type OrderDetails;
 	}
 
 	#[pallet::pallet]
@@ -60,7 +58,10 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
+		pub fn mock_get_order_details(
+			f: impl Fn(T::OrderId) -> Option<OrderInfo<T::BalanceOut, T::CurrencyId, T::Ratio>>
+				+ 'static,
+		) {
 			register_call!(f);
 		}
 
@@ -90,16 +91,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
-		type BalanceIn = T::BalanceIn;
-		type BalanceOut = T::BalanceOut;
+		type BalanceIn = T::BalanceOut;
+		type BalanceOut = T::BalanceIn;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
-
-		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
-			execute_call!(a)
-		}
 
 		fn place_order(
 			a: T::AccountId,
@@ -125,6 +121,12 @@ pub mod pallet {
 
 		fn valid_pair(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
 			execute_call!((a, b))
+		}
+
+		fn get_order_details(
+			a: Self::OrderId,
+		) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>> {
+			execute_call!(a)
 		}
 
 		fn convert_by_market(

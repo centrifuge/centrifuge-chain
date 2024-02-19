@@ -1795,7 +1795,7 @@ impl pallet_order_book::Config for Runtime {
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
@@ -1807,6 +1807,15 @@ impl pallet_order_book::Config for Runtime {
 	>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
 parameter_types! {
@@ -1917,7 +1926,6 @@ construct_runtime!(
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
-		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1954,6 +1962,8 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
+		Swaps: pallet_swaps::{Pallet, Storage} = 188,
+		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 189,
 	}
 );
 

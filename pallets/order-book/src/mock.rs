@@ -11,11 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_traits::ConversionToAssetBalance;
-use cfg_types::{
-	investments::SwapState,
-	tokens::{CurrencyId, CustomMetadata},
-};
+use cfg_traits::{ConversionToAssetBalance, SwapState};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, GenesisBuild},
