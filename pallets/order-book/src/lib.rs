@@ -37,8 +37,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
-		ConversionToAssetBalance, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
-		ValueProvider,
+		ConversionToAssetBalance, OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState,
+		TokenSwaps, ValueProvider,
 	};
 	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
@@ -106,7 +106,7 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Balance type for incomming values
+		/// Balance type for incoming values
 		type BalanceIn: Member
 			+ Parameter
 			+ FixedPointOperand
@@ -117,7 +117,7 @@ pub mod pallet {
 			+ Into<BalanceOf<Self>>
 			+ From<BalanceOf<Self>>;
 
-		/// Balance type for outcomming values
+		/// Balance type for outgoing values
 		type BalanceOut: Member
 			+ Parameter
 			+ FixedPointOperand
@@ -836,14 +836,29 @@ pub mod pallet {
 			)
 		}
 
-		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::BalanceOut, T::CurrencyId>> {
+		fn get_order_details(
+			order: Self::OrderId,
+		) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>> {
 			Orders::<T>::get(order)
-				.map(|order| Swap {
-					amount_out: order.amount_out,
-					currency_in: order.currency_in,
-					currency_out: order.currency_out,
+				.map(|order| OrderInfo {
+					swap: Swap {
+						currency_in: order.currency_in,
+						currency_out: order.currency_out,
+						amount_out: order.amount_out,
+					},
+					ratio: order.ratio,
 				})
 				.ok()
+		}
+
+		fn fill_order(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			buy_amount: T::BalanceOut,
+		) -> DispatchResult {
+			let order = <Orders<T>>::get(order_id)?;
+
+			Self::fulfill_order_with_amount(order, buy_amount, account)
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
@@ -862,6 +877,20 @@ pub mod pallet {
 
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_trading_pair(
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+			min_order: T::BalanceOut,
+		) -> DispatchResult {
+			Self::add_trading_pair(
+				frame_support::dispatch::RawOrigin::Root.into(),
+				currency_in,
+				currency_out,
+				min_order,
+			)
 		}
 	}
 

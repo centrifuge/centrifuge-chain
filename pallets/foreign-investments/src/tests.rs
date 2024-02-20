@@ -1,6 +1,6 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	StatusNotificationHook, Swap, SwapState, TokenSwaps,
+	OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
@@ -69,22 +69,28 @@ mod util {
 
 		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_out, _| {
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: curr_in,
-					currency_out: curr_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: curr_in,
+						currency_out: curr_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(0)
 		});
 
 		MockTokenSwaps::mock_update_order(|swap_id, amount_out, _| {
-			let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+			let order = MockTokenSwaps::get_order_details(swap_id).unwrap();
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: swap.currency_in,
-					currency_out: swap.currency_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: order.swap.currency_in,
+						currency_out: order.swap.currency_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(())
@@ -126,11 +132,14 @@ mod util {
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
 		let order_id = Swaps::order_id(&USER, (INVESTMENT_ID, action)).unwrap();
-		let swap = MockTokenSwaps::get_order_details(order_id).unwrap();
+		let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
-			Some(Swap {
-				amount_out: swap.amount_out - amount_out,
-				..swap
+			Some(OrderInfo {
+				swap: Swap {
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
+				},
+				ratio: order.ratio,
 			})
 		});
 
@@ -138,12 +147,12 @@ mod util {
 			order_id,
 			SwapState {
 				remaining: Swap {
-					amount_out: swap.amount_out - amount_out,
-					..swap
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
 				},
 				swapped_in: MockTokenSwaps::convert_by_market(
-					swap.currency_in,
-					swap.currency_out,
+					order.swap.currency_in,
+					order.swap.currency_out,
 					amount_out,
 				)
 				.unwrap(),

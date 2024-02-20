@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -10,12 +10,24 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Centrifuge Runtime-Common Migrations
+pub use frame_support::weights::Weight;
 
-pub mod asset_registry_xcmv3;
-pub mod epoch_execution;
-pub mod local_currency;
-pub mod nuke;
-pub mod orml_tokens;
-pub mod precompile_account_codes;
-pub mod transfer_allowlist_currency;
+pub trait WeightInfo {
+	fn deposit() -> Weight;
+	fn burn() -> Weight;
+	fn match_swap() -> Weight;
+}
+
+impl WeightInfo for () {
+	fn deposit() -> Weight {
+		Weight::zero()
+	}
+
+	fn burn() -> Weight {
+		Weight::zero()
+	}
+
+	fn match_swap() -> Weight {
+		Weight::zero()
+	}
+}

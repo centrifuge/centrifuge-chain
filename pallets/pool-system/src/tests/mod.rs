@@ -2432,6 +2432,7 @@ fn create_tranche_token_metadata() {
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
+					local_representation: None,
 				},
 			}
 		);

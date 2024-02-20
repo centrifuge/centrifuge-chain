@@ -154,7 +154,8 @@ pub mod pallet {
 				}
 				Some(order_id) => {
 					let swap = T::OrderBook::get_order_details(order_id)
-						.ok_or(Error::<T>::OrderNotFound)?;
+						.ok_or(Error::<T>::OrderNotFound)?
+						.swap;
 
 					if swap.is_same_direction(&new_swap)? {
 						let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
@@ -276,8 +277,8 @@ pub mod pallet {
 		) -> Result<Self::Amount, DispatchError> {
 			Ok(SwapIdToOrderId::<T>::get((who, swap_id))
 				.and_then(T::OrderBook::get_order_details)
-				.filter(|swap| swap.currency_out == from_currency)
-				.map(|swap| swap.amount_out)
+				.filter(|order_info| order_info.swap.currency_out == from_currency)
+				.map(|order_info| order_info.swap.amount_out)
 				.unwrap_or_default())
 		}
 
