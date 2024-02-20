@@ -2,7 +2,7 @@ use cfg_traits::{
 	self,
 	data::DataCollection,
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	IntoSeconds, Seconds, TimeAsSecs,
+	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
@@ -255,11 +255,9 @@ impl<T: Config> ActiveLoan<T> {
 				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
-				ActivePricing::External(pricing) => Ok(now
-					>= pricing
-						.last_updated(pool_id)?
-						.into_seconds()
-						.ensure_add(*secs)?),
+				ActivePricing::External(pricing) => {
+					Ok(now >= pricing.last_updated(pool_id).ensure_add(*secs)?)
+				}
 				ActivePricing::Internal(_) => Ok(false),
 			},
 		}
@@ -327,7 +325,7 @@ impl<T: Config> ActiveLoan<T> {
 				BorrowRestrictions::OraclePriceRequired => {
 					match &self.pricing {
 						ActivePricing::Internal(_) => true,
-						ActivePricing::External(inner) => inner.last_updated(pool_id).is_ok(),
+						ActivePricing::External(inner) => inner.has_registered_price(pool_id),
 					}
 				}
 			},
@@ -533,31 +531,42 @@ pub struct ActiveLoanInfo<T: Config> {
 
 	/// Current outstanding interest of this loan
 	pub outstanding_interest: T::Balance,
+
+	/// Current price for external loans
+	/// - If oracle set, then the price is the one coming from the oracle,
+	/// - If not set, then the price is a linear accrual using the latest
+	///   settlement price.
+	/// See [`ExternalActivePricing::current_price()`]
+	pub current_price: Option<T::Balance>,
 }
 
 impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from((pool_id, active_loan): (T::PoolId, ActiveLoan<T>)) -> Result<Self, Self::Error> {
-		let (outstanding_principal, outstanding_interest) = match &active_loan.pricing {
+		let present_value = active_loan.present_value(pool_id)?;
+
+		Ok(match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
 				let principal = active_loan
 					.total_borrowed
 					.ensure_sub(active_loan.total_repaid.principal)?;
 
-				(principal, inner.outstanding_interest(principal)?)
+				Self {
+					present_value,
+					outstanding_principal: principal,
+					outstanding_interest: inner.outstanding_interest(principal)?,
+					current_price: None,
+					active_loan,
+				}
 			}
-			ActivePricing::External(inner) => (
-				inner.outstanding_principal(pool_id)?,
-				inner.outstanding_interest()?,
-			),
-		};
-
-		Ok(Self {
-			present_value: active_loan.present_value(pool_id)?,
-			outstanding_principal,
-			outstanding_interest,
-			active_loan,
+			ActivePricing::External(inner) => Self {
+				present_value,
+				outstanding_principal: inner.outstanding_principal(pool_id)?,
+				outstanding_interest: inner.outstanding_interest()?,
+				current_price: Some(inner.current_price(pool_id, active_loan.maturity_date())?),
+				active_loan,
+			},
 		})
 	}
 }

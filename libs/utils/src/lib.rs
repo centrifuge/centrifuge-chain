@@ -112,6 +112,44 @@ pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
 	}
 }
 
+pub mod math {
+	use sp_arithmetic::{
+		traits::{BaseArithmetic, EnsureFixedPointNumber},
+		ArithmeticError, FixedPointOperand, FixedU128,
+	};
+
+	/// Returns the image `y` for coordinate `x`,
+	/// in a function given by 2 points: (x1, y1) and (x2, y2)
+	pub fn y_coord_in_function_with_2_points<X, Y>(
+		(x1, y1): (X, Y),
+		(x2, y2): (X, Y),
+		x: X,
+	) -> Result<Y, ArithmeticError>
+	where
+		X: BaseArithmetic + FixedPointOperand,
+		Y: BaseArithmetic + FixedPointOperand,
+	{
+		// From the equation: (x - x1) / (x2 - x1) == (y - y1) / (y2 - y1) we solve y:
+
+		let left = FixedU128::ensure_from_rational(x.ensure_sub(x1)?, x2.ensure_sub(x1)?)?;
+		left.ensure_mul_int(y2.ensure_sub(y1)?)?.ensure_add(y1)
+	}
+
+	#[cfg(test)]
+	mod test_y_coord_in_function_with_2_points {
+		use super::*;
+
+		#[test]
+		fn middle_point() {
+			// Middle point
+			assert_eq!(
+				y_coord_in_function_with_2_points::<u32, u32>((3, 12), (7, 24), 5),
+				Ok(18)
+			);
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

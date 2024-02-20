@@ -2,6 +2,7 @@ use cfg_traits::{
 	self,
 	data::{DataCollection, DataRegistry},
 	interest::InterestRate,
+	IntoSeconds, Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
@@ -70,6 +71,7 @@ pub struct ExternalPricing<T: Config> {
 	pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
 
 	/// Reference price used to calculate the interest
+	/// It refers to the expected asset price.
 	pub notional: T::Balance,
 
 	/// Maximum variation between the settlement price chosen for
@@ -99,6 +101,9 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Settlement price used in the most recent borrow or repay transaction.
 	latest_settlement_price: T::Balance,
+
+	/// When `latest_settlement_price` was updated.
+	settlement_price_updated: Seconds,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -120,6 +125,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
 			latest_settlement_price: amount.settlement_price,
+			settlement_price_updated: T::Time::now(),
 		})
 	}
 
@@ -131,8 +137,30 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<T::Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
+	pub fn has_registered_price(&self, pool_id: T::PoolId) -> bool {
+		T::PriceRegistry::get(&self.info.price_id, &pool_id).is_ok()
+	}
+
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Seconds {
+		match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok((_, timestamp)) => timestamp.into_seconds(),
+			Err(_) => self.settlement_price_updated,
+		}
+	}
+
+	pub fn current_price(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => data.0,
+			Err(_) => cfg_utils::math::y_coord_in_function_with_2_points(
+				(self.settlement_price_updated, self.latest_settlement_price),
+				(maturity, self.info.notional),
+				T::Time::now(),
+			)?,
+		})
 	}
 
 	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
