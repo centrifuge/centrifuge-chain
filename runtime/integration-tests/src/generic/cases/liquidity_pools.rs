@@ -4142,7 +4142,6 @@ mod development {
 
 					let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
-					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4244,7 +4243,6 @@ mod development {
 						increase_msg
 					));
 
-					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {

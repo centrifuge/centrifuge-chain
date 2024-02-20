@@ -20,7 +20,7 @@ benchmarks! {
 		T::Balance: From<u128>,
 		T::BlockNumber: From<u32> + One,
 		T::Weight: From<u32>,
-		<T as Config>::Currency: frame_support::traits::fungibles::Inspect<T::AccountId> + CurrencyT<T::AccountId>,
+		<T as Config>::Tokens: Inspect<T::AccountId> + CurrencyT<T::AccountId>,
 		<T as Config>::CurrencyId: From<CurrencyId>,
 	}
 
@@ -37,7 +37,7 @@ benchmarks! {
 				&beneficiary,
 			).unwrap().is_zero()
 		);
-		let before = <T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary);
+		let before = <T::Tokens as Inspect<T::AccountId>>::balance(CurrencyId::Native.into(), &beneficiary);
 
 	}: _(RawOrigin::Signed(caller), beneficiary.clone())
 	verify {
@@ -45,20 +45,20 @@ benchmarks! {
 			BlockRewards::<T>::active_session_data().collator_count
 		).into();
 		// Does not get entire reward since another collator is auto-staked via genesis config
-		assert_eq!(<T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary).saturating_sub(before), (REWARD / (num_collators + 1)).into());
+		assert_eq!(<T::Tokens as Inspect<T::AccountId>>::balance(CurrencyId::Native.into(), &beneficiary).saturating_sub(before), (REWARD / (num_collators + 1)).into());
 	}
 
-	set_collator_reward {
-		assert_ok!(BlockRewards::<T>::set_total_reward(RawOrigin::Root.into(), u128::MAX.into()));
+	set_collator_reward_per_session {
 	}: _(RawOrigin::Root, REWARD.into())
 	verify {
 		assert_eq!(BlockRewards::<T>::next_session_changes().collator_reward, Some(REWARD.into()));
 	}
 
-	set_total_reward {
-	}: _(RawOrigin::Root, u128::MAX.into())
+	set_annual_treasury_inflation_rate {
+		let rate = T::Rate::saturating_from_rational(1, 2);
+	}: _(RawOrigin::Root, rate)
 	verify {
-		assert_eq!(BlockRewards::<T>::next_session_changes().total_reward, Some(u128::MAX.into()));
+		assert_eq!(BlockRewards::<T>::next_session_changes().treasury_inflation_rate, Some(rate));
 	}
 }
 

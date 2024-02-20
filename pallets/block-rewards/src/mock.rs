@@ -1,10 +1,14 @@
-use cfg_traits::rewards::AccountRewards;
-use cfg_types::tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency};
+use cfg_primitives::IBalance;
+use cfg_traits::{rewards::AccountRewards, Seconds};
+use cfg_types::{
+	fixed_point::Rate,
+	tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency},
+};
 use frame_support::{
 	parameter_types,
 	traits::{
 		fungibles::Inspect, tokens::WithdrawConsequence, ConstU16, ConstU32, ConstU64,
-		Currency as CurrencyT, GenesisBuild, OnFinalize, OnInitialize, OnUnbalanced,
+		GenesisBuild, OnFinalize, OnInitialize,
 	},
 	PalletId,
 };
@@ -17,11 +21,10 @@ use sp_runtime::{
 	traits::{BlakeTwo256, ConvertInto, IdentityLookup},
 };
 
-use crate::{self as pallet_block_rewards, Config, NegativeImbalanceOf};
+use crate::{self as pallet_block_rewards, Config};
 
 pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
-pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
 
 pub(crate) type AccountId = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -42,6 +45,7 @@ frame_support::construct_runtime!(
 		OrmlTokens: orml_tokens,
 		Rewards: pallet_rewards::<Instance1>,
 		Session: pallet_session,
+		MockTime: cfg_mocks::pallet_mock_time,
 		BlockRewards: pallet_block_rewards,
 	}
 );
@@ -139,18 +143,6 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub static RewardRemainderUnbalanced: Balance = 0;
-}
-
-/// Mock implementation of Treasury.
-pub struct RewardRemainderMock;
-impl OnUnbalanced<NegativeImbalanceOf<Test>> for RewardRemainderMock {
-	fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<Test>) {
-		let _ = Balances::resolve_creating(&TREASURY_ADDRESS, amount);
-	}
-}
-
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
@@ -161,7 +153,7 @@ orml_traits::parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type Amount = i64;
+	type Amount = IBalance;
 	type Balance = Balance;
 	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
@@ -216,16 +208,16 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
-		i64,
+		IBalance,
 		sp_runtime::FixedI128,
 		MaxCurrencyMovements,
 	>;
 	type RuntimeEvent = RuntimeEvent;
 }
 
-// pub type MockRewards =
-// 	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId),
-// AccountId>;
+impl cfg_mocks::pallet_mock_time::Config for Test {
+	type Moment = Seconds;
+}
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
@@ -237,23 +229,26 @@ frame_support::parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
+	pub const TreasuryPalletId: PalletId = cfg_types::ids::TREASURY_PALLET_ID;
 }
 
 impl pallet_block_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
-	type Beneficiary = RewardRemainderMock;
-	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
+	type Rate = Rate;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type StakeAmount = StakeAmount;
 	type StakeCurrencyId = BlockRewardCurrency;
 	type StakeGroupId = CollatorGroupId;
+	type Time = MockTime;
+	type Tokens = Tokens;
+	type TreasuryPalletId = TreasuryPalletId;
 	type Weight = u64;
 	type WeightInfo = ();
 }
@@ -261,11 +256,11 @@ impl pallet_block_rewards::Config for Test {
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
 		// NOTE: This is now the ED instead of 0, as we collators need ED now.
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		ExistentialDeposit::get()
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(
+		<Test as Config>::Tokens::can_withdraw(
 			<Test as Config>::StakeCurrencyId::get(),
 			who,
 			ExistentialDeposit::get() * 2
@@ -281,7 +276,7 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	)
 	.is_zero());
 	assert_eq!(
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		// NOTE: IF a collator has been staked before the system already granted them ED
 		//       of `StakeCurrency`.
 		if was_before {
@@ -333,7 +328,7 @@ pub(crate) fn advance_session() {
 
 pub(crate) struct ExtBuilder {
 	collator_reward: Balance,
-	total_reward: Balance,
+	treasury_inflation_rate: Rate,
 	run_to_block: BlockNumber,
 }
 
@@ -341,7 +336,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			collator_reward: Balance::zero(),
-			total_reward: Balance::zero(),
+			treasury_inflation_rate: Rate::zero(),
 			run_to_block: BlockNumber::one(),
 		}
 	}
@@ -353,8 +348,8 @@ impl ExtBuilder {
 		self
 	}
 
-	pub(crate) fn set_total_reward(mut self, reward: Balance) -> Self {
-		self.total_reward = reward;
+	pub(crate) fn set_treasury_inflation_rate(mut self, rate: Rate) -> Self {
+		self.treasury_inflation_rate = rate;
 		self
 	}
 
@@ -371,7 +366,8 @@ impl ExtBuilder {
 		pallet_block_rewards::GenesisConfig::<Test> {
 			collators: vec![1],
 			collator_reward: self.collator_reward,
-			total_reward: self.total_reward,
+			treasury_inflation_rate: self.treasury_inflation_rate,
+			last_update: 0,
 		}
 		.assimilate_storage(&mut storage)
 		.expect("BlockRewards pallet's storage can be assimilated");
@@ -399,6 +395,7 @@ impl ExtBuilder {
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
+			MockTime::mock_now(|| 0);
 			run_to_block(self.run_to_block);
 		});
 

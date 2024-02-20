@@ -46,7 +46,10 @@ use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{
+	traits::{IdentifyAccount, Verify},
+	FixedPointNumber,
+};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
@@ -61,6 +64,7 @@ pub type DevelopmentChainSpec =
 
 use altair_runtime::evm::AltairPrecompiles;
 use centrifuge_runtime::evm::CentrifugePrecompiles;
+use cfg_types::fixed_point::Rate;
 use development_runtime::evm::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed
@@ -661,7 +665,11 @@ fn centrifuge_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
-			total_reward: 10_048 * CFG,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
@@ -756,7 +764,11 @@ fn altair_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 98_630 * MILLI_AIR,
-			total_reward: 98_630 * MILLI_AIR * 100,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		block_rewards_base: Default::default(),
 		collator_allowlist: Default::default(),
@@ -939,7 +951,11 @@ fn development_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
-			total_reward: 10_048 * CFG,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {

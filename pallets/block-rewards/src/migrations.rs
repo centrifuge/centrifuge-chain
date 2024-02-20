@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::rewards::CurrencyGroupChange;
+use cfg_traits::{rewards::CurrencyGroupChange, TimeAsSecs};
+use cfg_types::fixed_point::Rate;
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,
@@ -30,8 +31,8 @@ use {
 
 use crate::{ActiveSessionData, Config, Pallet, SessionData};
 
-pub struct InitBlockRewards<T, CollatorReward, TotalReward>(
-	PhantomData<(T, CollatorReward, TotalReward)>,
+pub struct InitBlockRewards<T, CollatorReward, TreasuryInflationRate>(
+	PhantomData<(T, CollatorReward, TreasuryInflationRate)>,
 );
 
 fn get_collators<T: pallet_collator_selection::Config>() -> Vec<T::AccountId> {
@@ -47,13 +48,16 @@ fn get_collators<T: pallet_collator_selection::Config>() -> Vec<T::AccountId> {
 	pallet_collator_selection::Pallet::<T>::assemble_collators(candidates)
 }
 
-impl<T, CollatorReward, TotalReward> OnRuntimeUpgrade
-	for InitBlockRewards<T, CollatorReward, TotalReward>
+impl<T, CollatorReward, TreasuryInflationRate> OnRuntimeUpgrade
+	for InitBlockRewards<T, CollatorReward, TreasuryInflationRate>
 where
-	T: frame_system::Config + Config + pallet_collator_selection::Config,
+	T: frame_system::Config
+		+ Config<Balance = u128, Rate = Rate>
+		+ pallet_collator_selection::Config,
 	<T as Config>::Balance: From<u128>,
-	CollatorReward: Get<u128>,
-	TotalReward: Get<u128>,
+	CollatorReward: Get<<T as Config>::Balance>,
+	TreasuryInflationRate: Get<<T as Config>::Rate>,
+	<T as Config>::Rate: From<Rate>,
 {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
@@ -66,10 +70,6 @@ where
 		assert!(!collators.is_empty());
 
 		assert!(!CollatorReward::get().is_zero());
-		assert!(
-			TotalReward::get()
-				>= CollatorReward::get().saturating_mul(collators.len().saturated_into())
-		);
 
 		log::info!("💰 BlockRewards: Pre migration checks successful");
 
@@ -93,9 +93,10 @@ where
 			.ok();
 
 			ActiveSessionData::<T>::set(SessionData::<T> {
-				collator_reward: CollatorReward::get().into(),
-				total_reward: TotalReward::get().into(),
 				collator_count: collators.len().saturated_into(),
+				collator_reward: CollatorReward::get().into(),
+				treasury_inflation_rate: TreasuryInflationRate::get().into(),
+				last_update: T::Time::now(),
 			});
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
@@ -132,9 +133,10 @@ where
 		assert_eq!(
 			Pallet::<T>::active_session_data(),
 			SessionData::<T> {
-				collator_reward: CollatorReward::get().into(),
-				total_reward: TotalReward::get().into(),
 				collator_count: collators.len().saturated_into(),
+				collator_reward: CollatorReward::get().into(),
+				treasury_inflation_rate: TreasuryInflationRate::get().into(),
+				last_update: T::Time::now(),
 			}
 		);
 

@@ -32,6 +32,7 @@ sp-std = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
