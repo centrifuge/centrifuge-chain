@@ -155,7 +155,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
 			Ok(data) => data.0,
-			Err(_) => cfg_utils::math::y_coord_in_function_with_2_points(
+			Err(_) => cfg_utils::math::y_coord_in_rect(
 				(self.settlement_price_updated, self.latest_settlement_price),
 				(maturity, self.info.notional),
 				T::Time::now(),

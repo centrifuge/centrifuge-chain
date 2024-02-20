@@ -118,9 +118,9 @@ pub mod math {
 		ArithmeticError, FixedPointOperand, FixedU128,
 	};
 
-	/// Returns the image `y` for coordinate `x`,
+	/// Returns the coordinate `y` for coordinate `x`,
 	/// in a function given by 2 points: (x1, y1) and (x2, y2)
-	pub fn y_coord_in_function_with_2_points<X, Y>(
+	pub fn y_coord_in_rect<X, Y>(
 		(x1, y1): (X, Y),
 		(x2, y2): (X, Y),
 		x: X,
@@ -141,10 +141,7 @@ pub mod math {
 
 		#[test]
 		fn middle_point() {
-			assert_eq!(
-				y_coord_in_function_with_2_points::<u32, u32>((3, 12), (7, 24), 5),
-				Ok(18)
-			);
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 5), Ok(18));
 		}
 	}
 }
