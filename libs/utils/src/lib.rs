@@ -141,7 +141,6 @@ pub mod math {
 
 		#[test]
 		fn middle_point() {
-			// Middle point
 			assert_eq!(
 				y_coord_in_function_with_2_points::<u32, u32>((3, 12), (7, 24), 5),
 				Ok(18)

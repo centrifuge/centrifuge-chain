@@ -271,6 +271,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.interest.adjust_debt(interest_adj)?;
 		self.latest_settlement_price = amount_adj.abs().settlement_price;
+		self.settlement_price_updated = T::Time::now();
 
 		Ok(())
 	}
