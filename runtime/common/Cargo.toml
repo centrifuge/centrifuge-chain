@@ -29,8 +29,8 @@ sp-std = { workspace = true }
 
 polkadot-parachain = { workspace = true }
 xcm = { workspace = true }
-xcm-executor = { workspace = true }
 xcm-builder = { workspace = true }
+xcm-executor = { workspace = true }
 
 orml-traits = { workspace = true }
 
