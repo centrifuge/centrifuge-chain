@@ -2,7 +2,7 @@ use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::{Millis, PoolInspect, ValueProvider};
+use cfg_traits::{HasLocalAssetRepresentation, Millis, PoolInspect, ValueProvider};
 use cfg_types::{
 	fixed_point::{Quantity, Ratio},
 	oracles::OracleKey,
@@ -12,6 +12,7 @@ use frame_support::{traits::OriginTrait, RuntimeDebugNoBound};
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::One;
 use sp_runtime::{traits::EnsureInto, DispatchError};
 use sp_std::marker::PhantomData;
 
@@ -159,5 +160,47 @@ where
 			&OracleKey::ConversionRatio(*from, *to),
 			(ratio, 0),
 		);
+	}
+}
+
+/// An extension of the [OracleRatioProvider] which performs a pre-check when
+/// querying a feeder key value pair.
+pub struct OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>(
+	PhantomData<(Origin, Provider, AssetInspect)>,
+);
+impl<Origin, Provider, AssetInspect> ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId)>
+	for OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>
+where
+	Origin: OriginTrait,
+	Provider: ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId), Value = Ratio>,
+	CurrencyId: HasLocalAssetRepresentation<AssetInspect>,
+	AssetInspect: asset_registry::Inspect<
+		AssetId = CurrencyId,
+		Balance = Balance,
+		CustomMetadata = CustomMetadata,
+	>,
+{
+	type Value = Ratio;
+
+	fn get(
+		feeder: &Feeder<Origin>,
+		(from, to): &(CurrencyId, CurrencyId),
+	) -> Result<Option<Self::Value>, DispatchError> {
+		let locally_coupled_assets = match (from, to) {
+			(_, &CurrencyId::LocalAsset(_)) => from.is_local_representation_of(to),
+			(&CurrencyId::LocalAsset(_), _) => to.is_local_representation_of(from),
+			_ => Ok(false),
+		}?;
+
+		if locally_coupled_assets {
+			Ok(Some(Ratio::one()))
+		} else {
+			Provider::get(feeder, &(*from, *to))
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(feeder: &Feeder<Origin>, (from, to): &(CurrencyId, CurrencyId), ratio: Ratio) {
+		Provider::set(&feeder, &(*from, *to), ratio);
 	}
 }

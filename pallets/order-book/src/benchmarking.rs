@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ConversionToAssetBalance, ValueProvider};
+use cfg_traits::{ConversionToAssetBalance, OrderRatio, TokenSwaps, ValueProvider};
 use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
 use frame_support::traits::{fungibles::Mutate as _, Get};
@@ -178,12 +178,13 @@ mod benchmarks {
 		let (account_out, _) = Helper::<T>::setup();
 		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+		let amount = Helper::<T>::amount_out() - 1u32.into();
 
 		#[extrinsic_call]
 		update_order(
 			RawOrigin::Signed(account_out),
 			order_id,
-			Helper::<T>::amount_out() - 1u32.into(),
+			amount,
 			OrderRatio::Market,
 		);
 
@@ -213,15 +214,12 @@ mod benchmarks {
 		let (account_out, account_in) = Helper::<T>::setup();
 		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+		let amount = Helper::<T>::amount_out();
 
 		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
-		fill_order(
-			RawOrigin::Signed(account_in),
-			order_id,
-			Helper::<T>::amount_out(),
-		);
+		fill_order(RawOrigin::Signed(account_in), order_id, amount);
 
 		Ok(())
 	}

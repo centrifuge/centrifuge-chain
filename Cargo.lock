@@ -198,7 +198,9 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -1074,7 +1076,9 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -1223,6 +1227,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "orml-asset-registry",
+ "orml-traits",
  "parity-scale-codec 3.6.9",
  "scale-info",
  "serde",
@@ -2445,7 +2450,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.39"
+version = "0.10.41"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2527,7 +2532,9 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
@@ -7243,6 +7250,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-swaps",
  "parity-scale-codec 3.6.9",
  "scale-info",
  "sp-core",
@@ -8140,6 +8148,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-swaps"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.9",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-timestamp"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
@@ -8174,6 +8197,35 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-token-mux"
+version = "0.1.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-test-utils",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-order-book",
+ "pallet-restricted-tokens",
+ "parity-scale-codec 3.6.9",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -10978,6 +11030,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
+ "pallet-swaps",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transfer-allowlist",

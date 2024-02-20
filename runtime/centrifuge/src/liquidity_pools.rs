@@ -30,8 +30,8 @@ use runtime_common::{
 
 use crate::{
 	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
-	LiquidityPoolsGateway, LocationToAccountId, OrderBook, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TransferAllowList,
+	LiquidityPoolsGateway, LocationToAccountId, OrmlAssetRegistry, Permissions, PoolSystem,
+	Runtime, RuntimeEvent, RuntimeOrigin, Swaps, Timestamp, Tokens, TransferAllowList,
 	TreasuryAccount,
 };
 
@@ -46,8 +46,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
 	type SwapBalance = Balance;
-	type SwapId = u64;
-	type TokenSwaps = OrderBook;
+	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
 

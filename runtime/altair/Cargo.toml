@@ -127,7 +127,9 @@ pallet-rewards = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
 pallet-sudo = { workspace = true }
+pallet-swaps = { workspace = true }
 pallet-timestamp = { workspace = true }
+pallet-token-mux = { workspace = true }
 pallet-transaction-payment = { workspace = true }
 pallet-transfer-allowlist = { workspace = true }
 pallet-treasury = { workspace = true }
@@ -254,7 +256,9 @@ std = [
   "pallet-scheduler/std",
   "pallet-session/std",
   "pallet-sudo/std",
+  "pallet-swaps/std",
   "pallet-timestamp/std",
+  "pallet-token-mux/std",
   "pallet-transaction-payment/std",
   "pallet-transfer-allowlist/std",
   "pallet-treasury/std",
@@ -339,7 +343,9 @@ runtime-benchmarks = [
   "pallet-remarks/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-sudo/runtime-benchmarks",
+  "pallet-swaps/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
+  "pallet-token-mux/runtime-benchmarks",
   "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
@@ -426,7 +432,9 @@ try-runtime = [
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
   "pallet-sudo/try-runtime",
+  "pallet-swaps/try-runtime",
   "pallet-timestamp/try-runtime",
+  "pallet-token-mux/try-runtime",
   "pallet-transaction-payment/try-runtime",
   "pallet-transfer-allowlist/try-runtime",
   "pallet-treasury/try-runtime",

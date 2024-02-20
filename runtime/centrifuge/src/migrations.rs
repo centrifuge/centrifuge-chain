@@ -10,9 +10,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{Balance, PoolId};
+use cfg_types::tokens::{
+	usdc::{
+		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
+		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID,
+	},
+	CurrencyId, LocalAssetId,
+};
+
 frame_support::parameter_types! {
 	pub const ClaimsPalletName: &'static str = "Claims";
 	pub const MigrationPalletName: &'static str = "Migration";
+	pub const UsdcVariants: [CurrencyId; 6] = [CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_AXELAR, CURRENCY_ID_LP_ETH, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO];
+	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
+	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
+	pub const PoolIdAnemoy: PoolId = 4_139_607_887;
+	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
+	pub const UsdcDot: CurrencyId = CURRENCY_ID_DOT_NATIVE;
+	pub const UsdcEth: CurrencyId = CURRENCY_ID_LP_ETH;
+	pub const UsdcBase: CurrencyId = CURRENCY_ID_LP_BASE;
+	pub const UsdcArb: CurrencyId = CURRENCY_ID_LP_ARB;
+	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
+	pub const MinOrderAmount: Balance = 10u128.pow(6);
 }
 
 pub type UpgradeCentrifuge1025 = (
@@ -25,6 +45,55 @@ pub type UpgradeCentrifuge1025 = (
 	runtime_common::migrations::transfer_allowlist_currency::Migration<super::Runtime>,
 	// Removes tinlake reward claims pallet
 	runtime_common::migrations::nuke::KillPallet<ClaimsPalletName, crate::RocksDbWeight>,
+	// Register LocalUSDC
+	runtime_common::migrations::local_currency::register::Migration<
+		super::Runtime,
+		LocalCurrencyIdUsdc,
+	>,
+	// Init local representation for all assets
+	runtime_common::migrations::local_currency::translate_metadata::Migration<
+		super::Runtime,
+		UsdcVariants,
+		LocalAssetIdUsdc,
+	>,
+	// Switch pool currency from Polkadot USDC to Local USDC
+	runtime_common::migrations::local_currency::migrate_pool_currency::Migration<
+		super::Runtime,
+		PoolIdAnemoy,
+		PoolCurrencyAnemoy,
+		LocalCurrencyIdUsdc,
+	>,
+	// Register trading pairs one by one
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcDot,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcEth,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcBase,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcArb,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
+	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
+		super::Runtime,
+		UsdcCelo,
+		LocalCurrencyIdUsdc,
+		MinOrderAmount,
+	>,
 	// Removes unused migration pallet
 	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
 	// Sets account codes for all precompiles

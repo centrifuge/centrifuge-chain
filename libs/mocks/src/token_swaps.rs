@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderRatio, TokenSwaps};
+	use cfg_traits::{OrderInfo, OrderRatio, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -11,7 +11,6 @@ pub mod pallet {
 		type BalanceOut;
 		type Ratio;
 		type OrderId;
-		type OrderDetails;
 	}
 
 	#[pallet::pallet]
@@ -59,7 +58,10 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
+		pub fn mock_get_order_details(
+			f: impl Fn(T::OrderId) -> Option<OrderInfo<T::BalanceOut, T::CurrencyId, T::Ratio>>
+				+ 'static,
+		) {
 			register_call!(f);
 		}
 
@@ -73,13 +75,25 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_fill_order(
+			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c))
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_add_trading_pair(
+			f: impl Fn(T::CurrencyId, T::CurrencyId, T::BalanceOut) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c))
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
-		type BalanceIn = T::BalanceOut;
-		type BalanceOut = T::BalanceIn;
+		type BalanceIn = T::BalanceIn;
+		type BalanceOut = T::BalanceOut;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
 
@@ -109,7 +123,9 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
+		fn get_order_details(
+			a: Self::OrderId,
+		) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>> {
 			execute_call!(a)
 		}
 
@@ -118,6 +134,19 @@ pub mod pallet {
 			b: Self::CurrencyId,
 			c: Self::BalanceOut,
 		) -> Result<Self::BalanceIn, DispatchError> {
+			execute_call!((a, b, c))
+		}
+
+		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_trading_pair(
+			a: Self::CurrencyId,
+			b: Self::CurrencyId,
+			c: Self::BalanceOut,
+		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

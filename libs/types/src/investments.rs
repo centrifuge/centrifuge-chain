@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::OrderId;
-use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
+use frame_support::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAddAssign, Zero},
-	DispatchError, DispatchResult,
+	DispatchResult,
 };
 use sp_std::cmp::PartialEq;
 
@@ -140,45 +140,6 @@ impl<Collected: EnsureAddAssign + Copy, Payment: EnsureAddAssign + Copy>
 
 		Ok(())
 	}
-}
-
-/// A simple representation of a currency swap.
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct Swap<Balance, Currency> {
-	/// The incoming currency, i.e. the desired one.
-	pub currency_in: Currency,
-	/// The outgoing currency, i.e. the one which should be replaced.
-	pub currency_out: Currency,
-	/// The amount of outcoming currency that will be swapped.
-	pub amount_out: Balance,
-}
-
-impl<Balance, Currency: PartialEq> Swap<Balance, Currency> {
-	pub fn has_same_currencies(&self) -> bool {
-		self.currency_in == self.currency_out
-	}
-
-	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
-		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
-			Ok(true)
-		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
-			Ok(false)
-		} else {
-			Err(DispatchError::Other("Swap contains different currencies"))
-		}
-	}
-}
-
-/// A representation of a currency swap in process.
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct SwapState<BalanceIn, BalanceOut, Currency> {
-	/// Swap not yet processed with the pending outcomming amount
-	pub remaining: Swap<BalanceOut, Currency>,
-	/// Amount of incoming currency already swapped
-	pub swapped_in: BalanceIn,
-	/// Amount of incoming currency already swapped denominated in outgoing
-	/// currency
-	pub swapped_out: BalanceOut,
 }
 
 /// A representation of an executed investment decrement.

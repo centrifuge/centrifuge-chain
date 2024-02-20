@@ -78,7 +78,9 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
+	oracle::{
+		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
+	},
 	permissions::PoolAdminCheck,
 	remarks::Remark,
 	xcm::AccountIdToMultiLocation,
@@ -1698,14 +1700,47 @@ impl pallet_order_book::Config for Runtime {
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
+	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+		RuntimeOrigin,
+		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
+		OrmlAssetRegistry,
+	>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
+}
+
+parameter_types! {
+	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
+}
+
+impl pallet_token_mux::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type LocalAssetId = LocalAssetId;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type PalletId = TokenMuxPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Tokens = OrmlTokens;
+	// TODO(william): Change to weights once they exist
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1772,9 +1807,10 @@ construct_runtime!(
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 70,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 72,
 
-		// our pallets
+		// our pallets (part 1)
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
+		// Removed: Claims = 92
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
@@ -1824,7 +1860,10 @@ construct_runtime!(
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
+		// Our pallets (part 2)
 		// Removed: Migration = 199
+		Swaps: pallet_swaps::{Pallet, Storage} = 200,
+		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
 	}
 );
 
@@ -1966,7 +2005,11 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::{locations::Location, pools::PoolNav, tokens::FilterCurrency};
+use cfg_types::{
+	locations::Location,
+	pools::PoolNav,
+	tokens::{FilterCurrency, LocalAssetId},
+};
 use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2499,6 +2542,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
+			list_benchmark!(list, extra, pallet_token_mux, TokenMux);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2578,6 +2622,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches, pallet_pool_fees, PoolFees);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
+			add_benchmark!(params, batches,	pallet_token_mux, TokenMux);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
