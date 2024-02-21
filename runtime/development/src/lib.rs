@@ -22,7 +22,12 @@
 use cfg_primitives::{
 	constants::*,
 	liquidity_pools::GeneralCurrencyPrefix,
-	types::{PoolId, *},
+	types::{
+		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
+		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, Index,
+		ItemId, LoanId, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
+		Signature, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+	},
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
@@ -30,7 +35,7 @@ use cfg_traits::{
 	TryConvert as _,
 };
 use cfg_types::{
-	consts::pools::*,
+	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,

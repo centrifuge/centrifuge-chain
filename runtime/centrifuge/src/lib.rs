@@ -19,7 +19,16 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use cfg_primitives::{constants::*, liquidity_pools::GeneralCurrencyPrefix, types::*};
+use cfg_primitives::{
+	constants::*,
+	liquidity_pools::GeneralCurrencyPrefix,
+	types::{
+		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
+		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, Index,
+		ItemId, LoanId, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
+		Signature, ThreeFourthOfCouncil, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+	},
+};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
 	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
