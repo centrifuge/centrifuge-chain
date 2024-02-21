@@ -18,15 +18,12 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade},
 };
 #[cfg(feature = "try-runtime")]
-use sp_runtime::DispatchError;
+use num_traits::Zero;
+use parity_scale_codec::{Decode, Encode};
 use sp_runtime::FixedPointNumber;
-use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
-use {
-	cfg_traits::rewards::AccountRewards,
-	num_traits::Zero,
-	parity_scale_codec::{Decode, Encode},
-};
+use sp_runtime::TryRuntimeError;
+use sp_std::marker::PhantomData;
 
 use crate::{pallet, Config, Pallet, SessionData};
 
@@ -35,6 +32,8 @@ fn inflation_rate<T: Config>(percent: u32) -> T::Rate {
 }
 
 pub mod init {
+	#[cfg(feature = "try-runtime")]
+	use cfg_traits::rewards::AccountRewards;
 	use cfg_traits::rewards::CurrencyGroupChange;
 	use sp_runtime::{BoundedVec, SaturatedConversion};
 
@@ -67,7 +66,7 @@ pub mod init {
 		AnnualTreasuryInflationPercent: Get<u32>,
 	{
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
 			assert_eq!(
 				Pallet::<T>::on_chain_storage_version(),
 				StorageVersion::new(0),
@@ -84,7 +83,7 @@ pub mod init {
 		}
 
 		// Weight: 2 + collator_count reads and writes
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		fn on_runtime_upgrade() -> Weight {
 			if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0) {
 				log::info!("{LOG_PREFIX} Initiating migration");
 				let mut weight: Weight = Weight::zero();
@@ -101,7 +100,7 @@ pub mod init {
 
 				pallet::ActiveSessionData::<T>::set(SessionData::<T> {
 					collator_count: collators.len().saturated_into(),
-					collator_reward: CollatorReward::get().into(),
+					collator_reward: CollatorReward::get(),
 					treasury_inflation_rate: inflation_rate::<T>(
 						AnnualTreasuryInflationPercent::get(),
 					),
@@ -130,7 +129,7 @@ pub mod init {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), DispatchError> {
+		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), TryRuntimeError> {
 			assert_eq!(
 				Pallet::<T>::on_chain_storage_version(),
 				Pallet::<T>::current_storage_version(),
@@ -143,7 +142,7 @@ pub mod init {
 				Pallet::<T>::active_session_data(),
 				SessionData::<T> {
 					collator_count: collators.len().saturated_into(),
-					collator_reward: CollatorReward::get().into(),
+					collator_reward: CollatorReward::get(),
 					treasury_inflation_rate: inflation_rate::<T>(
 						AnnualTreasuryInflationPercent::get()
 					),
@@ -172,7 +171,6 @@ pub mod v2 {
 	};
 	use parity_scale_codec::MaxEncodedLen;
 	use scale_info::TypeInfo;
-	use sp_runtime::TryRuntimeError;
 
 	use super::*;
 	use crate::{CollatorChanges, SessionChanges};
