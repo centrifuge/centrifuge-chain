@@ -557,9 +557,9 @@ fn centrifuge_genesis(
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
 		AccountConverter::<
-				centrifuge_runtime::Runtime,
-				centrifuge_runtime::xcm::LocationToAccountId,
-			>::convert_evm_address(chain_id, addr)
+			centrifuge_runtime::Runtime,
+			centrifuge_runtime::xcm::LocationToAccountId,
+		>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -691,7 +691,10 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<altair_runtime::Runtime, altair_runtime::xcm::LocationToAccountId>::convert_evm_address(chain_id, addr)
+		AccountConverter::<
+			altair_runtime::Runtime,
+			altair_runtime::xcm::LocationToAccountId,
+		>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();

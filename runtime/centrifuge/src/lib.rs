@@ -100,7 +100,7 @@ use runtime_common::{
 	origin::EnsureAccountOrRootOr,
 	permissions::PoolAdminCheck,
 	transfer_filter::PreLpTransfer,
-	xcm::{AccountIdToMultiLocation, CurrencyIdConvert, LocationToAccountId},
+	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
 use scale_info::TypeInfo;
@@ -1187,7 +1187,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdToMultiLocation = CurrencyIdConvert<Self>;
+	type CurrencyIdToMultiLocation = CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRootOr<HalfOfCouncil>;
 	type HrmpEncoder = moonbeam_relay_encoder::polkadot::PolkadotEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1850,8 +1850,8 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId<RelayNetwork>>;
-	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId<RelayNetwork>>;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
@@ -1871,7 +1871,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId<RelayNetwork>>::get_gateway_account();
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 parameter_types! {
@@ -1958,7 +1958,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for Runtime {
-	type AddressMapping = AccountConverter<Runtime, LocationToAccountId<RelayNetwork>>;
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<AccountId>;
@@ -2421,7 +2421,7 @@ impl_runtime_apis! {
 	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
 		fn conversion_of(location: ::xcm::v3::MultiLocation) -> Option<AccountId> {
-			AccountConverter::<Runtime, LocationToAccountId<RelayNetwork>>::try_convert(location).ok()
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
 		}
 	}
 

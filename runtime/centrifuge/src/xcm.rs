@@ -18,8 +18,7 @@ use cfg_traits::TryConvert;
 use cfg_types::{tokens::CurrencyId, EVMChainId};
 use frame_support::{
 	parameter_types,
-	sp_std::marker::PhantomData,
-	traits::{fungibles, Contains, Everything, Get, Nothing},
+	traits::{Everything, Get, Nothing},
 };
 use frame_system::EnsureRoot;
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
@@ -29,13 +28,12 @@ use pallet_xcm::XcmPassthrough;
 use runtime_common::{
 	transfer_filter::PreXcmTransfer,
 	xcm::{
-		general_key, AccountIdToMultiLocation, Barrier, CurrencyIdConvert,
-		FixedConversionRateProvider, LocationToAccountId, LpInstanceRelayer, ToTreasury,
+		general_key, AccountIdToMultiLocation, Barrier, FixedConversionRateProvider,
+		LpInstanceRelayer, ToTreasury,
 	},
 	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
-use sp_runtime::traits::Zero;
 use xcm::{
 	prelude::*,
 	v3::{MultiLocation, Weight as XcmWeight},
@@ -78,7 +76,7 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 				| RuntimeCall::Proxy(..)
 				| RuntimeCall::LiquidityPoolsGateway(
 					pallet_liquidity_pools_gateway::Call::process_msg { .. }
-				) // TODO: Enable later: | RuntimeCall::OrderBook(..)
+				) | RuntimeCall::OrderBook(..)
 		)
 	}
 }
@@ -145,9 +143,9 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	Tokens,
 	// This means that this adapter should handle any token that `CurrencyIdConvert` can convert
 	// to `CurrencyId`, the `CurrencyId` type of `Tokens`, the fungibles implementation it uses.
-	ConvertedConcreteId<CurrencyId, Balance, CurrencyIdConvert<Runtime>, JustTry>,
+	ConvertedConcreteId<CurrencyId, Balance, CurrencyIdConvert, JustTry>,
 	// Convert an XCM MultiLocation into a local account id
-	LocationToAccountId<RelayNetwork>,
+	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly)
 	AccountId,
 	// We dont want to allow teleporting assets
@@ -184,7 +182,7 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type SovereignAccountOf = LocationToAccountId<RelayNetwork>;
+	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -204,6 +202,9 @@ parameter_types! {
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
+
+pub type CurrencyIdConvert = runtime_common::xcm::CurrencyIdConvert<Runtime>;
+pub type LocationToAccountId = runtime_common::xcm::LocationToAccountId<RelayNetwork>;
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
@@ -245,7 +246,7 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.
-	SovereignSignedViaLocation<LocationToAccountId<RelayNetwork>, RuntimeOrigin>,
+	SovereignSignedViaLocation<LocationToAccountId, RuntimeOrigin>,
 	// Native converter for Relay-chain (Parent) location; will converts to a `Relay` origin when
 	// recognized.
 	RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>,
@@ -284,7 +285,7 @@ impl orml_xtokens::Config for Runtime {
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdConvert = CurrencyIdConvert<Self>;
+	type CurrencyIdConvert = CurrencyIdConvert;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
@@ -297,7 +298,7 @@ impl orml_xtokens::Config for Runtime {
 }
 
 impl pallet_restricted_xtokens::Config for Runtime {
-	type PreTransfer = PreXcmTransfer<super::TransferAllowList, CurrencyIdConvert<Self>>;
+	type PreTransfer = PreXcmTransfer<super::TransferAllowList, CurrencyIdConvert>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
