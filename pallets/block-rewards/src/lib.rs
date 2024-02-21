@@ -13,10 +13,10 @@
 //! # BlockRewards Pallet
 //!
 //! The BlockRewards pallet provides functionality for distributing rewards to
-//! different accounts with different currencies.
-//! The distribution happens when an session (a constant time interval)
-//! finalizes. Users cannot stake manually as their collator membership is
-//! syncronized via a provider.
+//! different accounts with different currencies as well as configuring an
+//! annual treasury inflation. The distribution happens when a session (a
+//! constant time interval) finalizes. Users cannot stake manually as their
+//! collator membership is synchronized via a provider.
 //! Thus, when new collators join, they will automatically be staked and
 //! vice-versa when collators leave, they are unstaked.
 //!
@@ -24,8 +24,8 @@
 //!
 //! - Claiming the reward given for a staked currency. The reward will be the
 //!   native network's token.
-//! - Admin methods to configure the reward amount for collators and an optional
-//!   beneficiary.
+//! - Admin methods to configure the reward amount for collators and the annual
+//!   treasury inflation.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -120,7 +120,7 @@ pub mod pallet {
 
 	use super::*;
 
-	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
