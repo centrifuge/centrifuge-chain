@@ -37,8 +37,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
-		ConversionToAssetBalance, OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState,
-		TokenSwaps, ValueProvider,
+		swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
+		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
 	};
 	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{

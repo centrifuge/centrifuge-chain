@@ -27,7 +27,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps, TokenSwaps,
+		swaps::{OrderRatio, Swap, SwapState, SwapStatus, Swaps, TokenSwaps},
+		StatusNotificationHook,
 	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, Zero};

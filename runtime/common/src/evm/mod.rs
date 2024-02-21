@@ -10,9 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::weights::constants::WEIGHT_REF_TIME_PER_SECOND;
+use cfg_primitives::AuraId;
+use frame_support::{traits::FindAuthor, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use pallet_ethereum::{Transaction, TransactionAction};
-use sp_runtime::Permill;
+use sp_core::{crypto::ByteArray, H160};
+use sp_runtime::{ConsensusEngineId, Permill};
+use sp_std::marker::PhantomData;
 
 pub mod precompile;
 
@@ -31,6 +34,26 @@ pub const GAS_PER_SECOND: u64 = 40_000_000;
 // u64 works for approximations because Weight is a very small unit compared to
 // gas.
 pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
+
+// pub GasLimitPovSizeRatio: u64 = {
+//	let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
+//	block_gas_limit.saturating_div(MAX_POV_SIZE)
+// };
+//
+// NOTE: The above results in a value of 2. AS this factor is a divisor
+// generating a       a storage limit we are conservative and use the value that
+// moonbeam is using       in their staging environment
+//       (https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408)
+pub const GAS_LIMIT_POV_SIZE_RATIO: u64 = 4;
+
+// pub const GasLimitStorageGrowthRatio: u64 =
+// 	 BlockGasLimit::get().min(u64::MAX.into()).low_u64().
+// saturating_div(BLOCK_STORAGE_LIMIT);
+//
+// NOTE: The above results in a value of 366 which is the same value that
+// moonbeam is using       in their staging environment. As we can not
+// constantly assert this value we hardcode       it for now.
+pub const GAS_LIMIT_STORAGE_GROWTH_RATIO: u64 = 366;
 
 pub struct BaseFeeThreshold;
 
@@ -64,5 +87,23 @@ impl GetTransactionAction for Transaction {
 			Transaction::EIP2930(transaction) => transaction.action,
 			Transaction::EIP1559(transaction) => transaction.action,
 		}
+	}
+}
+
+// To create valid Ethereum-compatible blocks, we need a 20-byte
+// "author" for the block. Since that author is purely informational,
+// we do a simple truncation of the 32-byte Substrate author
+pub struct FindAuthorTruncated<T>(PhantomData<T>);
+impl<T: pallet_aura::Config<AuthorityId = AuraId>> FindAuthor<H160> for FindAuthorTruncated<T> {
+	fn find_author<'a, I>(digests: I) -> Option<H160>
+	where
+		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+	{
+		if let Some(author_index) = pallet_aura::Pallet::<T>::find_author(digests) {
+			let authority_id =
+				pallet_aura::Pallet::<T>::authorities()[author_index as usize].clone();
+			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
+		}
+		None
 	}
 }

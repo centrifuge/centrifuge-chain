@@ -1,6 +1,9 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::{investments::Investment, Swap, Swaps};
+use cfg_traits::{
+	investments::Investment,
+	swaps::{Swap, Swaps},
+};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };

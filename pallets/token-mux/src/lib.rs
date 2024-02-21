@@ -36,14 +36,14 @@ mod benchmarking;
 
 pub mod weights;
 
-pub use cfg_traits::TokenSwaps;
+pub use cfg_traits::swaps::TokenSwaps;
 pub use pallet::*;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
 
-	use cfg_traits::{OrderRatio, TokenSwaps};
+	use cfg_traits::swaps::{OrderRatio, TokenSwaps};
 	use cfg_types::tokens::CustomMetadata;
 	use frame_support::{
 		pallet_prelude::{DispatchResult, *},

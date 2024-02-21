@@ -1,4 +1,4 @@
-use cfg_traits::SwapState;
+use cfg_traits::swaps::SwapState;
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use sp_runtime::{
 	testing::{Header, H256},
