@@ -291,7 +291,7 @@ pub(crate) mod swaps {
 	};
 
 	pub(crate) mod utils {
-		use cfg_traits::{OrderInfo, OrderRatio, Swap};
+		use cfg_traits::swaps::{OrderInfo, OrderRatio, Swap};
 		use frame_support::traits::tokens::{fungibles::Mutate, Preservation};
 		use sp_arithmetic::traits::One;
 

@@ -2,7 +2,8 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
-	PoolInspect, StatusNotificationHook, SwapState, Swaps,
+	swaps::{SwapState, Swaps},
+	PoolInspect, StatusNotificationHook,
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;

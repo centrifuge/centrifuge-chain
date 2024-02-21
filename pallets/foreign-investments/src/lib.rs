@@ -35,7 +35,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::Swap;
+use cfg_traits::swaps::Swap;
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -96,7 +96,8 @@ pub fn pool_currency_of<T: pallet::Config>(
 pub mod pallet {
 	use cfg_traits::{
 		investments::{Investment, InvestmentCollector, TrancheCurrency},
-		PoolInspect, StatusNotificationHook, Swaps,
+		swaps::Swaps,
+		PoolInspect, StatusNotificationHook,
 	};
 	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
 	use frame_support::pallet_prelude::*;

@@ -1,5 +1,6 @@
 use cfg_traits::{
-	OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps as TSwaps,
+	swaps::{OrderInfo, OrderRatio, Swap, SwapState, SwapStatus, Swaps as TSwaps},
+	StatusNotificationHook,
 };
 use frame_support::assert_ok;
 
