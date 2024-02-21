@@ -833,18 +833,6 @@ mod development {
 
 			if enable_foreign_to_pool_pair {
 				assert!(
-					!pallet_foreign_investments::Pallet::<T>::accepted_payment_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					pool_currency,
-					foreign_currency,
-					1
-				));
-				assert!(
 					pallet_foreign_investments::Pallet::<T>::accepted_payment_currency(
 						default_investment_id::<T>(),
 						foreign_currency
@@ -856,19 +844,6 @@ mod development {
 				);
 			}
 			if enable_pool_to_foreign_pair {
-				assert!(
-					!pallet_foreign_investments::Pallet::<T>::accepted_payout_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
-
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					foreign_currency,
-					pool_currency,
-					1
-				));
 				assert!(
 					pallet_foreign_investments::Pallet::<T>::accepted_payout_currency(
 						default_investment_id::<T>(),
@@ -1461,14 +1436,6 @@ mod development {
 					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
 				);
 
-				// Allow as payment but not payout currency
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					currency_id,
-					ausd_currency_id,
-					Default::default()
-				));
-
 				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
 
@@ -1690,14 +1657,6 @@ mod development {
 					),
 					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
 				);
-
-				// Allow as payment but not payout currency
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					currency_id,
-					ausd_currency_id,
-					Default::default()
-				));
 
 				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);

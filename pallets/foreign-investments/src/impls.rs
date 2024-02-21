@@ -1,9 +1,9 @@
 //! Trait implementations. Higher level file.
 
 use cfg_traits::{
-	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
+	investments::{ForeignInvestment, Investment, InvestmentCollector},
 	swaps::{SwapState, Swaps},
-	PoolInspect, StatusNotificationHook,
+	StatusNotificationHook,
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
@@ -205,23 +205,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	}
 
 	fn accepted_payment_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		if T::Investment::accepted_payment_currency(investment_id, currency) {
-			true
-		} else {
-			T::PoolInspect::currency_for(investment_id.of_pool())
-				.map(|pool_currency| T::Swaps::valid_pair(pool_currency, currency))
-				.unwrap_or(false)
-		}
+		T::Investment::accepted_payment_currency(investment_id, currency)
 	}
 
 	fn accepted_payout_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		if T::Investment::accepted_payout_currency(investment_id, currency) {
-			true
-		} else {
-			T::PoolInspect::currency_for(investment_id.of_pool())
-				.map(|pool_currency| T::Swaps::valid_pair(currency, pool_currency))
-				.unwrap_or(false)
-		}
+		T::Investment::accepted_payout_currency(investment_id, currency)
 	}
 }
 

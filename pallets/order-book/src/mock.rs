@@ -236,17 +236,6 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut e = new_test_ext_no_pair();
-
-	e.execute_with(|| {
-		order_book::TradingPair::<Runtime>::insert(CURRENCY_B, CURRENCY_A, token_a(5));
-		order_book::TradingPair::<Runtime>::insert(CURRENCY_A, CURRENCY_B, token_b(5));
-	});
-
-	e
-}
-
-pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();
