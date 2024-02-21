@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::OrderRatio;
+use cfg_traits::swaps::OrderRatio;
 use cfg_types::tokens::{
 	CurrencyId,
 	CurrencyId::{ForeignAsset, LocalAsset},
@@ -46,7 +46,7 @@ fn mock_match_swap<T: Config>(who: T::AccountId)
 where
 	AccountId32: From<T::AccountId>,
 {
-	use cfg_traits::{OrderInfo, Swap};
+	use cfg_traits::swaps::{OrderInfo, Swap};
 	use tests::swaps::utils::mock_swap;
 
 	use crate::mock::MockTokenSwaps;

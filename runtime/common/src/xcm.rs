@@ -10,19 +10,29 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::types::Balance;
+use cfg_primitives::types::{AccountId, Balance};
 use cfg_traits::TryConvert;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	EVMChainId, ParaId,
 };
-use frame_support::sp_std::marker::PhantomData;
-use sp_runtime::traits::Convert;
+use frame_support::{
+	sp_std::marker::PhantomData,
+	traits::{fungibles::Mutate, Everything},
+};
+use polkadot_parachain::primitives::Sibling;
+use sp_runtime::traits::{AccountIdConversion, Convert};
 use xcm::v3::{
+	prelude::*,
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
 	Junctions::{X1, X2},
-	MultiLocation, OriginKind,
+	MultiAsset, MultiLocation, OriginKind,
+};
+use xcm_builder::{
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AllowTopLevelPaidExecutionFrom, ParentIsPreset, SiblingParachainConvertsVia, TakeRevenue,
+	TakeWeightCredit,
 };
 
 use crate::xcm_fees::default_per_second;
@@ -119,6 +129,130 @@ where
 		}
 	}
 }
+
+/// CurrencyIdConvert
+/// This type implements conversions from our `CurrencyId` type into
+/// `MultiLocation` and vice-versa. A currency locally is identified with a
+/// `CurrencyId` variant but in the network it is identified in the form of a
+/// `MultiLocation`.
+pub struct CurrencyIdConvert<T>(PhantomData<T>);
+
+/// Convert our `CurrencyId` type into its `MultiLocation` representation.
+/// We use the `AssetRegistry` to lookup the associated `MultiLocation` for
+/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
+impl<T> Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
+{
+	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+		orml_asset_registry::Pallet::<T>::metadata(&id)
+			.filter(|m| m.additional.transferability.includes_xcm())
+			.and_then(|m| m.location)
+			.and_then(|l| l.try_into().ok())
+	}
+}
+
+/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// reverse-lookup using the AssetRegistry. In the registry, we register CFG
+/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// input location for Centrifuge-native assets for that to work.
+impl<T> xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ parachain_info::Config,
+{
+	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
+		let para_id = parachain_info::Pallet::<T>::parachain_id();
+		let unanchored_location = match location {
+			MultiLocation {
+				parents: 0,
+				interior,
+			} => MultiLocation {
+				parents: 1,
+				interior: interior
+					.pushed_front_with(Parachain(u32::from(para_id)))
+					.map_err(|_| location)?,
+			},
+			x => x,
+		};
+
+		orml_asset_registry::Pallet::<T>::location_to_asset_id(unanchored_location).ok_or(location)
+	}
+}
+
+impl<T> Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ parachain_info::Config
+		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId>,
+{
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset {
+			id: Concrete(location),
+			..
+		} = asset
+		{
+			<Self as xcm_executor::traits::Convert<_, _>>::convert(location).ok()
+		} else {
+			None
+		}
+	}
+}
+
+pub struct ToTreasury<T>(PhantomData<T>);
+impl<T> TakeRevenue for ToTreasury<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ parachain_info::Config
+		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
+{
+	fn take_revenue(revenue: MultiAsset) {
+		use xcm_executor::traits::Convert;
+
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Ok(currency_id) =
+				<CurrencyIdConvert<T> as Convert<MultiLocation, CurrencyId>>::convert(location)
+			{
+				let treasury_account = cfg_types::ids::TREASURY_PALLET_ID.into_account_truncating();
+				let _ = pallet_restricted_tokens::Pallet::<T>::mint_into(
+					currency_id,
+					&treasury_account,
+					amount,
+				);
+			}
+		}
+	}
+}
+
+/// Barrier is a filter-like option controlling what messages are allows to be
+/// executed.
+pub type Barrier<PolkadotXcm> = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
+
+/// Type for specifying how a `MultiLocation` can be converted into an
+/// `AccountId`. This is used when determining ownership of accounts for asset
+/// transacting and when attempting to use XCM `Transact` in order to determine
+/// the dispatch Origin.
+pub type LocationToAccountId<RelayNetwork> = (
+	// The parent (Relay-chain) origin converts to the default `AccountId`.
+	ParentIsPreset<AccountId>,
+	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
+	SiblingParachainConvertsVia<Sibling, AccountId>,
+	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
+	AccountId32Aliases<RelayNetwork, AccountId>,
+	// Generate remote accounts according to polkadot standards
+	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
+);
 
 #[cfg(test)]
 mod test {

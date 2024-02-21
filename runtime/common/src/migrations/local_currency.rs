@@ -389,7 +389,7 @@ pub mod migrate_pool_currency {
 pub mod add_bidirectional_trading_pair {
 	use cfg_primitives::Balance;
 	#[cfg(feature = "try-runtime")]
-	use cfg_traits::TokenSwaps;
+	use cfg_traits::swaps::TokenSwaps;
 	use frame_support::dispatch::RawOrigin;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
