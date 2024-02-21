@@ -20,9 +20,9 @@ pallet-aura = { workspace = true }
 pallet-timestamp = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+sp-arithmetic = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-runtime = { workspace = true }
-sp-arithmetic = { workspace = true }
 sp-std = { workspace = true }
 
 [features]
