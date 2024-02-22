@@ -1254,7 +1254,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
 	type Rate = Rate;
 	type Rewards = BlockRewardsBase;

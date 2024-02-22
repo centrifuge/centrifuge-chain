@@ -222,8 +222,6 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const MaxChangesPerSession: u32 = 50;
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
@@ -237,7 +235,6 @@ impl pallet_block_rewards::Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rate = Rate;
 	type Rewards = Rewards;

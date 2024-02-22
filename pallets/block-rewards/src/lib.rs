@@ -175,12 +175,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type StakeGroupId: Get<u32>;
 
-		/// Max number of changes of the same type enqueued to apply in the next
-		/// session. Max calls to [`Pallet::set_collator_reward_per_session()`]
-		/// or to [`Pallet::set_annual_inflation_rate()`] with the same id.
-		#[pallet::constant]
-		type MaxChangesPerSession: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
-
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
