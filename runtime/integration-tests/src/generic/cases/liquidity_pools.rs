@@ -3,7 +3,7 @@ use cfg_primitives::{
 	TrancheId,
 };
 use cfg_traits::{
-	investments::{ForeignInvestment, Investment, OrderManager, TrancheCurrency},
+	investments::{Investment, OrderManager, TrancheCurrency},
 	liquidity_pools::{Codec, InboundQueue, OutboundQueue},
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
@@ -832,24 +832,12 @@ mod development {
 			);
 
 			if enable_foreign_to_pool_pair {
-				assert!(
-					pallet_foreign_investments::Pallet::<T>::accepted_payment_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
 				crate::generic::utils::oracle::feed_from_root::<T>(
 					OracleKey::ConversionRatio(foreign_currency, pool_currency),
 					Ratio::one(),
 				);
 			}
 			if enable_pool_to_foreign_pair {
-				assert!(
-					pallet_foreign_investments::Pallet::<T>::accepted_payout_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
 				crate::generic::utils::oracle::feed_from_root::<T>(
 					OracleKey::ConversionRatio(pool_currency, foreign_currency),
 					Ratio::one(),
@@ -1358,7 +1346,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					)
 				);
@@ -1367,7 +1354,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Charlie.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1398,8 +1384,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						// Tranche id is arbitrary in this case as pool does not exist
-						[0u8; 16],
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1430,7 +1414,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						ausd_currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
@@ -1443,7 +1426,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						ausd_currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
@@ -1470,7 +1452,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
@@ -1497,7 +1478,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1523,7 +1503,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1580,7 +1559,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					)
 				);
@@ -1589,7 +1567,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Charlie.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1620,8 +1597,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						// Tranche id is arbitrary in this case as pool does not exist
-						[0u8; 16],
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1652,7 +1627,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						ausd_currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
@@ -1665,7 +1639,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						ausd_currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
@@ -1692,7 +1665,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
@@ -1719,7 +1691,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1745,7 +1716,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
