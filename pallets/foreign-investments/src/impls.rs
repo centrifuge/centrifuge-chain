@@ -203,14 +203,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> Result<T::TrancheBalance, DispatchError> {
 		T::Investment::redemption(who, investment_id)
 	}
-
-	fn accepted_payment_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		T::Investment::accepted_payment_currency(investment_id, currency)
-	}
-
-	fn accepted_payout_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		T::Investment::accepted_payout_currency(investment_id, currency)
-	}
 }
 
 pub struct FulfilledSwapHook<T>(PhantomData<T>);
