@@ -256,7 +256,7 @@ impl pallet_block_rewards::Config for Test {
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
 		// NOTE: This is now the ED instead of 0, as we collators need ED now.
-		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		Tokens::balance(BlockRewardCurrency::get(), who),
 		ExistentialDeposit::get()
 	);
 	assert_eq!(
