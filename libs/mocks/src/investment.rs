@@ -30,12 +30,6 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_accepted_payment_currency(
-			f: impl Fn(T::InvestmentId, T::CurrencyId) -> bool + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
 		pub fn mock_investment(
 			f: impl Fn(&T::AccountId, T::InvestmentId) -> Result<T::Amount, DispatchError> + 'static,
 		) {
@@ -46,12 +40,6 @@ pub mod pallet {
 			f: impl Fn(&T::AccountId, T::InvestmentId, T::TrancheAmount) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
-		}
-
-		pub fn mock_accepted_payout_currency(
-			f: impl Fn(T::InvestmentId, T::CurrencyId) -> bool + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_redemption(
@@ -101,10 +89,6 @@ pub mod pallet {
 			execute_call!((a, b, c))
 		}
 
-		fn accepted_payment_currency(a: Self::InvestmentId, b: Self::CurrencyId) -> bool {
-			execute_call!((a, b))
-		}
-
 		fn investment(
 			a: &T::AccountId,
 			b: Self::InvestmentId,
@@ -118,10 +102,6 @@ pub mod pallet {
 			c: Self::TrancheAmount,
 		) -> DispatchResult {
 			execute_call!((a, b, c))
-		}
-
-		fn accepted_payout_currency(a: Self::InvestmentId, b: Self::CurrencyId) -> bool {
-			execute_call!((a, b))
 		}
 
 		fn redemption(
