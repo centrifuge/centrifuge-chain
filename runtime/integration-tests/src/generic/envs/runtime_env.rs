@@ -93,7 +93,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
 		let call: T::RuntimeCallExt = call.into();
-		let info = call.get_dispatch_info();
+		let info = self.parachain_state(|| call.get_dispatch_info());
 
 		let extrinsic = self.parachain_state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;

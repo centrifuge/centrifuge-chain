@@ -14,7 +14,7 @@
 
 use cfg_primitives::AccountId;
 use runtime_common::apis::runtime_decl_for_account_conversion_api::AccountConversionApi;
-use sp_runtime::traits::Get;
+use sp_runtime::traits::{Get, Zero};
 use xcm::v3::{
 	Junction::{AccountId32, AccountKey20, Parachain},
 	Junctions::{X1, X2},
@@ -186,7 +186,9 @@ fn remote_account_on_relay<T: Runtime>() {
 				Parachain(parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
-					network: None,
+					network: Some(NetworkId::ByGenesis(
+						frame_system::BlockHash::<T>::get(T::BlockNumber::zero()).0,
+					)),
 				},
 			),
 		))
@@ -212,7 +214,9 @@ fn remote_account_on_sibling<T: Runtime>() {
 				Parachain(parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
-					network: None,
+					network: Some(NetworkId::ByGenesis(
+						frame_system::BlockHash::<T>::get(T::BlockNumber::zero()).0,
+					)),
 				},
 			),
 		))
