@@ -19,7 +19,16 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-pub use cfg_primitives::{constants::*, types::*};
+use cfg_primitives::{
+	constants::*,
+	liquidity_pools::GeneralCurrencyPrefix,
+	types::{
+		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
+		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, Index,
+		ItemId, LoanId, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
+		Signature, ThreeFourthOfCouncil, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+	},
+};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
 	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
@@ -35,22 +44,24 @@ use cfg_types::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
 	time::TimeProvider,
-	tokens::{CustomMetadata, StakingCurrency, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata, StakingCurrency, TrancheCurrency},
 };
+use cumulus_primitives_core::{MultiAsset, MultiLocation};
 use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	pallet_prelude::{DispatchError, DispatchResult},
+	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
-		WithdrawReasons,
+		AsEnsureOriginWithArg, ConstU32, ConstU64, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		Get, InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote,
+		UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier,
+		ConstantMultiplier, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -60,11 +71,16 @@ use frame_system::{
 };
 use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
-pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
-use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
+use pallet_ethereum::{Call::transact, PostLogContent, Transaction as EthTransaction};
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressRoot, EnsureAddressTruncated, FeeCalculator,
+	GasWeightMapping, Runner,
+};
 use pallet_investments::OrderType;
+use pallet_liquidity_pools::hooks::{
+	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
+};
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -73,19 +89,26 @@ use pallet_pool_system::{
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
-pub use pallet_timestamp::Call as TimestampCall;
-pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
+use pallet_transaction_payment::CurrencyAdapter;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
+	evm::{
+		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
+	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
+	gateway::GatewayAccountProvider,
+	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
+	origin::EnsureAccountOrRootOr,
 	permissions::PoolAdminCheck,
+	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
@@ -93,8 +116,6 @@ use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
-#[cfg(any(feature = "std", test))]
-pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -105,21 +126,15 @@ use sp_runtime::{
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::prelude::*;
-#[cfg(any(feature = "std", test))]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-pub mod evm;
-pub mod liquidity_pools;
+use crate::xcm::*;
+
 mod migrations;
 mod weights;
 pub mod xcm;
-
-/// common types for the runtime.
-//nuno: explict imports from runtime_common
-pub use crate::xcm::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -150,8 +165,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 
 /// Native version.
 #[cfg(any(feature = "std", test))]
-pub fn native_version() -> NativeVersion {
-	NativeVersion {
+pub fn native_version() -> sp_version::NativeVersion {
+	sp_version::NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
 	}
@@ -1181,7 +1196,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type CurrencyIdToMultiLocation = CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRootOr<HalfOfCouncil>;
 	type HrmpEncoder = moonbeam_relay_encoder::polkadot::PolkadotEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1820,6 +1835,87 @@ impl pallet_swaps::Config for Runtime {
 	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 
+impl pallet_foreign_investments::Config for Runtime {
+	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
+	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
+	type ForeignBalance = Balance;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolBalance = Balance;
+	type PoolInspect = PoolSystem;
+	type SwapBalance = Balance;
+	type Swaps = Swaps;
+	type TrancheBalance = Balance;
+}
+
+parameter_types! {
+	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
+	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
+}
+
+impl pallet_liquidity_pools::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
+	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PreTransferFilter = PreLpTransfer<TransferAllowList>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+}
+
+parameter_types! {
+	// A temporary admin account for the LP logic
+	// This is a multi-sig controlled pure proxy on mainnet
+	// - address: "4eEqmbQMbFfNUg6bQnqi9zgUvQvSpNbUgstEM64Xq9FW58Xv" (on Centrifuge)
+	//             (pub key 0x80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57)
+	//
+	// This account is besides Root and 2/3-council able to
+	// - add valid relayer contracts
+	// - rm valid relayer contracts
+	// - add valid LP instance contracts
+	// - rm valid LP instance contracts
+	// - add conversions from Axelar `sourceChain` strings to `DomainAddress`
+	// - set the Axelar gateway contract in the Axelar gateway precompile
+	pub LpAdminAccount: AccountId = AccountId::new(hex_literal::hex!("80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57"));
+}
+
+impl pallet_liquidity_pools_gateway::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type InboundQueue = LiquidityPools;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Message = LiquidityPoolsMessage;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
 }
@@ -1851,7 +1947,7 @@ impl pallet_transfer_allowlist::Config for Runtime {
 }
 
 parameter_types! {
-		pub const MaxRemarksPerCall: u32 = 10;
+	pub const MaxRemarksPerCall: u32 = 10;
 }
 
 impl pallet_remarks::Config for Runtime {
@@ -1862,6 +1958,108 @@ impl pallet_remarks::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
 }
+
+pub type CentrifugePrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
+	pub PrecompilesValue: CentrifugePrecompiles = Precompiles::<_, _>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
+	pub const TokenSymbol: &'static str = "CFG";
+}
+
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
+	type BlockGasLimit = BlockGasLimit;
+	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
+	type CallOrigin = EnsureAddressRoot<AccountId>;
+	type ChainId = EVMChainId;
+	type Currency = Balances;
+	type FeeCalculator = BaseFee;
+	type FindAuthor = FindAuthorTruncated<Self>;
+	type GasLimitPovSizeRatio = ConstU64<GAS_LIMIT_POV_SIZE_RATIO>;
+	type GasLimitStorageGrowthRatio = ConstU64<GAS_LIMIT_STORAGE_GROWTH_RATIO>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+	type OnChargeTransaction = ();
+	type OnCreate = ();
+	type PrecompilesType = CentrifugePrecompiles;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
+}
+
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+impl pallet_base_fee::Config for Runtime {
+	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
+}
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for Runtime {}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// A Block signed with a Justification
+pub type SignedBlock = generic::SignedBlock<Block>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
+);
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic =
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+/// Extrinsic type that has already been checked.
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
+
+/// Executive: handles dispatch to the various modules.
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	migrations::UpgradeCentrifuge1025,
+>;
 
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
@@ -1968,41 +2166,6 @@ construct_runtime!(
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 189,
 	}
 );
-
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// A Block signed with a Justification
-pub type SignedBlock = generic::SignedBlock<Block>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-/// The SignedExtension to the basic transaction logic.
-pub type SignedExtra = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
-);
-/// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
-/// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic =
-	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
-
-/// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1025,
->;
 
 pub struct TransactionConverter;
 

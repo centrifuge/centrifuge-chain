@@ -263,7 +263,7 @@ type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>
 use utils::*;
 
 mod development {
-	use development_runtime::LocationToAccountId;
+	use development_runtime::xcm::LocationToAccountId;
 
 	use super::*;
 
@@ -5459,7 +5459,7 @@ mod development {
 }
 
 mod altair {
-	use altair_runtime::{CurrencyIdConvert, PoolPalletIndex};
+	use altair_runtime::{xcm::CurrencyIdConvert, PoolPalletIndex};
 
 	pub const KSM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1000);
 
@@ -6439,7 +6439,7 @@ mod altair {
 }
 
 mod centrifuge {
-	use centrifuge_runtime::CurrencyIdConvert;
+	use centrifuge_runtime::xcm::CurrencyIdConvert;
 
 	use super::*;
 

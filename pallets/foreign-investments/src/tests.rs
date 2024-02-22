@@ -1,6 +1,7 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	OrderInfo, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
+	swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
+	StatusNotificationHook,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
