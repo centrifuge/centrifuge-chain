@@ -316,8 +316,6 @@ pub mod pallet {
 		/// The asset is not a [LiquidityPoolsWrappedToken] and thus cannot be
 		/// transferred via liquidity pools.
 		AssetNotLiquidityPoolsWrappedToken,
-		/// The given asset does not match the currency of the pool.
-		AssetNotPoolCurrency,
 		/// A pool could not be found.
 		PoolNotFound,
 		/// A tranche could not be found.
@@ -328,30 +326,16 @@ pub mod pallet {
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
 		MissingTranchePrice,
-		/// Router not set for a given domain.
-		MissingRouter,
 		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
 		/// Senders balance is insufficient for transfer amount
 		BalanceTooLow,
 		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
-		/// Failed to build Ethereum_Xcm call.
-		FailedToBuildEthereumXcmCall,
-		/// The origin of an incoming message is not in the allow-list.
-		InvalidIncomingMessageOrigin,
-		/// Failed to decode an incoming message.
-		InvalidIncomingMessage,
 		/// The destination domain is invalid.
 		InvalidDomain,
 		/// The validity is in the past.
 		InvalidTrancheInvestorValidity,
-		/// The derived currency from the provided GeneralCurrencyIndex is not
-		/// accepted as payment for the given pool.
-		InvalidPaymentCurrency,
-		/// The derived currency from the provided GeneralCurrencyIndex is not
-		/// accepted as payout for the given pool.
-		InvalidPayoutCurrency,
 		/// The currency is not allowed to be transferred via LiquidityPools.
 		InvalidTransferCurrency,
 		/// The account derived from the [Domain] and [DomainAddress] has not

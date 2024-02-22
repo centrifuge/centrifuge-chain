@@ -1409,27 +1409,7 @@ mod development {
 				// Create pool
 				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
-				// Should fail if asset is not payment currency
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
-				);
-
-				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
-
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
-				);
 
 				// Should fail if currency is not liquidityPools transferable
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
@@ -1622,27 +1602,7 @@ mod development {
 				// Create pool
 				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
-				// Should fail if asset is not payment currency
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
-				);
-
-				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
-
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
-				);
 
 				// Should fail if currency is not liquidityPools transferable
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
