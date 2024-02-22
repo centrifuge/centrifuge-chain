@@ -238,11 +238,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
-		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`]
-		/// or [`Pallet::set_total_reward()`] reached.
-		MaxChangesPerSessionReached,
-	}
+	pub enum Error<T> {}
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {

@@ -65,6 +65,7 @@ pub type DevelopmentChainSpec =
 
 use altair_runtime::AltairPrecompiles;
 use centrifuge_runtime::CentrifugePrecompiles;
+use cfg_types::fixed_point::Rate;
 use development_runtime::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed

@@ -1,4 +1,3 @@
-use cfg_primitives::IBalance;
 use cfg_traits::{rewards::AccountRewards, Seconds};
 use cfg_types::{
 	fixed_point::Rate,
@@ -153,7 +152,7 @@ orml_traits::parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type Amount = IBalance;
+	type Amount = i128;
 	type Balance = Balance;
 	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
@@ -208,7 +207,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
-		IBalance,
+		i128,
 		sp_runtime::FixedI128,
 		MaxCurrencyMovements,
 	>;
