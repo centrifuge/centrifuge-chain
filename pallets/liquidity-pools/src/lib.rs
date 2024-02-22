@@ -332,6 +332,8 @@ pub mod pallet {
 		BalanceTooLow,
 		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
+		/// Failed to decode an incoming message.
+		InvalidIncomingMessage,
 		/// The destination domain is invalid.
 		InvalidDomain,
 		/// The validity is in the past.
