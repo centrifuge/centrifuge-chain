@@ -153,13 +153,7 @@ pub mod pallet {
 			+ FungibleInspect<Self::AccountId, Balance = Self::Balance>;
 
 		/// The currency type of the artificial block rewards currency.
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
 
 		/// The identifier of the artificial block rewards currency which is
 		/// minted and burned for collators.
@@ -192,7 +186,6 @@ pub mod pallet {
 		type Rate: Parameter
 			+ Member
 			+ FixedPointNumberExtension
-			+ TypeInfo
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
