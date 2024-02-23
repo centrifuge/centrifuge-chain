@@ -42,12 +42,6 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Checks whether a currency can be used for buying the given investment.
-	fn accepted_payment_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
-
 	/// Returns, if possible, the currently unprocessed investment amount (in
 	/// pool currency) of who into the given investment class.
 	///
@@ -69,13 +63,6 @@ pub trait Investment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::TrancheAmount,
 	) -> Result<(), Self::Error>;
-
-	/// Checks whether a currency is accepted as a payout for the given
-	/// investment.
-	fn accepted_payout_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
 
 	/// Returns, if possible, the currently unprocessed redemption amount (in
 	/// tranche tokens) of who into the given investment class.
@@ -329,17 +316,4 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::TrancheAmount, Self::Error>;
-
-	/// Checks whether a currency can be used for buying the given investment.
-	fn accepted_payment_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
-
-	/// Checks whether a currency is accepted as a payout for the given
-	/// investment.
-	fn accepted_payout_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
 }

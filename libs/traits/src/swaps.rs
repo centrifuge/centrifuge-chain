@@ -83,11 +83,6 @@ pub trait TokenSwaps<Account> {
 		amount: Self::BalanceOut,
 	) -> DispatchResult;
 
-	/// A sanity check that can be used for validating that a trading pair
-	/// is supported. Will also be checked when placing an order but might be
-	/// cheaper.
-	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
-
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
@@ -103,14 +98,6 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		amount_out: Self::BalanceOut,
 	) -> Result<Self::BalanceIn, DispatchError>;
-
-	#[cfg(feature = "runtime-benchmarks")]
-	/// Adds a valid trading pair.
-	fn add_trading_pair(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		min_order: Self::BalanceOut,
-	) -> DispatchResult;
 }
 
 /// A representation of a currency swap in process.
@@ -171,9 +158,6 @@ pub trait Swaps<AccountId> {
 		swap_id: Self::SwapId,
 		from_currency: Self::CurrencyId,
 	) -> Result<Self::Amount, DispatchError>;
-
-	/// Check that validates that if swapping pair is supported.
-	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
 
 	/// Makes a conversion between 2 currencies using the market ratio between
 	/// them

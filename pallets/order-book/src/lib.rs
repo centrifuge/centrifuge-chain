@@ -255,23 +255,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OrderIdNonceStore<T: Config> = StorageValue<_, T::OrderIdNonce, ValueQuery>;
 
-	/// Storage of valid order pairs.
-	/// Stores:
-	///  - key1 -> CurrencyIn
-	///  - key2 -> CurrencyOut
-	///
-	/// Stores the minimum `amount_out` of `currency_out`
-	#[pallet::storage]
-	pub type TradingPair<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::CurrencyId,
-		Twox64Concat,
-		T::CurrencyId,
-		T::BalanceOut,
-		ResultQuery<Error<T>::InvalidTradingPair>,
-	>;
-
 	/// Stores the market feeder id used to set with market conversion ratios
 	#[pallet::storage]
 	pub type MarketFeederId<T: Config> =
@@ -317,17 +300,6 @@ pub mod pallet {
 			currency_out: T::CurrencyId,
 			ratio: T::Ratio,
 		},
-		/// Event emitted when a valid trading pair is added.
-		TradingPairAdded {
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-			min_order: T::BalanceOut,
-		},
-		/// Event emitted when a valid trading pair is removed.
-		TradingPairRemoved {
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-		},
 		/// Event emitted when a valid trading pair is removed.
 		FeederChanged { feeder_id: T::FeederId },
 	}
@@ -340,15 +312,9 @@ pub mod pallet {
 		SameCurrencyIds,
 		/// Error when an account cannot reserve or transfer the amount.
 		BelowMinFulfillmentAmount,
-		/// Error when an order amount is too small
-		BelowMinOrderAmount,
 		/// Error when an order is placed with a currency that is not in the
 		/// `AssetRegistry`.
 		InvalidCurrencyId,
-		/// Error when a trade is using an invalid trading pair.
-		/// Currently can happen when there is not a minimum order size
-		/// defined for the trading pair.
-		InvalidTradingPair,
 		/// Error when an operation is attempted on an order id that is not in
 		/// storage.
 		OrderNotFound,
@@ -384,7 +350,6 @@ pub mod pallet {
 				currency_out,
 				amount_out,
 				ratio,
-				TradingPair::<T>::get(&currency_in, &currency_out)?,
 				Self::min_fulfillment_amount(currency_out)?,
 			)?;
 
@@ -412,7 +377,6 @@ pub mod pallet {
 				order.clone(),
 				amount_out,
 				ratio,
-				TradingPair::<T>::get(&order.currency_in, &order.currency_out)?,
 				Self::min_fulfillment_amount(order.currency_out)?,
 			)
 		}
@@ -448,58 +412,9 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, amount_out, account_id)
 		}
 
-		/// Adds a valid trading pair.
-		#[pallet::call_index(4)]
-		#[pallet::weight(T::Weights::add_trading_pair())]
-		pub fn add_trading_pair(
-			origin: OriginFor<T>,
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-			min_order: T::BalanceOut,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			// We do not check, we just overwrite as this is an admin action.
-			TradingPair::<T>::insert(currency_in, currency_out, min_order);
-
-			Self::deposit_event(Event::<T>::TradingPairAdded {
-				currency_in,
-				currency_out,
-				min_order,
-			});
-
-			Ok(())
-		}
-
-		/// Removes a valid trading pair
-		//
-		// NOTE: We do not need to remove existing order as
-		//       fulfilling orders is not checking for a valid trading pair.
-		//       Existing orders will just fade out by by being canceled
-		//       or fulfilled.
-		#[pallet::call_index(5)]
-		#[pallet::weight(T::Weights::rm_trading_pair())]
-		pub fn rm_trading_pair(
-			origin: OriginFor<T>,
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			// We do not check, we just remove as this is an admin action.
-			TradingPair::<T>::remove(currency_in, currency_out);
-
-			Self::deposit_event(Event::<T>::TradingPairRemoved {
-				currency_in,
-				currency_out,
-			});
-
-			Ok(())
-		}
-
 		/// Set the market feeder for set market ratios.
 		/// The origin must be the admin origin.
-		#[pallet::call_index(6)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::Weights::set_market_feeder())]
 		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
@@ -519,7 +434,6 @@ pub mod pallet {
 			currency_out: T::CurrencyId,
 			amount_out: T::BalanceOut,
 			ratio: OrderRatio<T::Ratio>,
-			min_amount_out: T::BalanceOut,
 			min_fulfillment_amount_out: T::BalanceOut,
 		) -> Result<T::OrderIdNonce, DispatchError> {
 			let order_id = OrderIdNonceStore::<T>::try_mutate(|n| {
@@ -527,7 +441,10 @@ pub mod pallet {
 				Ok::<_, DispatchError>(*n)
 			})?;
 
-			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
+			ensure!(
+				amount_out >= min_fulfillment_amount_out,
+				Error::<T>::BelowMinFulfillmentAmount
+			);
 
 			ensure!(currency_in != currency_out, Error::<T>::SameCurrencyIds);
 
@@ -564,10 +481,12 @@ pub mod pallet {
 			mut order: Order<T>,
 			amount_out: T::BalanceOut,
 			ratio: OrderRatio<T::Ratio>,
-			min_amount_out: T::BalanceOut,
 			min_fulfillment_amount_out: T::BalanceOut,
 		) -> DispatchResult {
-			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
+			ensure!(
+				amount_out >= min_fulfillment_amount_out,
+				Error::<T>::BelowMinFulfillmentAmount
+			);
 
 			match amount_out.cmp(&order.amount_out) {
 				Ordering::Greater => {
@@ -749,24 +668,6 @@ pub mod pallet {
 			Ok(convert_balance_decimals(from_decimals, to_decimals, amount_in.into())?.into())
 		}
 
-		fn validate_amount(
-			amount_out: T::BalanceOut,
-			min_fulfillment_amount_out: T::BalanceOut,
-			min_order_amount: T::BalanceOut,
-		) -> DispatchResult {
-			ensure!(
-				amount_out >= min_fulfillment_amount_out,
-				Error::<T>::BelowMinFulfillmentAmount
-			);
-
-			ensure!(
-				amount_out >= min_order_amount,
-				Error::<T>::BelowMinOrderAmount
-			);
-
-			Ok(())
-		}
-
 		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::BalanceOut, DispatchError> {
@@ -794,7 +695,6 @@ pub mod pallet {
 				currency_out,
 				amount_out,
 				ratio,
-				T::BalanceOut::zero(),
 				T::BalanceOut::zero(),
 			)
 		}
@@ -827,13 +727,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let order = Orders::<T>::get(order_id)?;
 
-			Self::inner_update_order(
-				order,
-				amount_out,
-				ratio,
-				T::BalanceOut::zero(),
-				T::BalanceOut::zero(),
-			)
+			Self::inner_update_order(order, amount_out, ratio, T::BalanceOut::zero())
 		}
 
 		fn get_order_details(
@@ -861,10 +755,6 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, buy_amount, account)
 		}
 
-		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
-			TradingPair::<T>::get(currency_in, currency_out).is_ok()
-		}
-
 		fn convert_by_market(
 			currency_in: Self::CurrencyId,
 			currency_out: Self::CurrencyId,
@@ -877,20 +767,6 @@ pub mod pallet {
 
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_trading_pair(
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-			min_order: T::BalanceOut,
-		) -> DispatchResult {
-			Self::add_trading_pair(
-				frame_support::dispatch::RawOrigin::Root.into(),
-				currency_in,
-				currency_out,
-				min_order,
-			)
 		}
 	}
 
