@@ -1046,7 +1046,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
-			let prices = T::PriceRegistry::collection(&pool_id)?;
+			let prices = T::PriceRegistry::collection(&pool_id).unwrap_or_default();
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let values = loans
 				.iter()

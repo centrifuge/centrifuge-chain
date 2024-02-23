@@ -97,6 +97,14 @@ pub mod pallet {
 			}
 		}
 
+		impl<DataId, Data> Default for MockDataCollection<DataId, Data> {
+			fn default() -> Self {
+				Self(Box::new(|_| {
+					Err(DispatchError::Other("MockDataCollection: Data not found"))
+				}))
+			}
+		}
+
 		impl<DataId, Data> DataCollection<DataId> for MockDataCollection<DataId, Data> {
 			type Data = Data;
 
