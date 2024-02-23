@@ -269,7 +269,7 @@ impl<T: Config> ActiveLoan<T> {
 				let maturity_date = self.schedule.maturity.date();
 				inner.present_value(self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value(pool_id)?,
+			ActivePricing::External(inner) => inner.present_value(pool_id, self.maturity_date())?,
 		};
 
 		self.write_down(value)
@@ -293,7 +293,9 @@ impl<T: Config> ActiveLoan<T> {
 				let maturity_date = self.schedule.maturity.date();
 				inner.present_value_cached(rates, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value_cached(prices)?,
+			ActivePricing::External(inner) => {
+				inner.present_value_cached(prices, self.maturity_date())?
+			}
 		};
 
 		self.write_down(value)
@@ -560,13 +562,17 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 					active_loan,
 				}
 			}
-			ActivePricing::External(inner) => Self {
-				present_value,
-				outstanding_principal: inner.outstanding_principal(pool_id)?,
-				outstanding_interest: inner.outstanding_interest()?,
-				current_price: Some(inner.current_price(pool_id, active_loan.maturity_date())?),
-				active_loan,
-			},
+			ActivePricing::External(inner) => {
+				let maturity = active_loan.maturity_date();
+
+				Self {
+					present_value,
+					outstanding_principal: inner.outstanding_principal(pool_id, maturity)?,
+					outstanding_interest: inner.outstanding_interest()?,
+					current_price: Some(inner.current_price(pool_id, maturity)?),
+					active_loan,
+				}
+			}
 		})
 	}
 }

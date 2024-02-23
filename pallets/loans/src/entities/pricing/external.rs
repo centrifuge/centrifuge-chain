@@ -148,6 +148,21 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
+	fn linear_accrual_price(&self, maturity: Seconds) -> Result<T::Balance, DispatchError> {
+		dbg!(
+			self.settlement_price_updated,
+			self.latest_settlement_price,
+			maturity,
+			self.info.notional,
+			T::Time::now()
+		);
+		Ok(cfg_utils::math::y_coord_in_rect(
+			(self.settlement_price_updated, self.latest_settlement_price),
+			(maturity, self.info.notional),
+			T::Time::now(),
+		)?)
+	}
+
 	pub fn current_price(
 		&self,
 		pool_id: T::PoolId,
@@ -155,19 +170,16 @@ impl<T: Config> ExternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
 			Ok(data) => data.0,
-			Err(_) => cfg_utils::math::y_coord_in_rect(
-				(self.settlement_price_updated, self.latest_settlement_price),
-				(maturity, self.info.notional),
-				T::Time::now(),
-			)?,
+			Err(_) => self.linear_accrual_price(maturity)?,
 		})
 	}
 
-	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
-			Ok(data) => data.0,
-			Err(_) => self.latest_settlement_price,
-		};
+	pub fn outstanding_principal(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		let price = self.current_price(pool_id, maturity)?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -180,17 +192,25 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		self.outstanding_principal(pool_id)
+	pub fn present_value(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		self.outstanding_principal(pool_id, maturity)
 	}
 
-	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
+	pub fn present_value_cached<Prices>(
+		&self,
+		cache: &Prices,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError>
 	where
 		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let price = match cache.get(&self.info.price_id) {
 			Ok(data) => data.0,
-			Err(_) => self.latest_settlement_price,
+			Err(_) => self.linear_accrual_price(maturity)?,
 		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
