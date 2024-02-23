@@ -149,13 +149,6 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	fn linear_accrual_price(&self, maturity: Seconds) -> Result<T::Balance, DispatchError> {
-		dbg!(
-			self.settlement_price_updated,
-			self.latest_settlement_price,
-			maturity,
-			self.info.notional,
-			T::Time::now()
-		);
 		Ok(cfg_utils::math::y_coord_in_rect(
 			(self.settlement_price_updated, self.latest_settlement_price),
 			(maturity, self.info.notional),
