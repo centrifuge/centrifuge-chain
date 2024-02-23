@@ -264,12 +264,12 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let maturity_date = self.schedule.maturity.date();
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let maturity_date = self.schedule.maturity.date();
 				inner.present_value(self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value(pool_id, self.maturity_date())?,
+			ActivePricing::External(inner) => inner.present_value(pool_id, maturity_date)?,
 		};
 
 		self.write_down(value)
@@ -288,14 +288,12 @@ impl<T: Config> ActiveLoan<T> {
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
+		let maturity_date = self.schedule.maturity.date();
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let maturity_date = self.schedule.maturity.date();
 				inner.present_value_cached(rates, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => {
-				inner.present_value_cached(prices, self.maturity_date())?
-			}
+			ActivePricing::External(inner) => inner.present_value_cached(prices, maturity_date)?,
 		};
 
 		self.write_down(value)
