@@ -23,6 +23,7 @@ use orml_traits::asset_registry::AssetMetadata;
 frame_support::parameter_types! {
 	pub const NftSalesPalletName: &'static str = "NftSales";
 	pub const MigrationPalletName: &'static str = "Migration";
+	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
@@ -75,6 +76,11 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::nuke::KillPallet<NftSalesPalletName, crate::RocksDbWeight>,
 	// Removes unused migration pallet
 	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
+	// Apply relative treasury inflation
+	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
+		crate::Runtime,
+		AnnualTreasuryInflationPercent,
+	>,
 );
 
 #[allow(clippy::upper_case_acronyms)]
