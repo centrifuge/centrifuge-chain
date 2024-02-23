@@ -52,12 +52,6 @@ pub mod pallet {
 			register_call!(f);
 		}
 
-		pub fn mock_valid_pair(
-			f: impl Fn(T::CurrencyId, T::CurrencyId) -> DispatchResult + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
 		pub fn mock_get_order_details(
 			f: impl Fn(T::OrderId) -> Option<OrderInfo<T::BalanceOut, T::CurrencyId, T::Ratio>>
 				+ 'static,
@@ -78,13 +72,6 @@ pub mod pallet {
 
 		pub fn mock_fill_order(
 			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
-		) {
-			register_call!(move |(a, b, c)| f(a, b, c))
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		pub fn mock_add_trading_pair(
-			f: impl Fn(T::CurrencyId, T::CurrencyId, T::BalanceOut) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c))
 		}
@@ -119,10 +106,6 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn valid_pair(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
-			execute_call!((a, b))
-		}
-
 		fn get_order_details(
 			a: Self::OrderId,
 		) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>> {
@@ -138,15 +121,6 @@ pub mod pallet {
 		}
 
 		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {
-			execute_call!((a, b, c))
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_trading_pair(
-			a: Self::CurrencyId,
-			b: Self::CurrencyId,
-			c: Self::BalanceOut,
-		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

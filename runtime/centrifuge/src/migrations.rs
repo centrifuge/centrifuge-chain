@@ -64,41 +64,12 @@ pub type UpgradeCentrifuge1025 = (
 		PoolCurrencyAnemoy,
 		LocalCurrencyIdUsdc,
 	>,
-	// Register trading pairs one by one
-	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
-		super::Runtime,
-		UsdcDot,
-		LocalCurrencyIdUsdc,
-		MinOrderAmount,
-	>,
-	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
-		super::Runtime,
-		UsdcEth,
-		LocalCurrencyIdUsdc,
-		MinOrderAmount,
-	>,
-	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
-		super::Runtime,
-		UsdcBase,
-		LocalCurrencyIdUsdc,
-		MinOrderAmount,
-	>,
-	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
-		super::Runtime,
-		UsdcArb,
-		LocalCurrencyIdUsdc,
-		MinOrderAmount,
-	>,
-	runtime_common::migrations::local_currency::add_bidirectional_trading_pair::Migration<
-		super::Runtime,
-		UsdcCelo,
-		LocalCurrencyIdUsdc,
-		MinOrderAmount,
-	>,
 	// Removes unused migration pallet
 	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
 	// Sets account codes for all precompiles
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
+	// Bumps storage version from 0 to 1
+	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
 	// Apply relative treasury inflation
 	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
 		crate::Runtime,
