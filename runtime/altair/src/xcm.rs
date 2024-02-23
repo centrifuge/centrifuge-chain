@@ -14,44 +14,38 @@ use cfg_primitives::{
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
-pub use cfg_types::tokens::CurrencyId;
-pub use cumulus_primitives_core::ParaId;
-pub use frame_support::{
-	parameter_types,
-	traits::{Contains, Everything, Get, Nothing},
-	weights::Weight,
-};
+use cfg_types::tokens::CurrencyId;
 use frame_support::{
-	sp_std::marker::PhantomData,
-	traits::{fungibles, fungibles::Mutate},
+	parameter_types,
+	traits::{Everything, Get, Nothing},
 };
 use frame_system::EnsureRoot;
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
-use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
 	transfer_filter::PreXcmTransfer,
-	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
+	xcm::{
+		general_key, AccountIdToMultiLocation, Barrier, FixedConversionRateProvider, ToTreasury,
+	},
 	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
-use sp_runtime::traits::{Convert, Zero};
-pub use xcm::v3::{MultiAsset, MultiLocation};
-use xcm::{prelude::*, v3::Weight as XcmWeight};
+use xcm::{
+	prelude::*,
+	v3::{MultiLocation, Weight as XcmWeight},
+};
 use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter,
+	NoChecking, RelayChainAsNative, SiblingParachainAsNative, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount, XcmpQueue,
+	RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, XcmpQueue,
 };
 
 /// A call filter for the XCM Transact instruction. This is a temporary
@@ -80,7 +74,7 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 				| RuntimeCall::Proxy(..)
 				| RuntimeCall::LiquidityPoolsGateway(
 					pallet_liquidity_pools_gateway::Call::process_msg { .. }
-				) // TODO: Enable later: | RuntimeCall::OrderBook(..)
+				) | RuntimeCall::OrderBook(..)
 		)
 	}
 }
@@ -97,7 +91,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
 	type AssetTrap = PolkadotXcm;
-	type Barrier = Barrier;
+	type Barrier = Barrier<PolkadotXcm>;
 	type CallDispatcher = RuntimeCall;
 	type FeeManager = ();
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
@@ -122,10 +116,10 @@ impl xcm_executor::Config for XcmConfig {
 /// else the xcm executor won't know how to charge fees for a transfer of said
 /// token.
 pub type Trader = (
-	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury<Runtime>>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
-		ToTreasury,
+		ToTreasury<Runtime>,
 	>,
 );
 
@@ -140,36 +134,6 @@ parameter_types! {
 		0,
 	);
 }
-
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		use xcm_executor::traits::Convert;
-
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Ok(currency_id) =
-				<CurrencyIdConvert as Convert<MultiLocation, CurrencyId>>::convert(location)
-			{
-				let _ = Tokens::mint_into(currency_id, &TreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
-
-/// Barrier is a filter-like option controlling what messages are allows to be
-/// executed.
-pub type Barrier = (
-	TakeWeightCredit,
-	AllowTopLevelPaidExecutionFrom<Everything>,
-	// Expected responses are OK.
-	AllowKnownQueryResponses<PolkadotXcm>,
-	// Subscriptions for version tracking are OK.
-	AllowSubscriptionsFrom<Everything>,
-);
 
 /// Means for transacting the fungibles assets of this parachain.
 pub type FungiblesTransactor = FungiblesAdapter<
@@ -192,74 +156,6 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: XcmWeight = XcmWeight::from_parts(200_000_000, 0);
 	pub const MaxInstructions: u32 = 100;
-}
-
-/// Allow checking in assets that have issuance > 0.
-pub struct NonZeroIssuance<AccountId, Assets>(PhantomData<(AccountId, Assets)>);
-impl<AccountId, Assets> Contains<<Assets as fungibles::Inspect<AccountId>>::AssetId>
-	for NonZeroIssuance<AccountId, Assets>
-where
-	Assets: fungibles::Inspect<AccountId>,
-{
-	fn contains(id: &<Assets as fungibles::Inspect<AccountId>>::AssetId) -> bool {
-		!Assets::total_issuance(id.clone()).is_zero()
-	}
-}
-
-/// CurrencyIdConvert
-/// This type implements conversions from our `CurrencyId` type into
-/// `MultiLocation` and vice-versa. A currency locally is identified with a
-/// `CurrencyId` variant but in the network it is identified in the form of a
-/// `MultiLocation`.
-pub struct CurrencyIdConvert;
-
-/// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// We use the `OrmlAssetRegistry` to lookup the associated `MultiLocation` for
-/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		OrmlAssetRegistry::metadata(id)
-			.filter(|m| m.additional.transferability.includes_xcm())
-			.and_then(|m| m.location)
-			.and_then(|l| l.try_into().ok())
-	}
-}
-
-/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
-/// reverse-lookup using the OrmlAssetRegistry. In the registry, we register CFG
-/// using its absolute, non-anchored MultliLocation so we need to unanchor the
-/// input location for Centrifuge-native assets for that to work.
-impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		let unanchored_location = match location {
-			MultiLocation {
-				parents: 0,
-				interior,
-			} => MultiLocation {
-				parents: 1,
-				interior: interior
-					.pushed_front_with(Parachain(u32::from(ParachainInfo::get())))
-					.map_err(|_| location)?,
-			},
-			x => x,
-		};
-
-		OrmlAssetRegistry::location_to_asset_id(unanchored_location).ok_or(location)
-	}
-}
-
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location),
-			..
-		} = asset
-		{
-			<CurrencyIdConvert as xcm_executor::traits::Convert<_, _>>::convert(location).ok()
-		} else {
-			None
-		}
-	}
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -305,20 +201,8 @@ parameter_types! {
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
-/// Type for specifying how a `MultiLocation` can be converted into an
-/// `AccountId`. This is used when determining ownership of accounts for asset
-/// transacting and when attempting to use XCM `Transact` in order to determine
-/// the dispatch Origin.
-pub type LocationToAccountId = (
-	// The parent (Relay-chain) origin converts to the default `AccountId`.
-	ParentIsPreset<AccountId>,
-	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
-	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
-	AccountId32Aliases<RelayNetwork, AccountId>,
-	// Generate remote accounts according to polkadot standards
-	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
-);
+pub type CurrencyIdConvert = runtime_common::xcm::CurrencyIdConvert<Runtime>;
+pub type LocationToAccountId = runtime_common::xcm::LocationToAccountId<RelayNetwork>;
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;

@@ -1097,15 +1097,6 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 		Pallet::<T>::do_update_investment(who.clone(), investment_id, amount)
 	}
 
-	fn accepted_payment_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool {
-		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency == currency)
-			.unwrap_or(false)
-	}
-
 	fn investment(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
@@ -1120,15 +1111,6 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 		amount: Self::TrancheAmount,
 	) -> Result<(), Self::Error> {
 		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
-	}
-
-	fn accepted_payout_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool {
-		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency == currency)
-			.unwrap_or(false)
 	}
 
 	fn redemption(

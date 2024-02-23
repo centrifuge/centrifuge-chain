@@ -27,7 +27,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps, TokenSwaps,
+		swaps::{OrderRatio, Swap, SwapState, SwapStatus, Swaps, TokenSwaps},
+		StatusNotificationHook,
 	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, Zero};
@@ -280,10 +281,6 @@ pub mod pallet {
 				.filter(|order_info| order_info.swap.currency_out == from_currency)
 				.map(|order_info| order_info.swap.amount_out)
 				.unwrap_or_default())
-		}
-
-		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
-			T::OrderBook::valid_pair(currency_in, currency_out)
 		}
 
 		fn convert_by_market(

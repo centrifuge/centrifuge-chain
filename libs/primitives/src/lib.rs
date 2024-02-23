@@ -75,10 +75,6 @@ pub mod types {
 	/// it equivalent to the public key of our transaction signing scheme.
 	pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-	/// The type for looking up accounts. We don't expect more than 4 billion of
-	/// them, but you never know...
-	pub type AccountIndex = u32;
-
 	/// The address format for describing accounts.
 	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 
@@ -102,6 +98,7 @@ pub mod types {
 	/// A generic block for the node to use, as we can not commit to
 	/// a specific Extrinsic format at this point. Runtimes will ensure
 	/// Extrinsic are correctly decoded.
+	/// Used by the node.
 	pub type Block = sp_runtime::generic::Block<Header, OpaqueExtrinsic>;
 
 	/// Block header type as expected by this runtime.

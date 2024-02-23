@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::OrderRatio;
+use cfg_traits::swaps::OrderRatio;
 use cfg_types::tokens::{
 	CurrencyId,
 	CurrencyId::{ForeignAsset, LocalAsset},
@@ -38,7 +38,6 @@ fn init_mocks() {
 	use crate::{mock::MockTokenSwaps, tests::ORDER_ID};
 
 	MockTokenSwaps::mock_place_order(|_, _, _, _, _| Ok(ORDER_ID));
-	MockTokenSwaps::mock_add_trading_pair(|_, _, _| Ok(()));
 	MockTokenSwaps::mock_get_order_details(|_| None);
 }
 #[cfg(test)]
@@ -46,7 +45,7 @@ fn mock_match_swap<T: Config>(who: T::AccountId)
 where
 	AccountId32: From<T::AccountId>,
 {
-	use cfg_traits::{OrderInfo, Swap};
+	use cfg_traits::swaps::{OrderInfo, Swap};
 	use tests::swaps::utils::mock_swap;
 
 	use crate::mock::MockTokenSwaps;
@@ -124,11 +123,6 @@ where
 		.unwrap();
 	}
 
-	fn add_trading_pair(currency_out: CurrencyId, currency_in: CurrencyId) {
-		T::OrderBook::add_trading_pair(currency_in.into(), currency_out.into(), Zero::zero())
-			.unwrap();
-	}
-
 	fn place_order(
 		currency_out: CurrencyId,
 		currency_in: CurrencyId,
@@ -162,8 +156,6 @@ where
 	/// Registers currencies, registers trading pair and sets up account.
 	pub fn swap_setup() -> T::AccountId {
 		Self::setup_currencies();
-		Self::add_trading_pair(FOREIGN_CURRENCY, LOCAL_CURRENCY);
-		Self::add_trading_pair(LOCAL_CURRENCY, FOREIGN_CURRENCY);
 		Self::setup_account()
 	}
 }
