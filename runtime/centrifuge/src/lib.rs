@@ -1801,7 +1801,7 @@ parameter_types! {
 }
 
 impl pallet_order_book::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type BalanceIn = Balance;
 	type BalanceOut = Balance;
