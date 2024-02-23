@@ -35,6 +35,7 @@ frame_support::parameter_types! {
 	pub const UsdcCeloWormhole: CurrencyId = CURRENCY_ID_LP_CELO_WORMHOLE;
 	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
 	pub const MinOrderAmount: Balance = 10u128.pow(6);
+	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
 pub type UpgradeCentrifuge1025 = (
@@ -73,6 +74,11 @@ pub type UpgradeCentrifuge1025 = (
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 	// Bumps storage version from 0 to 1
 	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
+	// Apply relative treasury inflation
+	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
+		crate::Runtime,
+		AnnualTreasuryInflationPercent,
+	>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
