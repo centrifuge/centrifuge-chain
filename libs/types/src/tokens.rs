@@ -452,7 +452,10 @@ pub mod usdc {
 	pub const CURRENCY_ID_LP_ETH_GOERLI: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_BASE: CurrencyId = CurrencyId::ForeignAsset(100_002);
 	pub const CURRENCY_ID_LP_ARB: CurrencyId = CurrencyId::ForeignAsset(100_003);
-	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_004);
+
+	pub const CURRENCY_ID_LP_CELO_WORMHOLE: CurrencyId = CurrencyId::ForeignAsset(100_004);
+	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_006);
+
 	pub const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
 	pub const CURRENCY_ID_LOCAL: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID);
 

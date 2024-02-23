@@ -14,7 +14,8 @@ use cfg_primitives::{Balance, PoolId};
 use cfg_types::tokens::{
 	usdc::{
 		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
-		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID,
+		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_CELO_WORMHOLE, CURRENCY_ID_LP_ETH,
+		LOCAL_ASSET_ID,
 	},
 	CurrencyId, LocalAssetId,
 };
@@ -31,6 +32,7 @@ frame_support::parameter_types! {
 	pub const UsdcEth: CurrencyId = CURRENCY_ID_LP_ETH;
 	pub const UsdcBase: CurrencyId = CURRENCY_ID_LP_BASE;
 	pub const UsdcArb: CurrencyId = CURRENCY_ID_LP_ARB;
+	pub const UsdcCeloWormhole: CurrencyId = CURRENCY_ID_LP_CELO_WORMHOLE;
 	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
 	pub const MinOrderAmount: Balance = 10u128.pow(6);
 }
@@ -50,6 +52,8 @@ pub type UpgradeCentrifuge1025 = (
 		super::Runtime,
 		LocalCurrencyIdUsdc,
 	>,
+	// Register new canonical USDC on Celo
+	runtime_common::migrations::update_celo_usdcs::Migration<super::Runtime>,
 	// Init local representation for all assets
 	runtime_common::migrations::local_currency::translate_metadata::Migration<
 		super::Runtime,
