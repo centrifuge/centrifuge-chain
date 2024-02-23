@@ -22,7 +22,7 @@ frame_support::parameter_types! {
 	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
 }
 
-pub type UpgradeDevelopment1041 = (
+pub type UpgradeDevelopment1042 = (
 	// Register LocalUSDC
 	runtime_common::migrations::local_currency::register::Migration<
 		super::Runtime,
