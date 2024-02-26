@@ -289,3 +289,38 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(())
 	}
 }
+
+/// Migration module that contains old loans types.
+/// Can be removed once chains contains pallet-loans version v3
+pub(crate) mod v2 {
+	use cfg_traits::Seconds;
+	use parity_scale_codec::Decode;
+
+	use crate::{
+		entities::{interest::ActiveInterestRate, pricing::external::ExternalPricing},
+		Config,
+	};
+
+	#[derive(Decode)]
+	pub struct ExternalActivePricing<T: Config> {
+		pub info: ExternalPricing<T>,
+		pub outstanding_quantity: T::Quantity,
+		pub interest: ActiveInterestRate<T>,
+		pub latest_settlement_price: T::Balance,
+	}
+
+	impl<T: Config> ExternalActivePricing<T> {
+		pub fn migrate(
+			self,
+			settlement_price_updated: Seconds,
+		) -> crate::entities::pricing::external::ExternalActivePricing<T> {
+			crate::entities::pricing::external::ExternalActivePricing {
+				info: self.info,
+				outstanding_quantity: self.outstanding_quantity,
+				interest: self.interest,
+				latest_settlement_price: self.latest_settlement_price,
+				settlement_price_updated,
+			}
+		}
+	}
+}
