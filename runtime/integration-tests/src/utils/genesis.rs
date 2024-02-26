@@ -11,10 +11,13 @@
 // GNU General Public License for more details.
 
 //! Utilitites around populating a genesis storage
-use cfg_types::tokens::{CurrencyId, CustomMetadata};
+use cfg_types::{
+	fixed_point::Rate,
+	tokens::{CurrencyId, CustomMetadata},
+};
 use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
-use sp_runtime::{AccountId32, Storage};
+use sp_runtime::{AccountId32, FixedPointNumber, Storage};
 
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
@@ -215,11 +218,13 @@ where
 	Runtime::AccountId: From<AccountId32>,
 	Runtime: pallet_block_rewards::Config,
 	<Runtime as pallet_block_rewards::Config>::Balance: From<u128>,
+	<Runtime as pallet_block_rewards::Config>::Rate: From<Rate>,
 {
 	pallet_block_rewards::GenesisConfig::<Runtime> {
 		collators: vec![Keyring::Admin.to_account_id().into()],
 		collator_reward: (1000 * cfg_primitives::CFG).into(),
-		total_reward: (10_000 * cfg_primitives::CFG).into(),
+		treasury_inflation_rate: Rate::saturating_from_rational(3, 100).into(),
+		last_update: Default::default(),
 	}
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
