@@ -17,6 +17,14 @@ jobs:
     #   options: --security-opt seccomp=unconfined    
     steps:
       - uses: actions/checkout@master
+      
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Runing cargo release
         run: ./ci/run-check.sh
