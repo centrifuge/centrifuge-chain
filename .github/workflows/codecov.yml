@@ -40,6 +40,7 @@ jobs:
           #     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && source "$HOME/.cargo/env"
           echo "# Install Tarpaulin"
           cargo install --locked cargo-tarpaulin
+          rustup toolchain install nightly
           # make Cargo.toml
           echo "Generate code coverage for ${{ matrix.target }}"
           RUST_BACKTRACE=1 cargo +nightly  tarpaulin --all-features --verbose --no-fail-fast --workspace --timeout 300 --out xml        
