@@ -1,0 +1,48 @@
+on:
+  # push:
+  #   branches: [main, 'release-v**']
+  pull_request: 
+name: Code coverage
+concurrency:
+  group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+permissions:
+    id-token: write
+    contents: read
+jobs:
+  codecov:
+    runs-on: ubuntu-latest-8-cores
+    # container:
+    #   image: xd009642/tarpaulin:develop-nightly
+    #   options: --security-opt seccomp=unconfined    
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Runing cargo release
+        run: ./ci/run-check.sh
+        env:
+          TARGET: cargo-build
+          RUSTC_WRAPPER: "sccache" 
+
+      - name: generate codecov reports
+        run: |
+          echo "---- GENERATE CODE COVERAGE ----"
+          echo "# Install tarpaulin  and build dependencies"
+          # apt-get install pkg-config libssl-dev llvm libclang-dev build-essential protobuf-compiler
+          #     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && source "$HOME/.cargo/env"
+          echo "# Install Tarpaulin"
+          cargo install --locked cargo-tarpaulin
+          # make Cargo.toml
+          echo "Generate code coverage for ${{ matrix.target }}"
+          RUST_BACKTRACE=1 cargo +nightly  tarpaulin --all-features --verbose --no-fail-fast --workspace --timeout 300 --out xml        
+
+    # UPLOAD REPORTS (requires cargo 1.70.0)
+      - name: Upload codecov report
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # files: ./coverage1.xml,./coverage2.xml # optional
+          # flags: unittests # optional
+          # name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)       
