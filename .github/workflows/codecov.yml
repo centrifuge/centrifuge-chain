@@ -4,7 +4,7 @@ on:
   pull_request:
 name: Code coverage
 concurrency:
-  group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  group: 'codecov-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 permissions:
     id-token: write
