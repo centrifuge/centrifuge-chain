@@ -43,7 +43,7 @@ jobs:
           # rustup toolchain install nightly
           # make Cargo.toml
           echo "Generate code coverage for ${{ matrix.target }}"
-          RUST_BACKTRACE=1 cargo tarpaulin --all-features --verbose --no-fail-fast --workspace --timeout 300 --out xml        
+          RUST_BACKTRACE=1 cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out xml        
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload codecov report
