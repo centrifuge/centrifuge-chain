@@ -595,16 +595,16 @@ pub(crate) mod v2 {
 
 	#[derive(Decode)]
 	pub struct ActiveLoan<T: Config> {
-		pub schedule: RepaymentSchedule,
-		pub collateral: AssetOf<T>,
-		pub restrictions: LoanRestrictions,
-		pub borrower: T::AccountId,
-		pub write_off_percentage: T::Rate,
-		pub origination_date: Seconds,
-		pub pricing: ActivePricing<T>,
-		pub total_borrowed: T::Balance,
-		pub total_repaid: RepaidAmount<T::Balance>,
-		pub repayments_on_schedule_until: Seconds,
+		schedule: RepaymentSchedule,
+		collateral: AssetOf<T>,
+		restrictions: LoanRestrictions,
+		borrower: T::AccountId,
+		write_off_percentage: T::Rate,
+		origination_date: Seconds,
+		pricing: ActivePricing<T>,
+		total_borrowed: T::Balance,
+		total_repaid: RepaidAmount<T::Balance>,
+		repayments_on_schedule_until: Seconds,
 	}
 
 	impl<T: Config> ActiveLoan<T> {

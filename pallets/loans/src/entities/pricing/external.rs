@@ -303,10 +303,10 @@ pub(crate) mod v2 {
 
 	#[derive(Decode)]
 	pub struct ExternalActivePricing<T: Config> {
-		pub info: ExternalPricing<T>,
-		pub outstanding_quantity: T::Quantity,
-		pub interest: ActiveInterestRate<T>,
-		pub latest_settlement_price: T::Balance,
+		info: ExternalPricing<T>,
+		outstanding_quantity: T::Quantity,
+		interest: ActiveInterestRate<T>,
+		latest_settlement_price: T::Balance,
 	}
 
 	impl<T: Config> ExternalActivePricing<T> {
