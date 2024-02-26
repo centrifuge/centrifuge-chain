@@ -1,7 +1,7 @@
 on:
   # push:
   #   branches: [main, 'release-v**']
-  pull_request: 
+  pull_request_target:
 name: Code coverage
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
