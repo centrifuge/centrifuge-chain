@@ -39,11 +39,12 @@ jobs:
           RUST_BACKTRACE: 1
           RUSTC_WRAPPER: sccache
         run: |
-          cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --exclude-files runtime/*/src/weights/** --out xml --out html
+          cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
+        if: ${{ always() }}
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
