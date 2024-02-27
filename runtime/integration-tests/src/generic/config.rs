@@ -265,6 +265,9 @@ pub trait Runtime:
 			AccountId,
 			TrancheCurrency,
 			InvestmentPortfolio<Balance, CurrencyId>,
+		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
+			Self::Block,
+			AccountId,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
