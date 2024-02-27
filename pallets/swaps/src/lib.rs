@@ -283,10 +283,6 @@ pub mod pallet {
 				.unwrap_or_default())
 		}
 
-		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
-			T::OrderBook::valid_pair(currency_in, currency_out)
-		}
-
 		fn convert_by_market(
 			currency_in: Self::CurrencyId,
 			currency_out: Self::CurrencyId,

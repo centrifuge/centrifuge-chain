@@ -1237,20 +1237,18 @@ impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
 	type Balance = Balance;
-	// Must not set this as long as we don't want to mint the rewards.
-	// By setting this to (), the remainder of TotalRewards - CollatorRewards
-	// will be dropped. Else it would be transferred to the configured Beneficiary.
-	type Beneficiary = ();
-	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
+	type Rate = Rate;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
 	type StakeAmount = StakeAmount;
 	type StakeCurrencyId = BlockRewardCurrency;
 	type StakeGroupId = CollatorGroupId;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TreasuryPalletId = TreasuryPalletId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }

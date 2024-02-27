@@ -20,6 +20,7 @@ frame_support::parameter_types! {
 	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
 	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
 	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
+	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
 pub type UpgradeDevelopment1041 = (
@@ -42,5 +43,10 @@ pub type UpgradeDevelopment1041 = (
 		crate::TransferAllowList,
 		crate::RocksDbWeight,
 		0,
+	>,
+	// Apply relative treasury inflation
+	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
+		crate::Runtime,
+		AnnualTreasuryInflationPercent,
 	>,
 );

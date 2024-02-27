@@ -38,7 +38,6 @@ fn init_mocks() {
 	use crate::{mock::MockTokenSwaps, tests::ORDER_ID};
 
 	MockTokenSwaps::mock_place_order(|_, _, _, _, _| Ok(ORDER_ID));
-	MockTokenSwaps::mock_add_trading_pair(|_, _, _| Ok(()));
 	MockTokenSwaps::mock_get_order_details(|_| None);
 }
 #[cfg(test)]
@@ -124,11 +123,6 @@ where
 		.unwrap();
 	}
 
-	fn add_trading_pair(currency_out: CurrencyId, currency_in: CurrencyId) {
-		T::OrderBook::add_trading_pair(currency_in.into(), currency_out.into(), Zero::zero())
-			.unwrap();
-	}
-
 	fn place_order(
 		currency_out: CurrencyId,
 		currency_in: CurrencyId,
@@ -162,8 +156,6 @@ where
 	/// Registers currencies, registers trading pair and sets up account.
 	pub fn swap_setup() -> T::AccountId {
 		Self::setup_currencies();
-		Self::add_trading_pair(FOREIGN_CURRENCY, LOCAL_CURRENCY);
-		Self::add_trading_pair(LOCAL_CURRENCY, FOREIGN_CURRENCY);
 		Self::setup_account()
 	}
 }
