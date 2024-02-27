@@ -251,8 +251,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::PolkadotXcm(method) => match method {
 				// Block these calls when called by a signed extrinsic.
 				// Root will still be able to execute these.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::execute { .. }
+				pallet_xcm::Call::execute { .. }
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
@@ -260,7 +259,9 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
-				pallet_xcm::Call::force_xcm_version { .. }
+				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_suspension { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
