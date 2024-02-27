@@ -31,27 +31,24 @@ jobs:
         env:
           TARGET: cargo-build
           RUSTC_WRAPPER: "sccache" 
-
+      - name: Install Tarpaulin
+        run: cargo install --locked cargo-tarpaulin
+        
       - name: generate codecov reports
+        env:
+          RUST_BACKTRACE: 1
+          RUSTC_WRAPPER: sccache
         run: |
-          echo "---- GENERATE CODE COVERAGE ----"
-          echo "# Install tarpaulin  and build dependencies"
-          # apt-get install pkg-config libssl-dev llvm libclang-dev build-essential protobuf-compiler
-          #     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && source "$HOME/.cargo/env"
-          echo "# Install Tarpaulin"
-          cargo install --locked cargo-tarpaulin
-          # rustup toolchain install nightly
-          # make Cargo.toml
-          echo "Generate code coverage for ${{ matrix.target }}"
-          RUST_BACKTRACE=1 cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out xml        
+          cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --exclude-files runtime/*/src/weights/** --out xml --out html
+          ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
-      - name: Upload codecov report
+      - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           # files: ./coverage1.xml,./coverage2.xml # optional
           # flags: unittests # optional
           # name: codecov-umbrella # optional
-          fail_ci_if_error: true # optional (default = false)
+          # fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)       
