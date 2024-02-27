@@ -93,6 +93,13 @@ pub mod pallet {
 
 		/// Failed to retrieve the swap.
 		SwapNotFound,
+
+		/// Emitted when the cancelled amount is greater than the pending amount
+		CancelMoreThanPending,
+
+		/// Emitted when the cancelled currency is different than the pending
+		/// currency
+		CancelDifferentCurrency,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -130,12 +137,12 @@ pub mod pallet {
 		}
 
 		#[allow(clippy::type_complexity)]
-		fn apply_over_swap(
+		fn apply_over(
 			who: &T::AccountId,
 			new_swap: Swap<T::Balance, T::CurrencyId>,
-			over_swap_id: Option<T::OrderId>,
+			over_order_id: Option<T::OrderId>,
 		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
-			match over_swap_id {
+			match over_order_id {
 				None => {
 					let order_id = T::OrderBook::place_order(
 						who.clone(),
@@ -241,6 +248,37 @@ pub mod pallet {
 				}
 			}
 		}
+
+		#[allow(clippy::type_complexity)]
+		fn cancel_over(
+			cancel_amount: T::Balance,
+			currency_id: T::CurrencyId,
+			over_order_id: T::OrderId,
+		) -> Result<Option<T::OrderId>, DispatchError> {
+			let swap = T::OrderBook::get_order_details(over_order_id)
+				.ok_or(Error::<T>::OrderNotFound)?
+				.swap;
+
+			ensure!(
+				swap.currency_out == currency_id,
+				Error::<T>::CancelDifferentCurrency
+			);
+
+			match swap.amount_out.cmp(&cancel_amount) {
+				Ordering::Greater => {
+					let amount_to_swap = swap.amount_out.ensure_sub(cancel_amount)?;
+					T::OrderBook::update_order(over_order_id, amount_to_swap, OrderRatio::Market)?;
+
+					Ok(Some(over_order_id))
+				}
+				Ordering::Equal => {
+					T::OrderBook::cancel_order(over_order_id)?;
+
+					Ok(None)
+				}
+				Ordering::Less => Err(Error::<T>::CancelMoreThanPending)?,
+			}
+		}
 	}
 
 	/// Trait to perform swaps without handling directly an order book
@@ -264,11 +302,26 @@ pub mod pallet {
 
 			let previous_order_id = SwapIdToOrderId::<T>::get((who, swap_id));
 
-			let (status, new_order_id) = Self::apply_over_swap(who, swap, previous_order_id)?;
+			let (status, new_order_id) = Self::apply_over(who, swap, previous_order_id)?;
 
 			Self::update_id(who, swap_id, new_order_id)?;
 
 			Ok(status)
+		}
+
+		fn cancel_swap(
+			who: &T::AccountId,
+			swap_id: Self::SwapId,
+			balance: T::Balance,
+			currency_id: T::CurrencyId,
+		) -> DispatchResult {
+			match SwapIdToOrderId::<T>::get((who, swap_id)) {
+				Some(previous_order_id) => {
+					let order_id = Self::cancel_over(balance, currency_id, previous_order_id)?;
+					Self::update_id(who, swap_id, order_id)
+				}
+				None => Ok(()), // Noop
+			}
 		}
 
 		fn pending_amount(
@@ -281,14 +334,6 @@ pub mod pallet {
 				.filter(|order_info| order_info.swap.currency_out == from_currency)
 				.map(|order_info| order_info.swap.amount_out)
 				.unwrap_or_default())
-		}
-
-		fn convert_by_market(
-			currency_in: Self::CurrencyId,
-			currency_out: Self::CurrencyId,
-			amount_out: Self::Amount,
-		) -> Result<Self::Amount, DispatchError> {
-			T::OrderBook::convert_by_market(currency_in, currency_out, amount_out)
 		}
 	}
 
