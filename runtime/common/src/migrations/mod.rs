@@ -32,6 +32,7 @@ pub mod update_celo_usdcs {
 	use hex_literal::hex;
 	use orml_traits::asset_registry::{AssetMetadata, Mutate};
 	use sp_runtime::traits::Get;
+	#[cfg(feature = "try-runtime")]
 	use sp_std::{vec, vec::Vec};
 	use xcm::v3::{
 		Junction::{AccountKey20, GlobalConsensus, PalletInstance},
