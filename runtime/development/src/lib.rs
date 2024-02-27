@@ -157,7 +157,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1041,
+	spec_version: 1042,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -2039,7 +2039,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1041,
+	crate::migrations::UpgradeDevelopment1042,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
