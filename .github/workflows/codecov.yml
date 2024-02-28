@@ -29,7 +29,6 @@ jobs:
       - name: generate codecov reports
         env:
           RUST_BACKTRACE: 1
-          RUSTC_WRAPPER: sccache
         run: |
           cargo tarpaulin --features runtime-benchmarks,try-runtime \
            --verbose --no-fail-fast --workspace --timeout 300 \
