@@ -39,9 +39,6 @@ frame_support::parameter_types! {
 }
 
 pub type UpgradeCentrifuge1025 = (
-	// Burns tokens from other domains that are falsly not burned when they were transferred back
-	// to their domain
-	burn_unburned::Migration<super::Runtime>,
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
 	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
 	// special filter currency enum
@@ -84,6 +81,9 @@ pub type UpgradeCentrifuge1025 = (
 	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
 	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
 	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry>,
+	// Burns tokens from other domains that are falsly not burned when they were transferred back
+	// to their domain
+	burn_unburned::Migration<super::Runtime>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
@@ -104,7 +104,11 @@ mod burn_unburned {
 	const ETH_DOMAIN: Domain = Domain::EVM(1);
 
 	use cfg_types::{domain_address::Domain, tokens::CurrencyId};
-	use frame_support::traits::OnRuntimeUpgrade;
+	use frame_support::traits::{
+		fungibles::Mutate,
+		tokens::{Fortitude, Precision},
+		OnRuntimeUpgrade,
+	};
 	use pallet_order_book::weights::Weight;
 	use sp_runtime::traits::{Convert, Get};
 
@@ -145,24 +149,27 @@ mod burn_unburned {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			let free_balance = orml_tokens::Accounts::<T>::mutate_exists(
+			let data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				LP_ETH_USDC,
-				|maybe_data| {
-					let free_balance = maybe_data
-						.clone()
-						.map(|account_data| account_data.free)
-						.unwrap_or_default();
-					*maybe_data = None;
-					free_balance
-				},
 			);
-			orml_tokens::TotalIssuance::<T>::remove(LP_ETH_USDC);
-
-			log::info!(
-				"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
-				free_balance
-			);
+			if let Err(e) = orml_tokens::Pallet::<T>::burn_from(
+				LP_ETH_USDC,
+				&<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
+				data.free,
+				Precision::Exact,
+				Fortitude::Force,
+			) {
+				log::error!(
+					"{LOG_PREFIX} Burning from Ethereum domain account failed with: {:?}. Migration failed...",
+					e
+				);
+			} else {
+				log::info!(
+					"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
+					data.free
+				);
+			}
 
 			T::DbWeight::get().writes(2)
 		}
