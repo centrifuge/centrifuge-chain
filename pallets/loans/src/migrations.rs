@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::PoolNAV;
 use frame_support::{
 	dispatch::GetStorageVersion, inherent::Vec, log, pallet_prelude::StorageVersion, traits::Get,
 	weights::Weight,
@@ -41,7 +42,9 @@ pub fn migrate_from_v2_to_v3<T: Config>() -> Weight {
 	if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(2) {
 		log::info!("Loans: Starting migration v2 -> v3");
 
-		ActiveLoans::<T>::translate::<v2::ActiveLoansVec<T>, _>(|_, active_loans| {
+		let mut changed_pools = Vec::new();
+		ActiveLoans::<T>::translate::<v2::ActiveLoansVec<T>, _>(|pool_id, active_loans| {
+			changed_pools.push(pool_id);
 			Some(
 				active_loans
 					.into_iter()
@@ -52,9 +55,16 @@ pub fn migrate_from_v2_to_v3<T: Config>() -> Weight {
 			)
 		});
 
+		for pool_id in &changed_pools {
+			match Pallet::<T>::update_nav(*pool_id) {
+				Ok(_) => log::info!("Loans: updated portfolio for pool_id: {pool_id:?}"),
+				Err(e) => log::error!("Loans: error updating the portfolio for {pool_id:?}: {e:?}"),
+			}
+		}
+
 		Pallet::<T>::current_storage_version().put::<Pallet<T>>();
 
-		let count = ActiveLoans::<T>::iter().count() as u64;
+		let count = changed_pools.len() as u64;
 		log::info!("Loans: Migrated {} pools", count);
 		T::DbWeight::get().reads_writes(count + 1, count + 1)
 	} else {
