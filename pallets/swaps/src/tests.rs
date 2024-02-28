@@ -2,7 +2,7 @@ use cfg_traits::{
 	swaps::{OrderInfo, OrderRatio, Swap, SwapState, SwapStatus, Swaps as TSwaps},
 	StatusNotificationHook,
 };
-use frame_support::assert_ok;
+use frame_support::{assert_err, assert_ok};
 
 use crate::{mock::*, *};
 
@@ -24,6 +24,17 @@ pub const fn b_to_a(amount_b: Balance) -> Balance {
 	amount_b / RATIO
 }
 
+fn assert_swap_id_registered(order_id: OrderId) {
+	assert_eq!(
+		OrderIdToSwapId::<Runtime>::get(order_id),
+		Some((USER, SWAP_ID))
+	);
+	assert_eq!(
+		SwapIdToOrderId::<Runtime>::get((USER, SWAP_ID)),
+		Some(order_id)
+	);
+}
+
 mod util {
 	use super::*;
 
@@ -36,19 +47,8 @@ mod util {
 	}
 }
 
-mod swaps {
+mod apply {
 	use super::*;
-
-	fn assert_swap_id_registered(order_id: OrderId) {
-		assert_eq!(
-			OrderIdToSwapId::<Runtime>::get(order_id),
-			Some((USER, SWAP_ID))
-		);
-		assert_eq!(
-			SwapIdToOrderId::<Runtime>::get((USER, SWAP_ID)),
-			Some(order_id)
-		);
-	}
 
 	#[test]
 	fn swap_over_no_swap() {
@@ -285,6 +285,155 @@ mod swaps {
 
 			assert_eq!(OrderIdToSwapId::<Runtime>::get(ORDER_ID), None);
 			assert_swap_id_registered(NEW_ORDER_ID);
+		});
+	}
+}
+
+mod cancel {
+	use super::*;
+
+	#[test]
+	fn swap_over_no_swap() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(<Swaps as TSwaps<AccountId>>::cancel_swap(
+				&USER, SWAP_ID, AMOUNT, CURRENCY_A
+			));
+		});
+	}
+
+	#[test]
+	fn swap_over_other_currency() {
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+				assert_eq!(swap_id, ORDER_ID);
+
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_B,
+						currency_out: CURRENCY_A,
+						amount_out: AMOUNT,
+					},
+					ratio: OrderRatio::Market,
+				})
+			});
+
+			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
+
+			assert_ok!(<Swaps as TSwaps<AccountId>>::cancel_swap(
+				&USER,
+				SWAP_ID,
+				a_to_b(AMOUNT),
+				CURRENCY_B
+			));
+
+			assert_swap_id_registered(ORDER_ID);
+		});
+	}
+
+	#[test]
+	fn swap_over_greater_swap() {
+		const PREVIOUS_AMOUNT: Balance = AMOUNT + b_to_a(50);
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
+				assert_eq!(swap_id, ORDER_ID);
+
+				// Inverse swap
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
+				})
+			});
+			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
+				assert_eq!(swap_id, ORDER_ID);
+				assert_eq!(amount, a_to_b(PREVIOUS_AMOUNT - AMOUNT));
+				assert_eq!(ratio, OrderRatio::Market);
+
+				Ok(())
+			});
+
+			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
+
+			assert_ok!(<Swaps as TSwaps<AccountId>>::cancel_swap(
+				&USER,
+				SWAP_ID,
+				a_to_b(AMOUNT),
+				CURRENCY_B
+			));
+
+			assert_swap_id_registered(ORDER_ID);
+		});
+	}
+
+	#[test]
+	fn swap_over_same_swap() {
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
+				assert_eq!(swap_id, ORDER_ID);
+
+				// Inverse swap
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(AMOUNT),
+					},
+					ratio: OrderRatio::Market,
+				})
+			});
+			MockTokenSwaps::mock_cancel_order(|swap_id| {
+				assert_eq!(swap_id, ORDER_ID);
+				Ok(())
+			});
+
+			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
+
+			assert_ok!(<Swaps as TSwaps<AccountId>>::cancel_swap(
+				&USER,
+				SWAP_ID,
+				a_to_b(AMOUNT),
+				CURRENCY_B,
+			),);
+
+			assert_eq!(OrderIdToSwapId::<Runtime>::get(ORDER_ID), None);
+			assert_eq!(SwapIdToOrderId::<Runtime>::get((USER, SWAP_ID)), None);
+		});
+	}
+
+	#[test]
+	fn swap_over_smaller_swap() {
+		const PREVIOUS_AMOUNT: Balance = AMOUNT - b_to_a(50);
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
+				assert_eq!(swap_id, ORDER_ID);
+
+				// Inverse swap
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: a_to_b(PREVIOUS_AMOUNT),
+					},
+					ratio: OrderRatio::Market,
+				})
+			});
+
+			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
+
+			assert_err!(
+				<Swaps as TSwaps<AccountId>>::cancel_swap(
+					&USER,
+					SWAP_ID,
+					a_to_b(AMOUNT),
+					CURRENCY_B
+				),
+				Error::<Runtime>::CancelMoreThanPending
+			);
 		});
 	}
 }
