@@ -30,7 +30,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo tarpaulin --features runtime-benchmarks,try-runtime \
+          cargo tarpaulin \
            --verbose --no-fail-fast --workspace --timeout 300 \
            --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           ls -la
