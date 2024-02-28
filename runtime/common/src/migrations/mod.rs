@@ -14,6 +14,7 @@
 
 pub mod asset_registry_xcmv3;
 pub mod epoch_execution;
+pub mod increase_storage_version;
 pub mod local_currency;
 pub mod nuke;
 pub mod orml_tokens;
