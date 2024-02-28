@@ -85,9 +85,9 @@ pub type UpgradeAltair1034 = (
 	// see https://github.com/paritytech/substrate/pull/12813
 	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
 	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
-	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry>,
+	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
 	// Data was already moved but storage version not increased from 0 to 4
-	runtime_common::migrations::increase_storage_version::Migration<crate::Council>,
+	runtime_common::migrations::increase_storage_version::Migration<crate::Council, 0, 4>,
 );
 
 #[allow(clippy::upper_case_acronyms)]

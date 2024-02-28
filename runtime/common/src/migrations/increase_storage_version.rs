@@ -14,34 +14,58 @@ use frame_support::{
 	traits::{GetStorageVersion, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
 	weights::{constants::RocksDbWeight, Weight},
 };
+use sp_runtime::traits::Zero;
+
+const LOG_PREFIX: &str = "BumpStorageVersion:";
 
 /// Simply bumps the storage version of a pallet
 ///
 /// NOTE: Use with caution! Must ensure beforehand that a migration is not
 /// necessary
-pub struct Migration<P>(sp_std::marker::PhantomData<P>);
-impl<P> OnRuntimeUpgrade for Migration<P>
+pub struct Migration<P, const FROM_VERSION: u16, const TO_VERSION: u16>(
+	sp_std::marker::PhantomData<P>,
+);
+impl<P, const FROM_VERSION: u16, const TO_VERSION: u16> OnRuntimeUpgrade
+	for Migration<P, FROM_VERSION, TO_VERSION>
 where
 	P: GetStorageVersion<CurrentStorageVersion = StorageVersion> + PalletInfoAccess,
 {
 	fn on_runtime_upgrade() -> Weight {
-		log::info!(
-			"BumpStorageVersion: Increasing storage version of {:?} from {:?} to {:?}",
-			P::name(),
-			P::on_chain_storage_version(),
-			P::current_storage_version()
-		);
-		P::current_storage_version().put::<P>();
-		RocksDbWeight::get().writes(1)
+		if P::on_chain_storage_version() == FROM_VERSION
+			&& P::current_storage_version() == TO_VERSION
+		{
+			log::info!(
+				"{LOG_PREFIX} Increasing storage version of {:?} from {:?} to {:?}",
+				P::name(),
+				P::on_chain_storage_version(),
+				P::current_storage_version()
+			);
+			P::current_storage_version().put::<P>();
+			RocksDbWeight::get().writes(1)
+		} else {
+			log::error!(
+				"{LOG_PREFIX} Mismatching versions. Wanted to upgrade from \
+			{FROM_VERSION} to {TO_VERSION} but would instead upgrade from {:?} to {:?}",
+				P::on_chain_storage_version(),
+				P::current_storage_version()
+			);
+			Zero::zero()
+		}
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::DispatchError> {
-		assert!(
-			P::on_chain_storage_version() < P::current_storage_version(),
-			"Onchain {:?} vs current pallet version {:?}",
+		assert_eq!(
 			P::on_chain_storage_version(),
+			FROM_VERSION,
+			"Unexpected onchain version: Expected {FROM_VERSION:?}, received {:?}",
+			P::on_chain_storage_version(),
+		);
+		assert_eq!(
 			P::current_storage_version(),
+			TO_VERSION,
+			"Unexpected upgrade version: Expected {TO_VERSION:?}, latest {:?}",
+			P::on_chain_storage_version(),
 		);
 		Ok(sp_std::vec![])
 	}

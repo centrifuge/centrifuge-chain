@@ -80,7 +80,7 @@ pub type UpgradeCentrifuge1025 = (
 	// see https://github.com/paritytech/substrate/pull/12813
 	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
 	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
-	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry>,
+	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
 	// Burns tokens from other domains that are falsly not burned when they were transferred back
 	// to their domain
 	burn_unburned::Migration<super::Runtime>,
