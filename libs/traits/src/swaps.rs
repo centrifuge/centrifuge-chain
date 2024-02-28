@@ -150,8 +150,8 @@ pub trait Swaps<AccountId> {
 		swap: Swap<Self::Amount, Self::CurrencyId>,
 	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
 
-	/// Cancel (partial or total) a swap. The amount should be expresed in the
-	/// same currency as the the currency_out of the pending amount.
+	/// Cancel a swap partially or completely. The amount should be expressed in
+	/// the same currency as the the currency_out of the pending amount.
 	/// - If there was no previous swap, it errors outs.
 	/// - If there was a swap with other currency out, it errors outs.
 	/// - If there was a swap with same currency out:
