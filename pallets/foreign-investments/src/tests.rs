@@ -1067,6 +1067,119 @@ mod investment {
 				assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 			});
 		}
+
+		#[test]
+		fn decrease_with_asymmetric_ratios_higher_decrease() {
+			const MULTIPLIER: Balance = 1000;
+
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				// We override the market with asymmetric ratios
+				MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+					Ok(match (from, to) {
+						(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from) * MULTIPLIER,
+						(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from),
+						_ => amount_from,
+					})
+				});
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				util::fulfill_last_swap(Action::Investment, 3 * AMOUNT / 4);
+
+				assert_ok!(ForeignInvestment::decrease_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+							foreign_currency: FOREIGN_CURR,
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+				assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+				assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			});
+		}
+
+		#[test]
+		fn decrease_with_asymmetric_ratios_lower_increase() {
+			const MULTIPLIER: Balance = 1000;
+
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				// We override the market with asymmetric ratios
+				MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+					Ok(match (from, to) {
+						(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from),
+						(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from) * MULTIPLIER,
+						_ => amount_from,
+					})
+				});
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				util::fulfill_last_swap(Action::Investment, 3 * AMOUNT / 4);
+
+				assert_ok!(ForeignInvestment::decrease_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+							foreign_currency: FOREIGN_CURR,
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				util::fulfill_last_swap(
+					Action::Investment,
+					foreign_to_pool(3 * AMOUNT / 4) * MULTIPLIER,
+				);
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+				assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+				assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			});
+		}
 	}
 }
 
