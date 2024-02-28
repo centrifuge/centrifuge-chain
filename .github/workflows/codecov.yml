@@ -21,16 +21,8 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          cache: enabled
-          # Cache needs Google credentials:
-          GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}
+          cache: disabled
 
-      - name: Runing cargo release
-        run: ./ci/run-check.sh
-        env:
-          TARGET: cargo-build
-          RUSTC_WRAPPER: "sccache" 
       - name: Install Tarpaulin
         run: cargo install --locked cargo-tarpaulin
         
@@ -39,15 +31,19 @@ jobs:
           RUST_BACKTRACE: 1
           RUSTC_WRAPPER: sccache
         run: |
-          cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
+          cargo tarpaulin --features runtime-benchmarks,try-runtime \
+           --verbose --no-fail-fast --workspace --timeout 300 \
+           --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
         if: ${{ always() }}
         uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          # token: ${{ secrets.CODECOV_TOKEN }}
           # files: ./coverage1.xml,./coverage2.xml # optional
           # flags: unittests # optional
           # name: codecov-umbrella # optional
