@@ -19,20 +19,20 @@ use cfg_types::{
 };
 use frame_support::{
 	sp_std::marker::PhantomData,
-	traits::{fungibles::Mutate, Everything},
+	traits::{fungibles::Mutate, Everything, Get},
 };
 use polkadot_parachain::primitives::Sibling;
-use sp_runtime::traits::{AccountIdConversion, Convert};
+use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
 use xcm::v3::{
 	prelude::*,
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
 	Junctions::{X1, X2},
-	MultiAsset, MultiLocation, OriginKind,
+	MultiAsset, MultiLocation, NetworkId, OriginKind,
 };
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ParentIsPreset, SiblingParachainConvertsVia, TakeRevenue,
-	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom, ParentIsPreset, SiblingParachainConvertsVia,
+	SignedToAccountId32, TakeRevenue, TakeWeightCredit,
 };
 
 use crate::xcm_fees::default_per_second;
@@ -127,6 +127,27 @@ where
 			},
 			_ => Err(location),
 		}
+	}
+}
+
+/// No local origins on this chain are allowed to dispatch XCM sends/executions.
+pub type LocalOriginToLocation<R> = SignedToAccountId32<
+	<R as frame_system::Config>::RuntimeOrigin,
+	AccountId,
+	NetworkIdByGenesis<R>,
+>;
+
+pub struct NetworkIdByGenesis<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: frame_system::Config> Get<Option<NetworkId>> for NetworkIdByGenesis<T>
+where
+	<T as frame_system::Config>::Hash: Into<[u8; 32]>,
+{
+	fn get() -> Option<NetworkId> {
+		Some(NetworkId::ByGenesis(
+			frame_system::BlockHash::<T>::get(<T as frame_system::Config>::BlockNumber::zero())
+				.into(),
+		))
 	}
 }
 

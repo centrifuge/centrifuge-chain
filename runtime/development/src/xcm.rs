@@ -28,7 +28,7 @@ use runtime_common::{
 	transfer_filter::PreXcmTransfer,
 	xcm::{
 		general_key, AccountIdToMultiLocation, Barrier, FixedConversionRateProvider,
-		LpInstanceRelayer, ToTreasury,
+		LocalOriginToLocation, LpInstanceRelayer, ToTreasury,
 	},
 	xcm_fees::native_per_second,
 };
@@ -37,7 +37,7 @@ use xcm::{latest::Weight as XcmWeight, prelude::*, v3::MultiLocation};
 use xcm_builder::{
 	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter,
 	NoChecking, RelayChainAsNative, SiblingParachainAsNative, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation,
+	SovereignSignedViaLocation,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
@@ -169,7 +169,7 @@ impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 	type Currency = crate::Balances;
 	type CurrencyMatcher = ();
-	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation<Runtime>>;
 	type MaxLockers = ConstU32<8>;
 	type MaxRemoteLockConsumers = ConstU32<0>;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -178,7 +178,7 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation<Runtime>>;
 	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
@@ -202,9 +202,6 @@ parameter_types! {
 
 pub type CurrencyIdConvert = runtime_common::xcm::CurrencyIdConvert<Runtime>;
 pub type LocationToAccountId = runtime_common::xcm::LocationToAccountId<RelayNetwork>;
-
-/// No local origins on this chain are allowed to dispatch XCM sends/executions.
-pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution
 /// into the right message queues.

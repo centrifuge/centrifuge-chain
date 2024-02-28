@@ -23,7 +23,7 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
-pub type UpgradeDevelopment1041 = (
+pub type UpgradeDevelopment1042 = (
 	// Register LocalUSDC
 	runtime_common::migrations::local_currency::register::Migration<
 		super::Runtime,
