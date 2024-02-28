@@ -24,7 +24,6 @@ pub mod transfer_allowlist_currency;
 pub mod update_celo_usdcs {
 	use cfg_primitives::Balance;
 	#[cfg(feature = "try-runtime")]
-	use cfg_types::tokens::LocalAssetId;
 	use cfg_types::tokens::{
 		usdc::{CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_CELO_WORMHOLE},
 		CrossChainTransferability, CurrencyId, CustomMetadata,

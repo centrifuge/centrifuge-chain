@@ -79,6 +79,11 @@ pub type UpgradeCentrifuge1025 = (
 		crate::Runtime,
 		AnnualTreasuryInflationPercent,
 	>,
+	// Bump balances storage version from v0 to v1 and mark balance of CheckingAccount as inactive,
+	// see https://github.com/paritytech/substrate/pull/12813
+	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
+	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
+	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
@@ -99,11 +104,7 @@ mod burn_unburned {
 	const ETH_DOMAIN: Domain = Domain::EVM(1);
 
 	use cfg_types::{domain_address::Domain, tokens::CurrencyId};
-	use frame_support::traits::{
-		fungibles::Mutate,
-		tokens::{Fortitude, Precision},
-		OnRuntimeUpgrade,
-	};
+	use frame_support::traits::OnRuntimeUpgrade;
 	use pallet_order_book::weights::Weight;
 	use sp_runtime::traits::{Convert, Get};
 
@@ -132,6 +133,8 @@ mod burn_unburned {
 					"{LOG_PREFIX} AccountData of Ethereum domain account has non free balances..."
 				);
 			}
+			let total_issuance = orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC);
+			assert_eq!(total_issuance, pre_data.free);
 
 			log::info!(
 				"{LOG_PREFIX} AccountData of Ethereum domain account has free balance of: {:?}",
@@ -142,35 +145,33 @@ mod burn_unburned {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			let data = orml_tokens::Accounts::<T>::get(
+			let free_balance = orml_tokens::Accounts::<T>::mutate_exists(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				LP_ETH_USDC,
+				|maybe_data| {
+					let free_balance = maybe_data
+						.clone()
+						.map(|account_data| account_data.free)
+						.unwrap_or_default();
+					*maybe_data = None;
+					free_balance
+				},
+			);
+			orml_tokens::TotalIssuance::<T>::remove(LP_ETH_USDC);
+
+			log::info!(
+				"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
+				free_balance
 			);
 
-			if let Err(e) = orml_tokens::Pallet::<T>::burn_from(
-				LP_ETH_USDC,
-				&<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				data.free,
-				Precision::Exact,
-				Fortitude::Force,
-			) {
-				log::error!(
-					"{LOG_PREFIX} Burning from Ethereum domain account failed with: {:?}. Migration failed...",
-					e
-				);
-			} else {
-				log::info!(
-					"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
-					data.free
-				);
-			}
-
-			T::DbWeight::get().reads(1)
+			T::DbWeight::get().writes(2)
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
 			use sp_runtime::traits::Zero;
+
+			assert!(orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC).is_zero());
 
 			let post_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
