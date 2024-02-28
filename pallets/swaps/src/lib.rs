@@ -96,10 +96,6 @@ pub mod pallet {
 
 		/// Emitted when the cancelled amount is greater than the pending amount
 		CancelMoreThanPending,
-
-		/// Emitted when the cancelled currency is different than the pending
-		/// currency
-		CancelDifferentCurrency,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -249,7 +245,6 @@ pub mod pallet {
 			}
 		}
 
-		#[allow(clippy::type_complexity)]
 		fn cancel_over(
 			cancel_amount: T::Balance,
 			currency_id: T::CurrencyId,
@@ -259,24 +254,27 @@ pub mod pallet {
 				.ok_or(Error::<T>::OrderNotFound)?
 				.swap;
 
-			ensure!(
-				swap.currency_out == currency_id,
-				Error::<T>::CancelDifferentCurrency
-			);
+			if swap.currency_out == currency_id {
+				match swap.amount_out.cmp(&cancel_amount) {
+					Ordering::Greater => {
+						let amount_to_swap = swap.amount_out.ensure_sub(cancel_amount)?;
+						T::OrderBook::update_order(
+							over_order_id,
+							amount_to_swap,
+							OrderRatio::Market,
+						)?;
 
-			match swap.amount_out.cmp(&cancel_amount) {
-				Ordering::Greater => {
-					let amount_to_swap = swap.amount_out.ensure_sub(cancel_amount)?;
-					T::OrderBook::update_order(over_order_id, amount_to_swap, OrderRatio::Market)?;
+						Ok(Some(over_order_id))
+					}
+					Ordering::Equal => {
+						T::OrderBook::cancel_order(over_order_id)?;
 
-					Ok(Some(over_order_id))
+						Ok(None)
+					}
+					Ordering::Less => Err(Error::<T>::CancelMoreThanPending)?,
 				}
-				Ordering::Equal => {
-					T::OrderBook::cancel_order(over_order_id)?;
-
-					Ok(None)
-				}
-				Ordering::Less => Err(Error::<T>::CancelMoreThanPending)?,
+			} else {
+				Ok(Some(over_order_id)) //Noop
 			}
 		}
 	}

@@ -319,15 +319,14 @@ mod cancel {
 
 			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
 
-			assert_err!(
-				<Swaps as TSwaps<AccountId>>::cancel_swap(
-					&USER,
-					SWAP_ID,
-					a_to_b(AMOUNT),
-					CURRENCY_B
-				),
-				Error::<Runtime>::CancelDifferentCurrency
-			);
+			assert_ok!(<Swaps as TSwaps<AccountId>>::cancel_swap(
+				&USER,
+				SWAP_ID,
+				a_to_b(AMOUNT),
+				CURRENCY_B
+			));
+
+			assert_swap_id_registered(ORDER_ID);
 		});
 	}
 
