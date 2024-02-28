@@ -150,6 +150,21 @@ pub trait Swaps<AccountId> {
 		swap: Swap<Self::Amount, Self::CurrencyId>,
 	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
 
+	/// Cancel a swap partially or completely. The amount should be expressed in
+	/// the same currency as the the currency_out of the pending amount.
+	/// - If there was no previous swap, it errors outs.
+	/// - If there was a swap with other currency out, it errors outs.
+	/// - If there was a swap with same currency out:
+	///   - If the amount is smaller, it decrements it.
+	///   - If the amount is the same, it removes the inverse swap.
+	///   - If the amount is greater, it errors out
+	fn cancel_swap(
+		who: &AccountId,
+		swap_id: Self::SwapId,
+		amount: Self::Amount,
+		currency_id: Self::CurrencyId,
+	) -> DispatchResult;
+
 	/// Returns the pending amount for a pending swap. The direction of the swap
 	/// is determined by the `from_currency` parameter. The amount returned is
 	/// denominated in the same currency as the given `from_currency`.
@@ -157,14 +172,5 @@ pub trait Swaps<AccountId> {
 		who: &AccountId,
 		swap_id: Self::SwapId,
 		from_currency: Self::CurrencyId,
-	) -> Result<Self::Amount, DispatchError>;
-
-	/// Makes a conversion between 2 currencies using the market ratio between
-	/// them
-	// TODO: Should be removed after #1723
-	fn convert_by_market(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		amount_out: Self::Amount,
 	) -> Result<Self::Amount, DispatchError>;
 }
