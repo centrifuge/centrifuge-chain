@@ -7,7 +7,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
+use sp_runtime::traits::{EnsureAdd, EnsureAddAssign, EnsureSub, Zero};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -80,9 +80,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(foreign_currency)?;
 
-			let swap = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
+			let (cancelation, swap) = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
+
 			let swap_id = (investment_id, Action::Investment);
-			let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
+			T::Swaps::cancel_swap(who, swap_id, cancelation.into(), foreign_currency)?;
+			let mut status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
+
+			status.swapped.ensure_add_assign(cancelation.into())?;
 
 			let mut msg = None;
 			if !status.swapped.is_zero() {
