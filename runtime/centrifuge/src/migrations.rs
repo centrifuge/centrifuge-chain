@@ -40,9 +40,6 @@ frame_support::parameter_types! {
 
 #[cfg(not(feature = "std"))]
 pub type UpgradeCentrifuge1025 = (
-	// Burns tokens from other domains that are falsly not burned when they were transferred back
-	// to their domain
-	burn_unburned::Migration<super::Runtime>,
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
 	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
 	// special filter currency enum
@@ -55,13 +52,16 @@ pub type UpgradeCentrifuge1025 = (
 		LocalCurrencyIdUsdc,
 	>,
 	// Register new canonical USDC on Celo
-	runtime_common::migrations::update_celo_usdcs::Migration<super::Runtime>,
-	// Init local representation for all assets
+	runtime_common::migrations::update_celo_usdcs::AddNewCeloUsdc<super::Runtime>,
+	// Update custom metadata by initiating local representation for all assets
 	runtime_common::migrations::local_currency::translate_metadata::Migration<
 		super::Runtime,
 		UsdcVariants,
 		LocalAssetIdUsdc,
 	>,
+	// Change name and symbol of Celo Wormhole USDC
+	// NOTE: Needs to happen after metadata translation because expects new CustomMetadata
+	runtime_common::migrations::update_celo_usdcs::UpdateWormholeUsdc<super::Runtime>,
 	// Switch pool currency from Polkadot USDC to Local USDC
 	runtime_common::migrations::local_currency::migrate_pool_currency::Migration<
 		super::Runtime,
@@ -80,6 +80,14 @@ pub type UpgradeCentrifuge1025 = (
 		crate::Runtime,
 		AnnualTreasuryInflationPercent,
 	>,
+	// Bump balances storage version from v0 to v1 and mark balance of CheckingAccount as inactive,
+	// see https://github.com/paritytech/substrate/pull/12813
+	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
+	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
+	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
+	// Burns tokens from other domains that are falsly not burned when they were transferred back
+	// to their domain
+	burn_unburned::Migration<super::Runtime>,
 );
 
 #[cfg(feature = "std")]
@@ -124,6 +132,8 @@ mod burn_unburned {
 					"{LOG_PREFIX} AccountData of Ethereum domain account has non free balances..."
 				);
 			}
+			let total_issuance = orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC);
+			assert_eq!(total_issuance, pre_data.free);
 
 			log::info!(
 				"{LOG_PREFIX} AccountData of Ethereum domain account has free balance of: {:?}",
@@ -138,7 +148,6 @@ mod burn_unburned {
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				LP_ETH_USDC,
 			);
-
 			if let Err(e) = orml_tokens::Pallet::<T>::burn_from(
 				LP_ETH_USDC,
 				&<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
@@ -157,12 +166,14 @@ mod burn_unburned {
 				);
 			}
 
-			T::DbWeight::get().reads(1)
+			T::DbWeight::get().writes(2)
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
 			use sp_runtime::traits::Zero;
+
+			assert!(orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC).is_zero());
 
 			let post_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
