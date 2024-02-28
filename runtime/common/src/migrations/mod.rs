@@ -39,11 +39,12 @@ pub mod update_celo_usdcs {
 		NetworkId::Ethereum,
 	};
 
-	const LOG_PREFIX: &str = "UpdateCeloUsdcs";
+	const LOG_PREFIX_ADD: &str = "AddNewCeloUsdc";
+	const LOG_PREFIX_UPDATE: &str = "UpdateCeloWormholeUsdc";
 
-	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
+	pub struct AddNewCeloUsdc<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T> OnRuntimeUpgrade for Migration<T>
+	impl<T> OnRuntimeUpgrade for AddNewCeloUsdc<T>
 	where
 		T: orml_asset_registry::Config<
 			CustomMetadata = CustomMetadata,
@@ -82,14 +83,50 @@ pub mod update_celo_usdcs {
 			)
 			.map_err(|e| {
 				log::error!(
-					"{LOG_PREFIX} Failed to register new canonical Celo USDC due to error {:?}",
+					"{LOG_PREFIX_ADD} Failed to register new canonical Celo USDC due to error {:?}",
 					e
 				);
 			})
 			.ok();
 
-			log::info!("{LOG_PREFIX} Done registering new canonical Celo USDC currency");
+			log::info!("{LOG_PREFIX_ADD} Done registering new canonical Celo USDC currency");
 
+			T::DbWeight::get().writes(1)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+			assert!(!orml_asset_registry::Metadata::<T>::contains_key(
+				CURRENCY_ID_LP_CELO
+			));
+
+			log::info!("{LOG_PREFIX_ADD} PRE UPGRADE: Finished");
+
+			Ok(vec![])
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+			assert!(orml_asset_registry::Metadata::<T>::contains_key(
+				CURRENCY_ID_LP_CELO
+			));
+
+			log::info!("{LOG_PREFIX_ADD} POST UPGRADE: Finished");
+			Ok(())
+		}
+	}
+
+	pub struct UpdateWormholeUsdc<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T> OnRuntimeUpgrade for UpdateWormholeUsdc<T>
+	where
+		T: orml_asset_registry::Config<
+			CustomMetadata = CustomMetadata,
+			AssetId = CurrencyId,
+			Balance = Balance,
+		>,
+	{
+		fn on_runtime_upgrade() -> Weight {
 			<orml_asset_registry::Pallet<T> as Mutate>::update_asset(
 				CURRENCY_ID_LP_CELO_WORMHOLE,
 				None,
@@ -101,35 +138,38 @@ pub mod update_celo_usdcs {
 			)
 			.map_err(|e| {
 				log::error!(
-					"{LOG_PREFIX} Failed to update wormhole Celo USDC due to error {:?}",
+					"{LOG_PREFIX_UPDATE} Failed to update wormhole Celo USDC due to error {:?}",
 					e
 				);
 			})
 			.ok();
 
-			log::info!("{LOG_PREFIX} Done updating wormhole Celo USDC currency");
+			log::info!("{LOG_PREFIX_UPDATE} Done updating wormhole Celo USDC currency");
 
-			T::DbWeight::get().writes(2)
+			T::DbWeight::get().writes(1)
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
-			assert!(!orml_asset_registry::Metadata::<T>::contains_key(
-				CURRENCY_ID_LP_CELO
+			assert!(orml_asset_registry::Metadata::<T>::contains_key(
+				CURRENCY_ID_LP_CELO_WORMHOLE
 			));
 
-			log::info!("{LOG_PREFIX} PRE UPGRADE: Finished");
+			log::info!("{LOG_PREFIX_UPDATE} PRE UPGRADE: Finished");
 
 			Ok(vec![])
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
-			assert!(orml_asset_registry::Metadata::<T>::contains_key(
-				CURRENCY_ID_LP_CELO
-			));
+			assert_eq!(
+				orml_asset_registry::Metadata::<T>::get(CURRENCY_ID_LP_CELO_WORMHOLE)
+					.expect("Wormhole Celo USDC exists; qed")
+					.name,
+				"LP Celo Wrapped Wormhole USDC ".as_bytes().to_vec()
+			);
 
-			log::info!("{LOG_PREFIX} POST UPGRADE: Finished");
+			log::info!("{LOG_PREFIX_UPDATE} POST UPGRADE: Finished");
 			Ok(())
 		}
 	}

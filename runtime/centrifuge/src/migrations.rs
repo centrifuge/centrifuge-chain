@@ -51,13 +51,16 @@ pub type UpgradeCentrifuge1025 = (
 		LocalCurrencyIdUsdc,
 	>,
 	// Register new canonical USDC on Celo
-	runtime_common::migrations::update_celo_usdcs::Migration<super::Runtime>,
-	// Init local representation for all assets
+	runtime_common::migrations::update_celo_usdcs::AddNewCeloUsdc<super::Runtime>,
+	// Update custom metadata by initiating local representation for all assets
 	runtime_common::migrations::local_currency::translate_metadata::Migration<
 		super::Runtime,
 		UsdcVariants,
 		LocalAssetIdUsdc,
 	>,
+	// Change name and symbol of Celo Wormhole USDC
+	// NOTE: Needs to happen after metadata translation because expects new CustomMetadata
+	runtime_common::migrations::update_celo_usdcs::UpdateWormholeUsdc<super::Runtime>,
 	// Switch pool currency from Polkadot USDC to Local USDC
 	runtime_common::migrations::local_currency::migrate_pool_currency::Migration<
 		super::Runtime,
