@@ -81,6 +81,13 @@ pub type UpgradeAltair1034 = (
 		crate::Runtime,
 		AnnualTreasuryInflationPercent,
 	>,
+	// Bump balances storage version from v0 to v1 and mark balance of CheckingAccount as inactive,
+	// see https://github.com/paritytech/substrate/pull/12813
+	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
+	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
+	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
+	// Data was already moved but storage version not increased from 0 to 4
+	runtime_common::migrations::increase_storage_version::Migration<crate::Council, 0, 4>,
 );
 
 #[allow(clippy::upper_case_acronyms)]
@@ -388,7 +395,8 @@ mod ausd_to_foreign {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{
-		pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
+		pallet_prelude::ValueQuery, storage::unhashed, storage_alias, Blake2_128Concat,
+		StoragePrefixedMap, Twox64Concat,
 	};
 	use orml_tokens::AccountData;
 	use parity_scale_codec::{Decode, Encode};
@@ -396,6 +404,7 @@ mod ausd_to_foreign {
 	use sp_runtime::traits::Zero;
 	#[cfg(feature = "try-runtime")]
 	use sp_runtime::DispatchError;
+	use sp_runtime::Saturating;
 	use sp_std::vec::Vec;
 
 	use super::*;
@@ -533,15 +542,50 @@ mod ausd_to_foreign {
 			);
 
 			TotalIssuance::<T>::remove(DEPRECATED_AUSD_CURRENCY_ID);
+
+			// Remove undecodable storage entries
+			let (reads, writes) = remove_undecodable_storage_keys::<T>();
+			log::info!("{LOG_PREFIX} Removed {writes} undecodable storage entries from Accounts");
+
 			log::info!("{LOG_PREFIX} Done");
 
 			// Approximate weight given for every entry migration there are two calls being
 			// made, so counting the reads and writes for each call.
 			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(
-				migrated_entries.saturating_mul(5),
-				migrated_entries.saturating_mul(4).saturating_add(1),
+				migrated_entries.saturating_mul(5).saturating_add(reads),
+				migrated_entries
+					.saturating_mul(4)
+					.saturating_add(writes.saturating_add(1)),
 			)
 		}
+	}
+
+	fn remove_undecodable_storage_keys<T: orml_tokens::Config>() -> (u64, u64) {
+		let prefix = orml_tokens::Accounts::<T>::final_prefix();
+		let mut previous_key = prefix.clone().to_vec();
+		let mut reads: u64 = 1;
+		let mut writes: u64 = 0;
+		while let Some(next) =
+			sp_io::storage::next_key(&previous_key).filter(|n| n.starts_with(&prefix))
+		{
+			reads.saturating_accrue(1);
+			previous_key = next;
+			let maybe_value = unhashed::get::<OldCurrencyId>(&previous_key);
+			match maybe_value {
+				Some(_) => continue,
+				None => {
+					log::info!(
+						"Removing Account key which could not be decoded at {:?}",
+						previous_key
+					);
+					unhashed::kill(&previous_key);
+					writes.saturating_accrue(1);
+					continue;
+				}
+			}
+		}
+
+		(reads, writes)
 	}
 }
 
