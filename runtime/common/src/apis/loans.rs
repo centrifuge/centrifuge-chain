@@ -13,17 +13,21 @@
 
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	pub trait LoansApi<PoolId, LoanId, Loan>
+	pub trait LoansApi<PoolId, LoanId, Loan, Balance, PriceCollectionInput>
 	where
 		PoolId: Codec,
 		LoanId: Codec,
 		Loan: Codec,
+		Balance: Codec,
+		PriceCollectionInput: Codec
 	{
 		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, Loan)>;
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
+		fn portfolio_valuation(pool_id: PoolId, input_prices: PriceCollectionInput) -> Result<Balance, DispatchError>;
 	}
 }

@@ -252,6 +252,8 @@ pub trait Runtime:
 			PoolId,
 			LoanId,
 			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+			Balance,
+			pallet_loans::entities::input::PriceCollectionInput<Self>,
 		> + apis::runtime_decl_for_pools_api::PoolsApiV1<
 			Self::Block,
 			PoolId,

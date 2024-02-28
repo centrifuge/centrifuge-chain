@@ -1,8 +1,5 @@
 use cfg_traits::{
-	self,
-	data::{DataCollection, DataRegistry},
-	interest::InterestRate,
-	IntoSeconds, Seconds, TimeAsSecs,
+	self, data::DataRegistry, interest::InterestRate, IntoSeconds, Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
@@ -12,10 +9,11 @@ use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	entities::interest::ActiveInterestRate,
-	pallet::{Config, Error, PriceOf},
+	pallet::{Config, Error},
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
@@ -137,6 +135,10 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
+	pub fn price_id(&self) -> T::PriceId {
+		self.info.price_id
+	}
+
 	pub fn has_registered_price(&self, pool_id: T::PoolId) -> bool {
 		T::PriceRegistry::get(&self.info.price_id, &pool_id).is_ok()
 	}
@@ -193,17 +195,14 @@ impl<T: Config> ExternalActivePricing<T> {
 		self.outstanding_principal(pool_id, maturity)
 	}
 
-	pub fn present_value_cached<Prices>(
+	pub fn present_value_cached(
 		&self,
-		cache: &Prices,
+		cache: &BTreeMap<T::PriceId, T::Balance>,
 		maturity: Seconds,
-	) -> Result<T::Balance, DispatchError>
-	where
-		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
-	{
+	) -> Result<T::Balance, DispatchError> {
 		let price = match cache.get(&self.info.price_id) {
-			Ok(data) => data.0,
-			Err(_) => self.linear_accrual_price(maturity)?,
+			Some(data) => *data,
+			None => self.linear_accrual_price(maturity)?,
 		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}

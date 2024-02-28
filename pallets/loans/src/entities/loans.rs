@@ -1,6 +1,5 @@
 use cfg_traits::{
 	self,
-	data::DataCollection,
 	interest::{InterestAccrual, InterestRate, RateCollection},
 	Seconds, TimeAsSecs,
 };
@@ -14,6 +13,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	entities::{
@@ -24,7 +24,7 @@ use crate::{
 			Pricing,
 		},
 	},
-	pallet::{AssetOf, Config, Error, PriceOf},
+	pallet::{AssetOf, Config, Error},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
@@ -229,6 +229,13 @@ impl<T: Config> ActiveLoan<T> {
 		&self.pricing
 	}
 
+	pub fn price_id(&self) -> Option<T::PriceId> {
+		match &self.pricing {
+			ActivePricing::Internal(_) => None,
+			ActivePricing::External(inner) => Some(inner.price_id()),
+		}
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
@@ -278,15 +285,14 @@ impl<T: Config> ActiveLoan<T> {
 	/// An optimized version of `ActiveLoan::present_value()` when some input
 	/// data can be used from cached collections. Instead of fetch the current
 	/// debt and prices from the pallets,
-	/// it get the values from caches previously fetched.
-	pub fn present_value_by<Rates, Prices>(
+	/// it the values from caches previously fetched.
+	pub fn present_value_by<Rates>(
 		&self,
 		rates: &Rates,
-		prices: &Prices,
+		prices: &BTreeMap<T::PriceId, T::Balance>,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let maturity_date = self.schedule.maturity.date();
 		let value = match &self.pricing {

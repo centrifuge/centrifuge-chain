@@ -2193,7 +2193,7 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 
 #[cfg(not(feature = "disable-runtime-api"))]
 mod __runtime_api_use {
-	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+	pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2407,7 +2407,14 @@ impl_runtime_apis! {
 	}
 
 	// LoansApi
-	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+	impl runtime_common::apis::LoansApi<
+		Block,
+		PoolId,
+		LoanId,
+		ActiveLoanInfo<Runtime>,
+		Balance,
+		PriceCollectionInput<Runtime>
+	> for Runtime {
 		fn portfolio(
 			pool_id: PoolId
 		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
@@ -2419,6 +2426,13 @@ impl_runtime_apis! {
 			loan_id: LoanId
 		) -> Option<ActiveLoanInfo<Runtime>> {
 			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
+		}
+
+		fn portfolio_valuation(
+			pool_id: PoolId,
+			input_prices: PriceCollectionInput<Runtime>
+		) -> Result<Balance, DispatchError> {
+			Ok(Loans::update_portfolio_valuation_for_pool(pool_id, input_prices)?.0)
 		}
 	}
 
