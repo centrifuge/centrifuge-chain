@@ -28,6 +28,7 @@ frame_support::parameter_types! {
 
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain.
+#[cfg(not(feature = "std"))]
 pub type UpgradeAltair1034 = (
 	// Updates asset custom metadata from mid 2023 to latest (two fields missing/mismatching)
 	translate_asset_metadata::Migration<super::Runtime>,
@@ -89,6 +90,9 @@ pub type UpgradeAltair1034 = (
 	// Data was already moved but storage version not increased from 0 to 4
 	runtime_common::migrations::increase_storage_version::Migration<crate::Council, 0, 4>,
 );
+
+#[cfg(feature = "std")]
+pub type UpgradeAltair1034 = ();
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
