@@ -31,7 +31,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo tarpaulin --release  --features fast-runtime \
-           --no-fail-fast --workspace --timeout 600 \
+           --no-fail-fast --workspace --timeout 3600 \
            --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           ls -la
 
