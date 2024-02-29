@@ -23,6 +23,7 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
+#[cfg(not(feature = "std"))]
 pub type UpgradeDevelopment1042 = (
 	// Register LocalUSDC
 	runtime_common::migrations::local_currency::register::Migration<
@@ -50,3 +51,6 @@ pub type UpgradeDevelopment1042 = (
 		AnnualTreasuryInflationPercent,
 	>,
 );
+
+#[cfg(feature = "std")]
+pub type UpgradeDevelopment1042 = ();
