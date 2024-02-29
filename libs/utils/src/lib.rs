@@ -112,6 +112,101 @@ pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
 	}
 }
 
+pub mod math {
+	use sp_arithmetic::{
+		traits::{BaseArithmetic, EnsureFixedPointNumber},
+		ArithmeticError, FixedPointOperand, FixedU128,
+	};
+
+	/// Returns the coordinate `y` for coordinate `x`,
+	/// in a function given by 2 points: (x1, y1) and (x2, y2)
+	pub fn y_coord_in_rect<X, Y>(
+		(x1, y1): (X, Y),
+		(x2, y2): (X, Y),
+		x: X,
+	) -> Result<Y, ArithmeticError>
+	where
+		X: BaseArithmetic + FixedPointOperand,
+		Y: BaseArithmetic + FixedPointOperand,
+	{
+		// From the equation: (x - x1) / (x2 - x1) == (y - y1) / (y2 - y1) we solve y:
+		//
+		// NOTE: With rects that have x or y negative directions, we emulate a
+		// symmetry in those axis to avoid unsigned underflows in substractions. It
+		// means, we first "convert" the rect into an increasing rect, and in such rect,
+		// we find the y coordinate.
+
+		let left = if x1 <= x2 {
+			FixedU128::ensure_from_rational(x.ensure_sub(x1)?, x2.ensure_sub(x1)?)?
+		} else {
+			// X symmetry emulation
+			FixedU128::ensure_from_rational(x1.ensure_sub(x)?, x1.ensure_sub(x2)?)?
+		};
+
+		if y1 <= y2 {
+			left.ensure_mul_int(y2.ensure_sub(y1)?)?.ensure_add(y1)
+		} else {
+			// Y symmetry emulation
+			y1.ensure_sub(left.ensure_mul_int(y1.ensure_sub(y2)?)?)
+		}
+	}
+
+	#[cfg(test)]
+	mod test_y_coord_in_function_with_2_points {
+		use super::*;
+
+		#[test]
+		fn start_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 3), Ok(12));
+		}
+
+		#[test]
+		fn end_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 7), Ok(24));
+		}
+
+		// Rect defined as:
+		//    (x2, y2)
+		//      /
+		//     /
+		// (x1, y1)
+		#[test]
+		fn inner_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 4), Ok(15));
+		}
+
+		// Rect defined as:
+		// (x2, y2)
+		//      \
+		//       \
+		//     (x1, y1)
+		#[test]
+		fn inner_point_with_greater_x1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((7, 12), (3, 24), 4), Ok(21));
+		}
+
+		// Rect defined as:
+		// (x1, y1)
+		//      \
+		//       \
+		//     (x2, y2)
+		#[test]
+		fn inner_point_with_greater_y1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 24), (7, 12), 4), Ok(21));
+		}
+
+		// Rect defined as:
+		//    (x1, y1)
+		//      /
+		//     /
+		// (x2, y2)
+		#[test]
+		fn inner_point_with_greater_x1y1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((7, 24), (3, 12), 4), Ok(15));
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

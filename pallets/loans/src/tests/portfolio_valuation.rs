@@ -189,9 +189,13 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		util::borrow_loan(loan_1, PrincipalInput::External(amount.clone()));
 
 		advance_time(YEAR / 2);
+
+		// This is affected by the linear_accrual_price() computation.
+		let price_value_after_half_year = PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2;
+
 		config_mocks();
 		update_portfolio();
-		expected_portfolio(QUANTITY.saturating_mul_int(PRICE_VALUE));
+		expected_portfolio(QUANTITY.saturating_mul_int(price_value_after_half_year));
 
 		// Suddenty, the oracle set a value
 		MockPrices::mock_collection(|_| {
