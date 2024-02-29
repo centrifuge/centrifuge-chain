@@ -22,15 +22,18 @@ mod ratio_provider {
 	use runtime_common::oracle::Feeder;
 	use sp_runtime::traits::One;
 
-	use crate::generic::{
-		config::Runtime,
-		env::Env,
-		envs::runtime_env::RuntimeEnv,
-		utils::{
-			currency::{register_currency, CurrencyInfo, CONST_DEFAULT_CUSTOM},
-			genesis,
-			genesis::Genesis,
+	use crate::{
+		generic::{
+			config::Runtime,
+			env::Env,
+			envs::runtime_env::RuntimeEnv,
+			utils::{
+				currency::{register_currency, CurrencyInfo, CONST_DEFAULT_CUSTOM},
+				genesis,
+				genesis::Genesis,
+			},
 		},
+		test_for_runtimes,
 	};
 
 	pub struct LocalUSDC;
@@ -70,11 +73,6 @@ mod ratio_provider {
 				..Default::default()
 			}
 		}
-	}
-
-	#[test]
-	fn _test() {
-		local_to_variant::<centrifuge_runtime::Runtime>()
 	}
 
 	fn get_rate<T: Runtime>(key: (CurrencyId, CurrencyId)) -> Ratio {
@@ -122,4 +120,7 @@ mod ratio_provider {
 			Ratio::one()
 		);
 	}
+
+	test_for_runtimes!(all, variant_to_local);
+	test_for_runtimes!(all, local_to_variant);
 }
