@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::traits::{Get, GetStorageVersion, OnRuntimeUpgrade};
 use pallet_order_book::weights::Weight;
 use pallet_pool_system::{Config, EpochExecution, EpochExecutionInfo, Nav, Pallet as PoolSystem};
 #[cfg(feature = "try-runtime")]
