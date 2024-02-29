@@ -25,6 +25,7 @@ sp-std = { workspace = true }
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
 orml-traits = { workspace = true }
 
 strum = { workspace = true }
@@ -56,6 +57,7 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
+  "cfg-utils/std",
   "frame-benchmarking/std",
   "strum/std",
   "orml-traits/std",
@@ -68,6 +70,7 @@ runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
 ]
@@ -78,6 +81,7 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
   "cfg-mocks/try-runtime",
   "sp-runtime/try-runtime",
 ]

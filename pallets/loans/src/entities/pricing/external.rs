@@ -1,7 +1,5 @@
 use cfg_traits::{
-	self,
-	data::{DataCollection, DataRegistry},
-	interest::InterestRate,
+	self, data::DataRegistry, interest::InterestRate, IntoSeconds, Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
@@ -11,10 +9,11 @@ use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	entities::interest::ActiveInterestRate,
-	pallet::{Config, Error, PriceOf},
+	pallet::{Config, Error},
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
@@ -70,6 +69,7 @@ pub struct ExternalPricing<T: Config> {
 	pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
 
 	/// Reference price used to calculate the interest
+	/// It refers to the expected asset price.
 	pub notional: T::Balance,
 
 	/// Maximum variation between the settlement price chosen for
@@ -99,6 +99,9 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Settlement price used in the most recent borrow or repay transaction.
 	latest_settlement_price: T::Balance,
+
+	/// When `latest_settlement_price` was updated.
+	settlement_price_updated: Seconds,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -120,6 +123,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
 			latest_settlement_price: amount.settlement_price,
+			settlement_price_updated: T::Time::now(),
 		})
 	}
 
@@ -131,15 +135,46 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<T::Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
+	pub fn price_id(&self) -> T::PriceId {
+		self.info.price_id
 	}
 
-	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+	pub fn has_registered_price(&self, pool_id: T::PoolId) -> bool {
+		T::PriceRegistry::get(&self.info.price_id, &pool_id).is_ok()
+	}
+
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Seconds {
+		match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok((_, timestamp)) => timestamp.into_seconds(),
+			Err(_) => self.settlement_price_updated,
+		}
+	}
+
+	fn linear_accrual_price(&self, maturity: Seconds) -> Result<T::Balance, DispatchError> {
+		Ok(cfg_utils::math::y_coord_in_rect(
+			(self.settlement_price_updated, self.latest_settlement_price),
+			(maturity, self.info.notional),
+			T::Time::now(),
+		)?)
+	}
+
+	pub fn current_price(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
 			Ok(data) => data.0,
-			Err(_) => self.latest_settlement_price,
-		};
+			Err(_) => self.linear_accrual_price(maturity)?,
+		})
+	}
+
+	pub fn outstanding_principal(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		let price = self.current_price(pool_id, maturity)?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -152,17 +187,22 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		self.outstanding_principal(pool_id)
+	pub fn present_value(
+		&self,
+		pool_id: T::PoolId,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		self.outstanding_principal(pool_id, maturity)
 	}
 
-	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
-	where
-		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
-	{
+	pub fn present_value_cached(
+		&self,
+		cache: &BTreeMap<T::PriceId, T::Balance>,
+		maturity: Seconds,
+	) -> Result<T::Balance, DispatchError> {
 		let price = match cache.get(&self.info.price_id) {
-			Ok(data) => data.0,
-			Err(_) => self.latest_settlement_price,
+			Some(data) => *data,
+			None => self.linear_accrual_price(maturity)?,
 		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
@@ -243,7 +283,43 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.interest.adjust_debt(interest_adj)?;
 		self.latest_settlement_price = amount_adj.abs().settlement_price;
+		self.settlement_price_updated = T::Time::now();
 
 		Ok(())
+	}
+}
+
+/// Migration module that contains old loans types.
+/// Can be removed once chains contains pallet-loans version v3
+pub(crate) mod v2 {
+	use cfg_traits::Seconds;
+	use parity_scale_codec::Decode;
+
+	use crate::{
+		entities::{interest::ActiveInterestRate, pricing::external::ExternalPricing},
+		Config,
+	};
+
+	#[derive(Decode)]
+	pub struct ExternalActivePricing<T: Config> {
+		info: ExternalPricing<T>,
+		outstanding_quantity: T::Quantity,
+		interest: ActiveInterestRate<T>,
+		latest_settlement_price: T::Balance,
+	}
+
+	impl<T: Config> ExternalActivePricing<T> {
+		pub fn migrate(
+			self,
+			settlement_price_updated: Seconds,
+		) -> crate::entities::pricing::external::ExternalActivePricing<T> {
+			crate::entities::pricing::external::ExternalActivePricing {
+				info: self.info,
+				outstanding_quantity: self.outstanding_quantity,
+				interest: self.interest,
+				latest_settlement_price: self.latest_settlement_price,
+				settlement_price_updated,
+			}
+		}
 	}
 }
