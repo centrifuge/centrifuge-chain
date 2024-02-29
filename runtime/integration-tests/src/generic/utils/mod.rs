@@ -13,7 +13,7 @@ pub mod democracy;
 pub mod genesis;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
-use cfg_traits::{investments::TrancheCurrency as _, Seconds};
+use cfg_traits::{investments::TrancheCurrency as _, Seconds, TimeAsSecs};
 use cfg_types::{
 	fixed_point::Ratio,
 	oracles::OracleKey,
@@ -35,7 +35,11 @@ use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 
-fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
+pub fn now_secs<T: Runtime>() -> Seconds {
+	<pallet_timestamp::Pallet<T> as TimeAsSecs>::now()
+}
+
+pub fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
 where
 	T::RuntimeEventExt: TryInto<E>,
 {

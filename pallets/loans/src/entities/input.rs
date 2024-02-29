@@ -1,4 +1,4 @@
-use frame_support::RuntimeDebugNoBound;
+use frame_support::{storage::bounded_btree_map::BoundedBTreeMap, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{ArithmeticError, DispatchError};
@@ -55,4 +55,12 @@ impl<T: Config> RepaidInput<T> {
 			unscheduled: self.unscheduled,
 		})
 	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub enum PriceCollectionInput<T: Config> {
+	Empty,
+	Custom(BoundedBTreeMap<T::PriceId, T::Balance, T::MaxActiveLoansPerPool>),
+	FromRegistry,
 }

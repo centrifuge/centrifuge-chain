@@ -8,6 +8,7 @@ use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
+	storage::{transactional, TransactionOutcome},
 	traits::GenesisBuild,
 };
 use parity_scale_codec::Encode;
@@ -153,13 +154,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.parachain_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 
@@ -169,13 +171,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.sibling_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 
