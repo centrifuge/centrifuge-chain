@@ -37,7 +37,7 @@ pub trait DataRegistry<DataId, CollectionId> {
 }
 
 /// Abstration to represent a collection of data in memory
-pub trait DataCollection<DataId>: Default {
+pub trait DataCollection<DataId> {
 	/// Represents a data
 	type Data;
 

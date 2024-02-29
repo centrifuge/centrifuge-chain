@@ -73,9 +73,12 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, IntoSeconds,
-		Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate, Seconds,
-		TimeAsSecs,
+		self,
+		changes::ChangeGuard,
+		data::{DataCollection, DataRegistry},
+		interest::InterestAccrual,
+		IntoSeconds, Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
+		Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -84,7 +87,7 @@ pub mod pallet {
 	};
 	use entities::{
 		changes::{Change, LoanMutation},
-		input::{PrincipalInput, RepaidInput},
+		input::{PriceCollectionInput, PrincipalInput, RepaidInput},
 		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
 	};
 	use frame_support::{
@@ -103,7 +106,7 @@ pub mod pallet {
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
-	use sp_std::{vec, vec::Vec};
+	use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
@@ -150,7 +153,7 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen;
+		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen + Ord;
 
 		/// Defines the rate type used for math computations
 		type Rate: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
@@ -775,7 +778,10 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
+			let (_, count) = Self::update_portfolio_valuation_for_pool(
+				pool_id,
+				PriceCollectionInput::FromRegistry,
+			)?;
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
@@ -1051,11 +1057,33 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
 		}
 
-		fn update_portfolio_valuation_for_pool(
+		fn registered_prices(
 			pool_id: T::PoolId,
+		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
+			let collection = T::PriceRegistry::collection(&pool_id)?;
+			Ok(ActiveLoans::<T>::get(pool_id)
+				.iter()
+				.filter_map(|(_, loan)| loan.price_id())
+				.filter_map(|price_id| {
+					collection
+						.get(&price_id)
+						.map(|price| (price_id, price.0))
+						.ok()
+				})
+				.collect::<BTreeMap<_, _>>())
+		}
+
+		pub fn update_portfolio_valuation_for_pool(
+			pool_id: T::PoolId,
+			input_prices: PriceCollectionInput<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
-			let prices = T::PriceRegistry::collection(&pool_id)?;
+			let prices = match input_prices {
+				PriceCollectionInput::Empty => BTreeMap::default(),
+				PriceCollectionInput::Custom(prices) => prices.into(),
+				PriceCollectionInput::FromRegistry => Self::registered_prices(pool_id)?,
+			};
+
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let values = loans
 				.iter()
@@ -1208,7 +1236,8 @@ pub mod pallet {
 		}
 
 		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
+			Self::update_portfolio_valuation_for_pool(pool_id, PriceCollectionInput::FromRegistry)
+				.map(|portfolio| portfolio.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
