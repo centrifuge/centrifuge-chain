@@ -26,7 +26,7 @@ use pallet_loans::{
 	},
 };
 use runtime_common::{
-	apis::{runtime_decl_for_loans_api::LoansApiV1, runtime_decl_for_pools_api::PoolsApiV1},
+	apis::{runtime_decl_for_loans_api::LoansApiV2, runtime_decl_for_pools_api::PoolsApiV1},
 	oracle::Feeder,
 };
 use sp_runtime::FixedPointNumber;

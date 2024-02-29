@@ -18,6 +18,7 @@ use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
+	#[api_version(2)]
 	pub trait LoansApi<PoolId, LoanId, Loan, Balance, PriceCollectionInput>
 	where
 		PoolId: Codec,
