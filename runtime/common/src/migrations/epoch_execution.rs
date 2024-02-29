@@ -115,9 +115,9 @@ where
 			})
 		});
 
-		StorageVersion::new(2).put::<PoolSystem<T>>();
+		PoolSystem::<T>::current_storage_version().put::<PoolSystem<T>>();
 
-		weight
+		weight.saturating_add(T::DbWeight::get().writes(1))
 	}
 
 	#[cfg(feature = "try-runtime")]
