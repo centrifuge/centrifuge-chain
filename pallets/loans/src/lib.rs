@@ -65,6 +65,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+mod migrations;
+
 pub use pallet::*;
 pub use weights::WeightInfo;
 
@@ -115,7 +117,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -430,6 +432,13 @@ pub mod pallet {
 	impl<T> From<MutationError> for Error<T> {
 		fn from(error: MutationError) -> Self {
 			Error::<T>::MutationError(error)
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migrations::migrate_from_v2_to_v3::<T>()
 		}
 	}
 
