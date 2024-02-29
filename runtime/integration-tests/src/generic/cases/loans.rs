@@ -70,15 +70,15 @@ mod common {
 		let mut env = E::from_parachain_storage(
 			Genesis::<T>::default()
 				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-				.add(genesis::assets(vec![Usd6::ID]))
-				.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
+				.add(genesis::assets(vec![Box::new(Usd6)]))
+				.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
 				.storage(),
 		);
 
 		env.parachain_state_mut(|| {
 			// Creating a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
+			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6.id());
 
 			// Setting borrower
 			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
@@ -91,7 +91,7 @@ mod common {
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
 			utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
-			utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, EXPECTED_POOL_BALANCE);
+			utils::give_tokens::<T>(INVESTOR.id(), Usd6.id(), EXPECTED_POOL_BALANCE);
 			utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
 		});
 
@@ -158,7 +158,7 @@ mod common {
 		Pricing::External(ExternalPricing {
 			price_id: PRICE_A,
 			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
-			notional: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
+			notional: currency::price_to_currency(PRICE_VALUE_A, Usd6),
 			max_price_variation: rate_from_percent(0),
 		})
 	}
@@ -189,7 +189,7 @@ mod call {
 			loan_id,
 			amount: PrincipalInput::External(ExternalAmount {
 				quantity: Quantity::from_integer(50),
-				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
+				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6),
 			}),
 		}
 	}
@@ -217,7 +217,7 @@ mod call {
 			amount: RepaidInput {
 				principal: PrincipalInput::External(ExternalAmount {
 					quantity: Quantity::from_integer(50),
-					settlement_price: currency::price_to_currency(settlement_price, Usd6::ID),
+					settlement_price: currency::price_to_currency(settlement_price, Usd6),
 				}),
 				interest,
 				unscheduled: 0,
@@ -280,7 +280,11 @@ fn internal_priced<T: Runtime>() {
 	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
-		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+		utils::give_tokens::<T>(
+			BORROWER.id(),
+			Usd6.id(),
+			loan_portfolio.outstanding_interest,
+		);
 	});
 
 	env.submit_now(
@@ -321,7 +325,11 @@ fn oracle_priced<T: Runtime>() {
 	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
-		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+		utils::give_tokens::<T>(
+			BORROWER.id(),
+			Usd6.id(),
+			loan_portfolio.outstanding_interest,
+		);
 
 		// Oracle modify the value
 		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);

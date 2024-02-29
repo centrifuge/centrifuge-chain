@@ -37,12 +37,12 @@ fn configure_proxy_and_transfer<T: Runtime>(proxy_type: T::ProxyType) -> Dispatc
 	let env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::<T>::default()
 			.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-			.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
+			.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
 			.storage(),
 	);
 
 	let call = pallet_restricted_tokens::Call::transfer {
-		currency_id: Usd6::ID,
+		currency_id: Usd6.id(),
 		amount: TRANSFER_AMOUNT,
 		dest: T::Lookup::unlookup(TO.id()),
 	}
@@ -59,21 +59,23 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 			.add(genesis::balances::<T>(
 				T::ExistentialDeposit::get() + FOR_FEES,
 			))
-			.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
+			.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
 			.storage(),
 	);
 
 	setup_xcm(&mut env);
 
 	env.parachain_state_mut(|| {
-		register_currency::<T, Usd6>(Some(VersionedMultiLocation::V3(MultiLocation::new(
-			1,
-			X1(Parachain(T::FudgeHandle::SIBLING_ID)),
-		))));
+		register_currency::<T>(Usd6, |meta| {
+			meta.location = Some(VersionedMultiLocation::V3(MultiLocation::new(
+				1,
+				X1(Parachain(T::FudgeHandle::SIBLING_ID)),
+			)));
+		});
 	});
 
 	let call = pallet_restricted_xtokens::Call::transfer {
-		currency_id: Usd6::ID,
+		currency_id: Usd6.id(),
 		amount: TRANSFER_AMOUNT,
 		dest: Box::new(
 			MultiLocation::new(
@@ -101,7 +103,7 @@ fn configure_proxy_and_call<T: Runtime>(
 	call: T::RuntimeCallExt,
 ) -> DispatchResult {
 	env.parachain_state_mut(|| {
-		utils::give_tokens::<T>(FROM.id(), Usd6::ID, TRANSFER_AMOUNT);
+		utils::give_tokens::<T>(FROM.id(), Usd6.id(), TRANSFER_AMOUNT);
 
 		// Register PROXY as proxy of FROM
 		pallet_proxy::Pallet::<T>::add_proxy(
