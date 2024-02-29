@@ -92,7 +92,7 @@ pub type UpgradeAltair1034 = (
 );
 
 #[cfg(feature = "std")]
-type UpgradeAltair1034 = ();
+pub type UpgradeAltair1034 = ();
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
