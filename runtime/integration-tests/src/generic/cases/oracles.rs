@@ -27,11 +27,7 @@ mod ratio_provider {
 			config::Runtime,
 			env::Env,
 			envs::runtime_env::RuntimeEnv,
-			utils::{
-				currency::{register_currency, CurrencyInfo, CONST_DEFAULT_CUSTOM},
-				genesis,
-				genesis::Genesis,
-			},
+			utils::currency::{register_currency, CurrencyInfo, CONST_DEFAULT_CUSTOM},
 		},
 		test_for_runtimes,
 	};

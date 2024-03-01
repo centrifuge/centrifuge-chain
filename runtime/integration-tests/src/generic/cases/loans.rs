@@ -167,7 +167,7 @@ mod common {
 	}
 
 	pub fn price_to_usd6(price: Quantity) -> Balance {
-		currency::price_to_currency(price, Usd6.id())
+		currency::price_to_currency(price, Usd6)
 	}
 }
 
