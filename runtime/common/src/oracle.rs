@@ -204,6 +204,3 @@ where
 		Provider::set(&feeder, &(*from, *to), ratio);
 	}
 }
-
-#[cfg(test)]
-mod test {}
