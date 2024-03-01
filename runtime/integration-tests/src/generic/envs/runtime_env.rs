@@ -11,11 +11,12 @@ use frame_support::{
 	storage::{transactional, TransactionOutcome},
 	traits::GenesisBuild,
 };
+use frame_system::LastRuntimeUpgradeInfo;
 use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, H256};
+use sp_core::{sr25519::Public, Get, H256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -65,6 +66,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		.unwrap();
 
 		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
+
+		// NOTE: Setting the current on-chain runtime version to the latest one, to
+		//       prevent running migrations
+		parachain_ext.execute_with(|| {
+			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
+				<T as frame_system::Config>::Version::get(),
+			))
+		});
 
 		parachain_ext.execute_with(|| Self::prepare_block(1));
 
