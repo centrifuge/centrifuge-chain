@@ -1,4 +1,5 @@
 use cfg_primitives::Balance;
+use cfg_types::{tokens::CrossChainTransferability, xcm::XcmMetadata};
 use frame_support::{assert_err, assert_ok, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
@@ -71,6 +72,9 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 				1,
 				X1(Parachain(T::FudgeHandle::SIBLING_ID)),
 			)));
+			meta.additional.transferability = CrossChainTransferability::Xcm(XcmMetadata {
+				fee_per_second: Some(1_000),
+			});
 		});
 	});
 
