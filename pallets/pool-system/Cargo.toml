@@ -51,7 +51,7 @@ parachain-info = { workspace = true, default-features = true }
 rand = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = true }
+staging-xcm = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

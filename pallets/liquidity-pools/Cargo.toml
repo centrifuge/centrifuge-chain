@@ -39,7 +39,7 @@ cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
 
 # Polkadot
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 
 fp-self-contained = { workspace = true }
 pallet-ethereum = { workspace = true }
@@ -70,7 +70,7 @@ std = [
   "orml-tokens/std",
   "orml-traits/std",
   "pallet-balances/std",
-  "xcm/std",
+  "staging-xcm/std",
   "pallet-ethereum/std",
   "xcm-primitives/std",
   "ethabi/std",

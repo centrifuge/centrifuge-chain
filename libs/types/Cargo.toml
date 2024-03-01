@@ -28,7 +28,7 @@ sp-std = { workspace = true }
 
 orml-asset-registry = { workspace = true }
 orml-traits = { workspace = true }
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 
 # local dependencies
 cfg-primitives = { workspace = true }
@@ -56,7 +56,7 @@ std = [
   "sp-runtime/std",
   "sp-runtime/std",
   "sp-std/std",
-  "xcm/std",
+  "staging-xcm/std",
 ]
 runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",

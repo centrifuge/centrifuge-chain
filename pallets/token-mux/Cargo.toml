@@ -46,7 +46,6 @@ orml-tokens = { workspace = true, default-features = true }
 # Polkadot SDK
 pallet-balances = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = false }
 
 [features]
 default = ["std"]

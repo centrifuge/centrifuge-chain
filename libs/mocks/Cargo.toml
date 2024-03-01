@@ -27,7 +27,7 @@ cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 
 orml-traits = { workspace = true }
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 
 mock-builder = { workspace = true }
 
@@ -46,7 +46,7 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "orml-traits/std",
-  "xcm/std",
+  "staging-xcm/std",
   "mock-builder/std",
 ]
 runtime-benchmarks = [

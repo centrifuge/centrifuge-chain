@@ -46,12 +46,12 @@ cumulus-primitives-timestamp = { workspace = true }
 cumulus-primitives-utility = { workspace = true }
 
 pallet-transaction-payment-rpc-runtime-api = { workspace = true }
-polkadot-parachain = { workspace = true }
+polkadot-parachain-primitives = { workspace = true }
 polkadot-runtime-common = { workspace = true }
 
-xcm = { workspace = true }
-xcm-builder = { workspace = true }
-xcm-executor = { workspace = true }
+staging-xcm = { workspace = true }
+staging-xcm-builder = { workspace = true }
+staging-xcm-executor = { workspace = true }
 xcm-primitives = { workspace = true }
 
 orml-traits = { workspace = true }
@@ -178,9 +178,9 @@ std = [
   "cumulus-primitives-timestamp/std",
   "cumulus-primitives-utility/std",
   "cumulus-pallet-session-benchmarking?/std",
-  "xcm/std",
-  "xcm-builder/std",
-  "xcm-executor/std",
+  "staging-xcm/std",
+  "staging-xcm-builder/std",
+  "staging-xcm-executor/std",
   "xcm-primitives/std",
   "orml-traits/std",
   "orml-xcm-support/std",
@@ -189,7 +189,7 @@ std = [
   "moonbeam-relay-encoder/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "polkadot-runtime-common/std",
-  "polkadot-parachain/std",
+  "polkadot-parachain-primitives/std",
 
   # Locals
   "cfg-primitives/std",
@@ -281,11 +281,11 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "xcm-builder/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
+  "staging-xcm-builder/runtime-benchmarks",
+  "staging-xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "polkadot-runtime-common/runtime-benchmarks",
-  "polkadot-parachain/runtime-benchmarks",
+  "polkadot-parachain-primitives/runtime-benchmarks",
 
   # Locals
   "cfg-primitives/runtime-benchmarks",

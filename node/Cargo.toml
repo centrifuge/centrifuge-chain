@@ -88,7 +88,7 @@ cumulus-relay-chain-interface = { workspace = true, default-features = true }
 polkadot-cli = { workspace = true, default-features = true }
 polkadot-primitives = { workspace = true, default-features = true }
 polkadot-service = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = true }
+staging-xcm = { workspace = true, default-features = true }
 
 # Local
 altair-runtime = { workspace = true, default-features = true }

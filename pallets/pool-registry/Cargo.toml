@@ -23,7 +23,7 @@ orml-asset-registry = { workspace = true }
 orml-traits = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
@@ -65,7 +65,7 @@ std = [
   "frame-benchmarking/std",
   "pallet-investments/std",
   "scale-info/std",
-  "xcm/std",
+  "staging-xcm/std",
   "pallet-pool-fees/std",
   "pallet-pool-system/std",
 ]

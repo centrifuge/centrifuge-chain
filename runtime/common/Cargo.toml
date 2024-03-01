@@ -27,10 +27,10 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-polkadot-parachain = { workspace = true }
-xcm = { workspace = true }
-xcm-builder = { workspace = true }
-xcm-executor = { workspace = true }
+polkadot-parachain-primitives = { workspace = true }
+staging-xcm = { workspace = true }
+staging-xcm-builder = { workspace = true }
+staging-xcm-executor = { workspace = true }
 
 orml-traits = { workspace = true }
 
@@ -160,7 +160,7 @@ std = [
   "pallet-restricted-tokens/std",
   "pallet-treasury/std",
   "parachain-info/std",
-  "polkadot-parachain/std",
+  "polkadot-parachain-primitives/std",
   "scale-info/std",
   "serde/std",
   "sp-api/std",
@@ -170,10 +170,10 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
-  "xcm-executor/std",
+  "staging-xcm-executor/std",
   "xcm-primitives/std",
-  "xcm-builder/std",
-  "xcm/std",
+  "staging-xcm-builder/std",
+  "staging-xcm/std",
 
   # Locals
   "cfg-primitives/std",
@@ -257,10 +257,10 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks", # Optional enabled
-  "xcm-executor/runtime-benchmarks",
+  "staging-xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
-  "xcm-builder/runtime-benchmarks",
-  "polkadot-parachain/runtime-benchmarks",
+  "staging-xcm-builder/runtime-benchmarks",
+  "polkadot-parachain-primitives/runtime-benchmarks",
 
   # Locals
   "cfg-primitives/runtime-benchmarks",

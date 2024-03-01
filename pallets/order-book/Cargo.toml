@@ -41,7 +41,7 @@ pallet-restricted-tokens = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
 # Used by impl_mock_registry macro internally
-xcm = { workspace = true, default-features = true }
+staging-xcm = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

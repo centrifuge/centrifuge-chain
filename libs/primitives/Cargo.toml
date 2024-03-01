@@ -34,8 +34,8 @@ pallet-collective = { workspace = true }
 cumulus-primitives-core = { workspace = true }
 
 # XCM primitives dependencies
-xcm = { workspace = true }
-xcm-executor = { workspace = true }
+staging-xcm = { workspace = true }
+staging-xcm-executor = { workspace = true }
 
 [features]
 default = ["std"]
@@ -53,15 +53,15 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
-  "xcm-executor/std",
-  "xcm/std",
+  "staging-xcm-executor/std",
+  "staging-xcm/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
+  "staging-xcm-executor/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
