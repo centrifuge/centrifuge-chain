@@ -11,7 +11,7 @@ permissions:
     contents: read
 jobs:
   codecov:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest-8-cores
     # container:
     #   image: xd009642/tarpaulin:develop-nightly
     #   options: --security-opt seccomp=unconfined    
@@ -30,7 +30,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo tarpaulin  --release  --features fast-runtime \
+          cargo tarpaulin  --release  --features fast-runtime --fail-under 10 \
            --no-fail-fast --workspace --timeout 3600 --engine llvm \
            --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           ls -la
