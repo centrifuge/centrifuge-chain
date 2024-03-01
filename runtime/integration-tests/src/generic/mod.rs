@@ -19,6 +19,7 @@ mod cases {
 	mod investments;
 	mod liquidity_pools;
 	mod loans;
+	mod oracles;
 	mod proxy;
 	mod restricted_transfers;
 }
