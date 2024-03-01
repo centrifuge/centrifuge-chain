@@ -26,7 +26,9 @@ pub trait CurrencyInfo {
 		10u128.pow(self.decimals())
 	}
 
-	fn symbol(&self) -> &'static str;
+	fn symbol(&self) -> &'static str {
+		"TKN"
+	}
 
 	fn name(&self) -> &'static str {
 		&self.symbol()
