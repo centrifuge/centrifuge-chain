@@ -36,7 +36,7 @@ mod ratio_provider {
 	pub struct OtherLocal;
 	impl CurrencyInfo for OtherLocal {
 		fn id(&self) -> CurrencyId {
-			CurrencyId::LocalAsset(LocalAssetId(101))
+			CurrencyId::LocalAsset(LocalAssetId(2))
 		}
 
 		fn custom(&self) -> CustomMetadata {
@@ -51,7 +51,7 @@ mod ratio_provider {
 	pub struct LocalUSDC;
 	impl CurrencyInfo for LocalUSDC {
 		fn id(&self) -> CurrencyId {
-			CurrencyId::LocalAsset(LocalAssetId(100))
+			CurrencyId::LocalAsset(LocalAssetId(1))
 		}
 
 		fn custom(&self) -> CustomMetadata {
@@ -66,14 +66,14 @@ mod ratio_provider {
 	pub struct DomainUSDC;
 	impl CurrencyInfo for DomainUSDC {
 		fn id(&self) -> CurrencyId {
-			CurrencyId::ForeignAsset(200_0001)
+			CurrencyId::ForeignAsset(100_001)
 		}
 
 		fn custom(&self) -> CustomMetadata {
 			CustomMetadata {
 				pool_currency: true,
 				transferability: CrossChainTransferability::LiquidityPools,
-				local_representation: Some(LocalAssetId(100)),
+				local_representation: Some(LocalAssetId(1)),
 				..CONST_DEFAULT_CUSTOM
 			}
 		}
@@ -166,4 +166,6 @@ mod ratio_provider {
 	test_for_runtimes!(all, local_to_variant);
 	test_for_runtimes!(all, variant_to_other_local);
 	test_for_runtimes!(all, other_local_to_variant);
+	test_for_runtimes!(all, variant_to_local_rate_set);
+	test_for_runtimes!(all, local_to_variant_rate_set);
 }
