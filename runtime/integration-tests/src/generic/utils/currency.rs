@@ -2,10 +2,7 @@
 //! considered at this level.
 
 use cfg_primitives::{conversion, Balance, CFG};
-use cfg_types::{
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
-	xcm::XcmMetadata,
-};
+use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 
