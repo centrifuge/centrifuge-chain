@@ -30,9 +30,10 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo tarpaulin  --release  --features fast-runtime --fail-under 10 \
-           --no-fail-fast --workspace --timeout 3600 --engine llvm \
-           --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
+          # cargo tarpaulin  --release  --features fast-runtime --fail-under 10 \
+          #  --no-fail-fast --workspace --timeout 3600 --engine llvm \
+          #  --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
+          cargo tarpaulin --workspace -v --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
           ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
@@ -46,5 +47,5 @@ jobs:
           # files: ./coverage1.xml,./coverage2.xml # optional
           # flags: unittests # optional
           # name: codecov-umbrella # optional
-          # fail_ci_if_error: true # optional (default = false)
+          fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)       
