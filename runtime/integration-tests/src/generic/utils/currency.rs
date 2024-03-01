@@ -89,9 +89,6 @@ impl CurrencyInfo for Usd6 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			transferability: CrossChainTransferability::Xcm(XcmMetadata {
-				fee_per_second: Some(1_000),
-			}),
 			..CONST_DEFAULT_CUSTOM
 		}
 	}
