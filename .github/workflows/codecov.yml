@@ -33,7 +33,7 @@ jobs:
           # cargo tarpaulin  --release  --features fast-runtime --fail-under 10 \
           #  --no-fail-fast --workspace --timeout 3600 --engine llvm \
           #  --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
-          cargo tarpaulin --timeout 3600  --features fast-runtime --workspace -v --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
+          cargo tarpaulin --timeout 3600 -e runtime-integration-tests --features fast-runtime --workspace -v --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
           ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
