@@ -13,7 +13,7 @@
 use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR};
 use cfg_types::{
 	domain_address::Domain,
-	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
 use ethabi::{ethereum_types::U256, Token, Uint};
 use frame_support::{
@@ -177,66 +177,126 @@ pub const POOL_B: PoolId = 2;
 pub const DEFAULT_BALANCE: Balance = 1_000_000;
 const DECIMALS_6: Balance = 1_000_000;
 const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
+const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 
 #[allow(non_camel_case_types)]
 pub struct USDC;
 impl CurrencyInfo for USDC {
-	const CUSTOM: CustomMetadata = CustomMetadata {
-		pool_currency: true,
-		transferability: CrossChainTransferability::LiquidityPools,
-		permissioned: false,
-		mintable: false,
-	};
-	const DECIMALS: u32 = 6;
-	const ED: Balance = 10_000;
-	const ID: CurrencyId = CurrencyId::ForeignAsset(100_001);
-	const SYMBOL: &'static str = "USDC";
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata {
+			pool_currency: true,
+			transferability: CrossChainTransferability::LiquidityPools,
+			permissioned: false,
+			mintable: false,
+			local_representation: Some(LOCAL_ASSET_ID),
+		}
+	}
+
+	fn ed(&self) -> Balance {
+		10_000
+	}
+
+	fn symbol(&self) -> &'static str {
+		"USDC"
+	}
+
+	fn id(&self) -> CurrencyId {
+		CurrencyId::ForeignAsset(100_001)
+	}
+
+	fn decimals(&self) -> u32 {
+		6
+	}
 }
 
 #[allow(non_camel_case_types)]
 pub struct DAI;
 impl CurrencyInfo for DAI {
-	const CUSTOM: CustomMetadata = CustomMetadata {
-		pool_currency: true,
-		transferability: CrossChainTransferability::LiquidityPools,
-		permissioned: false,
-		mintable: false,
-	};
-	const DECIMALS: u32 = 18;
-	const ED: Balance = 100_000_000_000_000;
-	const ID: CurrencyId = CurrencyId::ForeignAsset(100_002);
-	const SYMBOL: &'static str = "DAI";
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata {
+			pool_currency: true,
+			transferability: CrossChainTransferability::LiquidityPools,
+			permissioned: false,
+			mintable: false,
+			local_representation: None,
+		}
+	}
+
+	fn symbol(&self) -> &'static str {
+		"DAI"
+	}
+
+	fn id(&self) -> CurrencyId {
+		CurrencyId::ForeignAsset(100_002)
+	}
+
+	fn ed(&self) -> Balance {
+		100_000_000_000_000
+	}
+
+	fn decimals(&self) -> u32 {
+		18
+	}
 }
 
 #[allow(non_camel_case_types)]
 pub struct FRAX;
 impl CurrencyInfo for FRAX {
-	const CUSTOM: CustomMetadata = CustomMetadata {
-		pool_currency: true,
-		transferability: CrossChainTransferability::LiquidityPools,
-		permissioned: false,
-		mintable: false,
-	};
-	const DECIMALS: u32 = 18;
-	const ED: Balance = 100_000_000_000_000;
-	const ID: CurrencyId = CurrencyId::ForeignAsset(100_003);
-	const SYMBOL: &'static str = "FRAX";
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata {
+			pool_currency: true,
+			transferability: CrossChainTransferability::LiquidityPools,
+			permissioned: false,
+			mintable: false,
+			local_representation: None,
+		}
+	}
+
+	fn symbol(&self) -> &'static str {
+		"FRAX"
+	}
+
+	fn id(&self) -> CurrencyId {
+		CurrencyId::ForeignAsset(100_003)
+	}
+
+	fn ed(&self) -> Balance {
+		100_000_000_000_000
+	}
+
+	fn decimals(&self) -> u32 {
+		18
+	}
 }
 
 #[allow(non_camel_case_types)]
 pub struct LocalUSDC;
 impl CurrencyInfo for LocalUSDC {
-	const CUSTOM: CustomMetadata = CustomMetadata {
-		pool_currency: true,
-		transferability: CrossChainTransferability::None,
-		permissioned: false,
-		mintable: false,
-	};
-	const DECIMALS: u32 = 6;
-	const ED: Balance = 10_000;
-	const ID: CurrencyId = CurrencyId::ForeignAsset(1);
-	// TODO: Change to CurrencyId::Local(), once https://github.com/centrifuge/centrifuge-chain/pull/1713 is merged
-	const SYMBOL: &'static str = "LocalUSDC";
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata {
+			pool_currency: true,
+			transferability: CrossChainTransferability::None,
+			permissioned: false,
+			mintable: false,
+			local_representation: None,
+		}
+	}
+
+	fn symbol(&self) -> &'static str {
+		"LocalUSDC"
+	}
+
+	fn id(&self) -> CurrencyId {
+		CurrencyId::LocalAsset(LOCAL_ASSET_ID)
+	}
+
+	fn ed(&self) -> Balance {
+		10_000
+	}
+
+	fn decimals(&self) -> u32 {
+		6
+	}
 }
 
 /// The faked router address on the EVM side. Needed for the precompile to
@@ -278,7 +338,7 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 		);
 
 		// Register general local pool-currency
-		register_currency::<T, LocalUSDC>(None);
+		register_currency::<T>(LocalUSDC, |_| {});
 	});
 
 	/* TODO: Use that but index needed contracts afterwards
@@ -819,7 +879,7 @@ pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	crate::generic::utils::pool::create_one_tranched::<T>(
 		Keyring::Admin.into(),
 		POOL_A,
-		LocalUSDC::ID,
+		LocalUSDC.id(),
 	);
 
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
@@ -832,7 +892,7 @@ pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	crate::generic::utils::pool::create_two_tranched::<T>(
 		Keyring::Admin.into(),
 		POOL_B,
-		LocalUSDC::ID,
+		LocalUSDC.id(),
 	);
 
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
@@ -1039,31 +1099,37 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// * trigger `AddCurrency`
 	let usdc_address = env.deployed("usdc").address();
 	env.parachain_state_mut(|| {
-		register_currency::<T, USDC>(Some(utils::lp_asset_location::<T>(usdc_address)));
+		register_currency::<T>(USDC, |meta| {
+			meta.location = Some(utils::lp_asset_location::<T>(usdc_address));
+		});
 	});
 
 	let dai_address = env.deployed("dai").address();
 	env.parachain_state_mut(|| {
-		register_currency::<T, DAI>(Some(utils::lp_asset_location::<T>(dai_address)));
+		register_currency::<T>(DAI, |meta| {
+			meta.location = Some(utils::lp_asset_location::<T>(dai_address));
+		});
 	});
 
 	let frax_address = env.deployed("frax").address();
 	env.parachain_state_mut(|| {
-		register_currency::<T, FRAX>(Some(utils::lp_asset_location::<T>(frax_address)));
+		register_currency::<T>(FRAX, |meta| {
+			meta.location = Some(utils::lp_asset_location::<T>(frax_address));
+		});
 	});
 
 	env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			USDC::ID
+			USDC.id()
 		));
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			DAI::ID
+			DAI.id()
 		));
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			FRAX::ID
+			FRAX.id()
 		));
 
 		utils::process_outbound::<T>()

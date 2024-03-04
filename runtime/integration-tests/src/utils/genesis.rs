@@ -18,7 +18,7 @@ use cfg_types::{
 use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
 use sp_core::{sr25519, Pair};
-use sp_runtime::{AccountId32, Storage};
+use sp_runtime::{AccountId32, FixedPointNumber, Storage};
 
 use crate::utils::{
 	accounts::{default_accounts, Keyring},

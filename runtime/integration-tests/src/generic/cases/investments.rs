@@ -49,7 +49,7 @@ mod common {
 		env.parachain_state_mut(|| {
 			// Create a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-			utils::pool::create_empty::<T>(POOL_ADMIN.id(), POOL_A, Usd6::id());
+			utils::pool::create_empty::<T>(POOL_ADMIN.id(), POOL_A, Usd6.id());
 
 			// Grant permissions
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();

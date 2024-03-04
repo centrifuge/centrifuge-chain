@@ -42,39 +42,56 @@ fn add_currency<T: Runtime>() {
 	#[allow(non_camel_case_types)]
 	pub struct TestCurrency;
 	impl CurrencyInfo for TestCurrency {
-		const CUSTOM: CustomMetadata = CustomMetadata {
-			pool_currency: true,
-			transferability: CrossChainTransferability::LiquidityPools,
-			permissioned: false,
-			mintable: false,
-		};
-		const DECIMALS: u32 = 12;
-		const ED: Balance = 10_000_000_000;
-		const ID: CurrencyId = CurrencyId::ForeignAsset(200_001);
-		const SYMBOL: &'static str = "FRAX";
+		fn custom(&self) -> CustomMetadata {
+			CustomMetadata {
+				pool_currency: true,
+				transferability: CrossChainTransferability::LiquidityPools,
+				permissioned: false,
+				mintable: false,
+				local_representation: None,
+			}
+		}
+
+		fn decimals(&self) -> u32 {
+			12
+		}
+
+		fn ed(&self) -> Balance {
+			10_000_000_000
+		}
+
+		fn id(&self) -> CurrencyId {
+			CurrencyId::ForeignAsset(200_001)
+		}
+
+		fn symbol(&self) -> &'static str {
+			"FRAX"
+		}
 	}
 
 	env.deploy(
 		"ERC20",
 		"test_erc20",
 		Keyring::Admin,
-		Some(&[Token::Uint(Uint::from(TestCurrency::DECIMALS))]),
+		Some(&[Token::Uint(Uint::from(TestCurrency.decimals()))]),
 	);
 
 	let test_erc20_address = env.deployed("test_erc20").address();
 
 	env.parachain_state_mut(|| {
-		register_currency::<T, USDC>(Some(utils::lp_asset_location::<T>(test_erc20_address)));
+		register_currency::<T>(USDC, |meta| {
+			meta.location = Some(utils::lp_asset_location::<T>(test_erc20_address));
+		});
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
-			TestCurrency::ID
+			TestCurrency.id()
 		));
 
 		utils::process_outbound::<T>()
 	});
 
-	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency::ID).unwrap();
+	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency.id()).unwrap();
 
 	// Verify the  test currencies are correctly added to the pool manager
 	assert_eq!(
@@ -114,7 +131,7 @@ fn add_pool<T: Runtime>() {
 		crate::generic::utils::pool::create_one_tranched::<T>(
 			Keyring::Admin.into(),
 			POOL,
-			LocalUSDC::ID,
+			LocalUSDC.id(),
 		);
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
