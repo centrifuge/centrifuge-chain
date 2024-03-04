@@ -157,11 +157,11 @@ pub mod pallet {
 			//       if the execution failed. But we can check that manually by
 			//       querying the `Pending` storage of the pallet-ethereum.
 			let pending = pallet_ethereum::Pending::<T>::get();
-			let last = pending.last().ok_or(DispatchError::Other(
+			let (_, _, receipt) = pending.last().ok_or(DispatchError::Other(
 				"Ethereuem not adding pending storage. Unexpected.",
 			))?;
 
-			if Pallet::<T>::valid_code(&last.2) {
+			if Pallet::<T>::valid_code(receipt) {
 				Ok(info)
 			} else {
 				Err(Error::<T>::EvmExecutionFailed.into())
