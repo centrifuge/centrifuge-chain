@@ -107,6 +107,7 @@ pub mod pallet {
 
 			Nonce::<T>::put(nonce.saturating_add(U256::one()));
 
+			// FIXME: Check `Pending` storage receipt != 1 for potential failures
 			pallet_ethereum::Pallet::<T>::transact(
 				pallet_ethereum::Origin::EthereumTransaction(from).into(),
 				transaction,

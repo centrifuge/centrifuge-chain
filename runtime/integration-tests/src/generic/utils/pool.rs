@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, Balance, PoolId};
+use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::Seconds;
 use cfg_types::{
 	fixed_point::Rate,
@@ -125,4 +125,12 @@ pub fn create<T: Runtime>(
 pub fn close_epoch<T: Runtime>(admin: AccountId, pool_id: PoolId) {
 	pallet_pool_system::Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id)
 		.unwrap();
+}
+
+pub fn get_tranche_ids<T: Runtime>(pool_id: PoolId) -> Vec<TrancheId> {
+	pallet_pool_system::Pool::<T>::get(pool_id)
+		.unwrap()
+		.tranches
+		.ids
+		.into_inner()
 }
