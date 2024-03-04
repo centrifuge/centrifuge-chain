@@ -176,7 +176,7 @@ fn add_pool<T: Runtime>() {
 	//
 	// NOTE: That is really relevant for the router too.
 	//     We need to check `Pending` and see for errors
-	//     unfortuntately and then error in the router instead of returning success.
+	//     unfortunately and then error in the router instead of returning success.
 
 	// Adding a pool again DOES NOT change creation time - i.e. not override storage
 	assert_eq!(
@@ -237,7 +237,7 @@ fn disallow_investment_currency<T: Runtime>() {
 }
 
 fn update_member<T: Runtime>() {
-	todo!()
+	todo!("use setup full because of tranche id req")
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {

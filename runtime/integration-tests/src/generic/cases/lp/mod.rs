@@ -322,6 +322,7 @@ pub fn setup_full<T: Runtime>() -> impl EvmEnv<T> {
 	})
 }
 
+/// Default setup required for EVM <> CFG communication
 pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl EvmEnv<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -849,33 +850,58 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 	env
 }
 
+/// Enables three investment currencies for each valid pair of pool and tranche
+/// id.
 pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	// Per (pool_id, tranche_id)
+	todo!("call allow_investment_currency 3");
+
 	// Pool 1, Tranche 1
 	// AllowInvestmentCurrency 1
+	todo!("call allow_investment_currency 1");
 	// AllowInvestmentCurrency 2
+	todo!("call allow_investment_currency 2");
 	// AllowInvestmentCurrency 3
 
 	// Pool 2, Tranche 2
 	// AllowInvestmentCurrency 1
+	todo!("call allow_investment_currency 1");
 	// AllowInvestmentCurrency 2
+	todo!("call allow_investment_currency 2");
 	// AllowInvestmentCurrency 3
+	todo!("call allow_investment_currency 3");
 }
 
+/// Calls `DeployLiquidityPool` for each possible triplet of pool, tranche and
+/// investment currency id.
 pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// ------------------ EVM Side ----------------------- //
 	// Deploy LP and more for both pools and all currencies
+	todo!("EVM call DeployLiquidityPool(pool, tranche, curr_id)");
 }
 
+/// Initiates tranches on EVM via `DeployTranche` contract and then sends
+/// `add_tranche(pool, tranche_id)` messages for a total of three tranches of
+/// pool A and B.
 pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// AddTranche 1 A
 
+	todo!("call lp add_tranche");
+	todo!("EVM call DeployTranche");
+
 	// AddTranche 1 B
+	todo!("call add_pool");
+	todo!("call lp add_tranche");
+	todo!("DeployTranche");
 	// AddTranche 2 B
+	todo!("call lp add_tranche");
+	todo!("DeployTranche");
 }
 
+/// Create two pools A, B and send `add_pool` message to EVM
+/// * Pool A with 1 tranche
+/// * Pool B with 2 tranches
 pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	// Create 2x pools
-	// * single tranched pool A
 	crate::generic::utils::pool::create_one_tranched::<T>(
 		Keyring::Admin.into(),
 		POOL_A,
@@ -888,7 +914,6 @@ pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
-	// * double tranched pool B
 	crate::generic::utils::pool::create_two_tranched::<T>(
 		Keyring::Admin.into(),
 		POOL_B,
@@ -904,9 +929,10 @@ pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	utils::process_outbound::<T>()
 }
 
+/// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
+/// Centrifuge Chain and trigger `AddCurrency` from Centrifuge Chain to EVM
 pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	// Create 3x ERC-20 currency as Stablecoins
-	//
+	// EVM: Create currencies
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
 	env.deploy(
 		"ERC20",
@@ -1094,9 +1120,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
-	// AddCurrency
-	// * register in OrmlAssetRegistry
-	// * trigger `AddCurrency`
+	// Centrifuge Chain: Register currencies and trigger `AddCurrency`
 	let usdc_address = env.deployed("usdc").address();
 	env.parachain_state_mut(|| {
 		register_currency::<T>(USDC, |meta| {
