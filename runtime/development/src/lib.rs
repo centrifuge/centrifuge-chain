@@ -1092,6 +1092,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
