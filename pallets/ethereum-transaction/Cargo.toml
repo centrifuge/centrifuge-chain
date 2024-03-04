@@ -40,7 +40,7 @@ cfg-traits = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 
-pallet-balances = { workspace = true , default-features = true }
+pallet-balances = { workspace = true, default-features = true }
 pallet-evm-precompile-simple = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 
