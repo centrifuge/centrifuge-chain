@@ -13,7 +13,7 @@
 pub use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn create_order() -> Weight;
+	fn place_order() -> Weight;
 	fn update_order() -> Weight;
 	fn cancel_order() -> Weight;
 	fn fill_order() -> Weight;
@@ -21,7 +21,7 @@ pub trait WeightInfo {
 }
 
 impl WeightInfo for () {
-	fn create_order() -> Weight {
+	fn place_order() -> Weight {
 		Weight::zero()
 	}
 

@@ -82,7 +82,7 @@ impl<T: frame_system::Config> pallet_token_mux::WeightInfo for WeightInfo<T> {
 	/// Proof: Swaps OrderIdToSwapId (max_values: None, max_size: Some(81), added: 2556, mode: MaxEncodedLen)
 	/// Storage: OrderBook UserOrders (r:0 w:1)
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	fn match_swap_to_local() -> Weight {
+	fn match_swap() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1439`
 		//  Estimated: `11406`

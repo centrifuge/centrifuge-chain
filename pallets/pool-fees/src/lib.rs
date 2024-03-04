@@ -21,6 +21,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod types;
+pub mod weights;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -155,8 +157,7 @@ pub mod pallet {
 		/// Fetching method for the time of the current block
 		type Time: TimeAsSecs;
 
-		// TODO: Enable after creating benchmarks
-		// type WeightInfo: WeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Maps a pool to their corresponding fee ids with [PoolFeeBucket]
@@ -492,11 +493,10 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			let (_, _count) =
+			let (_, count) =
 				Self::update_portfolio_valuation_for_pool(pool_id, &mut T::Balance::zero())?;
 
-			// Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
-			Ok(Some(T::DbWeight::get().reads(1)).into())
+			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
 	}
 
