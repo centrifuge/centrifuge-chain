@@ -23,8 +23,8 @@ use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
-const CURRENCY_IN: u32 = 1000;
-const CURRENCY_OUT: u32 = 1001;
+const CURRENCY_IN: u32 = 1001;
+const CURRENCY_OUT: u32 = 1002;
 const RATIO: u32 = 2; // x2
 const FEEDER: u32 = 23;
 
