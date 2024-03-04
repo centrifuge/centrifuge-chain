@@ -10,11 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{fee::FeeAmountProration, Seconds};
+use cfg_traits::{
+	fee::{FeeAmountProration, PoolFeeBucket},
+	Seconds,
+};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
+use sp_std::vec::Vec;
 
 use crate::fixed_point::FixedPointNumberExtension;
 
@@ -249,16 +253,32 @@ pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 	))
 }
 
+/// Represents all active fees of a pool fee bucket
+#[derive(Decode, Encode, TypeInfo)]
+pub struct PoolFeesOfBucket<FeeId, AccountId, Balance, Rate> {
+	/// The corresponding pool fee bucket
+	pub bucket: PoolFeeBucket,
+	/// The list of active fees for the bucket
+	pub fees: Vec<PoolFee<AccountId, FeeId, PoolFeeAmounts<Balance, Rate>>>,
+}
+
+/// Represent all active fees of a pool divided by buckets
+pub type PoolFeesList<FeeId, AccountId, Balance, Rate> =
+	Vec<PoolFeesOfBucket<FeeId, AccountId, Balance, Rate>>;
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
 	mod saturated_proration {
-		use cfg_primitives::SECONDS_PER_YEAR;
-		use sp_arithmetic::traits::{One, Zero};
+		use cfg_primitives::{CFG, DAYS, SECONDS_PER_YEAR};
+		use sp_arithmetic::{
+			traits::{One, Zero},
+			FixedPointNumber,
+		};
 
 		use super::*;
-		use crate::fixed_point::Rate;
+		use crate::fixed_point::{Quantity, Rate};
 
 		type Balance = u128;
 
@@ -352,6 +372,28 @@ mod tests {
 			assert!(
 				saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) < right_bound
 			);
+		}
+
+		#[test]
+		fn precision_quantity_vs_rate() {
+			let period = (DAYS / 4) as Seconds;
+			let nav_multiplier = 1_000_000;
+			let nav = nav_multiplier * CFG;
+
+			let q_proration = saturated_rate_proration::<Quantity>(
+				Quantity::checked_from_rational(1, 100).unwrap(),
+				period,
+			);
+			let r_proration = saturated_rate_proration::<Rate>(
+				Rate::checked_from_rational(1, 100).unwrap(),
+				period,
+			);
+
+			let q_amount = q_proration.saturating_mul_int(nav);
+			let r_amount = r_proration.saturating_mul_int(nav);
+			let r_amount_rounded_up = (r_amount / (nav_multiplier) + 1) * (nav_multiplier);
+
+			assert_eq!(q_amount, r_amount_rounded_up);
 		}
 	}
 }

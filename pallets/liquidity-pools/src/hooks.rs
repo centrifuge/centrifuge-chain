@@ -83,12 +83,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = (T::AccountId, T::TrancheCurrency);
-	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
+	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
-		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
+		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
@@ -127,12 +127,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = (T::AccountId, T::TrancheCurrency);
-	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
+	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
-		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
+		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;

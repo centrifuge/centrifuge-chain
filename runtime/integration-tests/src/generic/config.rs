@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
-	Index, ItemId, LoanId, PoolId, Signature, TrancheId,
+	Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -132,16 +132,19 @@ pub trait Runtime:
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
 	+ pallet_order_book::Config<
-		Balance = Balance,
+		BalanceIn = Balance,
+		BalanceOut = Balance,
 		CurrencyId = CurrencyId,
 		OrderIdNonce = u64,
 		Ratio = Ratio,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
-	> + pallet_foreign_investments::Config<
-		Balance = Balance,
+	> + pallet_swaps::Config<OrderId = OrderId, SwapId = pallet_foreign_investments::SwapId<Self>>
+	+ pallet_foreign_investments::Config<
+		ForeignBalance = Balance,
+		PoolBalance = Balance,
+		TrancheBalance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
-		SwapId = u64,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
@@ -250,11 +253,13 @@ pub trait Runtime:
 	/// You can extend this bounds to give extra API support
 	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::Block>
 		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::Block>
-		+ apis::runtime_decl_for_loans_api::LoansApiV1<
+		+ apis::runtime_decl_for_loans_api::LoansApiV2<
 			Self::Block,
 			PoolId,
 			LoanId,
 			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+			Balance,
+			pallet_loans::entities::input::PriceCollectionInput<Self>,
 		> + apis::runtime_decl_for_pools_api::PoolsApiV1<
 			Self::Block,
 			PoolId,
@@ -268,6 +273,9 @@ pub trait Runtime:
 			AccountId,
 			TrancheCurrency,
 			InvestmentPortfolio<Balance, CurrencyId>,
+		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
+			Self::Block,
+			AccountId,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;

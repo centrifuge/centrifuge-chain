@@ -27,9 +27,6 @@ members = [
   "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
-  "pallets/migration",
-  "pallets/nft",
-  "pallets/nft-sales",
   "pallets/oracle-feed",
   "pallets/oracle-collection",
   "pallets/order-book",
@@ -39,8 +36,10 @@ members = [
   "pallets/pool-registry",
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
-  "pallets/transfer-allowlist",
   "pallets/rewards",
+  "pallets/swaps",
+  "pallets/token-mux",
+  "pallets/transfer-allowlist",
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/development",
@@ -58,7 +57,7 @@ documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
 
 [workspace.dependencies]
 hex-literal = { version = "0.3.4" }
-hex = { version = "0.4.3", default_features = false }
+hex = { version = "0.4.3", default-features = false }
 smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
 parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
@@ -79,6 +78,12 @@ jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 url = "2.2.2"
 tempfile = "3.1.0"
 strum = { version = "0.24", default-features = false, features = ["derive"] }
+bitflags = { version = "1.3" }
+rand = { version = "0.8.5", default-features = false }
+rev_slice = { version = "0.1.5", default-features = false }
+impl-trait-for-tuples = "0.2.1"
+num-traits = { version = "0.2", default-features = false }
+num_enum = { version = "0.5.3", default-features = false }
 serde_json = "1.0.107"
 
 # Cumulus
@@ -162,6 +167,8 @@ sp-blockchain = { git = "https://github.com/paritytech/substrate", default-featu
 sp-consensus = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-trie = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = [
@@ -215,8 +222,12 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
+pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = [
+  "forbid-evm-reentrancy",
+] }
 pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-blake2 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-bn128 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -237,6 +248,8 @@ fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-
 moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
 # Centrifuge organization
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }
@@ -266,9 +279,6 @@ pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = 
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
-pallet-migration-manager = { path = "pallets/migration", default-features = false }
-pallet-nft = { path = "pallets/nft", default-features = false }
-pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
 pallet-oracle-collection = { path = "pallets/oracle-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
@@ -279,6 +289,8 @@ pallet-pool-system = { path = "pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-features = false }
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
+pallet-swaps = { path = "pallets/swaps", default-features = false }
+pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 
 # Centrifuge libs
@@ -287,6 +299,8 @@ cfg-traits = { path = "libs/traits", default-features = false }
 cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 cfg-mocks = { path = "libs/mocks", default-features = false }
+cfg-test-utils = { path = "libs/test-utils", default-features = false }
+proofs = { path = "libs/proofs", default-features = false }
 
 # Centrifuge runtimes
 runtime-common = { path = "runtime/common", default-features = false }
@@ -344,10 +358,7 @@ pallet-recovery = { git = "https://github.com/paritytech//substrate", branch = "
 pallet-scheduler = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-society = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-staking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-sudo = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-timestamp = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
@@ -554,10 +565,7 @@ pallet-recovery = { git = "https://github.com/paritytech//substrate", branch = "
 pallet-scheduler = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-society = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-staking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-sudo = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-timestamp = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }

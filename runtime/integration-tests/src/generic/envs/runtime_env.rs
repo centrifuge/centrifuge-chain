@@ -9,14 +9,16 @@ use ethabi::{ethereum_types, Log, RawLog, Token};
 use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
+	storage::{transactional, TransactionOutcome},
 	traits::GenesisBuild,
 };
+use frame_system::LastRuntimeUpgradeInfo;
 use pallet_evm::{CallInfo, FeeCalculator, Runner};
 use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, H256, U256};
+use sp_core::{sr25519::Public, Get, H256, U256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -326,6 +328,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
 
+		// NOTE: Setting the current on-chain runtime version to the latest one, to
+		//       prevent running migrations
+		parachain_ext.execute_with(|| {
+			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
+				<T as frame_system::Config>::Version::get(),
+			))
+		});
+
 		parachain_ext.execute_with(|| Self::prepare_block(1));
 
 		// Needed for the aura usage
@@ -356,7 +366,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
 		let call: T::RuntimeCallExt = call.into();
-		let info = call.get_dispatch_info();
+		let info = self.parachain_state(|| call.get_dispatch_info());
 
 		let extrinsic = self.parachain_state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.id()).nonce;
@@ -416,13 +426,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.parachain_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 
@@ -432,13 +443,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.sibling_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 

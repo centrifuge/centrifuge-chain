@@ -11,11 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_traits::ConversionToAssetBalance;
-use cfg_types::{
-	investments::SwapState,
-	tokens::{CurrencyId, CustomMetadata},
-};
+use cfg_traits::{swaps::SwapState, ConversionToAssetBalance};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, GenesisBuild},
@@ -129,7 +126,7 @@ impl cfg_mocks::fees::pallet::Config for Runtime {
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
-	type Status = SwapState<Balance, CurrencyId>;
+	type Status = SwapState<Balance, Balance, CurrencyId>;
 }
 
 parameter_types! {
@@ -207,8 +204,6 @@ parameter_types! {
 
 pub struct DecimalConverter;
 impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter {
-	type Error = DispatchError;
-
 	fn to_asset_balance(
 		balance: Balance,
 		currency_in: CurrencyId,
@@ -224,7 +219,8 @@ impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = RegistryMock;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DecimalConverter = DecimalConverter;
@@ -240,17 +236,6 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut e = new_test_ext_no_pair();
-
-	e.execute_with(|| {
-		order_book::TradingPair::<Runtime>::insert(CURRENCY_B, CURRENCY_A, token_a(5));
-		order_book::TradingPair::<Runtime>::insert(CURRENCY_A, CURRENCY_B, token_b(5));
-	});
-
-	e
-}
-
-pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();

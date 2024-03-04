@@ -44,7 +44,7 @@ use sp_std::vec::Vec;
 
 use crate::{
 	pallet as pallet_pool_fees, pallet::AssetsUnderManagement, types::Change, ActiveFees, Event,
-	FeeIds, FeeIdsToPoolBucket, LastFeeId, PoolFeeInfoOf, PoolFeeOf,
+	Event::Accrued, FeeIds, FeeIdsToPoolBucket, LastFeeId, PoolFeeInfoOf, PoolFeeOf,
 };
 
 pub const SECONDS: u64 = 1000;
@@ -337,6 +337,7 @@ pub fn pay_single_fee_and_assert(
 	if !fee_amount.is_zero() {
 		System::assert_last_event(
 			Event::Paid {
+				pool_id: POOL,
 				fee_id,
 				amount: fee_amount,
 				destination: DESTINATION,
@@ -365,6 +366,15 @@ pub fn assert_pending_fee(
 	};
 
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
+}
+
+pub fn assert_accrued_event_did_not_dispatch() {
+	assert!(!System::events().iter().any(|e| {
+		match e.event {
+			RuntimeEvent::PoolFees(Accrued { .. }) => true,
+			_ => false,
+		}
+	}));
 }
 
 pub(crate) fn init_mocks() {

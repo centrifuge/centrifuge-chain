@@ -469,8 +469,6 @@ pub mod foreign_investments {
 			CustomMetadata = cfg_types::tokens::CustomMetadata,
 		>,
 	{
-		type Error = DispatchError;
-
 		fn to_asset_balance(
 			balance: Balance,
 			currency_in: CurrencyId,

@@ -11,6 +11,7 @@ documentation.workspace = true
 [dependencies]
 hex-literal = { workspace = true }
 log = { workspace = true }
+num_enum = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
@@ -28,16 +29,19 @@ sp-std = { workspace = true }
 
 polkadot-parachain = { workspace = true }
 xcm = { workspace = true }
+xcm-builder = { workspace = true }
 xcm-executor = { workspace = true }
 
 orml-traits = { workspace = true }
 
+pallet-evm-precompile-balances-erc20 = { workspace = true }
 pallet-evm-precompile-blake2 = { workspace = true }
 pallet-evm-precompile-bn128 = { workspace = true }
 pallet-evm-precompile-dispatch = { workspace = true }
 pallet-evm-precompile-modexp = { workspace = true }
 pallet-evm-precompile-sha3fips = { workspace = true }
 pallet-evm-precompile-simple = { workspace = true }
+precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
 
@@ -88,10 +92,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
-pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
-pallet-nft = { workspace = true }
-pallet-nft-sales = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
@@ -143,6 +144,7 @@ std = [
   "pallet-base-fee/std",
   "pallet-ethereum/std",
   "pallet-evm-chain-id/std",
+  "pallet-evm-precompile-balances-erc20/std",
   "pallet-evm-precompile-blake2/std",
   "pallet-evm-precompile-bn128/std",
   "pallet-evm-precompile-dispatch/std",
@@ -170,13 +172,8 @@ std = [
   "sp-std/std",
   "xcm-executor/std",
   "xcm-primitives/std",
+  "xcm-builder/std",
   "xcm/std",
-  "pallet-evm-precompile-blake2/std",
-  "pallet-evm-precompile-bn128/std",
-  "pallet-evm-precompile-dispatch/std",
-  "pallet-evm-precompile-modexp/std",
-  "pallet-evm-precompile-sha3fips/std",
-  "pallet-evm-precompile-simple/std",
 
   # Locals
   "cfg-primitives/std",
@@ -226,10 +223,7 @@ std = [
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-membership/std",
-  "pallet-migration-manager/std",
   "pallet-multisig/std",
-  "pallet-nft/std",
-  "pallet-nft-sales/std",
   "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
@@ -265,6 +259,7 @@ runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks", # Optional enabled
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "xcm-builder/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
 
   # Locals
@@ -307,10 +302,7 @@ runtime-benchmarks = [
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
-  "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
-  "pallet-nft/runtime-benchmarks",
-  "pallet-nft-sales/runtime-benchmarks",
   "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
@@ -385,10 +377,7 @@ try-runtime = [
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-membership/try-runtime",
-  "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
-  "pallet-nft/try-runtime",
-  "pallet-nft-sales/try-runtime",
   "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",

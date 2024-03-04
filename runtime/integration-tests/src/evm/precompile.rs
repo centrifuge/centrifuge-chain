@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 
 use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, TrancheId, CFG};
+use cfg_primitives::{AccountId, Balance, CouncilCollective, PoolId, TrancheId, CFG};
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Codec};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -37,8 +37,8 @@ use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::{
 	chain::centrifuge::{
-		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
-		RuntimeEvent, RuntimeOrigin, PARA_ID,
+		FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+		PARA_ID,
 	},
 	evm::ethereum_transaction::TEST_CONTRACT_CODE,
 	utils::{
@@ -58,6 +58,7 @@ async fn axelar_precompile_execute() {
 
 	let currency_id = CurrencyId::ForeignAsset(123456);
 
+	let lp_axelar_gateway = H160::from_low_u64_be(LP_AXELAR_GATEWAY);
 	let sender_address = H160::from_low_u64_be(1_000_002);
 
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
@@ -99,6 +100,7 @@ async fn axelar_precompile_execute() {
 			mintable: true,
 			permissioned: false,
 			pool_currency: false,
+			local_representation: None,
 		},
 	};
 
@@ -216,7 +218,7 @@ async fn axelar_precompile_execute() {
 		assert_ok!(pallet_evm::Pallet::<Runtime>::call(
 			RawOrigin::Signed(derived_sender_account.clone()).into(),
 			sender_address,
-			LP_AXELAR_GATEWAY.into(),
+			lp_axelar_gateway,
 			test_input.to_vec(),
 			U256::from(0),
 			0x100000,

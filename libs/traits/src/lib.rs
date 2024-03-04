@@ -41,6 +41,10 @@ pub mod changes;
 pub mod data;
 /// Traits related to Ethereum/EVM.
 pub mod ethereum;
+/// Traits related to pool fees.
+pub mod fee;
+/// Traits related to fees payment.
+pub mod fees;
 /// Traits related to interest rates.
 pub mod interest;
 /// Traits related to investments.
@@ -49,11 +53,12 @@ pub mod investments;
 pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
+/// Traits related to swaps.
+pub mod swaps;
 
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
-pub mod fee;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -380,106 +385,6 @@ impl<T> PreConditions<T> for Never {
 	}
 }
 
-pub mod fees {
-	use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
-	use parity_scale_codec::FullCodec;
-	use scale_info::TypeInfo;
-	use sp_runtime::traits::MaybeSerializeDeserialize;
-
-	/// Type used for identity the key used to retrieve the fees.
-	pub trait FeeKey:
-		FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + PartialEq
-	{
-	}
-
-	impl<
-			T: FullCodec
-				+ TypeInfo
-				+ MaybeSerializeDeserialize
-				+ sp_std::fmt::Debug
-				+ Clone
-				+ PartialEq,
-		> FeeKey for T
-	{
-	}
-
-	/// A way to identify a fee value.
-	pub enum Fee<Balance, FeeKey> {
-		/// The fee value itself.
-		Balance(Balance),
-
-		/// The fee value is already stored and identified by a key.
-		Key(FeeKey),
-	}
-
-	impl<Balance: Copy, FeeKey: Clone> Fee<Balance, FeeKey> {
-		pub fn value<F: Fees<Balance = Balance, FeeKey = FeeKey>>(&self) -> Balance {
-			match self {
-				Fee::Balance(value) => *value,
-				Fee::Key(key) => F::fee_value(key.clone()),
-			}
-		}
-	}
-
-	/// A trait that used to deal with fees
-	pub trait Fees {
-		type AccountId;
-		type Balance: Balance;
-		type FeeKey: FeeKey;
-
-		/// Get the fee balance for a fee key
-		fn fee_value(key: Self::FeeKey) -> Self::Balance;
-
-		/// Pay an amount of fee to the block author
-		/// If the `from` account has not enough balance or the author is
-		/// invalid the fees are not paid.
-		fn fee_to_author(
-			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult;
-
-		/// Burn an amount of fee
-		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_burn(
-			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult;
-
-		/// Send an amount of fee to the treasury
-		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_treasury(
-			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult;
-
-		/// Allows to initialize an initial state required for a pallet that
-		/// calls pay a fee
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_fee_requirements(_from: &Self::AccountId, _fee: Fee<Self::Balance, Self::FeeKey>) {}
-	}
-
-	/// Trait to pay fees
-	/// This trait can be used by a pallet to just pay fees without worring
-	/// about the value or where the fee goes.
-	pub trait PayFee<AccountId> {
-		/// Pay the fee using a payer
-		fn pay(payer: &AccountId) -> DispatchResult;
-
-		/// Allows to initialize an initial state required for a pallet that
-		/// calls `pay()`.
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_pay_requirements(_payer: &AccountId) {}
-	}
-
-	/// Type to avoid paying fees
-	pub struct NoPayFee;
-	impl<AccountId> PayFee<AccountId> for NoPayFee {
-		fn pay(_: &AccountId) -> DispatchResult {
-			Ok(())
-		}
-	}
-}
-
 /// Trait to determine whether a sending account and currency have a
 /// restriction, and if so is there an allowance for the receiver location.
 pub trait TransferAllowance<AccountId> {
@@ -501,57 +406,6 @@ pub trait CurrencyInspect {
 
 	/// Checks whether the provided currency is a tranche token.
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
-}
-
-/// Determines an order price
-#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-pub enum OrderRatio<Ratio> {
-	Market,
-	Custom(Ratio),
-}
-
-pub trait TokenSwaps<Account> {
-	type CurrencyId;
-	type Balance;
-	type Ratio;
-	type OrderId;
-	type OrderDetails;
-
-	/// Swap tokens selling `amount_out` of `currency_out` and buying
-	/// `currency_in` given an order ratio.
-	fn place_order(
-		account: Account,
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		amount_out: Self::Balance,
-		ratio: OrderRatio<Self::Ratio>,
-	) -> Result<Self::OrderId, DispatchError>;
-
-	/// Update an existing active order.
-	fn update_order(
-		order_id: Self::OrderId,
-		amount_out: Self::Balance,
-		ratio: OrderRatio<Self::Ratio>,
-	) -> DispatchResult;
-
-	/// A sanity check that can be used for validating that a trading pair
-	/// is supported. Will also be checked when placing an order but might be
-	/// cheaper.
-	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
-
-	/// Cancel an already active order.
-	fn cancel_order(order: Self::OrderId) -> DispatchResult;
-
-	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
-
-	/// Makes a conversion between 2 currencies using the market ratio between
-	/// them
-	fn convert_by_market(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		amount_out: Self::Balance,
-	) -> Result<Self::Balance, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
@@ -621,9 +475,10 @@ pub trait TryConvert<A, B> {
 // TODO: Remove usage for the one from frame_support::traits::tokens once we are
 // on the same Polkadot version
 pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
-	type Error;
-	fn to_asset_balance(balance: InBalance, asset_id: AssetId)
-		-> Result<AssetBalance, Self::Error>;
+	fn to_asset_balance(
+		balance: InBalance,
+		asset_id: AssetId,
+	) -> Result<AssetBalance, DispatchError>;
 }
 
 /// Converts an asset balance value into balance.
@@ -683,4 +538,9 @@ impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 	fn get(_: &Source, _: &Key) -> Result<Option<Self::Value>, DispatchError> {
 		Err(DispatchError::Other("No value"))
 	}
+}
+
+/// Checks whether an asset is the local representation of another one
+pub trait HasLocalAssetRepresentation<AssetRegistry> {
+	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError>;
 }

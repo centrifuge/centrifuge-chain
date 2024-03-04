@@ -142,7 +142,6 @@ frame_support::construct_runtime!(
 		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
-		ParachainInfo: parachain_info::{Pallet, Storage},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		MockChangeGuard: pallet_mock_change_guard,
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
@@ -337,7 +336,7 @@ pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
 	type Id = (MockAccountId, TrancheCurrency);
-	type Status = cfg_types::investments::CollectedAmount<Balance>;
+	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
 		Ok(())

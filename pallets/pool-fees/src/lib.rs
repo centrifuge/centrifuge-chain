@@ -34,7 +34,7 @@ pub mod pallet {
 	use cfg_types::{
 		pools::{
 			PayableFeeAmount, PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeEditor, PoolFeeInfo,
-			PoolFeeType,
+			PoolFeeType, PoolFeesList, PoolFeesOfBucket,
 		},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
@@ -250,21 +250,31 @@ pub mod pallet {
 		},
 		/// A pool fee was charged.
 		Charged {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
 		/// A pool fee was uncharged.
 		Uncharged {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
 		/// A pool fee was paid.
 		Paid {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			destination: T::AccountId,
+		},
+		/// A fixed pool fee accrued
+		Accrued {
+			pool_id: T::PoolId,
+			fee_id: T::FeeId,
+			pending: T::Balance,
+			disbursement: T::Balance,
 		},
 		/// The portfolio valuation for a pool was updated.
 		PortfolioValuationUpdated {
@@ -294,6 +304,10 @@ pub mod pallet {
 		UnauthorizedEdit,
 		/// Attempted to charge a fee of unchargeable type.
 		CannotBeCharged,
+		/// Attempted to charge with zero amount
+		NothingCharged,
+		/// Attempted to uncharge with zero amount
+		NothingUncharged,
 	}
 
 	#[pallet::call]
@@ -391,7 +405,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = Self::mutate_active_fee(fee_id, |fee| {
+			ensure!(!amount.is_zero(), Error::<T>::NothingCharged);
+
+			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -407,6 +423,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Charged {
+				pool_id,
 				fee_id,
 				amount,
 				pending,
@@ -427,7 +444,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = Self::mutate_active_fee(fee_id, |fee| {
+			ensure!(!amount.is_zero(), Error::<T>::NothingUncharged);
+
+			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -443,6 +462,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Uncharged {
+				pool_id,
 				fee_id,
 				amount,
 				pending,
@@ -500,11 +520,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::FeeNotFound)?)
 		}
 
-		/// Mutate fee id entry in ActiveFees
+		/// Mutate the given fee id entry in ActiveFees and return the
+		/// corresponding pool id.
 		fn mutate_active_fee(
 			fee_id: T::FeeId,
 			mut f: impl FnMut(&mut PoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
-		) -> Result<T::Balance, DispatchError> {
+		) -> Result<(T::PoolId, T::Balance), DispatchError> {
 			let (pool_id, bucket) =
 				FeeIdsToPoolBucket::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
 
@@ -515,9 +536,9 @@ pub mod pallet {
 					.ok_or(Error::<T>::FeeNotFound)?;
 
 				if let Some(fee) = fees.get_mut(pos) {
-					f(fee)
+					Ok((pool_id, f(fee)?))
 				} else {
-					Ok(T::Balance::zero())
+					Ok((pool_id, T::Balance::zero()))
 				}
 			})
 		}
@@ -551,19 +572,22 @@ pub mod pallet {
 
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
-					T::Tokens::transfer(
-						pool_currency,
-						&T::PalletId::get().into_account_truncating(),
-						&fee.destination,
-						fee.amounts.disbursement,
-						Preservation::Expendable,
-					)?;
+					if !fee.amounts.disbursement.is_zero() {
+						T::Tokens::transfer(
+							pool_currency,
+							&T::PalletId::get().into_account_truncating(),
+							&fee.destination,
+							fee.amounts.disbursement,
+							Preservation::Expendable,
+						)?;
 
-					Self::deposit_event(Event::<T>::Paid {
-						fee_id: fee.id,
-						amount: fee.amounts.disbursement,
-						destination: fee.destination.clone(),
-					});
+						Self::deposit_event(Event::<T>::Paid {
+							pool_id,
+							fee_id: fee.id,
+							amount: fee.amounts.disbursement,
+							destination: fee.destination.clone(),
+						});
+					}
 
 					fee.amounts.disbursement = T::Balance::zero();
 				}
@@ -624,6 +648,16 @@ pub mod pallet {
 						fee.amounts.payable =
 							PayableFeeAmount::UpTo(payable.ensure_sub(disbursement)?)
 					};
+
+					// Dispatch event for fixed fees
+					if let PoolFeeType::Fixed { .. } = fee.amounts.fee_type {
+						Self::deposit_event(Event::<T>::Accrued {
+							pool_id,
+							fee_id: fee.id,
+							pending: fee.amounts.pending,
+							disbursement: fee.amounts.disbursement,
+						});
+					}
 				}
 				Ok::<(), DispatchError>(())
 			})?;
@@ -692,7 +726,7 @@ pub mod pallet {
 		/// ```ignore
 		/// NAV(PoolFees) = sum(pending_fee_amount) = sum(epoch_amount - disbursement)
 		/// ```
-		fn update_portfolio_valuation_for_pool(
+		pub fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
 			reserve: &mut T::Balance,
 		) -> Result<(T::Balance, u32), DispatchError> {
@@ -754,6 +788,18 @@ pub mod pallet {
 			});
 
 			Ok(())
+		}
+
+		// Returns all fees of a pool divided by the buckets
+		pub fn get_pool_fees(
+			pool_id: T::PoolId,
+		) -> PoolFeesList<T::FeeId, T::AccountId, T::Balance, T::Rate> {
+			PoolFeeBucket::iter()
+				.map(|bucket| PoolFeesOfBucket {
+					bucket,
+					fees: ActiveFees::<T>::get(pool_id, bucket).into_inner(),
+				})
+				.collect()
 		}
 	}
 

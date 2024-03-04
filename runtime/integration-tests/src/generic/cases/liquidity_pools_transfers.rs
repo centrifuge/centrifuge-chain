@@ -1,8 +1,9 @@
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, CouncilCollective, PoolId, TrancheId,
+	currency_decimals, parachains, AccountId, Balance, CouncilCollective, OrderId, PoolId,
+	TrancheId,
 };
 use cfg_traits::{
-	investments::{ForeignInvestment, Investment, OrderManager, TrancheCurrency},
+	investments::{Investment, OrderManager, TrancheCurrency},
 	liquidity_pools::{Codec, InboundQueue, OutboundQueue},
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
@@ -262,7 +263,7 @@ type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>
 use utils::*;
 
 mod development {
-	use development_runtime::LocationToAccountId;
+	use development_runtime::xcm::LocationToAccountId;
 
 	use super::*;
 
@@ -528,6 +529,15 @@ mod development {
 				POOL_ID,
 				default_tranche_id::<T>(POOL_ID),
 			)
+		}
+
+		pub fn default_order_id<T: Runtime + FudgeSupport>(investor: &AccountId) -> OrderId {
+			let default_swap_id = (
+				default_investment_id::<T>(),
+				pallet_foreign_investments::Action::Investment,
+			);
+			pallet_swaps::Pallet::<T>::order_id(&investor, default_swap_id)
+				.expect("Swap order exists; qed")
 		}
 
 		/// Returns the default investment account derived from the
@@ -822,49 +832,12 @@ mod development {
 			);
 
 			if enable_foreign_to_pool_pair {
-				assert!(
-					!pallet_foreign_investments::Pallet::<T>::accepted_payment_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					pool_currency,
-					foreign_currency,
-					1
-				));
-				assert!(
-					pallet_foreign_investments::Pallet::<T>::accepted_payment_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
 				crate::generic::utils::oracle::feed_from_root::<T>(
 					OracleKey::ConversionRatio(foreign_currency, pool_currency),
 					Ratio::one(),
 				);
 			}
 			if enable_pool_to_foreign_pair {
-				assert!(
-					!pallet_foreign_investments::Pallet::<T>::accepted_payout_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
-
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					foreign_currency,
-					pool_currency,
-					1
-				));
-				assert!(
-					pallet_foreign_investments::Pallet::<T>::accepted_payout_currency(
-						default_investment_id::<T>(),
-						foreign_currency
-					)
-				);
 				crate::generic::utils::oracle::feed_from_root::<T>(
 					OracleKey::ConversionRatio(pool_currency, foreign_currency),
 					Ratio::one(),
@@ -1255,6 +1228,7 @@ mod development {
 							mintable: false,
 							permissioned: false,
 							pool_currency: false,
+							local_representation: None,
 						},
 					},
 					Some(currency_id)
@@ -1285,9 +1259,7 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Disallow liquidityPools transferability
 						transferability: CrossChainTransferability::Xcm(Default::default()),
-						mintable: Default::default(),
-						permissioned: Default::default(),
-						pool_currency: Default::default(),
+						..Default::default()
 					}),
 				));
 
@@ -1311,9 +1283,7 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Disallow cross chain transferability entirely
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
-						pool_currency: Default::default(),
+						..Default::default()
 					})
 				));
 
@@ -1367,9 +1337,8 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidity_pools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						pool_currency: true,
+						..Default::default()
 					})
 				));
 
@@ -1377,7 +1346,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					)
 				);
@@ -1386,7 +1354,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Charlie.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1417,8 +1384,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						// Tranche id is arbitrary in this case as pool does not exist
-						[0u8; 16],
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1434,10 +1399,8 @@ mod development {
 						location: None,
 						existential_deposit: 1_000_000,
 						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
 							pool_currency: true,
+							..Default::default()
 						},
 					},
 					Some(currency_id)
@@ -1446,37 +1409,7 @@ mod development {
 				// Create pool
 				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
-				// Should fail if asset is not payment currency
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
-				);
-
-				// Allow as payment but not payout currency
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					currency_id,
-					ausd_currency_id,
-					Default::default()
-				));
-
-				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
-
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
-				);
 
 				// Should fail if currency is not liquidityPools transferable
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
@@ -1490,17 +1423,15 @@ mod development {
 					Some(CustomMetadata {
 						// Disallow any cross chain transferability
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Changed: Allow to be usable as pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
@@ -1518,17 +1449,15 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidityPools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Still allow to be pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1554,7 +1483,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1602,9 +1530,8 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidity_pools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						pool_currency: true,
+						..Default::default()
 					})
 				));
 
@@ -1612,7 +1539,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					)
 				);
@@ -1621,7 +1547,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Charlie.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1652,8 +1577,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						// Tranche id is arbitrary in this case as pool does not exist
-						[0u8; 16],
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
@@ -1669,10 +1592,8 @@ mod development {
 						location: None,
 						existential_deposit: 1_000_000,
 						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
 							pool_currency: true,
+							..Default::default()
 						},
 					},
 					Some(currency_id)
@@ -1681,37 +1602,7 @@ mod development {
 				// Create pool
 				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
-				// Should fail if asset is not payment currency
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
-				);
-
-				// Allow as payment but not payout currency
-				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					currency_id,
-					ausd_currency_id,
-					Default::default()
-				));
-
-				// Should fail if asset is not payout currency
 				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
-
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						ausd_currency_id,
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
-				);
 
 				// Should fail if currency is not liquidityPools transferable
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
@@ -1725,17 +1616,15 @@ mod development {
 					Some(CustomMetadata {
 						// Disallow any cross chain transferability
 						transferability: CrossChainTransferability::None,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Changed: Allow to be usable as pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
@@ -1753,17 +1642,15 @@ mod development {
 					Some(CustomMetadata {
 						// Changed: Allow liquidityPools transferability
 						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: Default::default(),
-						permissioned: Default::default(),
 						// Still allow to be pool currency
 						pool_currency: true,
+						..Default::default()
 					}),
 				));
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -1789,7 +1676,6 @@ mod development {
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
 						pool_id,
-						default_tranche_id::<T>(pool_id),
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
@@ -2218,7 +2104,6 @@ mod development {
 					// Create new pool
 					create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
 					let investment_currency_id: CurrencyId = default_investment_id::<T>().into();
-
 					// Set permissions and execute initial investment
 					do_initial_increase_investment::<T>(
 						pool_id,
@@ -3829,15 +3714,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader,
@@ -3950,15 +3829,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader.clone(),
@@ -4027,15 +3900,9 @@ mod development {
 					));
 
 					// Swap decreased amount
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated
 					));
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -4105,12 +3972,7 @@ mod development {
 					);
 
 					// Fulfilling order should propagate it from swapping to investing
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
+					let swap_order_id = default_order_id::<T>(&investor);
 					fulfill_swap_into_pool::<T>(
 						pool_id,
 						swap_order_id,
@@ -4146,13 +4008,7 @@ mod development {
 						msg.clone()
 					));
 
-					// Fulfill the decrease swap order
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
+					let swap_order_id = default_order_id::<T>(&investor);
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
 						swap_order_id,
@@ -4175,7 +4031,6 @@ mod development {
 
 					let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
-					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4236,15 +4091,9 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					fulfill_swap_into_pool::<T>(
 						pool_id,
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated,
 						invest_amount_foreign_denominated,
 						trader.clone(),
@@ -4264,15 +4113,9 @@ mod development {
 					));
 
 					// Fulfill decrease swap partially
-					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
-						&investor,
-						default_investment_id::<T>(),
-						pallet_foreign_investments::Action::Investment,
-					)
-					.expect("Swap order exists; qed");
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						3 * invest_amount_pool_denominated / 4
 					));
 
@@ -4289,7 +4132,6 @@ mod development {
 						increase_msg
 					));
 
-					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -5506,7 +5348,7 @@ mod development {
 }
 
 mod altair {
-	use altair_runtime::{CurrencyIdConvert, PoolPalletIndex};
+	use altair_runtime::{xcm::CurrencyIdConvert, PoolPalletIndex};
 
 	pub const KSM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1000);
 
@@ -6486,7 +6328,7 @@ mod altair {
 }
 
 mod centrifuge {
-	use centrifuge_runtime::CurrencyIdConvert;
+	use centrifuge_runtime::xcm::CurrencyIdConvert;
 
 	use super::*;
 

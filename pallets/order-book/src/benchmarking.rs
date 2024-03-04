@@ -10,8 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ConversionToAssetBalance, ValueProvider};
-use cfg_types::tokens::CustomMetadata;
+use cfg_traits::{
+	swaps::{OrderRatio, TokenSwaps},
+	ConversionToAssetBalance, ValueProvider,
+};
+use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
 use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
@@ -45,11 +48,11 @@ where
 	pub fn setup_currencies() {
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_IN.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadata {
 				decimals: 6,
 				name: "CURRENCY IN".as_bytes().to_vec(),
 				symbol: "IN".as_bytes().to_vec(),
-				existential_deposit: T::Balance::zero(),
+				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata::default(),
 			},
@@ -58,11 +61,11 @@ where
 
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_OUT.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadata {
 				decimals: 3,
 				name: "CURRENCY OUT".as_bytes().to_vec(),
 				symbol: "OUT".as_bytes().to_vec(),
-				existential_deposit: T::Balance::zero(),
+				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata::default(),
 			},
@@ -82,8 +85,9 @@ where
 		let account_out = account::<T::AccountId>("account_out", 0, 0);
 		let account_in = account::<T::AccountId>("account_in", 0, 0);
 
-		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out()).unwrap();
-		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in).unwrap();
+		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out().into())
+			.unwrap();
+		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in.into()).unwrap();
 
 		(account_out, account_in)
 	}
@@ -93,7 +97,7 @@ where
 		Self::setup_accounts()
 	}
 
-	pub fn amount_out() -> T::Balance {
+	pub fn amount_out() -> T::BalanceOut {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
 			T::MinFulfillmentAmountNative::get(),
 			CURRENCY_OUT.into(),
@@ -104,19 +108,9 @@ where
 			.unwrap()
 			.decimals as usize;
 
-		let zeros = checked_pow(T::Balance::from(10u32), decimals_out).unwrap();
+		let zeros = checked_pow(T::BalanceOut::from(10u32), decimals_out).unwrap();
 
-		min_fulfillment + T::Balance::from(5u32) * zeros
-	}
-
-	pub fn add_trading_pair() {
-		Pallet::<T>::add_trading_pair(
-			RawOrigin::Root.into(),
-			CURRENCY_IN.into(),
-			CURRENCY_OUT.into(),
-			Zero::zero(),
-		)
-		.unwrap();
+		min_fulfillment + T::BalanceOut::from(5u32) * zeros
 	}
 
 	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
@@ -155,7 +149,6 @@ mod benchmarks {
 		init_mocks();
 
 		let (account_out, _) = Helper::<T>::setup();
-		Helper::<T>::add_trading_pair();
 
 		#[extrinsic_call]
 		place_order(
@@ -175,14 +168,14 @@ mod benchmarks {
 		init_mocks();
 
 		let (account_out, _) = Helper::<T>::setup();
-		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+		let amount = Helper::<T>::amount_out() - 1u32.into();
 
 		#[extrinsic_call]
 		update_order(
 			RawOrigin::Signed(account_out),
 			order_id,
-			Helper::<T>::amount_out() - 1u32.into(),
+			amount,
 			OrderRatio::Market,
 		);
 
@@ -195,7 +188,6 @@ mod benchmarks {
 		init_mocks();
 
 		let (account_out, _) = Helper::<T>::setup();
-		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
@@ -210,44 +202,13 @@ mod benchmarks {
 		init_mocks();
 
 		let (account_out, account_in) = Helper::<T>::setup();
-		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+		let amount = Helper::<T>::amount_out();
 
 		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
-		fill_order(
-			RawOrigin::Signed(account_in),
-			order_id,
-			Helper::<T>::amount_out(),
-		);
-
-		Ok(())
-	}
-
-	#[benchmark]
-	fn add_trading_pair() -> Result<(), BenchmarkError> {
-		#[cfg(test)]
-		init_mocks();
-
-		#[extrinsic_call]
-		add_trading_pair(
-			RawOrigin::Root,
-			CURRENCY_IN.into(),
-			CURRENCY_OUT.into(),
-			1u32.into(),
-		);
-
-		Ok(())
-	}
-
-	#[benchmark]
-	fn rm_trading_pair() -> Result<(), BenchmarkError> {
-		#[cfg(test)]
-		init_mocks();
-
-		#[extrinsic_call]
-		rm_trading_pair(RawOrigin::Root, CURRENCY_IN.into(), CURRENCY_OUT.into());
+		fill_order(RawOrigin::Signed(account_in), order_id, amount);
 
 		Ok(())
 	}

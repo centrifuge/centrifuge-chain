@@ -120,28 +120,6 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
-	/// Storage: OrderBook TradingPair (r:0 w:1)
-	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
-	fn add_trading_pair() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 13_605_000 picoseconds.
-		Weight::from_parts(14_127_000, 0)
-			.saturating_add(Weight::from_parts(0, 0))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: OrderBook TradingPair (r:0 w:1)
-	/// Proof: OrderBook TradingPair (max_values: None, max_size: Some(82), added: 2557, mode: MaxEncodedLen)
-	fn rm_trading_pair() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 14_937_000 picoseconds.
-		Weight::from_parts(15_349_000, 0)
-			.saturating_add(Weight::from_parts(0, 0))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
 	fn set_market_feeder() -> Weight {
         // Pending to be generated
 		Weight::zero()

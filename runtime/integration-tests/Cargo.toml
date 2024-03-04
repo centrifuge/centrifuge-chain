@@ -125,10 +125,7 @@ pallet-liquidity-pools-gateway = { workspace = true, features = ["std"] }
 pallet-liquidity-rewards = { workspace = true, features = ["std"] }
 pallet-loans = { workspace = true, features = ["std"] }
 pallet-membership = { workspace = true, features = ["std"] }
-pallet-migration-manager = { workspace = true, features = ["std"] }
 pallet-multisig = { workspace = true, features = ["std"] }
-pallet-nft = { workspace = true, features = ["std"] }
-pallet-nft-sales = { workspace = true, features = ["std"] }
 pallet-oracle-collection = { workspace = true, features = ["std"] }
 pallet-oracle-feed = { workspace = true, features = ["std"] }
 pallet-order-book = { workspace = true, features = ["std"] }
@@ -144,6 +141,7 @@ pallet-rewards = { workspace = true, features = ["std"] }
 pallet-scheduler = { workspace = true, features = ["std"] }
 pallet-session = { workspace = true, features = ["std"] }
 pallet-sudo = { workspace = true, features = ["std"] }
+pallet-swaps = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 pallet-transfer-allowlist = { workspace = true, features = ["std"] }

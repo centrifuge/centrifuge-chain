@@ -19,36 +19,46 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-pub use cfg_primitives::{constants::*, types::*};
+use cfg_primitives::{
+	constants::*,
+	liquidity_pools::GeneralCurrencyPrefix,
+	types::{
+		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
+		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, Index,
+		ItemId, LoanId, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
+		Signature, ThreeFourthOfCouncil, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+	},
+};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
 	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
 	TryConvert,
 };
-pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
-	consts::pools::*,
+	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
 	oracles::OracleKey,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	time::TimeProvider,
-	tokens::{CustomMetadata, StakingCurrency, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata, StakingCurrency, TrancheCurrency},
 };
 use constants::currency::*;
+use cumulus_primitives_core::{MultiAsset, MultiLocation};
 use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
+	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
-		WithdrawReasons,
+		AsEnsureOriginWithArg, ConstU32, ConstU64, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		Get, InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote,
+		UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier,
+		ConstantMultiplier, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -58,29 +68,42 @@ use frame_system::{
 };
 use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
-pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
-use pallet_ethereum::Call::transact;
-use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
+use pallet_ethereum::{Call::transact, PostLogContent};
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressRoot, EnsureAddressTruncated, FeeCalculator,
+	GasWeightMapping, Runner,
+};
 use pallet_investments::OrderType;
+use pallet_liquidity_pools::hooks::{
+	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
+};
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
-pub use pallet_timestamp::Call as TimestampCall;
-pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
+use pallet_transaction_payment::CurrencyAdapter;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
+	evm::{
+		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
+	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::{Feeder, OracleConverterBridge, OracleRatioProvider},
+	gateway::GatewayAccountProvider,
+	liquidity_pools::LiquidityPoolsMessage,
+	oracle::{
+		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
+	},
 	permissions::PoolAdminCheck,
 	remarks::Remark,
+	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
@@ -88,8 +111,6 @@ use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
-#[cfg(any(feature = "std", test))]
-pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -100,20 +121,16 @@ use sp_runtime::{
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
-#[cfg(any(feature = "std", test))]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
+use crate::xcm::*;
+
 pub mod constants;
-pub mod evm;
-pub mod liquidity_pools;
 mod migrations;
 mod weights;
 pub mod xcm;
-
-pub use crate::xcm::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -144,8 +161,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 
 /// Native version.
 #[cfg(any(feature = "std", test))]
-pub fn native_version() -> NativeVersion {
-	NativeVersion {
+pub fn native_version() -> sp_version::NativeVersion {
+	sp_version::NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
 	}
@@ -234,8 +251,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			RuntimeCall::PolkadotXcm(method) => match method {
 				// Block these calls when called by a signed extrinsic.
 				// Root will still be able to execute these.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::execute { .. }
+				pallet_xcm::Call::execute { .. }
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
@@ -243,7 +259,9 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
-				pallet_xcm::Call::force_xcm_version { .. }
+				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_suspension { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
@@ -498,11 +516,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
-					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
-					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
-					// Specifically omitting NftSales `buy`
 					// Specifically omitting Bridge
-					// Specifically omitting Nfts
 					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
@@ -511,7 +525,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
-					// Specifically omitting Migration
 					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
 					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..}) |
 					RuntimeCall::BlockRewards(..)
@@ -966,23 +979,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-// Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the
-// migration folder
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
-}
-
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
@@ -1177,20 +1173,6 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
-}
-
-impl pallet_nft_sales::Config for Runtime {
-	type CollectionId = CollectionId;
-	type Fungibles = Tokens;
-	type ItemId = ItemId;
-	type NonFungibles = Uniques;
-	type PalletId = NftSalesPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
-}
-
 // XCM
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from
@@ -1255,20 +1237,18 @@ impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
 	type Balance = Balance;
-	// Must not set this as long as we don't want to mint the rewards.
-	// By setting this to (), the remainder of TotalRewards - CollatorRewards
-	// will be dropped. Else it would be transferred to the configured Beneficiary.
-	type Beneficiary = ();
-	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
+	type Rate = Rate;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
 	type StakeAmount = StakeAmount;
 	type StakeCurrencyId = BlockRewardCurrency;
 	type StakeGroupId = CollatorGroupId;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TreasuryPalletId = TreasuryPalletId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
@@ -1726,20 +1706,118 @@ parameter_types! {
 impl pallet_order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
+	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+		RuntimeOrigin,
+		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
+		OrmlAssetRegistry,
+	>;
 	type RuntimeEvent = RuntimeEvent;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
+impl pallet_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
+	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
+	type ForeignBalance = Balance;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolBalance = Balance;
+	type PoolInspect = PoolSystem;
+	type SwapBalance = Balance;
+	type Swaps = Swaps;
+	type TrancheBalance = Balance;
+}
+
+parameter_types! {
+	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
+}
+
+impl pallet_liquidity_pools::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
+	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PreTransferFilter = PreLpTransfer<TransferAllowList>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+}
+
+impl pallet_liquidity_pools_gateway::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type InboundQueue = LiquidityPools;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Message = LiquidityPoolsMessage;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
+}
+
+impl pallet_token_mux::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type LocalAssetId = LocalAssetId;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
+	type PalletId = TokenMuxPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Tokens = OrmlTokens;
+	// TODO(william): Change to weights once they exist
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1764,6 +1842,109 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
+
+pub type AltairPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
+	pub PrecompilesValue: AltairPrecompiles = Precompiles::<_, _>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
+	pub const TokenSymbol: &'static str = "AIR";
+}
+
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
+	type BlockGasLimit = BlockGasLimit;
+	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
+	type CallOrigin = EnsureAddressRoot<AccountId>;
+	type ChainId = EVMChainId;
+	type Currency = Balances;
+	type FeeCalculator = BaseFee;
+	type FindAuthor = FindAuthorTruncated<Self>;
+	type GasLimitPovSizeRatio = ConstU64<GAS_LIMIT_POV_SIZE_RATIO>;
+	type GasLimitStorageGrowthRatio = ConstU64<GAS_LIMIT_STORAGE_GROWTH_RATIO>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+	type OnChargeTransaction = ();
+	type OnCreate = ();
+	type PrecompilesType = AltairPrecompiles;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
+}
+
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+impl pallet_base_fee::Config for Runtime {
+	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
+}
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for Runtime {}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// A Block signed with a Justification
+pub type SignedBlock = generic::SignedBlock<Block>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
+);
+
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic =
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+/// Extrinsic type that has already been checked.
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
+
+/// Executive: handles dispatch to the various modules.
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	migrations::UpgradeAltair1034,
+>;
 
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
@@ -1806,15 +1987,16 @@ construct_runtime!(
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 70,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 72,
 
-		// our pallets
+		// our pallets (part 1)
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
+		// Removed: Claims = 92
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 96,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
-		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
+		// Removed: NftSales = 98
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 101,
@@ -1858,47 +2040,12 @@ construct_runtime!(
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
-		// migration pallet
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
-
+		// Our pallets (part 2)
+		// Removed: Migration = 199
+		Swaps: pallet_swaps::{Pallet, Storage} = 200,
+		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
 	}
 );
-
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// A Block signed with a Justification
-pub type SignedBlock = generic::SignedBlock<Block>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-/// The SignedExtension to the basic transaction logic.
-pub type SignedExtra = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
-);
-
-/// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic =
-	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
-/// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic =
-	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
-
-/// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	migrations::UpgradeAltair1034,
->;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
@@ -1997,12 +2144,16 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 
 #[cfg(not(feature = "disable-runtime-api"))]
 mod __runtime_api_use {
-	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+	pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::{locations::Location, pools::PoolNav, tokens::FilterCurrency};
+use cfg_types::{
+	locations::Location,
+	pools::PoolNav,
+	tokens::{FilterCurrency, LocalAssetId},
+};
 use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2182,7 +2333,7 @@ impl_runtime_apis! {
 			let nav_loans = Loans::update_nav(pool_id).ok()?;
 			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
 			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
-			let total = nav.total(pool.reserve.total).ok()?;
+			let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
 
 			Some(PoolNav { nav_aum: nav.nav_aum, nav_fees: nav.nav_fees, reserve: pool.reserve.total, total })
 		}
@@ -2205,7 +2356,14 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+	impl runtime_common::apis::LoansApi<
+		Block,
+		PoolId,
+		LoanId,
+		ActiveLoanInfo<Runtime>,
+		Balance,
+		PriceCollectionInput<Runtime>
+	> for Runtime {
 		fn portfolio(
 			pool_id: PoolId
 		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
@@ -2217,6 +2375,13 @@ impl_runtime_apis! {
 			loan_id: LoanId
 		) -> Option<ActiveLoanInfo<Runtime>> {
 			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
+		}
+
+		fn portfolio_valuation(
+			pool_id: PoolId,
+			input_prices: PriceCollectionInput<Runtime>
+		) -> Result<Balance, DispatchError> {
+			Ok(Loans::update_portfolio_valuation_for_pool(pool_id, input_prices)?.0)
 		}
 	}
 
@@ -2237,6 +2402,15 @@ impl_runtime_apis! {
 	impl runtime_common::apis::OrderBookApi<Block, CurrencyId, Balance> for Runtime {
 		fn min_fulfillment_amount(currency_id: CurrencyId) -> Option<Balance> {
 			OrderBook::min_fulfillment_amount(currency_id).ok()
+		}
+	}
+
+	// PoolFeesApi
+	impl runtime_common::apis::PoolFeesApi<Block, PoolId, PoolFeeId, AccountId, Balance, Rate> for Runtime {
+		fn list_fees(pool_id: PoolId) -> Option<cfg_types::pools::PoolFeesList<PoolFeeId, AccountId, Balance, Rate>> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			PoolFees::update_portfolio_valuation_for_pool(pool_id, &mut pool.reserve.total.clone()).ok()?;
+			Some(PoolFees::get_pool_fees(pool_id))
 		}
 	}
 
@@ -2508,9 +2682,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans, Loans);
@@ -2528,6 +2700,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
+			list_benchmark!(list, extra, pallet_token_mux, TokenMux);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2589,9 +2762,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, Loans);
@@ -2609,6 +2780,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches, pallet_pool_fees, PoolFees);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
+			add_benchmark!(params, batches,	pallet_token_mux, TokenMux);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
