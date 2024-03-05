@@ -939,11 +939,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
-			Token::Uint(Uint::from(
-				USDC.general_currency_index()
-					.expect("USDC is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
 	.unwrap();
@@ -955,11 +951,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
-			Token::Uint(Uint::from(
-				FRAX.general_currency_index()
-					.expect("FRAX is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("frax").address()),
 		]),
 	)
 	.unwrap();
@@ -971,11 +963,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
-			Token::Uint(Uint::from(
-				DAI.general_currency_index()
-					.expect("DAI is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("dai").address()),
 		]),
 	)
 	.unwrap();
@@ -989,11 +977,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
-			Token::Uint(Uint::from(
-				USDC.general_currency_index()
-					.expect("USDC is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
 	.unwrap();
@@ -1005,11 +989,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
-			Token::Uint(Uint::from(
-				FRAX.general_currency_index()
-					.expect("FRAX is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("frax").address()),
 		]),
 	)
 	.unwrap();
@@ -1021,11 +1001,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
-			Token::Uint(Uint::from(
-				DAI.general_currency_index()
-					.expect("DAI is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("dai").address()),
 		]),
 	)
 	.unwrap();
@@ -1039,11 +1015,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
-			Token::Uint(Uint::from(
-				USDC.general_currency_index()
-					.expect("USDC is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
 	.unwrap();
@@ -1055,11 +1027,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
-			Token::Uint(Uint::from(
-				FRAX.general_currency_index()
-					.expect("FRAX is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("frax").address()),
 		]),
 	)
 	.unwrap();
@@ -1071,11 +1039,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
-			Token::Uint(Uint::from(
-				DAI.general_currency_index()
-					.expect("DAI is ForeignAsset")
-					.index,
-			)),
+			Token::Address(env.deployed("dai").address()),
 		]),
 	)
 	.unwrap();

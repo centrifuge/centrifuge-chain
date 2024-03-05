@@ -37,7 +37,9 @@ pub trait CurrencyInfo {
 		None
 	}
 
-	fn custom(&self) -> CustomMetadata;
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata::default()
+	}
 
 	fn ed(&self) -> Balance {
 		0
@@ -58,15 +60,6 @@ pub trait CurrencyInfo {
 		TryFrom::try_from(*&self.id()).ok()
 	}
 }
-
-/// Matches default() but for const support
-pub const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
-	transferability: CrossChainTransferability::None,
-	mintable: false,
-	permissioned: false,
-	pool_currency: false,
-	local_representation: None,
-};
 
 pub fn price_to_currency<N: FixedPointNumber<Inner = Balance>>(
 	price: N,
@@ -92,7 +85,7 @@ impl CurrencyInfo for Usd6 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
@@ -118,7 +111,7 @@ impl CurrencyInfo for Usd12 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
@@ -144,7 +137,7 @@ impl CurrencyInfo for Usd18 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
