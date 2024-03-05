@@ -11,10 +11,7 @@ permissions:
     contents: read
 jobs:
   codecov:
-    runs-on: ubuntu-latest-8-cores
-    # container:
-    #   image: xd009642/tarpaulin:develop-nightly
-    #   options: --security-opt seccomp=unconfined    
+    runs-on: ubuntu-latest-8-cores  
     steps:
       - uses: actions/checkout@master
 
@@ -30,11 +27,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          # cargo tarpaulin  --release  --features fast-runtime --fail-under 10 \
-          #  --no-fail-fast --workspace --timeout 3600 --engine llvm \
-          #  --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml --out html
           cargo tarpaulin --timeout 3600 -e runtime-integration-tests --features fast-runtime --workspace -v --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
-          ls -la
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
