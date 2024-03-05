@@ -18,7 +18,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          cache: disabled
+          cache: enabled
 
       - name: Install Tarpaulin
         run: cargo install --locked cargo-tarpaulin
