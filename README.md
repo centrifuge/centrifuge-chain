@@ -1,7 +1,6 @@
 <div align="center">
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/centrifuge/centrifuge-chain/build-wasm.yml?label=Actions&logo=github)
-
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/centrifuge/centrifuge-chain)](https://github.com/centrifuge/centrifuge-chain/tags)
 [![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.io/)
 [![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/graph/badge.svg?token=RXlH3AJMRB)](https://codecov.io/gh/centrifuge/centrifuge-chain)
