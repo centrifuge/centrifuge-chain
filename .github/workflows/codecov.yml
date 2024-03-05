@@ -19,6 +19,9 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Install Tarpaulin
         run: cargo install --locked cargo-tarpaulin
@@ -27,7 +30,8 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo tarpaulin --timeout 3600 -e runtime-integration-tests --features fast-runtime --workspace -v --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
+          cargo tarpaulin --timeout 300 -e runtime-integration-tests --features fast-runtime \
+          --workspace --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
