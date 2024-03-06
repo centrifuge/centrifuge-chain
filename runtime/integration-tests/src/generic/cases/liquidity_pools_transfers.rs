@@ -4854,8 +4854,8 @@ mod development {
 					target_contract_address: axelar_contract_address,
 					target_contract_hash: axelar_contract_hash,
 					fee_values: FeeValues {
-						value: U256::from(10),
-						gas_limit: U256::from(transaction_call_cost + 10_000),
+						value: U256::from(0),
+						gas_limit: U256::from(transaction_call_cost + 1_000_000),
 						gas_price: U256::from(10),
 					},
 				};
