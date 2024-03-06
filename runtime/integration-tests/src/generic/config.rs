@@ -154,7 +154,7 @@ pub trait Runtime:
 	+ pallet_evm::Config<
 		Runner = pallet_evm::runner::stack::Runner<Self>,
 		Currency = pallet_balances::Pallet<Self>,
-	>
+	> + axelar_gateway_precompile::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

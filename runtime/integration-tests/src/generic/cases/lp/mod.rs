@@ -10,9 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use axelar_gateway_precompile::SourceConverter;
 use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR};
 use cfg_types::{
-	domain_address::Domain,
+	domain_address::{Domain, DomainAddress},
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
 use ethabi::{ethereum_types::U256, FixedBytes, Token, Uint};
@@ -20,6 +21,7 @@ use frame_support::{
 	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
 };
 use frame_system::pallet_prelude::OriginFor;
+use hex_literal::hex;
 use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
@@ -327,14 +329,17 @@ impl CurrencyInfo for LocalUSDC {
 /// verify the origin of messages.
 ///
 /// NOTE: This is NOT the real address of the
-/// router, but the one we are faking on the EVM side.
-pub const EVM_ROUTER: &str = "0x1111111111111111111111111111111111111111";
+///       router, but the one we are faking on the EVM side. Hence, it is fix
+///       coded here in the same way it is fixed code on the EVM testing router.
+pub const EVM_LP_INSTANCE: [u8; 20] = hex!("1111111111111111111111111111111111111111");
 
 /// The faked domain name the LP messages are coming from and going to.
-pub const EVM_DOMAIN: &str = "TestDomain";
+pub const EVM_DOMAIN_STR: &str = "TestDomain";
 
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
+
+pub const EVM_DOMAIN: Domain = Domain::EVM(EVM_DOMAIN_CHAIN_ID);
 
 pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
 	setup::<T, _>(|evm| {
@@ -699,7 +704,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			"file",
 			Some(&[
 				Token::FixedBytes("sourceChain".as_bytes().to_vec()),
-				Token::String(EVM_DOMAIN.to_string()),
+				Token::String(EVM_DOMAIN_STR.to_string()),
 			]),
 		)
 		.unwrap();
@@ -710,7 +715,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			"file",
 			Some(&[
 				Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
-				Token::String(EVM_ROUTER.to_string()),
+				Token::String(evm.deployed("router").address().to_string()),
 			]),
 		)
 		.unwrap();
@@ -852,7 +857,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		let axelar_evm_router = AxelarEVMRouter::<T>::new(
 			EVMRouter::new(evm_domain),
 			BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
-				EVM_DOMAIN.as_bytes().to_vec(),
+				EVM_DOMAIN_STR.as_bytes().to_vec(),
 			)
 			.unwrap(),
 			sp_core::H160::from(evm.deployed("router").address().0),
@@ -865,6 +870,22 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
 			)
 		);
+
+		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
+			RawOrigin::Root.into(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, EVM_LP_INSTANCE)
+		));
+
+		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_gateway(
+			RawOrigin::Root.into(),
+			sp_core::H160::from(evm.deployed("router").address().0)
+		));
+
+		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_converter(
+			RawOrigin::Root.into(),
+			BlakeTwo256::hash(EVM_DOMAIN_STR.as_bytes()),
+			SourceConverter::new(EVM_DOMAIN),
+		));
 
 		additional(evm);
 	});

@@ -53,6 +53,12 @@ pub struct SourceConverter {
 }
 
 impl SourceConverter {
+	pub fn new(domain: Domain) -> Self {
+		Self { domain }
+	}
+}
+
+impl SourceConverter {
 	pub fn try_convert(&self, maybe_address: &[u8]) -> Option<DomainAddress> {
 		match self.domain {
 			Domain::Centrifuge => Some(DomainAddress::Centrifuge(Self::try_into_32bytes(
