@@ -1,8 +1,8 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use ethabi::{ethereum_types, Log, RawLog, Token};
-use pallet_evm::{CallInfo, FeeCalculator, Runner};
-use sp_core::U256;
+use pallet_evm::{CallInfo, ExitReason, FeeCalculator, Runner};
+use sp_core::{H160, U256};
 use sp_runtime::DispatchError;
 
 use crate::{
@@ -78,6 +78,25 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			.clone()
 	}
 
+	fn register(
+		&mut self,
+		name: impl Into<String>,
+		contract: impl Into<String>,
+		address: H160,
+	) -> &mut Self {
+		let contract = self.contract(contract);
+		let runtime_code = pallet_evm::AccountCodes::<T>::get(address);
+		self.deployed_contracts.insert(
+			name.into(),
+			DeployedContractInfo::new(
+				contract.contract,
+				runtime_code,
+				ethabi::ethereum_types::H160::from(address.0),
+			),
+		);
+		self
+	}
+
 	fn contract(&self, name: impl Into<String>) -> ContractInfo {
 		self.sol_contracts
 			.as_ref()
@@ -89,16 +108,16 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 
 	fn deploy(
 		&mut self,
-		what: impl Into<String>,
+		what: impl Into<String> + Clone,
 		name: impl Into<String>,
 		who: Keyring,
 		args: Option<&[Token]>,
-	) {
+	) -> &mut Self {
 		let info = self
 			.sol_contracts
 			.as_ref()
 			.expect("Need to load_contracts first")
-			.get(&what.into())
+			.get(&what.clone().into())
 			.expect("Unknown contract")
 			.clone();
 
@@ -136,12 +155,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			.expect(ESSENTIAL)
 		};
 
-		let runtime_code = pallet_evm::AccountCodes::<T>::get(create_info.value);
-
-		self.deployed_contracts.insert(
-			name.into(),
-			DeployedContractInfo::new(info.contract.clone(), runtime_code, create_info),
-		);
+		self.register(name, what, create_info.value)
 	}
 
 	fn call(
@@ -169,7 +183,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
-		<T as pallet_evm::Config>::Runner::call(
+		let res = <T as pallet_evm::Config>::Runner::call(
 			caller.into(),
 			sp_core::H160::from(contract_info.address().0),
 			input,
@@ -187,7 +201,14 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			None,
 			<T as pallet_evm::Config>::config(),
 		)
-		.map_err(|re| re.error.into())
+		.map_err(|re| re.error)?;
+
+		match res.exit_reason {
+			ExitReason::Succeed(_) => Ok(res),
+			ExitReason::Fatal(_) => Err(DispatchError::Other("EVM call failed: Fatal")),
+			ExitReason::Error(_) => Err(DispatchError::Other("EVM call failed: Error")),
+			ExitReason::Revert(_) => Err(DispatchError::Other("EVM call failed: Revert")),
+		}
 	}
 
 	fn view(

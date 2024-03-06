@@ -12,7 +12,11 @@
 use ethabi::Token;
 
 use crate::{
-	generic::{cases::lp::setup_full, config::Runtime, env::EvmEnv},
+	generic::{
+		cases::lp::setup_full,
+		config::Runtime,
+		env::{EnvEvmExtension, EvmEnv},
+	},
 	utils::accounts::Keyring,
 };
 
@@ -24,12 +28,14 @@ fn _test() {
 fn cancel<T: Runtime>() {
 	let mut env = setup_full::<T>();
 
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"lp_pool_a_tranche_1_usdc",
-		"requestDeposit",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
+	env.state_mut(|evm| {
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"lp_pool_a_tranche_1_usdc",
+			"requestDeposit",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+		)
+		.unwrap();
+	});
 }

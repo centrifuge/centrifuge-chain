@@ -44,12 +44,13 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
+pub mod investments;
+pub mod pool_management;
 pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::{Balance, TrancheId};
 	use ethabi::ethereum_types::{H160, H256, U256};
-	use ethereum::ReceiptV3;
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
@@ -66,7 +67,7 @@ pub mod utils {
 		generic::{
 			cases::lp::{EVM_DOMAIN_CHAIN_ID, POOL_A, POOL_B},
 			config::Runtime,
-			utils::{last_event, pool::get_tranche_ids},
+			utils::{evm::receipt_ok, last_event, pool::get_tranche_ids},
 		},
 		utils::accounts::Keyring,
 	};
@@ -104,16 +105,6 @@ pub mod utils {
 		*get_tranche_ids::<T>(POOL_B)
 			.get(1)
 			.expect("Pool B has two non-residuary tranches")
-	}
-
-	pub fn receipt_ok(receipt: ReceiptV3) -> bool {
-		let inner = match receipt {
-			ReceiptV3::Legacy(inner) | ReceiptV3::EIP1559(inner) | ReceiptV3::EIP2930(inner) => {
-				inner
-			}
-		};
-
-		inner.status_code == 1
 	}
 
 	pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
@@ -225,8 +216,6 @@ pub mod utils {
 		}
 	}
 }
-
-pub mod pool_management;
 
 pub const POOL_A: PoolId = 1;
 pub const POOL_B: PoolId = 2;

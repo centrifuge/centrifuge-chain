@@ -5,7 +5,7 @@ use std::{
 };
 
 use ethabi::{ethereum_types::H160, Contract};
-use pallet_evm::CreateInfo;
+use ethereum::ReceiptV3;
 
 use crate::generic::utils::ESSENTIAL;
 
@@ -17,20 +17,20 @@ pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to 
 pub struct DeployedContractInfo {
 	pub contract: Contract,
 	pub deployed_bytecode: Vec<u8>,
-	pub create_info: CreateInfo,
+	pub address: H160,
 }
 
 impl DeployedContractInfo {
-	pub fn new(contract: Contract, deployed_bytecode: Vec<u8>, create_info: CreateInfo) -> Self {
+	pub fn new(contract: Contract, deployed_bytecode: Vec<u8>, address: H160) -> Self {
 		Self {
-			create_info,
+			address,
 			contract,
 			deployed_bytecode,
 		}
 	}
 
 	pub fn address(&self) -> H160 {
-		H160::from(self.create_info.value.0)
+		H160::from(self.address)
 	}
 }
 
@@ -153,4 +153,12 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 	});
 
 	contracts
+}
+
+pub fn receipt_ok(receipt: ReceiptV3) -> bool {
+	let inner = match receipt {
+		ReceiptV3::Legacy(inner) | ReceiptV3::EIP1559(inner) | ReceiptV3::EIP2930(inner) => inner,
+	};
+
+	inner.status_code == 1
 }

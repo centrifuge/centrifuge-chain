@@ -3,7 +3,7 @@ use cfg_traits::{IntoSeconds, Seconds};
 use ethabi::{Log, Token};
 use pallet_evm::CallInfo;
 use parity_scale_codec::Encode;
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -184,15 +184,22 @@ pub trait EvmEnv<T: Runtime> {
 
 	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo;
 
+	fn register(
+		&mut self,
+		name: impl Into<String>,
+		contract: impl Into<String>,
+		address: H160,
+	) -> &mut Self;
+
 	fn contract(&self, name: impl Into<String>) -> ContractInfo;
 
 	fn deploy(
 		&mut self,
-		what: impl Into<String>,
+		what: impl Into<String> + Clone,
 		name: impl Into<String>,
 		who: Keyring,
 		args: Option<&[Token]>,
-	);
+	) -> &mut Self;
 
 	fn call(
 		&mut self,
