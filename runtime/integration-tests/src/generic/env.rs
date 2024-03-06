@@ -167,10 +167,20 @@ pub trait Env<T: Runtime>: Default {
 	fn __priv_build_block(&mut self, i: BlockNumber);
 }
 
-pub trait EvmEnv<T: Runtime>: Env<T> {
+pub trait EnvEvmExtension<T: Runtime>: Env<T> {
+	type EvmEnv: EvmEnv<T>;
+
+	/// Allows to mutate the parachain storage state through the closure.
+	fn state_mut<R>(&mut self, f: impl FnOnce(&mut Self::EvmEnv) -> R) -> R;
+
+	/// Allows to read the parachain storage state through the closure.
+	fn state<R>(&self, f: impl FnOnce(&Self::EvmEnv) -> R) -> R;
+}
+
+pub trait EvmEnv<T: Runtime> {
 	fn find_events(&self, contract: impl Into<String>, event: impl Into<String>) -> Vec<Log>;
 
-	fn load_contracts(self) -> Self;
+	fn load_contracts(&mut self) -> &mut Self;
 
 	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo;
 
@@ -185,18 +195,6 @@ pub trait EvmEnv<T: Runtime>: Env<T> {
 	);
 
 	fn call(
-		// TODO: Needs to imutable actually, but the current state implementation does
-		//       not rollback but error out upon changes, which is not ideal if you want to
-		//       test stuff without altering your state.
-		&mut self,
-		caller: Keyring,
-		value: U256,
-		contract: impl Into<String>,
-		function: impl Into<String>,
-		args: Option<&[Token]>,
-	) -> Result<CallInfo, DispatchError>;
-
-	fn call_mut(
 		&mut self,
 		caller: Keyring,
 		value: U256,

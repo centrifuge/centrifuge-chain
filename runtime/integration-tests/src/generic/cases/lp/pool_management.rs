@@ -27,7 +27,7 @@ use crate::{
 			utils, utils::Decoder, LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
-		env::{Blocks, Env, EvmEnv},
+		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
 	utils::accounts::Keyring,
@@ -39,7 +39,7 @@ fn _test() {
 }
 
 fn add_currency<T: Runtime>() {
-	let mut env = super::setup::<T>(|_| {});
+	let mut env = super::setup::<T, _>(|_| {});
 
 	#[allow(non_camel_case_types)]
 	pub struct TestCurrency;
@@ -71,18 +71,18 @@ fn add_currency<T: Runtime>() {
 		}
 	}
 
-	env.deploy(
-		"ERC20",
-		"test_erc20",
-		Keyring::Admin,
-		Some(&[Token::Uint(Uint::from(TestCurrency.decimals()))]),
-	);
+	env.state_mut(|evm| {
+		evm.deploy(
+			"ERC20",
+			"test_erc20",
+			Keyring::Admin,
+			Some(&[Token::Uint(Uint::from(TestCurrency.decimals()))]),
+		);
 
-	let test_erc20_address = env.deployed("test_erc20").address();
-
-	env.parachain_state_mut(|| {
 		register_currency::<T>(USDC, |meta| {
-			meta.location = Some(utils::lp_asset_location::<T>(test_erc20_address));
+			meta.location = Some(utils::lp_asset_location::<T>(
+				evm.deployed("test_erc20").address(),
+			));
 		});
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
@@ -95,41 +95,43 @@ fn add_currency<T: Runtime>() {
 
 	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency.id()).unwrap();
 
-	// Verify the  test currencies are correctly added to the pool manager
-	assert_eq!(
-		Decoder::<H160>::decode(
-			&env.view(
-				Keyring::Alice,
-				"pool_manager",
-				"currencyIdToAddress",
-				Some(&[Token::Uint(Uint::from(index.index))])
-			)
-			.unwrap()
-			.value
-		),
-		test_erc20_address
-	);
+	env.state_mut(|evm| {
+		// Verify the  test currencies are correctly added to the pool manager
+		assert_eq!(
+			Decoder::<H160>::decode(
+				&evm.view(
+					Keyring::Alice,
+					"pool_manager",
+					"currencyIdToAddress",
+					Some(&[Token::Uint(Uint::from(index.index))])
+				)
+				.unwrap()
+				.value
+			),
+			evm.deployed("test_erc20").address()
+		);
 
-	assert_eq!(
-		Decoder::<Balance>::decode(
-			&env.view(
-				Keyring::Alice,
-				"pool_manager",
-				"currencyAddressToId",
-				Some(&[Token::Address(test_erc20_address)]),
-			)
-			.unwrap()
-			.value
-		),
-		index.index
-	);
+		assert_eq!(
+			Decoder::<Balance>::decode(
+				&evm.view(
+					Keyring::Alice,
+					"pool_manager",
+					"currencyAddressToId",
+					Some(&[Token::Address(evm.deployed("test_erc20").address())]),
+				)
+				.unwrap()
+				.value
+			),
+			index.index
+		);
+	});
 }
 
 fn add_pool<T: Runtime>() {
-	let mut env = super::setup::<T>(|_| {});
+	let mut env = super::setup::<T, _>(|_| {});
 	const POOL: PoolId = 1;
 
-	env.parachain_state_mut(|| {
+	let creation_time_with_offset = env.state_mut(|evm| {
 		crate::generic::utils::pool::create_one_tranched::<T>(
 			Keyring::Admin.into(),
 			POOL,
@@ -142,68 +144,64 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>()
-	});
+		utils::process_outbound::<T>();
 
-	let creation_time = env.parachain_state(<pallet_timestamp::Pallet<T> as TimeAsSecs>::now);
-	// FIXME(william): Parachain is t=24 (block 2) while EVM created at t=0
-	let offset = 24;
-	let creation_time_with_offset = creation_time - offset;
+		let creation_time = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
+		// FIXME(william): Parachain is t=24 (block 2) while EVM created at t=0
+		let offset = 24;
+		let creation_time_with_offset = creation_time - offset;
 
-	// Compare the pool.created_at field that is returned
-	let evm_pool_time = Decoder::<Uint>::decode(
-		&env.view(
-			Keyring::Alice,
-			"pool_manager",
-			"pools",
-			Some(&[Token::Uint(Uint::from(POOL))]),
-		)
-		.unwrap()
-		.value,
-	);
-	assert_eq!(evm_pool_time, Uint::from(creation_time_with_offset));
-
-	env.pass(Blocks::ByNumber(1));
-
-	env.parachain_state_mut(|| {
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-		));
-
-		utils::process_outbound::<T>()
-	});
-
-	// TODO: Actually find the revert event here.
-	//
-	// NOTE: That is really relevant for the router too.
-	//     We need to check `Pending` and see for errors
-	//     unfortunately and then error in the router instead of returning success.
-
-	// Adding a pool again DOES NOT change creation time - i.e. not override storage
-	assert_eq!(
-		Decoder::<Uint>::decode(
-			&env.view(
+		// Compare the pool.created_at field that is returned
+		let evm_pool_time = Decoder::<Uint>::decode(
+			&evm.view(
 				Keyring::Alice,
 				"pool_manager",
 				"pools",
 				Some(&[Token::Uint(Uint::from(POOL))]),
 			)
 			.unwrap()
-			.value
-		),
-		Uint::from(creation_time_with_offset)
-	);
+			.value,
+		);
+		assert_eq!(evm_pool_time, Uint::from(creation_time_with_offset));
+
+		creation_time_with_offset
+	});
+
+	env.pass(Blocks::ByNumber(1));
+
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>();
+
+		// Adding a pool again DOES NOT change creation time - i.e. not override storage
+		assert_eq!(
+			Decoder::<Uint>::decode(
+				&evm.view(
+					Keyring::Alice,
+					"pool_manager",
+					"pools",
+					Some(&[Token::Uint(Uint::from(POOL))]),
+				)
+				.unwrap()
+				.value
+			),
+			Uint::from(creation_time_with_offset)
+		);
+	});
 }
 
 fn add_tranche<T: Runtime>() {
-	let mut env = super::setup::<T>(|env| {
-		super::setup_currencies(env);
-		super::setup_pools(env);
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
 	});
 
-	env.parachain_state_mut(|| {
+	env.state_mut(|evm| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
@@ -211,18 +209,20 @@ fn add_tranche<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>()
+		utils::process_outbound::<T>();
+
+		// TODO: Check EVM side and deploy tranche there
 	});
 }
 
 fn allow_investment_currency<T: Runtime>() {
-	let mut env = super::setup::<T>(|env| {
-		super::setup_currencies(env);
-		super::setup_pools(env);
-		super::setup_tranches(env);
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
 	});
 
-	env.parachain_state_mut(|| {
+	env.state_mut(|evm| {
 		assert_ok!(
 			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 				OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -230,23 +230,26 @@ fn allow_investment_currency<T: Runtime>() {
 				USDC.id(),
 			),
 		);
-		utils::process_outbound::<T>()
+		utils::process_outbound::<T>();
+
+		// TODO: Check allowed investment currencies on EVM side and deploy lp
+		//       there
 	})
 }
 
 fn disallow_investment_currency<T: Runtime>() {
-	let mut env = super::setup::<T>(|env| {
-		super::setup_currencies(env);
-		super::setup_pools(env);
-		super::setup_tranches(env);
-		super::setup_investment_currencies(env);
-		super::setup_deploy_lps(env);
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
 	});
 
 	// disallow investment currencies
 	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
 		for pool in [POOL_A, POOL_B] {
-			env.parachain_state_mut(|| {
+			env.state_mut(|evm| {
 				assert_ok!(
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -254,7 +257,9 @@ fn disallow_investment_currency<T: Runtime>() {
 						currency
 					),
 				);
-				utils::process_outbound::<T>()
+				utils::process_outbound::<T>();
+
+				// TODO: Actually check whether LP is blocked
 			})
 		}
 	}
@@ -265,20 +270,20 @@ fn update_member<T: Runtime>() {
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {
-	let mut env = super::setup::<T>(|env| {
-		super::setup_currencies(env);
-		super::setup_pools(env);
-		super::setup_tranches(env);
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
 	});
 
 	todo!("update_tranche_token_metadata")
 }
 
 fn update_tranche_token_price<T: Runtime>() {
-	let mut env = super::setup::<T>(|env| {
-		super::setup_currencies(env);
-		super::setup_pools(env);
-		super::setup_tranches(env);
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
 	});
 
 	todo!("update_tranche_token_price")

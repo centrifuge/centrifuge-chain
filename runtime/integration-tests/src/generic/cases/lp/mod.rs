@@ -34,7 +34,7 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 use crate::{
 	generic::{
 		config::Runtime,
-		env::{Blocks, Env, EvmEnv},
+		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
 		utils::{
 			currency::{register_currency, CurrencyInfo},
@@ -337,26 +337,28 @@ pub const EVM_DOMAIN: &str = "TestDomain";
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
-pub fn setup_full<T: Runtime>() -> impl EvmEnv<T> {
-	setup::<T>(|env| {
-		setup_currencies(env);
-		setup_pools(env);
-		setup_tranches(env);
-		setup_investment_currencies(env);
-		setup_deploy_lps(env);
+pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
+	setup::<T, _>(|evm| {
+		setup_currencies(evm);
+		setup_pools(evm);
+		setup_tranches(evm);
+		setup_investment_currencies(evm);
+		setup_deploy_lps(evm);
 	})
 }
 
 /// Default setup required for EVM <> CFG communication
-pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl EvmEnv<T> {
+pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)>(
+	additional: F,
+) -> impl EnvEvmExtension<T> {
 	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::balances::<T>(DEFAULT_BALANCE * CFG))
 			.storage(),
-	)
-	.load_contracts();
+	);
+	env.state_mut(|evm| {
+		evm.load_contracts();
 
-	env.parachain_state_mut(|| {
 		// Fund gateway sender
 		give_balance::<T>(
 			<T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
@@ -365,501 +367,498 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 
 		// Register general local pool-currency
 		register_currency::<T>(LocalUSDC, |_| {});
-	});
 
-	/* TODO: Use that but index needed contracts afterwards
-	   env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
-	   env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
-		   .unwrap();
-	*/
+		/* TODO: Use that but index needed contracts afterwards
+		   env.deploy("LocalRouterScript", "lp_deploy", Keyring::Alice, None);
+		   env.call_mut(Keyring::Alice, Default::default(), "lp_deploy", "run", None)
+			   .unwrap();
+		*/
 
-	// ------------------ EVM Side ----------------------- //
-	// The flow is based in the following code from the Solidity and needs to be
-	// adapted if this deployment script changes in the future
-	// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L17-L31
-	//
-	// PART: Deploy InvestmentManager
-	//   * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L45-L69
-	env.deploy(
-		"Escrow",
-		"escrow",
-		Keyring::Alice,
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	);
-	env.deploy("UserEscrow", "user_escrow", Keyring::Alice, None);
-	env.deploy(
-		"Root",
-		"root",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("escrow").address()),
-			Token::Uint(U256::from(48 * SECONDS_PER_HOUR)),
-			Token::Address(Keyring::Alice.into()),
-		]),
-	);
-	env.deploy(
-		"LiquidityPoolFactory",
-		"lp_pool_factory",
-		Keyring::Alice,
-		Some(&[Token::Address(env.deployed("root").address())]),
-	);
-	env.deploy(
-		"RestrictionManagerFactory",
-		"restriction_manager_factory",
-		Keyring::Alice,
-		Some(&[Token::Address(env.deployed("root").address())]),
-	);
-	env.deploy(
-		"TrancheTokenFactory",
-		"tranche_token_factory",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("root").address()),
-			Token::Address(Keyring::Alice.into()),
-		]),
-	);
-	env.deploy(
-		"InvestmentManager",
-		"investment_manager",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("escrow").address()),
-			Token::Address(env.deployed("user_escrow").address()),
-		]),
-	);
-	env.deploy(
-		"PoolManager",
-		"pool_manager",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("escrow").address()),
-			Token::Address(env.deployed("lp_pool_factory").address()),
-			Token::Address(env.deployed("restriction_manager_factory").address()),
-			Token::Address(env.deployed("tranche_token_factory").address()),
-		]),
-	);
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"lp_pool_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"tranche_token_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"restriction_manager_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"lp_pool_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"tranche_token_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"restriction_manager_factory",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-
-	// PART: Deploy router (using the testing LocalRouter here)
-	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L24
-	env.deploy("LocalRouter", "router", Keyring::Alice, None);
-
-	// PART: Wire router + file gateway
-	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L71-L98
-	env.deploy(
-		"PauseAdmin",
-		"pause_admin",
-		Keyring::Alice,
-		Some(&[Token::Address(env.deployed("root").address())]),
-	);
-	env.deploy(
-		"DelayedAdmin",
-		"delay_admin",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("root").address()),
-			Token::Address(env.deployed("pause_admin").address()),
-		]),
-	);
-	// Enable once https://github.com/foundry-rs/foundry/issues/7032 is resolved
-	env.deploy(
-		"Gateway",
-		"gateway",
-		Keyring::Alice,
-		Some(&[
-			Token::Address(env.deployed("root").address()),
-			Token::Address(env.deployed("investment_manager").address()),
-			Token::Address(env.deployed("pool_manager").address()),
-			Token::Address(env.deployed("router").address()),
-		]),
-	);
-
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pause_admin",
-		"rely",
-		Some(&[Token::Address(env.deployed("delay_admin").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"root",
-		"rely",
-		Some(&[Token::Address(env.deployed("delay_admin").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"root",
-		"rely",
-		Some(&[Token::Address(env.deployed("pause_admin").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"root",
-		"rely",
-		Some(&[Token::Address(env.deployed("gateway").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"investment_manager",
-		"file",
-		Some(&[
-			Token::FixedBytes("poolManager".as_bytes().to_vec()),
-			Token::Address(env.deployed("pool_manager").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"file",
-		Some(&[
-			Token::FixedBytes("investmentManager".as_bytes().to_vec()),
-			Token::Address(env.deployed("investment_manager").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"investment_manager",
-		"file",
-		Some(&[
-			Token::FixedBytes("gateway".as_bytes().to_vec()),
-			Token::Address(env.deployed("gateway").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"file",
-		Some(&[
-			Token::FixedBytes("gateway".as_bytes().to_vec()),
-			Token::Address(env.deployed("gateway").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"investment_manager",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"investment_manager",
-		"rely",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"gateway",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"router",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	 */
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"escrow",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"escrow",
-		"rely",
-		Some(&[Token::Address(env.deployed("investment_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"user_escrow",
-		"rely",
-		Some(&[Token::Address(env.deployed("root").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"user_escrow",
-		"rely",
-		Some(&[Token::Address(env.deployed("investment_manager").address())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"escrow",
-		"rely",
-		Some(&[Token::Address(env.deployed("pool_manager").address())]),
-	)
-	.unwrap();
-
-	// PART: File LocalRouter
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"router",
-		"file",
-		Some(&[
-			Token::FixedBytes("gateway".as_bytes().to_vec()),
-			Token::Address(env.deployed("gateway").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"router",
-		"file",
-		Some(&[
-			Token::FixedBytes("sourceChain".as_bytes().to_vec()),
-			Token::String(EVM_DOMAIN.to_string()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"router",
-		"file",
-		Some(&[
-			Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
-			Token::String(EVM_ROUTER.to_string()),
-		]),
-	)
-	.unwrap();
-
-	// PART: Give admin access - Keyring::Admin in our case
-	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L100-L106
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"delay_admin",
-		"rely",
-		Some(&[Token::Address(Keyring::Admin.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pause_admin",
-		"addPauser",
-		Some(&[Token::Address(Keyring::Admin.into())]),
-	)
-	.unwrap();
-
-	// PART: Remove deployer access
-	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L108-L121
-	/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"router",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	*/
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"lp_pool_factory",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"tranche_token_factory",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"restriction_manager_factory",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"root",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"investment_manager",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"escrow",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"user_escrow",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"gateway",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pause_admin",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"delay_admin",
-		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
-	)
-	.unwrap();
-
-	// ------------------ Substrate Side ----------------------- //
-	// Create router
-	let (base_fee, _) =
-		env.parachain_state(<T as pallet_evm::Config>::FeeCalculator::min_gas_price);
-
-	let evm_domain = EVMDomain {
-		target_contract_address: sp_core::H160::from(env.deployed("router").address().0),
-		target_contract_hash: BlakeTwo256::hash_of(&env.deployed("router").deployed_bytecode),
-		fee_values: FeeValues {
-			value: sp_core::U256::zero(),
-			gas_limit: sp_core::U256::from(500_000),
-			gas_price: sp_core::U256::from(base_fee),
-		},
-	};
-
-	let axelar_evm_router = AxelarEVMRouter::<T>::new(
-		EVMRouter::new(evm_domain),
-		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
-			EVM_DOMAIN.as_bytes().to_vec(),
+		// ------------------ EVM Side ----------------------- //
+		// The flow is based in the following code from the Solidity and needs to be
+		// adapted if this deployment script changes in the future
+		// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L17-L31
+		//
+		// PART: Deploy InvestmentManager
+		//   * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L45-L69
+		evm.deploy(
+			"Escrow",
+			"escrow",
+			Keyring::Alice,
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		);
+		evm.deploy("UserEscrow", "user_escrow", Keyring::Alice, None);
+		evm.deploy(
+			"Root",
+			"root",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("escrow").address()),
+				Token::Uint(U256::from(48 * SECONDS_PER_HOUR)),
+				Token::Address(Keyring::Alice.into()),
+			]),
+		);
+		evm.deploy(
+			"LiquidityPoolFactory",
+			"lp_pool_factory",
+			Keyring::Alice,
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		);
+		evm.deploy(
+			"RestrictionManagerFactory",
+			"restriction_manager_factory",
+			Keyring::Alice,
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		);
+		evm.deploy(
+			"TrancheTokenFactory",
+			"tranche_token_factory",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("root").address()),
+				Token::Address(Keyring::Alice.into()),
+			]),
+		);
+		evm.deploy(
+			"InvestmentManager",
+			"investment_manager",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("escrow").address()),
+				Token::Address(evm.deployed("user_escrow").address()),
+			]),
+		);
+		evm.deploy(
+			"PoolManager",
+			"pool_manager",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("escrow").address()),
+				Token::Address(evm.deployed("lp_pool_factory").address()),
+				Token::Address(evm.deployed("restriction_manager_factory").address()),
+				Token::Address(evm.deployed("tranche_token_factory").address()),
+			]),
+		);
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"lp_pool_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
 		)
-		.unwrap(),
-		sp_core::H160::from(env.deployed("router").address().0),
-	);
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"tranche_token_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"restriction_manager_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"lp_pool_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"tranche_token_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"restriction_manager_factory",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
 
-	env.parachain_state_mut(|| {
+		// PART: Deploy router (using the testing LocalRouter here)
+		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L24
+		evm.deploy("LocalRouter", "router", Keyring::Alice, None);
+
+		// PART: Wire router + file gateway
+		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L71-L98
+		evm.deploy(
+			"PauseAdmin",
+			"pause_admin",
+			Keyring::Alice,
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		);
+		evm.deploy(
+			"DelayedAdmin",
+			"delay_admin",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("root").address()),
+				Token::Address(evm.deployed("pause_admin").address()),
+			]),
+		);
+		// Enable once https://github.com/foundry-rs/foundry/issues/7032 is resolved
+		evm.deploy(
+			"Gateway",
+			"gateway",
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed("root").address()),
+				Token::Address(evm.deployed("investment_manager").address()),
+				Token::Address(evm.deployed("pool_manager").address()),
+				Token::Address(evm.deployed("router").address()),
+			]),
+		);
+
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pause_admin",
+			"rely",
+			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"root",
+			"rely",
+			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"root",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pause_admin").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"root",
+			"rely",
+			Some(&[Token::Address(evm.deployed("gateway").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"investment_manager",
+			"file",
+			Some(&[
+				Token::FixedBytes("poolManager".as_bytes().to_vec()),
+				Token::Address(evm.deployed("pool_manager").address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"file",
+			Some(&[
+				Token::FixedBytes("investmentManager".as_bytes().to_vec()),
+				Token::Address(evm.deployed("investment_manager").address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"investment_manager",
+			"file",
+			Some(&[
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
+				Token::Address(evm.deployed("gateway").address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"file",
+			Some(&[
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
+				Token::Address(evm.deployed("gateway").address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"investment_manager",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"investment_manager",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"gateway",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"router",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		 */
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"escrow",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"escrow",
+			"rely",
+			Some(&[Token::Address(evm.deployed("investment_manager").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"user_escrow",
+			"rely",
+			Some(&[Token::Address(evm.deployed("root").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"user_escrow",
+			"rely",
+			Some(&[Token::Address(evm.deployed("investment_manager").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"escrow",
+			"rely",
+			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+		)
+		.unwrap();
+
+		// PART: File LocalRouter
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"router",
+			"file",
+			Some(&[
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
+				Token::Address(evm.deployed("gateway").address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"router",
+			"file",
+			Some(&[
+				Token::FixedBytes("sourceChain".as_bytes().to_vec()),
+				Token::String(EVM_DOMAIN.to_string()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"router",
+			"file",
+			Some(&[
+				Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
+				Token::String(EVM_ROUTER.to_string()),
+			]),
+		)
+		.unwrap();
+
+		// PART: Give admin access - Keyring::Admin in our case
+		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L100-L106
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"delay_admin",
+			"rely",
+			Some(&[Token::Address(Keyring::Admin.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pause_admin",
+			"addPauser",
+			Some(&[Token::Address(Keyring::Admin.into())]),
+		)
+		.unwrap();
+
+		// PART: Remove deployer access
+		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L108-L121
+		/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"router",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		*/
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"lp_pool_factory",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"tranche_token_factory",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"restriction_manager_factory",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"root",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"investment_manager",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"escrow",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"user_escrow",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"gateway",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pause_admin",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"delay_admin",
+			"deny",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+
+		// ------------------ Substrate Side ----------------------- //
+		// Create router
+		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
+
+		let evm_domain = EVMDomain {
+			target_contract_address: sp_core::H160::from(evm.deployed("router").address().0),
+			target_contract_hash: BlakeTwo256::hash_of(&evm.deployed("router").deployed_bytecode),
+			fee_values: FeeValues {
+				value: sp_core::U256::zero(),
+				gas_limit: sp_core::U256::from(500_000),
+				gas_price: sp_core::U256::from(base_fee),
+			},
+		};
+
+		let axelar_evm_router = AxelarEVMRouter::<T>::new(
+			EVMRouter::new(evm_domain),
+			BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+				EVM_DOMAIN.as_bytes().to_vec(),
+			)
+			.unwrap(),
+			sp_core::H160::from(evm.deployed("router").address().0),
+		);
+
 		assert_ok!(
 			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
 				RawOrigin::Root.into(),
@@ -867,28 +866,26 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
 			)
 		);
-	});
 
-	additional(&mut env);
+		additional(evm);
+	});
 
 	env.pass(Blocks::ByNumber(1));
 	env
 }
 
 /// Enables USDC, DAI and FRAX as investment currencies for both pools A nand B.
-pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
+pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
 		for pool in [POOL_A, POOL_B] {
-			env.parachain_state_mut(|| {
-				assert_ok!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						OriginFor::<T>::signed(Keyring::Admin.into()),
-						pool,
-						currency,
-					),
-				);
-				utils::process_outbound::<T>()
-			})
+			assert_ok!(
+				pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+					OriginFor::<T>::signed(Keyring::Admin.into()),
+					pool,
+					currency,
+				),
+			);
+			utils::process_outbound::<T>()
 		}
 	}
 }
@@ -898,18 +895,16 @@ pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 /// investment currency id.
 ///
 /// NOTE: EVM Side
-pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	let (tranche_id_a, tranche_id_b_1, tranche_id_b_2) = env.parachain_state_mut(|| {
-		(
-			utils::pool_a_tranche_id::<T>(),
-			utils::pool_b_tranche_1_id::<T>(),
-			utils::pool_b_tranche_2_id::<T>(),
-		)
-	});
+pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
+	let (tranche_id_a, tranche_id_b_1, tranche_id_b_2) = (
+		utils::pool_a_tranche_id::<T>(),
+		utils::pool_b_tranche_1_id::<T>(),
+		utils::pool_b_tranche_2_id::<T>(),
+	);
 
 	for tranche_id in [tranche_id_a, tranche_id_b_1, tranche_id_b_2] {
 		for pool in [POOL_A, POOL_B] {
-			env.call_mut(
+			evm.call(
 				Keyring::Alice,
 				Default::default(),
 				"pool_manager",
@@ -917,12 +912,12 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 				Some(&[
 					Token::Uint(Uint::from(pool)),
 					Token::FixedBytes(FixedBytes::from(tranche_id)),
-					Token::Address(env.deployed("usdc").address()),
+					Token::Address(evm.deployed("usdc").address()),
 				]),
 			)
 			.unwrap();
 
-			env.call_mut(
+			evm.call(
 				Keyring::Alice,
 				Default::default(),
 				"pool_manager",
@@ -930,12 +925,12 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 				Some(&[
 					Token::Uint(Uint::from(pool)),
 					Token::FixedBytes(FixedBytes::from(tranche_id)),
-					Token::Address(env.deployed("frax").address()),
+					Token::Address(evm.deployed("frax").address()),
 				]),
 			)
 			.unwrap();
 
-			env.call_mut(
+			evm.call(
 				Keyring::Alice,
 				Default::default(),
 				"pool_manager",
@@ -943,7 +938,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 				Some(&[
 					Token::Uint(Uint::from(pool)),
 					Token::FixedBytes(FixedBytes::from(tranche_id)),
-					Token::Address(env.deployed("dai").address()),
+					Token::Address(evm.deployed("dai").address()),
 				]),
 			)
 			.unwrap();
@@ -954,9 +949,9 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 /// Initiates tranches on EVM via `DeployTranche` contract and then sends
 /// `add_tranche(pool, tranche_id)` messages for a total of three tranches of
 /// pool A and B.
-pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
+pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// AddTranche 1 of A
-	let tranche_id = env.parachain_state_mut(|| {
+	let tranche_id = {
 		let tranche_id = utils::pool_a_tranche_id::<T>();
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -968,8 +963,8 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		utils::process_outbound::<T>();
 
 		tranche_id
-	});
-	env.call_mut(
+	};
+	evm.call(
 		Keyring::Alice,
 		Default::default(),
 		"pool_manager",
@@ -982,7 +977,7 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	.unwrap();
 
 	// AddTranche 1 of B
-	let tranche_id = env.parachain_state_mut(|| {
+	let tranche_id = {
 		let tranche_id = utils::pool_b_tranche_1_id::<T>();
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -994,8 +989,8 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		utils::process_outbound::<T>();
 
 		tranche_id
-	});
-	env.call_mut(
+	};
+	evm.call(
 		Keyring::Alice,
 		Default::default(),
 		"pool_manager",
@@ -1008,7 +1003,7 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	.unwrap();
 
 	// AddTranche 2 of B
-	let tranche_id = env.parachain_state_mut(|| {
+	let tranche_id = {
 		let tranche_id = utils::pool_b_tranche_2_id::<T>();
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -1020,8 +1015,8 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		utils::process_outbound::<T>();
 
 		tranche_id
-	});
-	env.call_mut(
+	};
+	evm.call(
 		Keyring::Alice,
 		Default::default(),
 		"pool_manager",
@@ -1037,52 +1032,48 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 /// Create two pools A, B and send `add_pool` message to EVM
 /// * Pool A with 1 tranche
 /// * Pool B with 2 tranches
-pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	env.parachain_state_mut(|| {
-		crate::generic::utils::pool::create_one_tranched::<T>(
-			Keyring::Admin.into(),
-			POOL_A,
-			LocalUSDC.id(),
-		);
+pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
+	crate::generic::utils::pool::create_one_tranched::<T>(
+		Keyring::Admin.into(),
+		POOL_A,
+		LocalUSDC.id(),
+	);
 
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_A,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-		));
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_A,
+		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+	));
 
-		utils::process_outbound::<T>()
-	});
+	utils::process_outbound::<T>();
 
-	env.parachain_state_mut(|| {
-		crate::generic::utils::pool::create_two_tranched::<T>(
-			Keyring::Admin.into(),
-			POOL_B,
-			LocalUSDC.id(),
-		);
+	crate::generic::utils::pool::create_two_tranched::<T>(
+		Keyring::Admin.into(),
+		POOL_B,
+		LocalUSDC.id(),
+	);
 
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_B,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-		));
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_B,
+		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+	));
 
-		utils::process_outbound::<T>()
-	});
+	utils::process_outbound::<T>();
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
 /// Centrifuge Chain and trigger `AddCurrency` from Centrifuge Chain to EVM
-pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
+pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// EVM: Create currencies
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
-	env.deploy(
+	evm.deploy(
 		"ERC20",
 		"usdc",
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(6))]),
 	);
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"usdc",
@@ -1093,7 +1084,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"usdc",
@@ -1104,7 +1095,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"usdc",
@@ -1115,7 +1106,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"usdc",
@@ -1126,7 +1117,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"usdc",
@@ -1138,13 +1129,13 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
-	env.deploy(
+	evm.deploy(
 		"ERC20",
 		"frax",
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(18))]),
 	);
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"frax",
@@ -1155,7 +1146,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"frax",
@@ -1166,7 +1157,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"frax",
@@ -1177,7 +1168,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"frax",
@@ -1188,7 +1179,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"frax",
@@ -1200,13 +1191,13 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
-	env.deploy(
+	evm.deploy(
 		"ERC20",
 		"dai",
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(18))]),
 	);
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"dai",
@@ -1217,7 +1208,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"dai",
@@ -1228,7 +1219,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"dai",
@@ -1239,7 +1230,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"dai",
@@ -1250,7 +1241,7 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-	env.call_mut(
+	evm.call(
 		Keyring::Admin,
 		Default::default(),
 		"dai",
@@ -1263,41 +1254,34 @@ pub fn setup_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	.unwrap();
 
 	// Centrifuge Chain: Register currencies and trigger `AddCurrency`
-	let usdc_address = env.deployed("usdc").address();
-	env.parachain_state_mut(|| {
-		register_currency::<T>(USDC, |meta| {
-			meta.location = Some(utils::lp_asset_location::<T>(usdc_address));
-		});
-	});
-
-	let dai_address = env.deployed("dai").address();
-	env.parachain_state_mut(|| {
-		register_currency::<T>(DAI, |meta| {
-			meta.location = Some(utils::lp_asset_location::<T>(dai_address));
-		});
-	});
-
-	let frax_address = env.deployed("frax").address();
-	env.parachain_state_mut(|| {
-		register_currency::<T>(FRAX, |meta| {
-			meta.location = Some(utils::lp_asset_location::<T>(frax_address));
-		});
-	});
-
-	env.parachain_state_mut(|| {
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-			OriginFor::<T>::signed(Keyring::Alice.into()),
-			USDC.id()
+	register_currency::<T>(USDC, |meta| {
+		meta.location = Some(utils::lp_asset_location::<T>(
+			evm.deployed("usdc").address(),
 		));
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-			OriginFor::<T>::signed(Keyring::Alice.into()),
-			DAI.id()
-		));
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-			OriginFor::<T>::signed(Keyring::Alice.into()),
-			FRAX.id()
-		));
-
-		utils::process_outbound::<T>()
 	});
+
+	register_currency::<T>(DAI, |meta| {
+		meta.location = Some(utils::lp_asset_location::<T>(evm.deployed("dai").address()));
+	});
+
+	register_currency::<T>(FRAX, |meta| {
+		meta.location = Some(utils::lp_asset_location::<T>(
+			evm.deployed("frax").address(),
+		));
+	});
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+		OriginFor::<T>::signed(Keyring::Alice.into()),
+		USDC.id()
+	));
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+		OriginFor::<T>::signed(Keyring::Alice.into()),
+		DAI.id()
+	));
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+		OriginFor::<T>::signed(Keyring::Alice.into()),
+		FRAX.id()
+	));
+
+	utils::process_outbound::<T>();
 }
