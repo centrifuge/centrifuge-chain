@@ -877,51 +877,55 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 
 /// Enables USDC, DAI and FRAX as investment currencies for both pools A nand B.
 pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	// Pool A
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_A,
-			USDC.id()
-		)
-	);
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_A,
-			FRAX.id()
-		)
-	);
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_A,
-			DAI.id()
-		)
-	);
+	env.parachain_state_mut(|| {
+		// Pool A
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_A,
+				USDC.id()
+			)
+		);
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_A,
+				FRAX.id()
+			)
+		);
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_A,
+				DAI.id()
+			)
+		);
 
-	// Pool B
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_B,
-			USDC.id()
-		)
-	);
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_B,
-			FRAX.id()
-		)
-	);
-	assert_ok!(
-		pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL_B,
-			DAI.id()
-		)
-	);
+		// Pool B
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_B,
+				USDC.id()
+			)
+		);
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_B,
+				FRAX.id()
+			)
+		);
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_B,
+				DAI.id()
+			)
+		);
+	});
+
+	env.parachain_state_mut(|| utils::process_outbound::<T>());
 }
 
 /// Deploys both Liquidity Pools for USDC, DAI and FRAX by calling
@@ -930,6 +934,13 @@ pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
 ///
 /// NOTE: EVM Side
 pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	let (tranche_id_a, tranche_id_b_1, tranche_id_b_2) = env.parachain_state_mut(|| {
+		(
+			utils::pool_a_tranche_id::<T>(),
+			utils::pool_b_tranche_1_id::<T>(),
+			utils::pool_b_tranche_2_id::<T>(),
+		)
+	});
 	// Pool A
 	env.call_mut(
 		Keyring::Alice,
@@ -938,7 +949,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
@@ -950,7 +961,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 			Token::Address(env.deployed("frax").address()),
 		]),
 	)
@@ -962,7 +973,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 			Token::Address(env.deployed("dai").address()),
 		]),
 	)
@@ -976,7 +987,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
 			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
@@ -988,7 +999,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
 			Token::Address(env.deployed("frax").address()),
 		]),
 	)
@@ -1000,7 +1011,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
 			Token::Address(env.deployed("dai").address()),
 		]),
 	)
@@ -1014,7 +1025,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
 			Token::Address(env.deployed("usdc").address()),
 		]),
 	)
@@ -1026,7 +1037,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
 			Token::Address(env.deployed("frax").address()),
 		]),
 	)
@@ -1038,7 +1049,7 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployLiquidityPool",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
 			Token::Address(env.deployed("dai").address()),
 		]),
 	)
@@ -1050,12 +1061,19 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 /// pool A and B.
 pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 	// AddTranche 1 of A
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
-		OriginFor::<T>::signed(Keyring::Admin.into()),
-		POOL_A,
-		utils::pool_a_tranche_id::<T>(),
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-	));
+	let tranche_id = env.parachain_state_mut(|| {
+		let tranche_id = utils::pool_a_tranche_id::<T>();
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_A,
+			tranche_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>();
+
+		tranche_id
+	});
 	env.call_mut(
 		Keyring::Alice,
 		Default::default(),
@@ -1063,18 +1081,25 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_a_tranche_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id)),
 		]),
 	)
 	.unwrap();
 
 	// AddTranche 1 of B
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
-		OriginFor::<T>::signed(Keyring::Admin.into()),
-		POOL_A,
-		utils::pool_b_tranche_1_id::<T>(),
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-	));
+	let tranche_id = env.parachain_state_mut(|| {
+		let tranche_id = utils::pool_b_tranche_1_id::<T>();
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_B,
+			tranche_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>();
+
+		tranche_id
+	});
 	env.call_mut(
 		Keyring::Alice,
 		Default::default(),
@@ -1082,17 +1107,25 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_1_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id)),
 		]),
 	)
 	.unwrap();
+
 	// AddTranche 2 of B
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
-		OriginFor::<T>::signed(Keyring::Admin.into()),
-		POOL_A,
-		utils::pool_b_tranche_2_id::<T>(),
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-	));
+	let tranche_id = env.parachain_state_mut(|| {
+		let tranche_id = utils::pool_b_tranche_2_id::<T>();
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_B,
+			utils::pool_b_tranche_2_id::<T>(),
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>();
+
+		tranche_id
+	});
 	env.call_mut(
 		Keyring::Alice,
 		Default::default(),
@@ -1100,7 +1133,7 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(utils::pool_b_tranche_2_id::<T>())),
+			Token::FixedBytes(FixedBytes::from(tranche_id)),
 		]),
 	)
 	.unwrap();
@@ -1110,31 +1143,37 @@ pub fn setup_tranches<T: Runtime>(env: &mut impl EvmEnv<T>) {
 /// * Pool A with 1 tranche
 /// * Pool B with 2 tranches
 pub fn setup_pools<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	crate::generic::utils::pool::create_one_tranched::<T>(
-		Keyring::Admin.into(),
-		POOL_A,
-		LocalUSDC.id(),
-	);
+	env.parachain_state_mut(|| {
+		crate::generic::utils::pool::create_one_tranched::<T>(
+			Keyring::Admin.into(),
+			POOL_A,
+			LocalUSDC.id(),
+		);
 
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-		OriginFor::<T>::signed(Keyring::Admin.into()),
-		POOL_A,
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-	));
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_A,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
 
-	crate::generic::utils::pool::create_two_tranched::<T>(
-		Keyring::Admin.into(),
-		POOL_B,
-		LocalUSDC.id(),
-	);
+		utils::process_outbound::<T>()
+	});
 
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-		OriginFor::<T>::signed(Keyring::Admin.into()),
-		POOL_B,
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-	));
+	env.parachain_state_mut(|| {
+		crate::generic::utils::pool::create_two_tranched::<T>(
+			Keyring::Admin.into(),
+			POOL_B,
+			LocalUSDC.id(),
+		);
 
-	utils::process_outbound::<T>()
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_B,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>()
+	});
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on

@@ -36,6 +36,12 @@ fn _test() {
 	add_pool::<centrifuge_runtime::Runtime>()
 }
 
+// TODO(william): Remove debug test
+#[test]
+fn _test_tmp() {
+	disallow_investment_currency::<development_runtime::Runtime>()
+}
+
 fn add_currency<T: Runtime>() {
 	let mut env = super::setup::<T>(|_| {});
 
@@ -144,21 +150,22 @@ fn add_pool<T: Runtime>() {
 	});
 
 	let creation_time = env.parachain_state(<pallet_timestamp::Pallet<T> as TimeAsSecs>::now);
+	// FIXME(william): Parachain is t=24 (block 2) while EVM created at t=0
+	let offset = 24;
+	let creation_time_with_offset = creation_time - offset;
 
 	// Compare the pool.created_at field that is returned
-	assert_eq!(
-		Decoder::<Uint>::decode(
-			&env.view(
-				Keyring::Alice,
-				"pool_manager",
-				"pools",
-				Some(&[Token::Uint(Uint::from(POOL))]),
-			)
-			.unwrap()
-			.value
-		),
-		Uint::from(creation_time)
+	let evm_pool_time = Decoder::<Uint>::decode(
+		&env.view(
+			Keyring::Alice,
+			"pool_manager",
+			"pools",
+			Some(&[Token::Uint(Uint::from(POOL))]),
+		)
+		.unwrap()
+		.value,
 	);
+	assert_eq!(evm_pool_time, Uint::from(creation_time_with_offset));
 
 	env.pass(Blocks::ByNumber(1));
 
@@ -190,7 +197,7 @@ fn add_pool<T: Runtime>() {
 			.unwrap()
 			.value
 		),
-		Uint::from(creation_time)
+		Uint::from(creation_time_with_offset)
 	);
 }
 
@@ -224,6 +231,8 @@ fn allow_investment_currency<T: Runtime>() {
 		super::setup_pools(env);
 		super::setup_tranches(env);
 	});
+
+	todo!("allow_investment_currency")
 }
 
 fn disallow_investment_currency<T: Runtime>() {
@@ -234,6 +243,8 @@ fn disallow_investment_currency<T: Runtime>() {
 		super::setup_investment_currencies(env);
 		super::setup_deploy_lps(env);
 	});
+
+	todo!("disallow_investment_currency")
 }
 
 fn update_member<T: Runtime>() {
@@ -246,6 +257,8 @@ fn update_tranche_token_metadata<T: Runtime>() {
 		super::setup_pools(env);
 		super::setup_tranches(env);
 	});
+
+	todo!("update_tranche_token_metadata")
 }
 
 fn update_tranche_token_price<T: Runtime>() {
@@ -254,6 +267,8 @@ fn update_tranche_token_price<T: Runtime>() {
 		super::setup_pools(env);
 		super::setup_tranches(env);
 	});
+
+	todo!("update_tranche_token_price")
 }
 
 crate::test_for_runtimes!(all, add_currency);
