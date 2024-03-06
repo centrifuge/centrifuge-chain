@@ -27,7 +27,7 @@ use crate::{
 			utils, utils::Decoder, LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
-		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
+		env::{EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
 	utils::accounts::Keyring,
@@ -35,7 +35,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	add_pool::<development_runtime::Runtime>()
+	add_currency::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -113,6 +113,17 @@ fn add_currency<T: Runtime>() {
 			index.index
 		);
 	});
+
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			TestCurrency.id()
+		));
+
+		utils::process_outbound::<T>(|| {
+			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
+		});
+	});
 }
 
 fn add_pool<T: Runtime>() {
@@ -150,8 +161,6 @@ fn add_pool<T: Runtime>() {
 		assert_eq!(evm_pool_time, Uint::from(creation_time));
 	});
 
-	env.pass(Blocks::ByNumber(1));
-
 	env.state_mut(|evm| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			T::RuntimeOriginExt::signed(Keyring::Admin.into()),
@@ -160,14 +169,7 @@ fn add_pool<T: Runtime>() {
 		));
 
 		utils::process_outbound::<T>(|| {
-			let (_tx, status, _receipt) = pallet_ethereum::Pending::<T>::get()
-				.last()
-				.expect("Queue triggered evm tx.")
-				.clone();
-
-			assert_eq!(status.to.unwrap().0, evm.deployed("router").address().0);
-			// The sender is the sender account on the gateway
-			assert_eq!(status.from, Keyring::Admin.into());
+			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
 		});
 	});
 }

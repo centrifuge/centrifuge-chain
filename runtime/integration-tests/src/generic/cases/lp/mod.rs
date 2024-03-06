@@ -49,8 +49,10 @@ pub mod utils {
 
 	use cfg_primitives::{Balance, TrancheId};
 	use ethabi::ethereum_types::{H160, H256, U256};
+	use ethereum::ReceiptV3;
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
+	use sp_core::{ByteArray, Get};
 	use xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -102,6 +104,35 @@ pub mod utils {
 		*get_tranche_ids::<T>(POOL_B)
 			.get(1)
 			.expect("Pool B has two non-residuary tranches")
+	}
+
+	pub fn receipt_ok(receipt: ReceiptV3) -> bool {
+		let inner = match receipt {
+			ReceiptV3::Legacy(inner) | ReceiptV3::EIP1559(inner) | ReceiptV3::EIP2930(inner) => {
+				inner
+			}
+		};
+
+		inner.status_code == 1
+	}
+
+	pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
+		let (_tx, status, receipt) = pallet_ethereum::Pending::<T>::get()
+			.last()
+			.expect("Queue triggered evm tx.")
+			.clone();
+
+		// The sender is the sender account on the gateway
+		assert_eq!(
+			status.from.0,
+			<T as pallet_liquidity_pools_gateway::Config>::Sender::get().as_slice()[0..20]
+		);
+		assert_eq!(status.to.unwrap().0, to.0);
+		assert!(!receipt_ok(receipt));
+		assert!(matches!(
+			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
+			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionFailure { .. }
+		));
 	}
 
 	pub fn verify_outbound_success<T: Runtime>() {
