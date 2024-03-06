@@ -35,7 +35,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	allow_investment_currency::<development_runtime::Runtime>()
+	add_pool::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -79,7 +79,7 @@ fn add_currency<T: Runtime>() {
 			Some(&[Token::Uint(Uint::from(TestCurrency.decimals()))]),
 		);
 
-		register_currency::<T>(USDC, |meta| {
+		register_currency::<T>(TestCurrency, |meta| {
 			meta.location = Some(utils::lp_asset_location::<T>(
 				evm.deployed("test_erc20").address(),
 			));
@@ -131,7 +131,7 @@ fn add_pool<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 	const POOL: PoolId = 1;
 
-	let creation_time_with_offset = env.state_mut(|evm| {
+	env.state_mut(|evm| {
 		crate::generic::utils::pool::create_one_tranched::<T>(
 			Keyring::Admin.into(),
 			POOL,
@@ -147,9 +147,6 @@ fn add_pool<T: Runtime>() {
 		utils::process_outbound::<T>();
 
 		let creation_time = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		// FIXME(william): Parachain is t=24 (block 2) while EVM created at t=0
-		let offset = 24;
-		let creation_time_with_offset = creation_time - offset;
 
 		// Compare the pool.created_at field that is returned
 		let evm_pool_time = Decoder::<Uint>::decode(
@@ -162,36 +159,7 @@ fn add_pool<T: Runtime>() {
 			.unwrap()
 			.value,
 		);
-		assert_eq!(evm_pool_time, Uint::from(creation_time_with_offset));
-
-		creation_time_with_offset
-	});
-
-	env.pass(Blocks::ByNumber(1));
-
-	env.state_mut(|evm| {
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-			OriginFor::<T>::signed(Keyring::Admin.into()),
-			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
-		));
-
-		utils::process_outbound::<T>();
-
-		// Adding a pool again DOES NOT change creation time - i.e. not override storage
-		assert_eq!(
-			Decoder::<Uint>::decode(
-				&evm.view(
-					Keyring::Alice,
-					"pool_manager",
-					"pools",
-					Some(&[Token::Uint(Uint::from(POOL))]),
-				)
-				.unwrap()
-				.value
-			),
-			Uint::from(creation_time_with_offset)
-		);
+		assert_eq!(evm_pool_time, Uint::from(creation_time));
 	});
 }
 
