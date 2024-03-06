@@ -2,9 +2,7 @@
 //! considered at this level.
 
 use cfg_primitives::{conversion, liquidity_pools::GeneralCurrencyPrefix, Balance, CFG};
-use cfg_types::tokens::{
-	AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata, GeneralCurrencyIndex,
-};
+use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata, GeneralCurrencyIndex};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 

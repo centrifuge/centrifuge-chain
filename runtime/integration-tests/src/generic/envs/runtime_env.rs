@@ -12,7 +12,6 @@ use frame_support::{
 	traits::GenesisBuild,
 };
 use frame_system::LastRuntimeUpgradeInfo;
-use pallet_evm::{FeeCalculator, Runner};
 use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;

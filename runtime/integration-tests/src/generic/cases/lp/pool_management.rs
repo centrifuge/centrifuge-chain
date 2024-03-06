@@ -27,7 +27,7 @@ use crate::{
 			utils, utils::Decoder, LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
-		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
+		env::{EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
 	utils::accounts::Keyring,
@@ -169,7 +169,7 @@ fn add_tranche<T: Runtime>() {
 		super::setup_pools(evm);
 	});
 
-	env.state_mut(|evm| {
+	env.state_mut(|_evm| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
@@ -190,7 +190,7 @@ fn allow_investment_currency<T: Runtime>() {
 		super::setup_tranches(evm);
 	});
 
-	env.state_mut(|evm| {
+	env.state_mut(|_evm| {
 		assert_ok!(
 			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 				OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -217,7 +217,7 @@ fn disallow_investment_currency<T: Runtime>() {
 	// disallow investment currencies
 	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
 		for pool in [POOL_A, POOL_B] {
-			env.state_mut(|evm| {
+			env.state_mut(|_evm| {
 				assert_ok!(
 					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -238,7 +238,7 @@ fn update_member<T: Runtime>() {
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {
-	let mut env = super::setup::<T, _>(|evm| {
+	let _env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
@@ -248,7 +248,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 }
 
 fn update_tranche_token_price<T: Runtime>() {
-	let mut env = super::setup::<T, _>(|evm| {
+	let _env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);

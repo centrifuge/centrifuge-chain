@@ -10,14 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{
-	liquidity_pools::GeneralCurrencyPrefix, Balance, PoolId, CFG, SECONDS_PER_HOUR,
-};
+use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR};
 use cfg_types::{
 	domain_address::Domain,
-	tokens::{
-		CrossChainTransferability, CurrencyId, CustomMetadata, GeneralCurrencyIndex, LocalAssetId,
-	},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
 use ethabi::{ethereum_types::U256, FixedBytes, Token, Uint};
 use frame_support::{
@@ -41,7 +37,6 @@ use crate::{
 			genesis,
 			genesis::Genesis,
 			give_balance,
-			pool::get_tranche_ids,
 		},
 	},
 	utils::accounts::Keyring,
