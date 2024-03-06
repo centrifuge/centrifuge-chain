@@ -31,6 +31,7 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	generic::{
+		cases::lp::utils::Decoder,
 		config::Runtime,
 		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
@@ -176,6 +177,14 @@ pub mod utils {
 			assert!(self.input().len() == 32);
 
 			H160::from(to_fixed_array(&self.input()[12..]))
+		}
+	}
+
+	impl<T: Input> Decoder<sp_core::H160> for T {
+		fn decode(&self) -> sp_core::H160 {
+			assert!(self.input().len() == 32);
+
+			sp_core::H160::from(to_fixed_array(&self.input()[12..]))
 		}
 	}
 
@@ -368,6 +377,7 @@ pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
 		setup_tranches(evm);
 		setup_investment_currencies(evm);
 		setup_deploy_lps(evm);
+		// TODO: Needs setup investors too here
 	})
 }
 
@@ -942,48 +952,296 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		utils::pool_b_tranche_2_id::<T>(),
 	);
 
-	for tranche_id in [tranche_id_a, tranche_id_b_1, tranche_id_b_2] {
-		for pool in [POOL_A, POOL_B] {
-			evm.call(
+	// POOL_A - TRANCHE 1
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_A)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
+			Token::Address(evm.deployed("usdc").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_a_tranche_1_usdc",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
 				Keyring::Alice,
-				Default::default(),
 				"pool_manager",
-				"deployLiquidityPool",
+				"getLiquidityPool",
 				Some(&[
-					Token::Uint(Uint::from(pool)),
-					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 					Token::Address(evm.deployed("usdc").address()),
 				]),
 			)
-			.unwrap();
+			.unwrap()
+			.value,
+		),
+	);
 
-			evm.call(
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_A)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
+			Token::Address(evm.deployed("frax").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_a_tranche_1_frax",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
 				Keyring::Alice,
-				Default::default(),
 				"pool_manager",
-				"deployLiquidityPool",
+				"getLiquidityPool",
 				Some(&[
-					Token::Uint(Uint::from(pool)),
-					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 					Token::Address(evm.deployed("frax").address()),
 				]),
 			)
-			.unwrap();
+			.unwrap()
+			.value,
+		),
+	);
 
-			evm.call(
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_A)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
+			Token::Address(evm.deployed("dai").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_a_tranche_1_dai",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
 				Keyring::Alice,
-				Default::default(),
 				"pool_manager",
-				"deployLiquidityPool",
+				"getLiquidityPool",
 				Some(&[
-					Token::Uint(Uint::from(pool)),
-					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
 					Token::Address(evm.deployed("dai").address()),
 				]),
 			)
-			.unwrap();
-		}
-	}
+			.unwrap()
+			.value,
+		),
+	);
+
+	// POOL_B - TRANCHE 1
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+			Token::Address(evm.deployed("usdc").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_1_usdc",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+			Token::Address(evm.deployed("frax").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_1_frax",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+					Token::Address(evm.deployed("frax").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+			Token::Address(evm.deployed("dai").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_1_dai",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
+					Token::Address(evm.deployed("dai").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	// POOL_B - TRANCHE 2
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+			Token::Address(evm.deployed("usdc").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_2_usdc",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+			Token::Address(evm.deployed("frax").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_2_frax",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+					Token::Address(evm.deployed("frax").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployLiquidityPool",
+		Some(&[
+			Token::Uint(Uint::from(POOL_B)),
+			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+			Token::Address(evm.deployed("dai").address()),
+		]),
+	)
+	.unwrap();
+
+	evm.register(
+		"lp_pool_b_tranche_2_dai",
+		"LiquidityPool",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(POOL_B)),
+					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
+					Token::Address(evm.deployed("dai").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
 }
 
 /// Initiates tranches on EVM via `DeployTranche` contract and then sends

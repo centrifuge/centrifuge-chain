@@ -202,7 +202,7 @@ pub trait EvmEnv<T: Runtime> {
 	) -> &mut Self;
 
 	fn call(
-		&mut self,
+		&self,
 		caller: Keyring,
 		value: U256,
 		contract: impl Into<String>,
@@ -211,10 +211,7 @@ pub trait EvmEnv<T: Runtime> {
 	) -> Result<CallInfo, DispatchError>;
 
 	fn view(
-		// TODO: Needs to imutable actually, but the current state implementation does
-		//       not rollback but error out upon changes, which is not ideal if you want to
-		//       test stuff without altering your state.
-		&mut self,
+		&self,
 		caller: Keyring,
 		contract: impl Into<String>,
 		function: impl Into<String>,

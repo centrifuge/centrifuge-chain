@@ -159,7 +159,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	}
 
 	fn call(
-		&mut self,
+		&self,
 		caller: Keyring,
 		value: U256,
 		contract: impl Into<String>,
@@ -212,7 +212,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	}
 
 	fn view(
-		&mut self,
+		&self,
 		caller: Keyring,
 		contract: impl Into<String>,
 		function: impl Into<String>,
