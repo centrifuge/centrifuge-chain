@@ -54,20 +54,8 @@ fn add_currency<T: Runtime>() {
 			}
 		}
 
-		fn decimals(&self) -> u32 {
-			12
-		}
-
-		fn ed(&self) -> Balance {
-			10_000_000_000
-		}
-
 		fn id(&self) -> CurrencyId {
 			CurrencyId::ForeignAsset(200_001)
-		}
-
-		fn symbol(&self) -> &'static str {
-			"FRAX"
 		}
 	}
 
