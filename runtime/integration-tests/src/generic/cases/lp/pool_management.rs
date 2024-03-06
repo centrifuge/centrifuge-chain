@@ -35,7 +35,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	add_pool::<development_runtime::Runtime>()
+	add_tranche::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -78,7 +78,7 @@ fn add_currency<T: Runtime>() {
 			TestCurrency.id()
 		));
 
-		utils::process_outbound::<T>()
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
 	});
 
 	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency.id()).unwrap();
@@ -132,7 +132,7 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		let creation_time = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 
@@ -165,7 +165,7 @@ fn add_tranche<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		// TODO: Check EVM side and deploy tranche there
 	});
@@ -186,7 +186,7 @@ fn allow_investment_currency<T: Runtime>() {
 				USDC.id(),
 			),
 		);
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		// TODO: Check allowed investment currencies on EVM side and deploy lp
 		//       there
@@ -213,7 +213,7 @@ fn disallow_investment_currency<T: Runtime>() {
 						currency
 					),
 				);
-				utils::process_outbound::<T>();
+				utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 				// TODO: Actually check whether LP is blocked
 			})

@@ -102,7 +102,14 @@ pub mod utils {
 			.expect("Pool B has two non-residuary tranches")
 	}
 
-	pub fn process_outbound<T: Runtime>() {
+	pub fn verify_outbound_success<T: Runtime>() {
+		assert!(matches!(
+			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
+			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
+		));
+	}
+
+	pub fn process_outbound<T: Runtime>(verifier: impl Fn()) {
 		pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
 			.map(|(nonce, _)| nonce)
 			.collect::<Vec<_>>()
@@ -114,10 +121,7 @@ pub mod utils {
 				)
 				.unwrap();
 
-				assert!(matches!(
-					last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-					pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
-				));
+				verifier();
 			});
 	}
 
@@ -880,7 +884,7 @@ pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 					currency,
 				),
 			);
-			utils::process_outbound::<T>()
+			utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
 		}
 	}
 }
@@ -955,7 +959,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		tranche_id
 	};
@@ -981,7 +985,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		tranche_id
 	};
@@ -1007,7 +1011,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 		tranche_id
 	};
@@ -1040,7 +1044,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
-	utils::process_outbound::<T>();
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
 	crate::generic::utils::pool::create_two_tranched::<T>(
 		Keyring::Admin.into(),
@@ -1054,7 +1058,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
-	utils::process_outbound::<T>();
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
@@ -1278,5 +1282,5 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		FRAX.id()
 	));
 
-	utils::process_outbound::<T>();
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 }
