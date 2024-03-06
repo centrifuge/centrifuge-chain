@@ -3,7 +3,6 @@
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/centrifuge/centrifuge-chain/build-wasm.yml?label=Actions&logo=github)](https://github.com/centrifuge/centrifuge-chain/actions)
 [![GitHub Release](https://img.shields.io/github/v/release/centrifuge/centrifuge-chain)](https://github.com/centrifuge/centrifuge-chain/releases)
 [![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.io/)
-[![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/graph/badge.svg?token=RXlH3AJMRB)](https://codecov.io/gh/centrifuge/centrifuge-chain)
 [![License](https://img.shields.io/github/license/centrifuge/centrifuge-chain?color=green)](https://github.com/centrifuge/centrifuge-chain/blob/main/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fcentrifuge)](https://twitter.com/centrifuge/)
