@@ -17,19 +17,26 @@ use cfg_primitives::{
 	Balance, PalletIndex,
 };
 use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
-pub use orml_asset_registry::AssetMetadata;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Get, DispatchError, TokenError};
-use xcm::{
+use sp_runtime::{
+	traits::{ConstU32, Get},
+	DispatchError, TokenError,
+};
+use staging_xcm::{
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
 	v3::{MultiLocation, NetworkId},
 	VersionedMultiLocation,
 };
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
+
+pub const MAX_ASSET_STRING_LIMIT: u32 = 64;
+
+pub type AssetMetadata =
+	orml_asset_registry::AssetMetadata<Balance, CustomMetadata, ConstU32<MAX_ASSET_STRING_LIMIT>>;
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -486,15 +493,19 @@ pub mod usdc {
 		chain_id: EVMChainId,
 		contract_address_usdc: [u8; 20],
 		pool_currency: bool,
-	) -> AssetMetadata<Balance, CustomMetadata> {
-		AssetMetadata {
+	) -> Result<AssetMetadata, DispatchError> {
+		Ok(AssetMetadata {
 			decimals: DECIMALS,
-			name,
-			symbol,
+			name: name
+				.try_into()
+				.map_err(|_| DispatchError::Other("asset name exceeds limit"))?,
+			symbol: symbol
+				.try_into()
+				.map_err(|_| DispatchError::Other("asset symbol exceeds limit"))?,
 			existential_deposit: EXISTENTIAL_DEPOSIT,
 			location: Some(VersionedMultiLocation::V3(MultiLocation {
 				parents: 0,
-				interior: xcm::v3::Junctions::X3(
+				interior: staging_xcm::v3::Junctions::X3(
 					PalletInstance(pallet_index),
 					GlobalConsensus(NetworkId::Ethereum { chain_id }),
 					AccountKey20 {
@@ -510,7 +521,7 @@ pub mod usdc {
 				pool_currency,
 				local_representation: Some(LOCAL_ASSET_ID),
 			},
-		}
+		})
 	}
 }
 

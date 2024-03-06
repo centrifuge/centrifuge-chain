@@ -1610,8 +1610,8 @@ version = "0.1.0"
 dependencies = [
  "cfg-mocks",
  "cfg-primitives",
- "cfg-types",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
+ "frame-system 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "impl-trait-for-tuples",
  "mock-builder",
  "parity-scale-codec 3.6.9",

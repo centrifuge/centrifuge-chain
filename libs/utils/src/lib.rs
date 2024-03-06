@@ -13,6 +13,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, Error, Input};
 use sp_std::{cmp::min, vec::Vec};
 
@@ -58,7 +59,7 @@ pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, E
 /// Function that initializes the frame system & Aura, so a timestamp can be set
 /// and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
+pub fn set_block_number_timestamp<T>(block_number: BlockNumberFor<T>, timestamp: T::Moment)
 where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
 {

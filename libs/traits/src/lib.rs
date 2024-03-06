@@ -19,13 +19,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
-	scale_info::TypeInfo,
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
-	Parameter, RuntimeDebug,
+	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,

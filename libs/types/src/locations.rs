@@ -16,7 +16,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use xcm::{v3::MultiLocation, VersionedMultiLocation};
+use staging_xcm::{v2, v3::MultiLocation, VersionedMultiLocation};
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
@@ -47,8 +47,8 @@ impl From<MultiLocation> for Location {
 	}
 }
 
-impl From<xcm::v2::MultiLocation> for Location {
-	fn from(ml: xcm::v2::MultiLocation) -> Self {
+impl From<v2::MultiLocation> for Location {
+	fn from(ml: v2::MultiLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
 		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&ml.encode()))
@@ -108,8 +108,8 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
-		let xa = xcm::v2::MultiLocation::default();
-		let xb = xcm::v3::MultiLocation::default();
+		let xa = staging_xcm::v2::MultiLocation::default();
+		let xb = staging_xcm::v3::MultiLocation::default();
 		let l0 = Location::from(xa.clone());
 		let l1 = Location::from(xb.clone());
 		assert_eq!(l0, l1);

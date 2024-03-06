@@ -55,61 +55,51 @@ pub mod reexport {
 #[macro_export]
 macro_rules! make_runtime_for_mock {
 	($runtime_name:ident, $mock_name:ident, $pallet:ident, $externalities:ident) => {
-        use $crate::reexport::frame_support::traits::{ConstU16, ConstU32, ConstU64, Everything};
-        use $crate::reexport::sp_core::H256;
-        use $crate::reexport::sp_runtime::{
-            testing::Header,
-            traits::{BlakeTwo256, IdentityLookup},
-        };
-        use $crate::reexport::frame_system;
+		use $crate::reexport::{
+			frame_support,
+			frame_support::traits::{ConstU16, ConstU32, ConstU64, Everything},
+			frame_system,
+			sp_core::H256,
+			sp_io,
+			sp_runtime::traits::{BlakeTwo256, IdentityLookup},
+		};
 
-        type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-        type Block = frame_system::mocking::MockBlock<Runtime>;
+		frame_support::construct_runtime!(
+			pub struct $runtime_name {
+				System: frame_system,
+				$mock_name: $pallet,
+			}
+		);
 
-        $crate::reexport::frame_support::construct_runtime!(
-            pub enum $runtime_name where
-                Block = Block,
-                NodeBlock = Block,
-                UncheckedExtrinsic = UncheckedExtrinsic,
-            {
-                System: frame_system,
-                $mock_name: $pallet,
-            }
-        );
+		impl frame_system::Config for Runtime {
+			type AccountData = ();
+			type AccountId = u64;
+			type BaseCallFilter = Everything;
+			type Block = frame_system::mocking::MockBlock<Runtime>;
+			type BlockHashCount = ConstU64<250>;
+			type BlockLength = ();
+			type BlockWeights = ();
+			type DbWeight = ();
+			type Hash = H256;
+			type Hashing = BlakeTwo256;
+			type Lookup = IdentityLookup<Self::AccountId>;
+			type MaxConsumers = ConstU32<16>;
+			type Nonce = u64;
+			type OnKilledAccount = ();
+			type OnNewAccount = ();
+			type OnSetCode = ();
+			type PalletInfo = PalletInfo;
+			type RuntimeCall = RuntimeCall;
+			type RuntimeEvent = RuntimeEvent;
+			type RuntimeOrigin = RuntimeOrigin;
+			type SS58Prefix = ConstU16<42>;
+			type SystemWeightInfo = ();
+			type Version = ();
+		}
 
-        impl frame_system::Config for Runtime {
-            type AccountData = ();
-            type AccountId = u64;
-            type BaseCallFilter = Everything;
-            type BlockHashCount = ConstU64<250>;
-            type BlockLength = ();
-            type BlockNumber = u64;
-            type BlockWeights = ();
-            type DbWeight = ();
-            type Hash = H256;
-            type Hashing = BlakeTwo256;
-            type Header = Header;
-            type Index = u64;
-            type Lookup = IdentityLookup<Self::AccountId>;
-            type MaxConsumers = ConstU32<16>;
-            type OnKilledAccount = ();
-            type OnNewAccount = ();
-            type OnSetCode = ();
-            type PalletInfo = PalletInfo;
-            type RuntimeCall = RuntimeCall;
-            type RuntimeEvent = RuntimeEvent;
-            type RuntimeOrigin = RuntimeOrigin;
-            type SS58Prefix = ConstU16<42>;
-            type SystemWeightInfo = ();
-            type Version = ();
-        }
-
-        pub fn $externalities() -> $crate::reexport::sp_io::TestExternalities {
-            frame_system::GenesisConfig::default()
-                .build_storage::<Runtime>()
-                .unwrap()
-                .into()
-        }
+		pub fn $externalities() -> sp_io::TestExternalities {
+			sp_io::TestExternalities::default()
+		}
 	};
 }
 
