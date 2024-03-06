@@ -877,55 +877,20 @@ pub fn setup<T: Runtime>(additional: impl FnOnce(&mut RuntimeEnv<T>)) -> impl Ev
 
 /// Enables USDC, DAI and FRAX as investment currencies for both pools A nand B.
 pub fn setup_investment_currencies<T: Runtime>(env: &mut impl EvmEnv<T>) {
-	env.parachain_state_mut(|| {
-		// Pool A
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_A,
-				USDC.id()
-			)
-		);
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_A,
-				FRAX.id()
-			)
-		);
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_A,
-				DAI.id()
-			)
-		);
-
-		// Pool B
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_B,
-				USDC.id()
-			)
-		);
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_B,
-				FRAX.id()
-			)
-		);
-		assert_ok!(
-			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-				OriginFor::<T>::signed(Keyring::Admin.into()),
-				POOL_B,
-				DAI.id()
-			)
-		);
-	});
-
-	env.parachain_state_mut(|| utils::process_outbound::<T>());
+	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
+		for pool in [POOL_A, POOL_B] {
+			env.parachain_state_mut(|| {
+				assert_ok!(
+					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+						OriginFor::<T>::signed(Keyring::Admin.into()),
+						pool,
+						currency,
+					),
+				);
+				utils::process_outbound::<T>()
+			})
+		}
+	}
 }
 
 /// Deploys both Liquidity Pools for USDC, DAI and FRAX by calling
@@ -941,119 +906,49 @@ pub fn setup_deploy_lps<T: Runtime>(env: &mut impl EvmEnv<T>) {
 			utils::pool_b_tranche_2_id::<T>(),
 		)
 	});
-	// Pool A
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(env.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(env.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(env.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
 
-	// Pool B Tranche 1
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(env.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(env.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(env.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
+	for tranche_id in [tranche_id_a, tranche_id_b_1, tranche_id_b_2] {
+		for pool in [POOL_A, POOL_B] {
+			env.call_mut(
+				Keyring::Alice,
+				Default::default(),
+				"pool_manager",
+				"deployLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(pool)),
+					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Address(env.deployed("usdc").address()),
+				]),
+			)
+			.unwrap();
 
-	// Pool B Tranche 2
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(env.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(env.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-	env.call_mut(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(env.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
+			env.call_mut(
+				Keyring::Alice,
+				Default::default(),
+				"pool_manager",
+				"deployLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(pool)),
+					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Address(env.deployed("frax").address()),
+				]),
+			)
+			.unwrap();
+
+			env.call_mut(
+				Keyring::Alice,
+				Default::default(),
+				"pool_manager",
+				"deployLiquidityPool",
+				Some(&[
+					Token::Uint(Uint::from(pool)),
+					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Address(env.deployed("dai").address()),
+				]),
+			)
+			.unwrap();
+		}
+	}
 }
 
 /// Initiates tranches on EVM via `DeployTranche` contract and then sends

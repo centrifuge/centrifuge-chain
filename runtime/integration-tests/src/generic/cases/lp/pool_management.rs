@@ -23,7 +23,9 @@ use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 
 use crate::{
 	generic::{
-		cases::lp::{utils, utils::Decoder, LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC},
+		cases::lp::{
+			utils, utils::Decoder, LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
+		},
 		config::Runtime,
 		env::{Blocks, Env, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
@@ -33,13 +35,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	add_pool::<centrifuge_runtime::Runtime>()
-}
-
-// TODO(william): Remove debug test
-#[test]
-fn _test_tmp() {
-	disallow_investment_currency::<development_runtime::Runtime>()
+	allow_investment_currency::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -211,13 +207,7 @@ fn add_tranche<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
-			pallet_pool_system::Pallet::<T>::pool(POOL_A)
-				.unwrap()
-				.tranches
-				.ids
-				.last()
-				.unwrap()
-				.clone(),
+			utils::pool_a_tranche_id::<T>(),
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
@@ -232,7 +222,16 @@ fn allow_investment_currency<T: Runtime>() {
 		super::setup_tranches(env);
 	});
 
-	todo!("allow_investment_currency")
+	env.parachain_state_mut(|| {
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_A,
+				USDC.id(),
+			),
+		);
+		utils::process_outbound::<T>()
+	})
 }
 
 fn disallow_investment_currency<T: Runtime>() {
@@ -244,7 +243,21 @@ fn disallow_investment_currency<T: Runtime>() {
 		super::setup_deploy_lps(env);
 	});
 
-	todo!("disallow_investment_currency")
+	// disallow investment currencies
+	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
+		for pool in [POOL_A, POOL_B] {
+			env.parachain_state_mut(|| {
+				assert_ok!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						OriginFor::<T>::signed(Keyring::Admin.into()),
+						pool,
+						currency
+					),
+				);
+				utils::process_outbound::<T>()
+			})
+		}
+	}
 }
 
 fn update_member<T: Runtime>() {
