@@ -1,5 +1,17 @@
+<div align="center">
+
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/centrifuge/centrifuge-chain/build-wasm.yml?label=Actions&logo=github)](https://github.com/centrifuge/centrifuge-chain/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/centrifuge/centrifuge-chain)](https://github.com/centrifuge/centrifuge-chain/releases)
+[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.io/)
+[![License](https://img.shields.io/github/license/centrifuge/centrifuge-chain?color=green)](https://github.com/centrifuge/centrifuge-chain/blob/main/LICENSE)
+ <br />
+[![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fcentrifuge)](https://twitter.com/centrifuge/)
+[![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/centrifuge_chat)
+
+</div>
+
 <p align="center">
-  <a href="https://github.com/centrifuge/centrifuge-chain">
+  <a href="https://centrifuge.io">
     <img alt="Centrifuge" src="/docs/images/banner.svg">
   </a>
   <h2 align="center">Centrifuge Chain</h2>
