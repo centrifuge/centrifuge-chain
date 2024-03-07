@@ -109,7 +109,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		KeyId<T::Hash>,
-		Key<T::BlockNumber, T::Balance>,
+		Key<BlockNumberFor<T>, T::Balance>,
 	>;
 
 	/// Storage used for retrieving last key by purpose.
@@ -138,7 +138,7 @@ pub mod pallet {
 		KeyRevoked {
 			owner: T::AccountId,
 			key: T::Hash,
-			block_number: T::BlockNumber,
+			block_number: BlockNumberFor<T>,
 		},
 		/// A deposit was set.
 		DepositSet { new_deposit: T::Balance },
