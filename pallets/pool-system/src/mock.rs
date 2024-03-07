@@ -401,6 +401,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type WeightInfo = ();
 }
 
 parameter_types! {

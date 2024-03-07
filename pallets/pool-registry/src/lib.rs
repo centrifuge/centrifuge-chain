@@ -14,8 +14,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	fee::PoolFeeBucket, investments::TrancheCurrency, Permissions, PoolMutate,
-	PoolWriteOffPolicyMutate, UpdateState,
+	fee::{PoolFeeBucket, PoolFeesInspect},
+	investments::TrancheCurrency,
+	Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
@@ -166,6 +167,9 @@ pub mod pallet {
 				CustomMetadata = CustomMetadata,
 			>;
 
+		/// The source of truth for the pool fees counters;
+		type PoolFeesInspect: PoolFeesInspect<PoolId = Self::PoolId>;
+
 		/// Weight Information
 		type WeightInfo: WeightInfo;
 	}
@@ -239,7 +243,10 @@ pub mod pallet {
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
 		#[allow(clippy::too_many_arguments)]
-		#[pallet::weight(T::WeightInfo::register(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::weight(T::WeightInfo::register(
+			tranche_inputs.len().try_into().unwrap_or(u32::MAX),
+			pool_fees.len().try_into().unwrap_or(u32::MAX))
+		)]
 		#[transactional]
 		#[pallet::call_index(0)]
 		pub fn register(
@@ -308,7 +315,13 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get()).max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
+		#[pallet::weight(T::WeightInfo::update_no_execution(
+			T::MaxTranches::get(),
+			T::PoolFeesInspect::get_max_fee_count()).max(
+				T::WeightInfo::update_and_execute(T::MaxTranches::get(),
+				T::PoolFeesInspect::get_max_fee_count()
+			))
+		)]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -339,14 +352,20 @@ pub mod pallet {
 			Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 			let weight = match state {
-				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0),
+				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0, 0),
 				UpdateState::Executed(num_tranches) => {
 					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					T::WeightInfo::update_and_execute(num_tranches)
+					T::WeightInfo::update_and_execute(
+						num_tranches,
+						T::PoolFeesInspect::get_pool_fee_count(pool_id),
+					)
 				}
 				UpdateState::Stored(num_tranches) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_no_execution(num_tranches)
+					T::WeightInfo::update_no_execution(
+						num_tranches,
+						T::PoolFeesInspect::get_pool_fee_count(pool_id),
+					)
 				}
 			};
 			Ok(Some(weight).into())
@@ -358,7 +377,10 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_update(T::MaxTranches::get()))]
+		#[pallet::weight(T::WeightInfo::execute_update(
+			T::MaxTranches::get(),
+			T::PoolFeesInspect::get_max_fee_count()
+		))]
 		#[pallet::call_index(2)]
 		pub fn execute_update(
 			origin: OriginFor<T>,
@@ -367,14 +389,18 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let num_tranches = T::ModifyPool::execute_update(pool_id)?;
-			Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
+			let num_fees = T::PoolFeesInspect::get_pool_fee_count(pool_id);
+			Ok(Some(T::WeightInfo::execute_update(num_tranches, num_fees)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::weight(T::WeightInfo::set_metadata(
+			metadata.len().try_into().unwrap_or(u32::MAX),
+			T::PoolFeesInspect::get_max_fee_count()
+		))]
 		#[pallet::call_index(3)]
 		pub fn set_metadata(
 			origin: OriginFor<T>,

@@ -1092,6 +1092,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
@@ -1121,6 +1122,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type WeightInfo = weights::pallet_pool_fees::WeightInfo<Self>;
 }
 
 pub struct PoolCurrency;
@@ -1891,8 +1893,7 @@ impl pallet_token_mux::Config for Runtime {
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = OrmlTokens;
-	// TODO(william): Change to weights once they exist
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_token_mux::WeightInfo<Runtime>;
 }
 
 parameter_types! {
