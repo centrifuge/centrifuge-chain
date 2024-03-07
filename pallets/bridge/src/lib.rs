@@ -35,7 +35,7 @@ use chainbridge::types::{ChainId, ResourceId};
 // Runtime, system and frame primitives
 use frame_support::{
 	traits::{Currency, ExistenceRequirement::AllowDeath},
-	transactional, PalletId,
+	transactional, DefaultNoBound, PalletId,
 };
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -88,8 +88,6 @@ pub mod pallet {
 		/// Pallet identifier.
 		///
 		/// The module identifier may be of the form
-		/// ```PalletId(*b"c/bridge")``` (a string of eight characters) and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
-		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
 		type BridgePalletId: Get<PalletId>;
 
@@ -144,6 +142,7 @@ pub mod pallet {
 
 	// The genesis configuration type.
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub chains: Vec<u8>,
 		pub relayers: Vec<<T as frame_system::Config>::AccountId>,
@@ -151,22 +150,9 @@ pub mod pallet {
 		pub threshold: u32,
 	}
 
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				chains: Default::default(),
-				relayers: Default::default(),
-				resources: Default::default(),
-				threshold: Default::default(),
-			}
-		}
-	}
-
 	// The build of genesis for the pallet.
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			self.chains.iter().for_each(|c| {
 				<chainbridge::Pallet<T>>::whitelist(*c).unwrap_or_default();

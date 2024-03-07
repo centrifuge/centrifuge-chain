@@ -253,7 +253,7 @@ pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foun
 # Centrifuge organization
 #fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
 #fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.1.0" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.1.0-latest-deps" }
 
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0" }

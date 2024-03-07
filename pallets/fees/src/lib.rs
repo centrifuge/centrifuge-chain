@@ -10,8 +10,9 @@
 
 use cfg_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	pallet_prelude::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
+	DefaultNoBound,
 };
 pub use pallet::*;
 use parity_scale_codec::EncodeLike;
@@ -82,23 +83,14 @@ pub mod pallet {
 
 	// The genesis config type.
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_fees: Vec<(T::FeeKey, BalanceOf<T>)>,
 	}
 
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				initial_fees: Default::default(),
-			}
-		}
-	}
-
 	// The build of genesis for the pallet.
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			for (key, fee) in self.initial_fees.iter() {
 				<FeeBalances<T>>::insert(key, fee);
