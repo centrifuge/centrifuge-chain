@@ -9,10 +9,14 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use cfg_traits::fees::Fees;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::One;
+use sp_runtime::{
+	traits::{Hash, One},
+	DispatchError,
+};
 
 use super::*;
 

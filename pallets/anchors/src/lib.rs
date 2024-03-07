@@ -18,22 +18,14 @@
 // This pallet is getting a big refactor soon, so no sense doing clippy cleanups
 #![allow(clippy::all)]
 
-use cfg_traits::fees::{Fee, Fees};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	storage::child,
-	traits::{Currency, Get, ReservableCurrency},
-	BoundedVec, RuntimeDebug, StateVersion,
+	pallet_prelude::RuntimeDebug,
+	traits::{Currency, Get},
 };
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
-use sp_runtime::{
-	traits::{Hash, Header},
-	ArithmeticError,
-};
-use sp_std::vec::Vec;
+use sp_std::marker::PhantomData;
 pub use weights::*;
 pub mod weights;
 
@@ -51,11 +43,11 @@ mod benchmarking;
 
 mod common;
 
-pub struct RootHashSize<H>(sp_std::marker::PhantomData<H>);
-
-impl<H: Header> Get<u32> for RootHashSize<H> {
+/// Type to get the length of hash
+pub struct RootHashSize<T>(PhantomData<T>);
+impl<T: Config> Get<u32> for RootHashSize<T> {
 	fn get() -> u32 {
-		<H::Hashing as sp_core::Hasher>::LENGTH as u32
+		<T::Hashing as sp_core::Hasher>::LENGTH as u32
 	}
 }
 
@@ -105,9 +97,14 @@ pub struct AnchorData<Hash, BlockNumber> {
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
+	use cfg_traits::fees::{Fee, Fees};
+	use frame_support::{pallet_prelude::*, storage::child, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::Hash;
+	use sp_runtime::{
+		traits::{CheckedAdd, CheckedMul, Hash},
+		ArithmeticError, StateVersion,
+	};
+	use sp_std::vec::Vec;
 
 	use super::*;
 
@@ -146,7 +143,7 @@ pub mod pallet {
 		_,
 		Blake2_256,
 		T::Hash,
-		PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>,
+		PreCommitData<T::Hash, T::AccountId, BlockNumberFor<T>, BalanceOf<T>>,
 	>;
 
 	/// Map to find the eviction date given an anchor id
@@ -185,7 +182,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
 	pub(super) type EvictedAnchorRoots<T: Config> =
-		StorageMap<_, Blake2_256, u32, BoundedVec<u8, RootHashSize<T::Header>>>;
+		StorageMap<_, Blake2_256, u32, BoundedVec<u8, RootHashSize<T>>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -253,7 +250,9 @@ pub mod pallet {
 			);
 
 			let expiration_block = <frame_system::Pallet<T>>::block_number()
-				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
+				.checked_add(&BlockNumberFor::<T>::from(
+					PRE_COMMIT_EXPIRATION_DURATION_BLOCKS,
+				))
 				.ok_or(ArithmeticError::Overflow)?;
 
 			let deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
@@ -431,147 +430,154 @@ pub mod pallet {
 			Ok(())
 		}
 	}
-}
+	impl<T: Config> Pallet<T> {
+		/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a
+		/// pre-commit with `expiration_block` < `current_block_number`.
+		fn get_valid_pre_commit(
+			anchor_id: T::Hash,
+		) -> Option<PreCommitData<T::Hash, T::AccountId, BlockNumberFor<T>, BalanceOf<T>>> {
+			<PreCommits<T>>::get(anchor_id).filter(|pre_commit| {
+				pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number()
+			})
+		}
 
-impl<T: Config> Pallet<T> {
-	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a
-	/// pre-commit with `expiration_block` < `current_block_number`.
-	fn get_valid_pre_commit(
-		anchor_id: T::Hash,
-	) -> Option<PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>> {
-		<PreCommits<T>>::get(anchor_id).filter(|pre_commit| {
-			pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number()
-		})
-	}
-
-	/// Evict a pre-commit returning the reserved tokens at `pre_commit()`.
-	/// You can choose if evict it only if it's expired or evict either way.
-	fn evict_pre_commit(anchor_id: T::Hash, only_if_expired: bool) {
-		if let Some(pre_commit) = PreCommits::<T>::get(anchor_id) {
-			if !only_if_expired
-				|| pre_commit.expiration_block <= <frame_system::Pallet<T>>::block_number()
-			{
-				PreCommits::<T>::remove(anchor_id);
-				T::Currency::unreserve(&pre_commit.identity, pre_commit.deposit);
+		/// Evict a pre-commit returning the reserved tokens at `pre_commit()`.
+		/// You can choose if evict it only if it's expired or evict either way.
+		fn evict_pre_commit(anchor_id: T::Hash, only_if_expired: bool) {
+			if let Some(pre_commit) = PreCommits::<T>::get(anchor_id) {
+				if !only_if_expired
+					|| pre_commit.expiration_block <= <frame_system::Pallet<T>>::block_number()
+				{
+					PreCommits::<T>::remove(anchor_id);
+					T::Currency::unreserve(&pre_commit.identity, pre_commit.deposit);
+				}
 			}
 		}
-	}
 
-	/// Checks if `hash(signing_root, proof) == doc_root` for the given
-	/// `anchor_id`. Concatenation of `signing_root` and `proof` is done in a
-	/// fixed order (signing_root + proof). assumes there is a valid pre-commit
-	/// under PreCommits
-	fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
-		let signing_root = match <PreCommits<T>>::get(anchor_id) {
-			Some(pre_commit) => pre_commit.signing_root,
-			None => return false,
-		};
-		let mut concatenated_bytes = signing_root.as_ref().to_vec();
-		let proof_bytes = proof.as_ref().to_vec();
+		/// Checks if `hash(signing_root, proof) == doc_root` for the given
+		/// `anchor_id`. Concatenation of `signing_root` and `proof` is done in
+		/// a fixed order (signing_root + proof). assumes there is a valid
+		/// pre-commit under PreCommits
+		fn has_valid_pre_commit_proof(
+			anchor_id: T::Hash,
+			doc_root: T::Hash,
+			proof: T::Hash,
+		) -> bool {
+			let signing_root = match <PreCommits<T>>::get(anchor_id) {
+				Some(pre_commit) => pre_commit.signing_root,
+				None => return false,
+			};
+			let mut concatenated_bytes = signing_root.as_ref().to_vec();
+			let proof_bytes = proof.as_ref().to_vec();
 
-		// concat hashes
-		concatenated_bytes.extend(proof_bytes);
-		let calculated_root = <T as frame_system::Config>::Hashing::hash(&concatenated_bytes);
-		return doc_root == calculated_root;
-	}
+			// concat hashes
+			concatenated_bytes.extend(proof_bytes);
+			let calculated_root = <T as frame_system::Config>::Hashing::hash(&concatenated_bytes);
+			return doc_root == calculated_root;
+		}
 
-	/// Remove child tries starting with `from` day to `until` day returning the
-	/// count of tries removed.
-	fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
-		(from..until)
-			.map(|day| {
-				(
-					day,
-					common::generate_child_storage_key(&Self::anchor_storage_key(&day.encode())),
-				)
-			})
-			// store the root of child trie for the day on chain before eviction. Checks if it
-			// exists before hand to ensure that it doesn't overwrite a root.
-			.map(|(day, key)| {
-				if !<EvictedAnchorRoots<T>>::contains_key(day) {
-					let root: BoundedVec<_, _> = child::root(&key, StateVersion::V0)
-						.try_into()
-						.expect("The output hash must use the block hasher");
+		/// Remove child tries starting with `from` day to `until` day returning
+		/// the count of tries removed.
+		fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
+			(from..until)
+				.map(|day| {
+					(
+						day,
+						common::generate_child_storage_key(&Self::anchor_storage_key(
+							&day.encode(),
+						)),
+					)
+				})
+				// store the root of child trie for the day on chain before eviction. Checks if it
+				// exists before hand to ensure that it doesn't overwrite a root.
+				.map(|(day, key)| {
+					if !<EvictedAnchorRoots<T>>::contains_key(day) {
+						let root: BoundedVec<_, _> = child::root(&key, StateVersion::V0)
+							.try_into()
+							.expect("The output hash must use the block hasher");
 
-					<EvictedAnchorRoots<T>>::insert(day, root);
-				}
-				key
-			})
-			.map(|key| child::clear_storage(&key, None, None))
-			.count()
-	}
+						<EvictedAnchorRoots<T>>::insert(day, root);
+					}
+					key
+				})
+				.map(|key| child::clear_storage(&key, None, None))
+				.count()
+		}
 
-	/// Iterate from the last evicted anchor to latest anchor, while removing
-	/// indexes that are no longer valid because they belong to an
-	/// expired/evicted anchor. The loop is only allowed to run MAX_LOOP_IN_TX
-	/// at a time.
-	fn remove_anchor_indexes(yesterday: u32) -> Result<usize, DispatchError> {
-		let evicted_index = <LatestEvictedAnchorIndex<T>>::get()
-			.unwrap_or_default()
-			.checked_add(1)
-			.ok_or(ArithmeticError::Overflow)?;
-		let anchor_index = <LatestAnchorIndex<T>>::get()
-			.unwrap_or_default()
-			.checked_add(1)
-			.ok_or(ArithmeticError::Overflow)?;
-		let count = (evicted_index..anchor_index)
-			// limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
-			.take(MAX_LOOP_IN_TX as usize)
-			// get eviction date of the anchor given by index
-			.filter_map(|idx| {
-				let anchor_id = <AnchorIndexes<T>>::get(idx)?;
-				let eviction_date = <AnchorEvictDates<T>>::get(anchor_id).unwrap_or_default();
-				Some((idx, anchor_id, eviction_date))
-			})
-			// filter out evictable anchors, anchor_evict_date can be 0 when evicting before any
-			// anchors are created
-			.filter(|(_, _, anchor_evict_date)| anchor_evict_date <= &yesterday)
-			// remove indexes
-			.map(|(idx, anchor_id, _)| {
-				<AnchorEvictDates<T>>::remove(anchor_id);
-				<AnchorIndexes<T>>::remove(idx);
-				<LatestEvictedAnchorIndex<T>>::put(idx);
-			})
-			.count();
-		Ok(count)
-	}
+		/// Iterate from the last evicted anchor to latest anchor, while
+		/// removing indexes that are no longer valid because they belong to an
+		/// expired/evicted anchor. The loop is only allowed to run
+		/// MAX_LOOP_IN_TX at a time.
+		pub(crate) fn remove_anchor_indexes(yesterday: u32) -> Result<usize, DispatchError> {
+			let evicted_index = <LatestEvictedAnchorIndex<T>>::get()
+				.unwrap_or_default()
+				.checked_add(1)
+				.ok_or(ArithmeticError::Overflow)?;
+			let anchor_index = <LatestAnchorIndex<T>>::get()
+				.unwrap_or_default()
+				.checked_add(1)
+				.ok_or(ArithmeticError::Overflow)?;
+			let count = (evicted_index..anchor_index)
+				// limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
+				.take(MAX_LOOP_IN_TX as usize)
+				// get eviction date of the anchor given by index
+				.filter_map(|idx| {
+					let anchor_id = <AnchorIndexes<T>>::get(idx)?;
+					let eviction_date = <AnchorEvictDates<T>>::get(anchor_id).unwrap_or_default();
+					Some((idx, anchor_id, eviction_date))
+				})
+				// filter out evictable anchors, anchor_evict_date can be 0 when evicting before any
+				// anchors are created
+				.filter(|(_, _, anchor_evict_date)| anchor_evict_date <= &yesterday)
+				// remove indexes
+				.map(|(idx, anchor_id, _)| {
+					<AnchorEvictDates<T>>::remove(anchor_id);
+					<AnchorIndexes<T>>::remove(idx);
+					<LatestEvictedAnchorIndex<T>>::put(idx);
+				})
+				.count();
+			Ok(count)
+		}
 
-	/// Get an anchor by its id in the child storage
-	pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
-		let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id)?;
-		let anchor_evict_date_enc: &[u8] = &anchor_evict_date.encode();
-		let prefixed_key = Self::anchor_storage_key(anchor_evict_date_enc);
-		let child_info = common::generate_child_storage_key(&prefixed_key);
+		/// Get an anchor by its id in the child storage
+		pub fn get_anchor_by_id(
+			anchor_id: T::Hash,
+		) -> Option<AnchorData<T::Hash, BlockNumberFor<T>>> {
+			let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id)?;
+			let anchor_evict_date_enc: &[u8] = &anchor_evict_date.encode();
+			let prefixed_key = Self::anchor_storage_key(anchor_evict_date_enc);
+			let child_info = common::generate_child_storage_key(&prefixed_key);
 
-		child::get_raw(&child_info, anchor_id.as_ref())
-			.and_then(|data| AnchorData::decode(&mut &*data).ok())
-	}
+			child::get_raw(&child_info, anchor_id.as_ref())
+				.and_then(|data| AnchorData::decode(&mut &*data).ok())
+		}
 
-	pub fn anchor_storage_key(storage_key: &[u8]) -> Vec<u8> {
-		let mut prefixed_key = Vec::with_capacity(ANCHOR_PREFIX.len() + storage_key.len());
-		prefixed_key.extend_from_slice(ANCHOR_PREFIX);
-		prefixed_key.extend_from_slice(storage_key);
-		prefixed_key
-	}
+		pub fn anchor_storage_key(storage_key: &[u8]) -> Vec<u8> {
+			let mut prefixed_key = Vec::with_capacity(ANCHOR_PREFIX.len() + storage_key.len());
+			prefixed_key.extend_from_slice(ANCHOR_PREFIX);
+			prefixed_key.extend_from_slice(storage_key);
+			prefixed_key
+		}
 
-	fn store_anchor(
-		anchor_id: T::Hash,
-		prefixed_key: &Vec<u8>,
-		stored_until_date_from_epoch: u32,
-		anchor_data_encoded: &[u8],
-	) -> DispatchResult {
-		let idx = <LatestAnchorIndex<T>>::get()
-			.unwrap_or_default()
-			.checked_add(1)
-			.ok_or(ArithmeticError::Overflow)?;
+		fn store_anchor(
+			anchor_id: T::Hash,
+			prefixed_key: &Vec<u8>,
+			stored_until_date_from_epoch: u32,
+			anchor_data_encoded: &[u8],
+		) -> DispatchResult {
+			let idx = <LatestAnchorIndex<T>>::get()
+				.unwrap_or_default()
+				.checked_add(1)
+				.ok_or(ArithmeticError::Overflow)?;
 
-		let child_info = common::generate_child_storage_key(prefixed_key);
-		child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
+			let child_info = common::generate_child_storage_key(prefixed_key);
+			child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
 
-		// update indexes
-		<AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
-		<AnchorIndexes<T>>::insert(idx, &anchor_id);
-		<LatestAnchorIndex<T>>::put(idx);
-		Ok(())
+			// update indexes
+			<AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
+			<AnchorIndexes<T>>::insert(idx, &anchor_id);
+			<LatestAnchorIndex<T>>::put(idx);
+			Ok(())
+		}
 	}
 }

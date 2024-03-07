@@ -13,14 +13,12 @@
 
 use cfg_mocks::pallet_mock_fees;
 use frame_support::{
-	parameter_types,
-	traits::{ConstU8, Everything, FindAuthor},
-	ConsensusEngineId,
+	derive_impl,
+	traits::{ConstU64, ConstU8},
 };
-use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{ConstBool, ConstU32},
+	BuildStorage,
 };
 
 use crate::{self as pallet_anchors, Config};
@@ -31,20 +29,12 @@ pub const COMMIT_FEE_VALUE: Balance = 23;
 pub const PRE_COMMIT_FEE_KEY: u8 = 2;
 pub const PRE_COMMIT_FEE_VALUE: Balance = 42;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
 type Balance = u64;
 
-// For testing the pallet, we construct a mock runtime.
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub struct Runtime {
 		System: frame_system,
 		Timestamp: pallet_timestamp,
-		Authorship: pallet_authorship,
 		Balances: pallet_balances,
 		Aura: pallet_aura,
 		MockFees: pallet_mock_fees,
@@ -52,79 +42,36 @@ frame_support::construct_runtime!(
 	}
 );
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = u64;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
+	type BaseCallFilter = frame_support::traits::Everything;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type OnSetCode = ();
 	type PalletInfo = PalletInfo;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = ();
 	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
 }
 
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU64<1>;
 	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
+	type MaxHolds = ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 	type RuntimeEvent = ();
+	type RuntimeHoldReason = ();
 	type WeightInfo = ();
 }
 
-pub struct AuthorGiven;
-
-impl FindAuthor<u64> for AuthorGiven {
-	fn find_author<'a, I>(_digests: I) -> Option<u64>
-	where
-		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
-	{
-		Some(100)
-	}
-}
-
-impl pallet_authorship::Config for Runtime {
-	type EventHandler = ();
-	type FindAuthor = AuthorGiven;
-}
-
-parameter_types! {
-	pub const MinimumPeriod: u64 = 6000;
-}
-
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<6000>;
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -135,14 +82,11 @@ impl pallet_mock_fees::Config for Runtime {
 	type FeeKey = u8;
 }
 
-parameter_types! {
-	pub const MaxAuthorities: u32 = 32;
-}
-
 impl pallet_aura::Config for Runtime {
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
 	type DisabledValidators = ();
-	type MaxAuthorities = MaxAuthorities;
+	type MaxAuthorities = ConstU32<32>;
 }
 
 impl Config for Runtime {
@@ -185,8 +129,8 @@ impl Runtime {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	// pre-fill balances
