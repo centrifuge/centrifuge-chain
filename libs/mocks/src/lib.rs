@@ -65,7 +65,7 @@ macro_rules! make_runtime_for_mock {
 		};
 
 		frame_support::construct_runtime!(
-			pub struct $runtime_name {
+			pub enum $runtime_name {
 				System: frame_system,
 				$mock_name: $pallet,
 			}

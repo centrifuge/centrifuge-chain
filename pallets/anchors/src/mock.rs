@@ -32,7 +32,7 @@ pub const PRE_COMMIT_FEE_VALUE: Balance = 42;
 type Balance = u64;
 
 frame_support::construct_runtime!(
-	pub struct Runtime {
+	pub enum Runtime {
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		Balances: pallet_balances,

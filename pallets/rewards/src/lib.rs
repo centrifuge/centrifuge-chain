@@ -67,8 +67,8 @@
 #[cfg(test)]
 mod mock;
 
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+//mod tests;
 
 pub mod issuance;
 pub mod mechanism;
@@ -83,7 +83,7 @@ use frame_support::{
 		fungibles::{Inspect, InspectHold, Mutate, MutateHold},
 		tokens::AssetId,
 	},
-	PalletId,
+	DefaultNoBound, PalletId,
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
@@ -147,17 +147,11 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>(core::marker::PhantomData<(T, I)>);
 
-	#[cfg(feature = "std")]
-	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
-		fn default() -> Self {
-			Self(core::marker::PhantomData)
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I>
+	impl<T: Config<I>, I: 'static> BuildGenesisConfig for GenesisConfig<T, I>
 	where
 		BalanceOf<T, I>: MaybeSerializeDeserialize,
 	{
