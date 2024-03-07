@@ -1,24 +1,13 @@
-use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use frame_support::{derive_impl, traits::ConstU64};
 use frame_system::EnsureRoot;
-use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::BuildStorage;
 
 use crate as pallet_liquidity_rewards;
 
 pub const INITIAL_EPOCH_DURATION: u64 = 23;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
-
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		Liquidity: pallet_liquidity_rewards,
 		MockTime: cfg_mocks::pallet_mock_time,
@@ -34,44 +23,28 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: u32 = 50;
 }
 
-impl frame_system::Config for Test {
-	type AccountData = ();
-	type AccountId = u64;
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+impl frame_system::Config for Runtime {
 	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type OnSetCode = ();
 	type PalletInfo = PalletInfo;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
 }
 
-impl cfg_mocks::pallet_mock_time::Config for Test {
+impl cfg_mocks::pallet_mock_time::Config for Runtime {
 	type Moment = u64;
 }
 
-impl cfg_mocks::pallet_mock_rewards::Config for Test {
+impl cfg_mocks::pallet_mock_rewards::Config for Runtime {
 	type Balance = u64;
 	type CurrencyId = u32;
 	type GroupId = u32;
 }
 
-impl pallet_liquidity_rewards::Config for Test {
+impl pallet_liquidity_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRoot<u64>;
 	type Balance = u64;
 	type CurrencyId = u32;
@@ -87,8 +60,8 @@ impl pallet_liquidity_rewards::Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+	let storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	sp_io::TestExternalities::new(storage)
