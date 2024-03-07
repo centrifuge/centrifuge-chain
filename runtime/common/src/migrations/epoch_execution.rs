@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::traits::{Get, GetStorageVersion, OnRuntimeUpgrade};
 use pallet_order_book::weights::Weight;
 use pallet_pool_system::{Config, EpochExecution, EpochExecutionInfo, Nav, Pallet as PoolSystem};
 #[cfg(feature = "try-runtime")]
@@ -115,9 +115,9 @@ where
 			})
 		});
 
-		StorageVersion::new(2).put::<PoolSystem<T>>();
+		PoolSystem::<T>::current_storage_version().put::<PoolSystem<T>>();
 
-		weight
+		weight.saturating_add(T::DbWeight::get().writes(1))
 	}
 
 	#[cfg(feature = "try-runtime")]

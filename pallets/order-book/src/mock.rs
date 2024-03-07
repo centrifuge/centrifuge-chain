@@ -35,9 +35,8 @@ pub const FEEDER: u64 = 0x42;
 pub const INITIAL_A: Balance = token_a(1000);
 pub const INITIAL_B: Balance = token_b(1000);
 
-pub const CURRENCY_A: CurrencyId = CurrencyId::ForeignAsset(1);
-pub const CURRENCY_B: CurrencyId = CurrencyId::ForeignAsset(2);
-pub const CURRENCY_X: CurrencyId = CurrencyId::ForeignAsset(3);
+pub const CURRENCY_A: CurrencyId = CurrencyId::ForeignAsset(1001);
+pub const CURRENCY_B: CurrencyId = CurrencyId::ForeignAsset(1002);
 pub const CURRENCY_A_DECIMALS: u32 = 9;
 pub const CURRENCY_B_DECIMALS: u32 = 12;
 

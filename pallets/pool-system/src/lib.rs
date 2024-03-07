@@ -177,7 +177,7 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		fee::{PoolFeeBucket, PoolFees},
+		fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 		EpochTransitionHook, PoolUpdateGuard,
 	};
@@ -324,14 +324,14 @@ pub mod pallet {
 		type Time: TimeAsSecs;
 
 		/// Add pool fees
-		type PoolFees: PoolFees<
-			FeeInfo = PoolFeeInfo<
-				<Self as frame_system::Config>::AccountId,
-				Self::Balance,
-				Self::Rate,
-			>,
-			PoolId = Self::PoolId,
-		>;
+		type PoolFees: PoolFeesMutate<
+				FeeInfo = PoolFeeInfo<
+					<Self as frame_system::Config>::AccountId,
+					Self::Balance,
+					Self::Rate,
+				>,
+				PoolId = Self::PoolId,
+			> + PoolFeesInspect<PoolId = Self::PoolId>;
 
 		/// Epoch transition hook required for Pool Fees
 		type OnEpochTransition: EpochTransitionHook<

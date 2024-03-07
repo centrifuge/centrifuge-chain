@@ -283,7 +283,7 @@ pub mod pallet {
 
 		/// Admin method to set the reward amount for a collator used for the
 		/// next sessions. Current session is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_collator_reward())]
+		#[pallet::weight(T::WeightInfo::set_collator_reward_per_session())]
 		#[pallet::call_index(1)]
 		pub fn set_collator_reward_per_session(
 			origin: OriginFor<T>,
@@ -300,7 +300,7 @@ pub mod pallet {
 
 		/// Admin method to set the treasury inflation rate for the next
 		/// sessions. Current session is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_total_reward())]
+		#[pallet::weight(T::WeightInfo::set_annual_treasury_inflation_rate())]
 		#[pallet::call_index(2)]
 		pub fn set_annual_treasury_inflation_rate(
 			origin: OriginFor<T>,

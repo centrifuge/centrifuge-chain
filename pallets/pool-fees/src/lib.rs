@@ -21,6 +21,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod types;
+pub mod weights;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -28,7 +30,7 @@ pub mod pallet {
 	use cfg_traits::benchmarking::PoolFeesBenchmarkHelper;
 	use cfg_traits::{
 		changes::ChangeGuard,
-		fee::{FeeAmountProration, PoolFeeBucket, PoolFees},
+		fee::{FeeAmountProration, PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
@@ -46,7 +48,6 @@ pub mod pallet {
 			tokens,
 			tokens::Preservation,
 		},
-		weights::Weight,
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
@@ -155,8 +156,7 @@ pub mod pallet {
 		/// Fetching method for the time of the current block
 		type Time: TimeAsSecs;
 
-		// TODO: Enable after creating benchmarks
-		// type WeightInfo: WeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Maps a pool to their corresponding fee ids with [PoolFeeBucket]
@@ -316,7 +316,7 @@ pub mod pallet {
 		///
 		/// Origin must be by pool admin.
 		#[pallet::call_index(0)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::propose_new_fee())]
 		pub fn propose_new_fee(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -355,12 +355,12 @@ pub mod pallet {
 		///
 		/// Origin unrestriced due to pre-check via proposal gate.
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::apply_new_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn apply_new_fee(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			change_id: T::Hash,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			ensure!(
@@ -370,16 +370,16 @@ pub mod pallet {
 			let (fee_id, bucket, fee) = Self::get_released_change(pool_id, change_id)
 				.map(|Change::AppendFee(id, bucket, fee)| (id, bucket, fee))?;
 
-			Self::add_fee_with_id(pool_id, fee_id, bucket, fee)?;
+			let fee_count = Self::add_fee_with_id(pool_id, fee_id, bucket, fee)?;
 
-			Ok(())
+			Ok(Some(T::WeightInfo::apply_new_fee(fee_count)).into())
 		}
 
 		/// Remove a fee.
 		///
 		/// Origin must be the fee editor.
 		#[pallet::call_index(2)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::remove_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -397,17 +397,17 @@ pub mod pallet {
 		///
 		/// Origin must be the fee destination.
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::charge_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn charge_fee(
 			origin: OriginFor<T>,
 			fee_id: T::FeeId,
 			amount: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			ensure!(!amount.is_zero(), Error::<T>::NothingCharged);
 
-			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
+			let (pool_id, pending, fee_count) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -429,24 +429,24 @@ pub mod pallet {
 				pending,
 			});
 
-			Ok(())
+			Ok(Some(T::WeightInfo::charge_fee(fee_count)).into())
 		}
 
 		/// Cancel a charged fee.
 		///
 		/// Origin must be the fee destination.
 		#[pallet::call_index(4)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::uncharge_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn uncharge_fee(
 			origin: OriginFor<T>,
 			fee_id: T::FeeId,
 			amount: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			ensure!(!amount.is_zero(), Error::<T>::NothingUncharged);
 
-			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
+			let (pool_id, pending, fee_count) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -468,7 +468,7 @@ pub mod pallet {
 				pending,
 			});
 
-			Ok(())
+			Ok(Some(T::WeightInfo::uncharge_fee(fee_count)).into())
 		}
 
 		/// Update the negative portfolio valuation via pending amounts of the
@@ -480,7 +480,7 @@ pub mod pallet {
 		/// updated in the current timestamp. In the future, this coupling will
 		/// be handled by an accounting pallet.
 		#[pallet::call_index(5)]
-		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(T::MaxPoolFeesPerBucket::get()))]
 		pub fn update_portfolio_valuation(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -492,11 +492,10 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			let (_, _count) =
+			let (_, count) =
 				Self::update_portfolio_valuation_for_pool(pool_id, &mut T::Balance::zero())?;
 
-			// Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
-			Ok(Some(T::DbWeight::get().reads(1)).into())
+			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
 	}
 
@@ -525,7 +524,7 @@ pub mod pallet {
 		fn mutate_active_fee(
 			fee_id: T::FeeId,
 			mut f: impl FnMut(&mut PoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
-		) -> Result<(T::PoolId, T::Balance), DispatchError> {
+		) -> Result<(T::PoolId, T::Balance, u32), DispatchError> {
 			let (pool_id, bucket) =
 				FeeIdsToPoolBucket::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
 
@@ -536,9 +535,9 @@ pub mod pallet {
 					.ok_or(Error::<T>::FeeNotFound)?;
 
 				if let Some(fee) = fees.get_mut(pos) {
-					Ok((pool_id, f(fee)?))
+					Ok((pool_id, f(fee)?, fees.len().saturated_into()))
 				} else {
-					Ok((pool_id, T::Balance::zero()))
+					Ok((pool_id, T::Balance::zero(), fees.len().saturated_into()))
 				}
 			})
 		}
@@ -767,7 +766,7 @@ pub mod pallet {
 			fee_id: T::FeeId,
 			bucket: PoolFeeBucket,
 			fee: PoolFeeInfoOf<T>,
-		) -> DispatchResult {
+		) -> Result<u32, DispatchError> {
 			ensure!(
 				!FeeIdsToPoolBucket::<T>::contains_key(fee_id),
 				Error::<T>::FeeIdAlreadyExists
@@ -775,10 +774,11 @@ pub mod pallet {
 			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
 			FeeIds::<T>::mutate(pool_id, bucket, |list| list.try_push(fee_id))
 				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-			ActiveFees::<T>::mutate(pool_id, bucket, |list| {
+			let fee_count = ActiveFees::<T>::mutate(pool_id, bucket, |list| {
 				list.try_push(PoolFeeOf::<T>::from_info(fee.clone(), fee_id))
-			})
-			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+					.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+				Ok::<usize, Error<T>>(list.len())
+			})?;
 
 			Self::deposit_event(Event::<T>::Added {
 				pool_id,
@@ -787,7 +787,7 @@ pub mod pallet {
 				fee_id,
 			});
 
-			Ok(())
+			Ok(fee_count.saturated_into())
 		}
 
 		// Returns all fees of a pool divided by the buckets
@@ -803,7 +803,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> PoolFees for Pallet<T> {
+	impl<T: Config> PoolFeesMutate for Pallet<T> {
 		type FeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
 
@@ -813,7 +813,15 @@ pub mod pallet {
 			fee: Self::FeeInfo,
 		) -> Result<(), DispatchError> {
 			let fee_id = Self::generate_fee_id()?;
-			Self::add_fee_with_id(pool_id, fee_id, bucket, fee)
+			Self::add_fee_with_id(pool_id, fee_id, bucket, fee).map(|_| ())
+		}
+	}
+
+	impl<T: Config> PoolFeesInspect for Pallet<T> {
+		type PoolId = T::PoolId;
+
+		fn get_max_fee_count() -> u32 {
+			T::MaxFeesPerPool::get()
 		}
 
 		fn get_max_fees_per_bucket() -> u32 {
@@ -822,6 +830,12 @@ pub mod pallet {
 
 		fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: PoolFeeBucket) -> u32 {
 			ActiveFees::<T>::get(pool, bucket).len().saturated_into()
+		}
+
+		fn get_pool_fee_count(pool: Self::PoolId) -> u32 {
+			PoolFeeBucket::iter().fold(0u32, |count, bucket| {
+				count.saturating_add(Self::get_pool_fee_bucket_count(pool, bucket))
+			})
 		}
 	}
 
