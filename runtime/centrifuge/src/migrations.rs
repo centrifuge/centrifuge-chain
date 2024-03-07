@@ -88,6 +88,12 @@ pub type UpgradeCentrifuge1025 = (
 	// Burns tokens from other domains that are falsly not burned when they were transferred back
 	// to their domain
 	burn_unburned::Migration<super::Runtime>,
+	// Bumps storage version from 0 to 1
+	runtime_common::migrations::nuke::ResetPallet<
+		crate::ForeignInvestments,
+		crate::RocksDbWeight,
+		0,
+	>,
 );
 
 #[cfg(feature = "std")]

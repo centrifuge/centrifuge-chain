@@ -35,7 +35,7 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::nuke::ResetPallet<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
 	runtime_common::migrations::nuke::ResetPallet<crate::InterestAccrual, crate::RocksDbWeight, 0>,
-	// At minimum, bumps storage version from 0 to 1
+	// At minimum, bumps storage version from 0 to 2
 	runtime_common::migrations::nuke::ResetPallet<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
 	runtime_common::migrations::nuke::ResetPallet<crate::Investments, crate::RocksDbWeight, 0>,
