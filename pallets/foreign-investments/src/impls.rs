@@ -7,7 +7,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, EnsureAddAssign, EnsureSub, Zero};
+use sp_runtime::traits::{EnsureAdd, EnsureAddAssign, EnsureSub, One, Zero};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -229,7 +229,11 @@ impl<T: Config> Pallet<T> {
 					..swap.clone()
 				},
 				swapped_in: status.swapped,
-				ratio: T::Swaps::market_ratio(swap.currency_in, swap.currency_out)?,
+				ratio: if swap.has_same_currencies() {
+					T::SwapRatio::one()
+				} else {
+					T::Swaps::market_ratio(swap.currency_in, swap.currency_out)?
+				},
 			});
 		}
 

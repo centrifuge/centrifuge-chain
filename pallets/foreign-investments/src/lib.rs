@@ -101,7 +101,7 @@ pub mod pallet {
 	};
 	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
 	use frame_support::pallet_prelude::*;
-	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
 
 	use super::*;
 
@@ -152,7 +152,7 @@ pub mod pallet {
 		type SwapBalance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 
 		/// Ratio used for swapping amounts
-		type SwapRatio: Parameter + Member + Copy + MaxEncodedLen;
+		type SwapRatio: Parameter + Member + Copy + MaxEncodedLen + One;
 
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
