@@ -24,29 +24,6 @@ frame_support::parameter_types! {
 }
 
 pub type UpgradeDevelopment1042 = (
-	// Register LocalUSDC
-	runtime_common::migrations::local_currency::register::Migration<
-		super::Runtime,
-		LocalCurrencyIdUsdc,
-	>,
-	// Init local representation for all assets
-	runtime_common::migrations::local_currency::translate_metadata::Migration<
-		super::Runtime,
-		UsdcVariants,
-		LocalAssetIdUsdc,
-	>,
-	// Migrate EpochExecution struct
-	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
-	// Reset pallets
-	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
-	runtime_common::migrations::nuke::ResetPallet<
-		crate::TransferAllowList,
-		crate::RocksDbWeight,
-		0,
-	>,
-	// Apply relative treasury inflation
-	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
-		crate::Runtime,
-		AnnualTreasuryInflationPercent,
-	>,
+	runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,
+	pallet_loans::migrations::LoansV3<crate::Runtime>,
 );

@@ -88,6 +88,8 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
 	// Data was already moved but storage version not increased from 0 to 4
 	runtime_common::migrations::increase_storage_version::Migration<crate::Council, 0, 4>,
+	// Loans from v2 to v3
+	pallet_loans::migrations::LoansV3<crate::Runtime>,
 );
 
 #[allow(clippy::upper_case_acronyms)]

@@ -87,6 +87,8 @@ pub type UpgradeCentrifuge1025 = (
 	// Burns tokens from other domains that are falsly not burned when they were transferred back
 	// to their domain
 	burn_unburned::Migration<super::Runtime>,
+	// Loans from v2 to v3
+	pallet_loans::migrations::LoansV3<crate::Runtime>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
