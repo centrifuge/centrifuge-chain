@@ -57,7 +57,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				}
 			}
 
-			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
+			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status);
 
 			Ok::<_, DispatchError>(msg)
 		})?;
@@ -110,7 +110,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				}
 			}
 
-			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
+			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status);
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;
