@@ -88,9 +88,6 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::increase_storage_version::Migration<crate::Council, 0, 4>,
 );
 
-#[cfg(feature = "std")]
-pub type UpgradeAltair1034 = ();
-
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
 	Clone,

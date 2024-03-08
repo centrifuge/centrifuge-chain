@@ -96,8 +96,6 @@ pub type UpgradeCentrifuge1025 = (
 	>,
 );
 
-#[cfg(feature = "std")]
-pub type UpgradeCentrifuge1025 = ();
 
 mod burn_unburned {
 	const LOG_PREFIX: &str = "BurnUnburnedMigration: ";

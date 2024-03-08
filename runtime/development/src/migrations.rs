@@ -45,5 +45,3 @@ pub type UpgradeDevelopment1042 = (
 	>,
 );
 
-#[cfg(feature = "std")]
-pub type UpgradeDevelopment1042 = ();
