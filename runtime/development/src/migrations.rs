@@ -10,5 +10,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeDevelopment1042 =
+pub type UpgradeDevelopment1043 =
 	(runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,);
