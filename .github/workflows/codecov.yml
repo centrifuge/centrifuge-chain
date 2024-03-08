@@ -32,6 +32,8 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo tarpaulin --timeout 300 -e runtime-integration-tests --features fast-runtime \
+          --exclude-files runtime/*/src/migrations.rs --exclude-files runtime/common/src/migrations \
+          --exclude-files pallets/rewards/src/migrations/new_instance.rs --exclude-files pallets/block-rewards/src/migrations.rs \
           --workspace --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
