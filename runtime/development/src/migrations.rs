@@ -10,18 +10,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::{
-	usdc::{CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID},
-	CurrencyId, LocalAssetId,
-};
-
-frame_support::parameter_types! {
-	pub const UsdcVariants: [CurrencyId; 1] = [CURRENCY_ID_LP_ETH];
-	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
-	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
-	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
-	pub const AnnualTreasuryInflationPercent: u32 = 3;
-}
-
 pub type UpgradeDevelopment1042 =
 	(runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,);
