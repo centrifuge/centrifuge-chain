@@ -65,7 +65,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub mod migrations;
+mod migrations;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -435,6 +435,13 @@ pub mod pallet {
 	impl<T> From<MutationError> for Error<T> {
 		fn from(error: MutationError) -> Self {
 			Error::<T>::MutationError(error)
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migrations::migrate_from_v2_to_v3::<T>()
 		}
 	}
 

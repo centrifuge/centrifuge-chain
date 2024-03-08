@@ -23,7 +23,5 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
-pub type UpgradeDevelopment1042 = (
-	runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,
-	pallet_loans::migrations::LoansV3<crate::Runtime>,
-);
+pub type UpgradeDevelopment1042 =
+	(runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,);

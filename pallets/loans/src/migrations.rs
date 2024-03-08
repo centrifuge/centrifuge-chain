@@ -12,11 +12,7 @@
 
 use cfg_traits::PoolNAV;
 use frame_support::{
-	dispatch::GetStorageVersion,
-	inherent::Vec,
-	log,
-	pallet_prelude::StorageVersion,
-	traits::{Get, OnRuntimeUpgrade},
+	dispatch::GetStorageVersion, inherent::Vec, log, pallet_prelude::StorageVersion, traits::Get,
 	weights::Weight,
 };
 
@@ -42,44 +38,38 @@ mod v2 {
 	>;
 }
 
-pub struct LoansV3<T>(sp_std::marker::PhantomData<T>);
+pub fn migrate_from_v2_to_v3<T: Config>() -> Weight {
+	if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(2) {
+		log::info!("Loans: Starting migration v2 -> v3");
 
-impl<T: Config> OnRuntimeUpgrade for LoansV3<T> {
-	fn on_runtime_upgrade() -> Weight {
-		if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(2) {
-			log::info!("Loans: Starting migration v2 -> v3");
+		let mut changed_pools = Vec::new();
+		ActiveLoans::<T>::translate::<v2::ActiveLoansVec<T>, _>(|pool_id, active_loans| {
+			changed_pools.push(pool_id);
+			Some(
+				active_loans
+					.into_iter()
+					.map(|(loan_id, active_loan)| (loan_id, active_loan.migrate()))
+					.collect::<Vec<_>>()
+					.try_into()
+					.expect("size doest not change, qed"),
+			)
+		});
 
-			let mut changed_pools = Vec::new();
-			ActiveLoans::<T>::translate::<v2::ActiveLoansVec<T>, _>(|pool_id, active_loans| {
-				changed_pools.push(pool_id);
-				Some(
-					active_loans
-						.into_iter()
-						.map(|(loan_id, active_loan)| (loan_id, active_loan.migrate()))
-						.collect::<Vec<_>>()
-						.try_into()
-						.expect("size doest not change, qed"),
-				)
-			});
-
-			for pool_id in &changed_pools {
-				match Pallet::<T>::update_nav(*pool_id) {
-					Ok(_) => log::info!("Loans: updated portfolio for pool_id: {pool_id:?}"),
-					Err(e) => {
-						log::error!("Loans: error updating the portfolio for {pool_id:?}: {e:?}")
-					}
-				}
+		for pool_id in &changed_pools {
+			match Pallet::<T>::update_nav(*pool_id) {
+				Ok(_) => log::info!("Loans: updated portfolio for pool_id: {pool_id:?}"),
+				Err(e) => log::error!("Loans: error updating the portfolio for {pool_id:?}: {e:?}"),
 			}
-
-			Pallet::<T>::current_storage_version().put::<Pallet<T>>();
-
-			let count = changed_pools.len() as u64;
-			log::info!("Loans: Migrated {} pools", count);
-			T::DbWeight::get().reads_writes(count + 1, count + 1)
-		} else {
-			// wrong storage version
-			log::warn!("Loans: Migration did not execute. This probably should be removed");
-			T::DbWeight::get().reads_writes(1, 0)
 		}
+
+		Pallet::<T>::current_storage_version().put::<Pallet<T>>();
+
+		let count = changed_pools.len() as u64;
+		log::info!("Loans: Migrated {} pools", count);
+		T::DbWeight::get().reads_writes(count + 1, count + 1)
+	} else {
+		// wrong storage version
+		log::warn!("Loans: Migration did not execute. This probably should be removed");
+		T::DbWeight::get().reads_writes(1, 0)
 	}
 }
