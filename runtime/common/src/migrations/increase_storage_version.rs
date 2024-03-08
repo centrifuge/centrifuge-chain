@@ -91,6 +91,7 @@ where
 {
 	fn on_runtime_upgrade() -> Weight {
 		if P::on_chain_storage_version() == FROM_VERSION {
+			log::warn!("Double-check you really want this migration!!!!",);
 			log::info!(
 				"{LOG_PREFIX} Increasing storage version of {:?} from {:?} to {TO_VERSION:?}",
 				P::name(),
