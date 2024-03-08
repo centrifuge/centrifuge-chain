@@ -23,7 +23,6 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
-#[cfg(not(feature = "std"))]
 pub type UpgradeDevelopment1042 = (
 	// Reset pallets
 	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,

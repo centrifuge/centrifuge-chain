@@ -38,7 +38,6 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
-#[cfg(not(feature = "std"))]
 pub type UpgradeCentrifuge1025 = (
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
 	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
@@ -95,7 +94,6 @@ pub type UpgradeCentrifuge1025 = (
 		0,
 	>,
 );
-
 
 mod burn_unburned {
 	const LOG_PREFIX: &str = "BurnUnburnedMigration: ";
