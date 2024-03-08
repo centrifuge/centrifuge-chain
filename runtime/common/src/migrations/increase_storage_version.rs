@@ -98,10 +98,6 @@ where
 			);
 			StorageVersion::new(TO_VERSION).put::<P>();
 
-			log::info!(
-				"{LOG_PREFIX} chain_version {:?}",
-				P::on_chain_storage_version()
-			);
 			RocksDbWeight::get().writes(1)
 		} else {
 			log::error!(
