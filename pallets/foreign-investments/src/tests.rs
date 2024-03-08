@@ -1,12 +1,13 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
+	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
 	StatusNotificationHook,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };
 use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::One;
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
@@ -54,6 +55,14 @@ mod util {
 			(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from),
 			(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from),
 			_ => amount_from,
+		}
+	}
+
+	pub fn market_ratio(to: CurrencyId, from: CurrencyId) -> Ratio {
+		match (from, to) {
+			(POOL_CURR, FOREIGN_CURR) => Ratio::from_rational(1, STABLE_RATIO),
+			(FOREIGN_CURR, POOL_CURR) => Ratio::from_rational(STABLE_RATIO, 1),
+			_ => Ratio::one(),
 		}
 	}
 
@@ -105,6 +114,8 @@ mod util {
 		MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 			Ok(convert_currencies(to, from, amount_from))
 		});
+
+		MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 	}
 
 	// Setup basic investment system
@@ -146,7 +157,7 @@ mod util {
 
 		Swaps::notify_status_change(
 			order_id,
-			SwapState {
+			SwapInfo {
 				remaining: Swap {
 					amount_out: order.swap.amount_out - amount_out,
 					..order.swap
@@ -158,6 +169,7 @@ mod util {
 				)
 				.unwrap(),
 				swapped_out: amount_out,
+				ratio: util::market_ratio(order.swap.currency_in, order.swap.currency_out),
 			},
 		)
 		.unwrap();

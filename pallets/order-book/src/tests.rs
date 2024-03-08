@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps};
+use cfg_traits::swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps};
 use frame_support::{
 	assert_err, assert_ok,
 	traits::fungibles::{Inspect, InspectHold},
@@ -72,11 +72,11 @@ mod util {
 		swapped_in: Balance,
 		swapped_out: Balance,
 	) {
-		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap_state| {
+		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap_info| {
 			assert_eq!(order_id, id);
 			assert_eq!(
-				swap_state,
-				SwapState {
+				swap_info,
+				SwapInfo {
 					remaining: Swap {
 						amount_out,
 						currency_in: CURRENCY_B,
@@ -84,6 +84,7 @@ mod util {
 					},
 					swapped_in,
 					swapped_out,
+					ratio: DEFAULT_RATIO,
 				}
 			);
 			Ok(())

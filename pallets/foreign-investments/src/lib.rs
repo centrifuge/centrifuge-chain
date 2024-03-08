@@ -116,6 +116,8 @@ pub mod pallet {
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		/// Represents a foreign amount
 		type ForeignBalance: Parameter
 			+ Member
@@ -149,6 +151,9 @@ pub mod pallet {
 		/// Any balances used in TokenSwaps
 		type SwapBalance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 
+		/// Ratio used for swapping amounts
+		type SwapRatio: Parameter + Member + Copy + MaxEncodedLen;
+
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
 
@@ -181,6 +186,7 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Amount = Self::SwapBalance,
 			SwapId = SwapId<Self>,
+			Ratio = Self::SwapRatio,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -262,5 +268,22 @@ pub mod pallet {
 
 		/// The decrease is greater than the current investment/redemption
 		TooMuchDecrease,
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		SwapCreated {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			swap: SwapOf<T>,
+		},
+		SwapFullfilled {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			remaining: SwapOf<T>,
+			swapped_in: T::SwapBalance,
+			ratio: T::SwapRatio,
+		},
 	}
 }

@@ -37,7 +37,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
-		swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
+		swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
 		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
 	};
 	use cfg_types::{self, tokens::CustomMetadata};
@@ -170,7 +170,7 @@ pub mod pallet {
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
 			Id = Self::OrderIdNonce,
-			Status = SwapState<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId>,
+			Status = SwapInfo<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId, Self::Ratio>,
 			Error = DispatchError,
 		>;
 
@@ -613,7 +613,7 @@ pub mod pallet {
 
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
-				SwapState {
+				SwapInfo {
 					remaining: Swap {
 						amount_out: remaining_amount_out,
 						currency_in: order.currency_in,
@@ -621,6 +621,7 @@ pub mod pallet {
 					},
 					swapped_in: amount_in,
 					swapped_out: amount_out,
+					ratio,
 				},
 			)?;
 
@@ -767,6 +768,13 @@ pub mod pallet {
 
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
+		}
+
+		fn market_ratio(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+		) -> Result<Self::Ratio, DispatchError> {
+			Self::market_ratio(currency_out, currency_in)
 		}
 	}
 

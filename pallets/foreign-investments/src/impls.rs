@@ -2,7 +2,7 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector},
-	swaps::{SwapState, Swaps},
+	swaps::{Swap, SwapInfo, SwapStatus, Swaps},
 	StatusNotificationHook,
 };
 use cfg_types::investments::CollectedAmount;
@@ -12,8 +12,8 @@ use sp_std::marker::PhantomData;
 
 use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
-	pallet::{Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
-	pool_currency_of, Action, SwapId,
+	pallet::{Config, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
+	pool_currency_of, Action, SwapId, SwapOf,
 };
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
@@ -56,6 +56,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 					)?;
 				}
 			}
+
+			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
 
 			Ok::<_, DispatchError>(msg)
 		})?;
@@ -107,6 +109,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 					)?;
 				}
 			}
+
+			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;
@@ -209,23 +213,64 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	}
 }
 
+impl<T: Config> Pallet<T> {
+	fn deposit_apply_swap_events(
+		who: &T::AccountId,
+		swap_id: SwapId<T>,
+		swap: &SwapOf<T>,
+		status: &SwapStatus<T::SwapBalance, T::SwapRatio>,
+	) {
+		if !status.swapped.is_zero() {
+			Pallet::<T>::deposit_event(Event::SwapFullfilled {
+				who: who.clone(),
+				swap_id,
+				remaining: Swap {
+					amount_out: status.pending,
+					..swap.clone()
+				},
+				swapped_in: status.swapped,
+				ratio: status.ratio,
+			});
+		}
+
+		if !status.pending.is_zero() {
+			Pallet::<T>::deposit_event(Event::SwapCreated {
+				who: who.clone(),
+				swap_id,
+				swap: Swap {
+					amount_out: status.pending,
+					..swap.clone()
+				},
+			})
+		}
+	}
+}
+
 pub struct FulfilledSwapHook<T>(PhantomData<T>);
 impl<T: Config> StatusNotificationHook for FulfilledSwapHook<T> {
 	type Error = DispatchError;
 	type Id = (T::AccountId, SwapId<T>);
-	type Status = SwapState<T::SwapBalance, T::SwapBalance, T::CurrencyId>;
+	type Status = SwapInfo<T::SwapBalance, T::SwapBalance, T::CurrencyId, T::SwapRatio>;
 
 	fn notify_status_change(
 		(who, (investment_id, action)): Self::Id,
-		swap_state: Self::Status,
+		swap_info: Self::Status,
 	) -> DispatchResult {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
-		let swapped_amount_in = swap_state.swapped_in;
-		let swapped_amount_out = swap_state.swapped_out;
-		let pending_amount = swap_state.remaining.amount_out;
+		let swapped_amount_in = swap_info.swapped_in;
+		let swapped_amount_out = swap_info.swapped_out;
+		let pending_amount = swap_info.remaining.amount_out;
+
+		Pallet::<T>::deposit_event(Event::SwapFullfilled {
+			who: who.clone(),
+			swap_id: (investment_id, action),
+			remaining: swap_info.remaining.clone(),
+			swapped_in: swap_info.swapped_in,
+			ratio: swap_info.ratio,
+		});
 
 		match action {
-			Action::Investment => match pool_currency == swap_state.remaining.currency_in {
+			Action::Investment => match pool_currency == swap_info.remaining.currency_in {
 				true => SwapDone::<T>::for_increase_investment(
 					&who,
 					investment_id,
@@ -308,7 +353,9 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 
 		if let Some(swap) = swap {
 			let swap_id = (investment_id, Action::Redemption);
-			let status = T::Swaps::apply_swap(&who, swap_id, swap)?;
+			let status = T::Swaps::apply_swap(&who, swap_id, swap.clone())?;
+
+			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
 
 			if !status.swapped.is_zero() {
 				SwapDone::<T>::for_redemption(

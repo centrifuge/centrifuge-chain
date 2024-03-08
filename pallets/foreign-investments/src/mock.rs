@@ -135,6 +135,7 @@ impl pallet_swaps::Config for Runtime {
 	type FulfilledSwap = FulfilledSwapHook<Runtime>;
 	type OrderBook = MockTokenSwaps;
 	type OrderId = OrderId;
+	type Ratio = Ratio;
 	type SwapId = SwapId<Runtime>;
 }
 
@@ -148,7 +149,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = InvestmentId;
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }

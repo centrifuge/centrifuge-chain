@@ -1,8 +1,9 @@
 use cfg_traits::{
-	swaps::{OrderInfo, OrderRatio, Swap, SwapState, SwapStatus, Swaps as TSwaps},
+	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, SwapStatus, Swaps as TSwaps},
 	StatusNotificationHook,
 };
 use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::{One, Zero};
 
 use crate::{mock::*, *};
 
@@ -45,6 +46,14 @@ mod util {
 			_ => amount_from,
 		}
 	}
+
+	pub fn market_ratio(to: CurrencyId, from: CurrencyId) -> Ratio {
+		match (from, to) {
+			(CURRENCY_B, CURRENCY_A) => Ratio::from_rational(1, RATIO),
+			(CURRENCY_A, CURRENCY_B) => Ratio::from_rational(RATIO, 1),
+			_ => Ratio::one(),
+		}
+	}
 }
 
 mod apply {
@@ -76,6 +85,7 @@ mod apply {
 				SwapStatus {
 					swapped: 0,
 					pending: AMOUNT,
+					ratio: Ratio::zero(),
 				}
 			);
 
@@ -123,6 +133,7 @@ mod apply {
 				SwapStatus {
 					swapped: 0,
 					pending: PREVIOUS_AMOUNT + AMOUNT,
+					ratio: Ratio::zero(),
 				}
 			);
 
@@ -138,6 +149,7 @@ mod apply {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
+			MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, ORDER_ID);
 
@@ -174,6 +186,7 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(AMOUNT),
 					pending: 0,
+					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 
@@ -187,6 +200,7 @@ mod apply {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
+			MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, ORDER_ID);
 
@@ -220,6 +234,7 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(AMOUNT),
 					pending: 0,
+					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 
@@ -235,6 +250,7 @@ mod apply {
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+				MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
@@ -280,6 +296,7 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(PREVIOUS_AMOUNT),
 					pending: AMOUNT - PREVIOUS_AMOUNT,
+					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 
@@ -446,7 +463,7 @@ mod fulfill {
 		new_test_ext().execute_with(|| {
 			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
 
-			let swap_state = SwapState {
+			let swap_info = SwapInfo {
 				remaining: Swap {
 					amount_out: AMOUNT,
 					currency_in: CURRENCY_A,
@@ -454,25 +471,26 @@ mod fulfill {
 				},
 				swapped_in: AMOUNT * 2,
 				swapped_out: AMOUNT / 2,
+				ratio: Ratio::from_rational(AMOUNT * 2, AMOUNT / 2),
 			};
 
 			FulfilledSwapHook::mock_notify_status_change({
-				let swap_state = swap_state.clone();
+				let swap_info = swap_info.clone();
 				move |id, status| {
 					assert_eq!(id, (USER, SWAP_ID));
-					assert_eq!(status, swap_state);
+					assert_eq!(status, swap_info);
 					Ok(())
 				}
 			});
 
-			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_state));
+			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_info));
 		});
 	}
 
 	#[test]
 	fn skip_notification() {
 		new_test_ext().execute_with(|| {
-			let swap_state = SwapState {
+			let swap_info = SwapInfo {
 				remaining: Swap {
 					amount_out: AMOUNT,
 					currency_in: CURRENCY_A,
@@ -480,11 +498,12 @@ mod fulfill {
 				},
 				swapped_in: AMOUNT * 2,
 				swapped_out: AMOUNT / 2,
+				ratio: Ratio::from_rational(AMOUNT * 2, AMOUNT / 2),
 			};
 
 			// It does not send an event because it's not an order registered in
 			// pallet_swaps
-			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_state));
+			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_info));
 		});
 	}
 }

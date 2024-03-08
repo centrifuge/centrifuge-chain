@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_traits::{swaps::SwapState, ConversionToAssetBalance};
+use cfg_traits::{swaps::SwapInfo, ConversionToAssetBalance};
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
@@ -125,7 +125,7 @@ impl cfg_mocks::fees::pallet::Config for Runtime {
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
-	type Status = SwapState<Balance, Balance, CurrencyId>;
+	type Status = SwapInfo<Balance, Balance, CurrencyId, Ratio>;
 }
 
 parameter_types! {

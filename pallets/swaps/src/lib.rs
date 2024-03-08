@@ -27,11 +27,11 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		swaps::{OrderRatio, Swap, SwapState, SwapStatus, Swaps, TokenSwaps},
+		swaps::{OrderRatio, Swap, SwapInfo, SwapStatus, Swaps, TokenSwaps},
 		StatusNotificationHook,
 	};
 	use frame_support::pallet_prelude::*;
-	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, Zero};
+	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, One, Zero};
 	use sp_std::cmp::Ordering;
 
 	use super::*;
@@ -45,6 +45,9 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Represents an amount that can be swapped
 		type Balance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
+
+		/// Represents an amount that can be swapped
+		type Ratio: Copy + One + Zero;
 
 		/// An identification for a swap
 		type SwapId: Parameter + Member + Copy + Ord + MaxEncodedLen;
@@ -62,12 +65,13 @@ pub mod pallet {
 			BalanceIn = Self::Balance,
 			BalanceOut = Self::Balance,
 			OrderId = Self::OrderId,
+			Ratio = Self::Ratio,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled the swap
 		type FulfilledSwap: StatusNotificationHook<
 			Id = (Self::AccountId, Self::SwapId),
-			Status = SwapState<Self::Balance, Self::Balance, Self::CurrencyId>,
+			Status = SwapInfo<Self::Balance, Self::Balance, Self::CurrencyId, Self::Ratio>,
 			Error = DispatchError,
 		>;
 	}
@@ -137,7 +141,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			new_swap: Swap<T::Balance, T::CurrencyId>,
 			over_order_id: Option<T::OrderId>,
-		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
+		) -> Result<(SwapStatus<T::Balance, T::Ratio>, Option<T::OrderId>), DispatchError> {
 			match over_order_id {
 				None => {
 					let order_id = T::OrderBook::place_order(
@@ -152,6 +156,7 @@ pub mod pallet {
 						SwapStatus {
 							swapped: T::Balance::zero(),
 							pending: new_swap.amount_out,
+							ratio: T::Ratio::zero(),
 						},
 						Some(order_id),
 					))
@@ -169,6 +174,7 @@ pub mod pallet {
 							SwapStatus {
 								swapped: T::Balance::zero(),
 								pending: amount_to_swap,
+								ratio: T::Ratio::zero(),
 							},
 							Some(order_id),
 						))
@@ -179,6 +185,11 @@ pub mod pallet {
 							new_swap.currency_in,
 							new_swap.currency_out,
 							new_swap.amount_out,
+						)?;
+
+						let ratio = T::OrderBook::market_ratio(
+							new_swap.currency_in,
+							new_swap.currency_out,
 						)?;
 
 						match inverse_swap.amount_out.cmp(&new_swap_amount_in) {
@@ -196,6 +207,7 @@ pub mod pallet {
 									SwapStatus {
 										swapped: new_swap_amount_in,
 										pending: T::Balance::zero(),
+										ratio,
 									},
 									Some(order_id),
 								))
@@ -207,6 +219,7 @@ pub mod pallet {
 									SwapStatus {
 										swapped: new_swap_amount_in,
 										pending: T::Balance::zero(),
+										ratio,
 									},
 									None,
 								))
@@ -235,6 +248,7 @@ pub mod pallet {
 									SwapStatus {
 										swapped: inverse_swap.amount_out,
 										pending: amount_to_swap,
+										ratio,
 									},
 									Some(order_id),
 								))
@@ -283,18 +297,20 @@ pub mod pallet {
 	impl<T: Config> Swaps<T::AccountId> for Pallet<T> {
 		type Amount = T::Balance;
 		type CurrencyId = T::CurrencyId;
+		type Ratio = T::Ratio;
 		type SwapId = T::SwapId;
 
 		fn apply_swap(
 			who: &T::AccountId,
 			swap_id: Self::SwapId,
 			swap: Swap<T::Balance, T::CurrencyId>,
-		) -> Result<SwapStatus<Self::Amount>, DispatchError> {
+		) -> Result<SwapStatus<Self::Amount, T::Ratio>, DispatchError> {
 			// Bypassing the swap if both currencies are the same
 			if swap.currency_in == swap.currency_out {
 				return Ok(SwapStatus {
 					swapped: swap.amount_out,
 					pending: T::Balance::zero(),
+					ratio: T::Ratio::one(),
 				});
 			}
 
@@ -338,18 +354,15 @@ pub mod pallet {
 	impl<T: Config> StatusNotificationHook for Pallet<T> {
 		type Error = DispatchError;
 		type Id = T::OrderId;
-		type Status = SwapState<T::Balance, T::Balance, T::CurrencyId>;
+		type Status = SwapInfo<T::Balance, T::Balance, T::CurrencyId, T::Ratio>;
 
-		fn notify_status_change(
-			order_id: T::OrderId,
-			swap_state: SwapState<T::Balance, T::Balance, T::CurrencyId>,
-		) -> DispatchResult {
+		fn notify_status_change(order_id: T::OrderId, swap_info: Self::Status) -> DispatchResult {
 			if let Ok((who, swap_id)) = Self::swap_id(order_id) {
-				if swap_state.remaining.amount_out.is_zero() {
+				if swap_info.remaining.amount_out.is_zero() {
 					Self::update_id(&who, swap_id, None)?;
 				}
 
-				T::FulfilledSwap::notify_status_change((who, swap_id), swap_state)?;
+				T::FulfilledSwap::notify_status_change((who, swap_id), swap_info)?;
 			}
 
 			Ok(())

@@ -98,11 +98,17 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		amount_out: Self::BalanceOut,
 	) -> Result<Self::BalanceIn, DispatchError>;
+
+	/// Returns the conversion ratio to convert currency out into currency in,
+	fn market_ratio(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+	) -> Result<Self::Ratio, DispatchError>;
 }
 
 /// A representation of a currency swap in process.
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct SwapState<AmountIn, AmountOut, Currency> {
+pub struct SwapInfo<AmountIn, AmountOut, Currency, Ratio> {
 	/// Swap not yet processed with the pending outcomming amount
 	pub remaining: Swap<AmountOut, Currency>,
 
@@ -112,18 +118,25 @@ pub struct SwapState<AmountIn, AmountOut, Currency> {
 	/// Amount of incoming currency already swapped denominated in outgoing
 	/// currency
 	pub swapped_out: AmountOut,
+
+	/// Ratio used to swap `swapped_out` into `swapped_in`
+	pub ratio: Ratio,
 }
 
 /// Used as result of `Pallet::apply_swap()`
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SwapStatus<Amount> {
+pub struct SwapStatus<Amount, Ratio> {
 	/// The incoming amount already swapped and available to use.
 	pub swapped: Amount,
 
 	/// The outgoing amount pending to be swapped
 	pub pending: Amount,
+
+	/// Ratio used to obtain the swapped amount.
+	/// Zero if no swapped amount.
+	pub ratio: Ratio,
 }
 
 /// Trait to perform swaps without handling directly an order book
@@ -131,6 +144,7 @@ pub trait Swaps<AccountId> {
 	type Amount;
 	type CurrencyId;
 	type SwapId;
+	type Ratio;
 
 	/// Apply a swap over a current possible swap state.
 	/// - If there was no previous swap, it adds it.
@@ -148,7 +162,7 @@ pub trait Swaps<AccountId> {
 		who: &AccountId,
 		swap_id: Self::SwapId,
 		swap: Swap<Self::Amount, Self::CurrencyId>,
-	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
+	) -> Result<SwapStatus<Self::Amount, Self::Ratio>, DispatchError>;
 
 	/// Cancel a swap partially or completely. The amount should be expressed in
 	/// the same currency as the the currency_out of the pending amount.
