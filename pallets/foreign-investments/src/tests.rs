@@ -237,6 +237,19 @@ mod investment {
 				Ok(AMOUNT)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+
+			System::assert_has_event(
+				Event::SwapCreated {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					swap: Swap {
+						amount_out: AMOUNT,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+				}
+				.into(),
+			);
 		});
 	}
 
@@ -315,6 +328,21 @@ mod investment {
 			);
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+
+			System::assert_has_event(
+				Event::SwapFullfilled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					remaining: Swap {
+						amount_out: 0,
+						currency_out: POOL_CURR,
+						currency_in: FOREIGN_CURR,
+					},
+					swapped_in: AMOUNT,
+					ratio: Ratio::from_rational(1, STABLE_RATIO),
+				}
+				.into(),
+			);
 		});
 	}
 

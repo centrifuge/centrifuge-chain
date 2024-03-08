@@ -3,7 +3,6 @@ use cfg_traits::{
 	StatusNotificationHook,
 };
 use frame_support::{assert_err, assert_ok};
-use sp_runtime::traits::{One, Zero};
 
 use crate::{mock::*, *};
 
@@ -46,14 +45,6 @@ mod util {
 			_ => amount_from,
 		}
 	}
-
-	pub fn market_ratio(to: CurrencyId, from: CurrencyId) -> Ratio {
-		match (from, to) {
-			(CURRENCY_B, CURRENCY_A) => Ratio::from_rational(1, RATIO),
-			(CURRENCY_A, CURRENCY_B) => Ratio::from_rational(RATIO, 1),
-			_ => Ratio::one(),
-		}
-	}
 }
 
 mod apply {
@@ -85,7 +76,6 @@ mod apply {
 				SwapStatus {
 					swapped: 0,
 					pending: AMOUNT,
-					ratio: Ratio::zero(),
 				}
 			);
 
@@ -133,7 +123,6 @@ mod apply {
 				SwapStatus {
 					swapped: 0,
 					pending: PREVIOUS_AMOUNT + AMOUNT,
-					ratio: Ratio::zero(),
 				}
 			);
 
@@ -149,7 +138,6 @@ mod apply {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
-			MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, ORDER_ID);
 
@@ -186,7 +174,6 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(AMOUNT),
 					pending: 0,
-					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 
@@ -200,7 +187,6 @@ mod apply {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
-			MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, ORDER_ID);
 
@@ -234,7 +220,6 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(AMOUNT),
 					pending: 0,
-					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 
@@ -250,7 +235,6 @@ mod apply {
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
-				MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 				Ok(util::convert_currencies(to, from, amount_from))
 			});
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
@@ -296,7 +280,6 @@ mod apply {
 				SwapStatus {
 					swapped: a_to_b(PREVIOUS_AMOUNT),
 					pending: AMOUNT - PREVIOUS_AMOUNT,
-					ratio: Ratio::from_rational(RATIO, 1),
 				}
 			);
 

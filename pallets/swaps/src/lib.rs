@@ -141,7 +141,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			new_swap: Swap<T::Balance, T::CurrencyId>,
 			over_order_id: Option<T::OrderId>,
-		) -> Result<(SwapStatus<T::Balance, T::Ratio>, Option<T::OrderId>), DispatchError> {
+		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
 			match over_order_id {
 				None => {
 					let order_id = T::OrderBook::place_order(
@@ -156,7 +156,6 @@ pub mod pallet {
 						SwapStatus {
 							swapped: T::Balance::zero(),
 							pending: new_swap.amount_out,
-							ratio: T::Ratio::zero(),
 						},
 						Some(order_id),
 					))
@@ -174,7 +173,6 @@ pub mod pallet {
 							SwapStatus {
 								swapped: T::Balance::zero(),
 								pending: amount_to_swap,
-								ratio: T::Ratio::zero(),
 							},
 							Some(order_id),
 						))
@@ -185,11 +183,6 @@ pub mod pallet {
 							new_swap.currency_in,
 							new_swap.currency_out,
 							new_swap.amount_out,
-						)?;
-
-						let ratio = T::OrderBook::market_ratio(
-							new_swap.currency_in,
-							new_swap.currency_out,
 						)?;
 
 						match inverse_swap.amount_out.cmp(&new_swap_amount_in) {
@@ -207,7 +200,6 @@ pub mod pallet {
 									SwapStatus {
 										swapped: new_swap_amount_in,
 										pending: T::Balance::zero(),
-										ratio,
 									},
 									Some(order_id),
 								))
@@ -219,7 +211,6 @@ pub mod pallet {
 									SwapStatus {
 										swapped: new_swap_amount_in,
 										pending: T::Balance::zero(),
-										ratio,
 									},
 									None,
 								))
@@ -248,7 +239,6 @@ pub mod pallet {
 									SwapStatus {
 										swapped: inverse_swap.amount_out,
 										pending: amount_to_swap,
-										ratio,
 									},
 									Some(order_id),
 								))
@@ -304,13 +294,12 @@ pub mod pallet {
 			who: &T::AccountId,
 			swap_id: Self::SwapId,
 			swap: Swap<T::Balance, T::CurrencyId>,
-		) -> Result<SwapStatus<Self::Amount, T::Ratio>, DispatchError> {
+		) -> Result<SwapStatus<Self::Amount>, DispatchError> {
 			// Bypassing the swap if both currencies are the same
 			if swap.currency_in == swap.currency_out {
 				return Ok(SwapStatus {
 					swapped: swap.amount_out,
 					pending: T::Balance::zero(),
-					ratio: T::Ratio::one(),
 				});
 			}
 
@@ -336,6 +325,13 @@ pub mod pallet {
 				}
 				None => Ok(()), // Noop
 			}
+		}
+
+		fn market_ratio(
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+		) -> Result<T::Ratio, DispatchError> {
+			T::OrderBook::market_ratio(currency_in, currency_out)
 		}
 
 		fn pending_amount(

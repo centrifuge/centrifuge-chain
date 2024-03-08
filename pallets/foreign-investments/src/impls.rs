@@ -57,7 +57,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				}
 			}
 
-			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status);
+			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status)?;
 
 			Ok::<_, DispatchError>(msg)
 		})?;
@@ -110,7 +110,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				}
 			}
 
-			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status);
+			Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status)?;
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;
@@ -218,8 +218,8 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		swap_id: SwapId<T>,
 		swap: &SwapOf<T>,
-		status: &SwapStatus<T::SwapBalance, T::SwapRatio>,
-	) {
+		status: &SwapStatus<T::SwapBalance>,
+	) -> DispatchResult {
 		if !status.swapped.is_zero() {
 			Pallet::<T>::deposit_event(Event::SwapFullfilled {
 				who: who.clone(),
@@ -229,7 +229,7 @@ impl<T: Config> Pallet<T> {
 					..swap.clone()
 				},
 				swapped_in: status.swapped,
-				ratio: status.ratio,
+				ratio: T::Swaps::market_ratio(swap.currency_in, swap.currency_out)?,
 			});
 		}
 
@@ -243,6 +243,8 @@ impl<T: Config> Pallet<T> {
 				},
 			})
 		}
+
+		Ok(())
 	}
 }
 
@@ -355,7 +357,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 			let swap_id = (investment_id, Action::Redemption);
 			let status = T::Swaps::apply_swap(&who, swap_id, swap.clone())?;
 
-			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status);
+			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status)?;
 
 			if !status.swapped.is_zero() {
 				SwapDone::<T>::for_redemption(

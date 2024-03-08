@@ -127,16 +127,12 @@ pub struct SwapInfo<AmountIn, AmountOut, Currency, Ratio> {
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SwapStatus<Amount, Ratio> {
+pub struct SwapStatus<Amount> {
 	/// The incoming amount already swapped and available to use.
 	pub swapped: Amount,
 
 	/// The outgoing amount pending to be swapped
 	pub pending: Amount,
-
-	/// Ratio used to obtain the swapped amount.
-	/// Zero if no swapped amount.
-	pub ratio: Ratio,
 }
 
 /// Trait to perform swaps without handling directly an order book
@@ -162,7 +158,7 @@ pub trait Swaps<AccountId> {
 		who: &AccountId,
 		swap_id: Self::SwapId,
 		swap: Swap<Self::Amount, Self::CurrencyId>,
-	) -> Result<SwapStatus<Self::Amount, Self::Ratio>, DispatchError>;
+	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
 
 	/// Cancel a swap partially or completely. The amount should be expressed in
 	/// the same currency as the the currency_out of the pending amount.
@@ -178,6 +174,12 @@ pub trait Swaps<AccountId> {
 		amount: Self::Amount,
 		currency_id: Self::CurrencyId,
 	) -> DispatchResult;
+
+	/// Returns the conversion ratio to convert currency out into currency in,
+	fn market_ratio(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+	) -> Result<Self::Ratio, DispatchError>;
 
 	/// Returns the pending amount for a pending swap. The direction of the swap
 	/// is determined by the `from_currency` parameter. The amount returned is
