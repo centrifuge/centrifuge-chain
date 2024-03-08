@@ -334,7 +334,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::place_order())]
 		pub fn place_order(
 			origin: OriginFor<T>,
 			currency_in: T::CurrencyId,

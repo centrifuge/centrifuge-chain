@@ -187,8 +187,8 @@ where
 		(from, to): &(CurrencyId, CurrencyId),
 	) -> Result<Option<Self::Value>, DispatchError> {
 		let locally_coupled_assets = match (from, to) {
-			(_, &CurrencyId::LocalAsset(_)) => from.is_local_representation_of(to),
-			(&CurrencyId::LocalAsset(_), _) => to.is_local_representation_of(from),
+			(_, &CurrencyId::LocalAsset(_)) => to.is_local_representation_of(from),
+			(&CurrencyId::LocalAsset(_), _) => from.is_local_representation_of(to),
 			_ => Ok(false),
 		}?;
 

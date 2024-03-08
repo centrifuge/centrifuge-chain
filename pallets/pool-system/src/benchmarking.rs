@@ -15,7 +15,7 @@
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{
 	benchmarking::PoolFeesBenchmarkHelper,
-	fee::{PoolFeeBucket, PoolFees},
+	fee::{PoolFeeBucket, PoolFeesInspect},
 	investments::TrancheCurrency as _,
 	UpdateState,
 };
