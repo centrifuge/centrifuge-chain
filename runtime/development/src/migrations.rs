@@ -43,4 +43,3 @@ pub type UpgradeDevelopment1042 = (
 		1,
 	>,
 );
-
