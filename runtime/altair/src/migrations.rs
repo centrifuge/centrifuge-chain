@@ -25,6 +25,7 @@ frame_support::parameter_types! {
 	pub const MigrationPalletName: &'static str = "Migration";
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
+
 /// The migration set for Altair 1034 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
