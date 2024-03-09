@@ -25,7 +25,8 @@ frame_support::parameter_types! {
 	pub const MigrationPalletName: &'static str = "Migration";
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
-
+/// The migration set for Altair 1034 @ Kusama. It includes all the migrations
+/// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
 	// Updates asset custom metadata from mid 2023 to latest (two fields missing/mismatching)
 	translate_asset_metadata::Migration<super::Runtime>,
