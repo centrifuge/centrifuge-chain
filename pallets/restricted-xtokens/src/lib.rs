@@ -46,7 +46,9 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::XtokensWeightInfo;
 pub use pallet::*;
 use sp_std::{boxed::Box, vec::Vec};
-use xcm::{v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation};
+use staging_xcm::{
+	v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
+};
 
 pub enum TransferEffects<AccountId, CurrencyId, Balance> {
 	Transfer {
