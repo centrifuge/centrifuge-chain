@@ -644,8 +644,13 @@ pub mod pallet {
 		) -> Result<T::Ratio, DispatchError> {
 			let feeder = MarketFeederId::<T>::get()?;
 
-			T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
-				.ok_or(Error::<T>::MarketRatioNotFound.into())
+			if currency_to < currency_from {
+				T::RatioProvider::get(&feeder, &(currency_to, currency_from))?
+					.map(|ratio| ratio.reciprocal().unwrap_or(Zero::zero()))
+			} else {
+				T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
+			}
+			.ok_or(Error::<T>::MarketRatioNotFound.into())
 		}
 
 		/// `ratio` is the value you multiply `amount_from` to obtain
