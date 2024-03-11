@@ -292,7 +292,7 @@ pub mod pallet {
 			swap_id: SwapId<T>,
 			remaining: SwapOf<T>,
 			cancelled_in: T::SwapBalance,
-			pending_in: T::SwapBalance,
+			opposite_in: T::SwapBalance,
 		},
 	}
 }

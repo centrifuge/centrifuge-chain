@@ -387,7 +387,7 @@ mod investment {
 						currency_in: FOREIGN_CURR,
 					},
 					cancelled_in: AMOUNT / 4,
-					pending_in: 3 * AMOUNT / 4,
+					opposite_in: 3 * AMOUNT / 4,
 				}
 				.into(),
 			);

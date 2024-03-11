@@ -229,7 +229,7 @@ impl<T: Config> Pallet<T> {
 					..swap.clone()
 				},
 				cancelled_in: status.swapped,
-				pending_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
+				opposite_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
 			});
 		}
 
