@@ -10,36 +10,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::{
-	usdc::{CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID},
-	CurrencyId, LocalAssetId,
-};
-
-frame_support::parameter_types! {
-	pub const UsdcVariants: [CurrencyId; 1] = [CURRENCY_ID_LP_ETH];
-	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
-	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
-	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
-	pub const AnnualTreasuryInflationPercent: u32 = 3;
-}
-
-pub type UpgradeDevelopment1042 = (
-	// Reset pallets
-	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
-	runtime_common::migrations::nuke::ResetPallet<
-		crate::TransferAllowList,
-		crate::RocksDbWeight,
-		0,
-	>,
-	// Apply relative treasury inflation
-	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
-		crate::Runtime,
-		AnnualTreasuryInflationPercent,
-	>,
-	// Apply version bump to 1 (storage already reset)
-	runtime_common::migrations::increase_storage_version::Migration<
-		crate::ForeignInvestments,
-		0,
-		1,
-	>,
-);
+pub type UpgradeDevelopment1043 =
+	(runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,);

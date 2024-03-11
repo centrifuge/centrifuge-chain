@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.42"
+version = "0.10.43"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",

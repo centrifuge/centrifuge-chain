@@ -69,7 +69,7 @@ pub fn migrate_from_v2_to_v3<T: Config>() -> Weight {
 		T::DbWeight::get().reads_writes(count + 1, count + 1)
 	} else {
 		// wrong storage version
-		log::info!("Loans: Migration did not execute. This probably should be removed");
+		log::warn!("Loans: Migration did not execute. This probably should be removed");
 		T::DbWeight::get().reads_writes(1, 0)
 	}
 }
