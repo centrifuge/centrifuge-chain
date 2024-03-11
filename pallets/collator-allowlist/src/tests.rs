@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use frame_support::{
-	assert_noop, assert_ok, dispatch::DispatchError, traits::ValidatorRegistration,
+	assert_noop, assert_ok, pallet_prelude::DispatchError, traits::ValidatorRegistration,
 };
 use sp_runtime::traits::BadOrigin;
 
