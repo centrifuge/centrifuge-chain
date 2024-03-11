@@ -6,7 +6,7 @@ use frame_support::{
 	traits::{fungibles::Inspect, Currency as CurrencyT},
 };
 use frame_system::RawOrigin;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::traits::Zero;
 
 use super::*;
 use crate::{pallet::Config, Pallet as BlockRewards};
@@ -17,7 +17,6 @@ const SEED: u32 = 0;
 #[benchmarks(
 where
 		T::Balance: From<u128>,
-		T::BlockNumber: From<u32> + One,
 		T::Weight: From<u32>,
 		<T as Config>::Tokens: Inspect<T::AccountId> + CurrencyT<T::AccountId>,
 		<T as Config>::CurrencyId: From<CurrencyId>,

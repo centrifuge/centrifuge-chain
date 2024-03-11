@@ -12,10 +12,8 @@
 
 use cfg_traits::TimeAsSecs;
 use frame_support::{
-	dispatch::GetStorageVersion,
-	inherent::Vec,
 	pallet_prelude::{StorageVersion, Weight},
-	traits::{Get, OnRuntimeUpgrade},
+	traits::{Get, GetStorageVersion, OnRuntimeUpgrade},
 };
 #[cfg(feature = "try-runtime")]
 use num_traits::Zero;
@@ -23,7 +21,7 @@ use parity_scale_codec::{Decode, Encode};
 use sp_runtime::FixedPointNumber;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
-use sp_std::marker::PhantomData;
+use sp_std::{marker::PhantomData, vec::Vec};
 
 use crate::{pallet, Config, Pallet, SessionData};
 

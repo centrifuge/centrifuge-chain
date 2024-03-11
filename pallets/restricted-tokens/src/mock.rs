@@ -386,8 +386,6 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxLocks: u32 = 100;
-	pub const MaxReserves: u32 = 50;
 	pub const ExistentialDeposit: u64 = 1;
 }
 
@@ -397,8 +395,6 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxHolds = ConstU32<1>;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
 	type RuntimeHoldReason = ();
 }
 
@@ -417,8 +413,8 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
+	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
