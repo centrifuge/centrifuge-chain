@@ -1,17 +1,12 @@
 use frame_support::{
+	derive_impl,
 	pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
-	sp_io::TestExternalities,
-	traits::{ConstU16, ConstU32, ConstU64},
+	traits::ConstU32,
 };
-use sp_runtime::{
-	testing::{Header, H256},
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_io::TestExternalities;
+use sp_runtime::{testing::H256, BuildStorage};
 
 use crate::pallet as pallet_oracle_collection;
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type AccountId = u64;
 pub type OracleKey = u32;
@@ -28,11 +23,7 @@ frame_support::parameter_types! {
 }
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		MockProvider: cfg_mocks::value_provider::pallet,
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
@@ -42,31 +33,9 @@ frame_support::construct_runtime!(
 	}
 );
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = ();
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 impl cfg_mocks::value_provider::pallet::Config for Runtime {
@@ -109,8 +78,8 @@ impl pallet_oracle_collection::Config for Runtime {
 }
 
 pub fn new_test_ext() -> TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	let mut ext = TestExternalities::new(storage);

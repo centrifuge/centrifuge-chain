@@ -472,8 +472,7 @@ pub mod pallet {
 pub mod types {
 	use cfg_traits::data::DataCollection;
 	use frame_support::{
-		dispatch::DispatchError,
-		pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
+		pallet_prelude::{Decode, DispatchError, Encode, MaxEncodedLen, TypeInfo},
 		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
 		traits::Time,
 		RuntimeDebugNoBound,
