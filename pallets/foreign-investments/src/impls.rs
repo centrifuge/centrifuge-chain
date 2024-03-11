@@ -7,7 +7,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, EnsureAddAssign, EnsureSub, One, Zero};
+use sp_runtime::traits::{EnsureAdd, EnsureAddAssign, EnsureSub, Zero};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -221,19 +221,15 @@ impl<T: Config> Pallet<T> {
 		status: &SwapStatus<T::SwapBalance>,
 	) -> DispatchResult {
 		if !status.swapped.is_zero() {
-			Pallet::<T>::deposit_event(Event::SwapFullfilled {
+			Pallet::<T>::deposit_event(Event::SwapCancelled {
 				who: who.clone(),
 				swap_id,
 				remaining: Swap {
 					amount_out: status.pending,
 					..swap.clone()
 				},
-				swapped_in: status.swapped,
-				ratio: if swap.has_same_currencies() {
-					T::SwapRatio::one()
-				} else {
-					T::Swaps::market_ratio(swap.currency_in, swap.currency_out)?
-				},
+				cancelled_in: status.swapped,
+				pending_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
 			});
 		}
 
@@ -272,7 +268,7 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapHook<T> {
 			swap_id: (investment_id, action),
 			remaining: swap_info.remaining.clone(),
 			swapped_in: swap_info.swapped_in,
-			ratio: swap_info.ratio,
+			swapped_out: swap_info.swapped_out,
 		});
 
 		match action {

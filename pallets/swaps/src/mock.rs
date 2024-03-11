@@ -77,7 +77,6 @@ impl pallet_swaps::Config for Runtime {
 	type FulfilledSwap = FulfilledSwapHook;
 	type OrderBook = MockTokenSwaps;
 	type OrderId = OrderId;
-	type Ratio = Ratio;
 	type SwapId = SwapId;
 }
 

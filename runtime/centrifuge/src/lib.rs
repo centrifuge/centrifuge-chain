@@ -1834,7 +1834,6 @@ impl pallet_swaps::Config for Runtime {
 	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
 	type OrderBook = OrderBook;
 	type OrderId = OrderId;
-	type Ratio = Ratio;
 	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
 }
 

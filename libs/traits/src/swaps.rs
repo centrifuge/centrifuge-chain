@@ -140,7 +140,6 @@ pub trait Swaps<AccountId> {
 	type Amount;
 	type CurrencyId;
 	type SwapId;
-	type Ratio;
 
 	/// Apply a swap over a current possible swap state.
 	/// - If there was no previous swap, it adds it.
@@ -174,12 +173,6 @@ pub trait Swaps<AccountId> {
 		amount: Self::Amount,
 		currency_id: Self::CurrencyId,
 	) -> DispatchResult;
-
-	/// Returns the conversion ratio to convert currency out into currency in,
-	fn market_ratio(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-	) -> Result<Self::Ratio, DispatchError>;
 
 	/// Returns the pending amount for a pending swap. The direction of the swap
 	/// is determined by the `from_currency` parameter. The amount returned is

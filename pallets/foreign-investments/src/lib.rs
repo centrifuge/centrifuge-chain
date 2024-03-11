@@ -186,7 +186,6 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Amount = Self::SwapBalance,
 			SwapId = SwapId<Self>,
-			Ratio = Self::SwapRatio,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -273,17 +272,27 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		// The swap is created and now is wating to be fulfilled
 		SwapCreated {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
 			swap: SwapOf<T>,
 		},
+		// The swap was fulfilled by another participant.
 		SwapFullfilled {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
 			remaining: SwapOf<T>,
 			swapped_in: T::SwapBalance,
-			ratio: T::SwapRatio,
+			swapped_out: T::SwapBalance,
+		},
+		// The swap was fulfilled by cancelling an opposite swap for the same foreign investment.
+		SwapCancelled {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			remaining: SwapOf<T>,
+			cancelled_in: T::SwapBalance,
+			pending_in: T::SwapBalance,
 		},
 	}
 }

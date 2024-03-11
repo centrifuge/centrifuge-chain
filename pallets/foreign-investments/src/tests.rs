@@ -328,21 +328,6 @@ mod investment {
 			);
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
-
-			System::assert_has_event(
-				Event::SwapFullfilled {
-					who: USER,
-					swap_id: (INVESTMENT_ID, Action::Investment),
-					remaining: Swap {
-						amount_out: 0,
-						currency_out: POOL_CURR,
-						currency_in: FOREIGN_CURR,
-					},
-					swapped_in: AMOUNT,
-					ratio: Ratio::from_rational(1, STABLE_RATIO),
-				}
-				.into(),
-			);
 		});
 	}
 
@@ -391,6 +376,21 @@ mod investment {
 				Ok(AMOUNT * 3 / 4)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+
+			System::assert_has_event(
+				Event::SwapCancelled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					remaining: Swap {
+						amount_out: 0,
+						currency_out: POOL_CURR,
+						currency_in: FOREIGN_CURR,
+					},
+					cancelled_in: AMOUNT / 4,
+					pending_in: 3 * AMOUNT / 4,
+				}
+				.into(),
+			);
 		});
 	}
 
@@ -448,6 +448,21 @@ mod investment {
 			assert_eq!(
 				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 4))
+			);
+
+			System::assert_has_event(
+				Event::SwapFullfilled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					remaining: Swap {
+						amount_out: 3 * AMOUNT / 4,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+					swapped_in: foreign_to_pool(AMOUNT / 4),
+					swapped_out: AMOUNT / 4,
+				}
+				.into(),
 			);
 		});
 	}
