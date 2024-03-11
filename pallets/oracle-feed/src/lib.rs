@@ -117,7 +117,7 @@ pub mod pallet {
 			let _ = T::FeederOrigin::ensure_origin(origin.clone())?;
 
 			let feeder = origin.clone().into_caller();
-			let signed_account = origin.as_signed();
+			let signed_account = origin.into_signer();
 
 			FedValues::<T>::mutate(&feeder, key, |prev_value| {
 				let new_weight = match (&prev_value, signed_account) {
