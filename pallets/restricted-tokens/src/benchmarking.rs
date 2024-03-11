@@ -15,7 +15,7 @@ use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
 };
-use frame_benchmarking::{account, benchmarks, Zero};
+use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::{
 	fungibles,
 	tokens::{Fortitude, Preservation},
@@ -23,7 +23,7 @@ use frame_support::traits::{
 };
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::default::Default;
 
 use super::*;
@@ -36,7 +36,7 @@ fn make_free_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
@@ -69,7 +69,7 @@ fn reserve_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
@@ -149,7 +149,7 @@ fn set_up_account<T>(
 ) -> T::AccountId
 where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
@@ -190,7 +190,7 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config
-			+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
+			+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
 			+ orml_tokens::Config<Balance = <T as Config>::Balance, CurrencyId = <T as Config>::CurrencyId>
 			+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		<T as Config>::Balance: From<u128> + Zero,

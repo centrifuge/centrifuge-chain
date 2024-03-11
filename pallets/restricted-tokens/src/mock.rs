@@ -11,30 +11,19 @@
 // GNU General Public License for more details.
 
 use cfg_traits::PreConditions;
-use frame_support::{
-	parameter_types,
-	sp_io::TestExternalities,
-	traits::{Everything, GenesisBuild},
-	weights::Weight,
-};
+use frame_support::{derive_impl, parameter_types};
 use orml_traits::parameter_type_with_key;
 use pallet_restricted_tokens::TransferDetails;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{
-	testing::{Header, H256},
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::{traits::ConstU32, BuildStorage};
 use sp_std::collections::btree_map::BTreeMap;
 
 pub use crate as pallet_restricted_tokens;
-use crate::ConstU32;
 
 pub const DISTR_PER_ACCOUNT: u64 = 1000;
 pub type AccountId = u64;
 pub type Balance = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const POOL_PALLET_ID: AccountId = 999u64;
 type Time = u64;
 pub const MIN_HOLD_PERIOD: Time = 10;
@@ -381,59 +370,19 @@ pub enum CurrencyId {
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Runtime
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		OrmlTokens: orml_tokens::{Pallet, Config<T>, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Config<T>, Storage, Event<T>},
-		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
+		System: frame_system,
+		OrmlTokens: orml_tokens,
+		Balances: pallet_balances,
+		Tokens: pallet_restricted_tokens,
 	}
 );
 
-// Parameterize frame system pallet
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_parts(1024, 0).set_proof_size(u64::MAX).into());
-}
-
-// Implement frame system configuration for the mock runtime
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = BlockWeights;
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
-}
-
-parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
-		// every currency has a zero existential deposit
-		match currency_id {
-			_ => 1,
-		}
-	};
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 parameter_types! {
@@ -442,23 +391,24 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ConstU32<50>;
-	type MaxHolds = frame_support::traits::ConstU32<1>;
+	type MaxHolds = ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type RuntimeHoldReason = ();
 }
 
-parameter_types! {}
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			_ => 1,
+		}
+	};
+}
 
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
@@ -525,9 +475,9 @@ impl Default for TestExternalitiesBuilder {
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
-	pub fn build(self, optional: Option<impl FnOnce()>) -> TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+	pub fn build(self, optional: Option<impl FnOnce()>) -> sp_io::TestExternalities {
+		let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 		let ausd = (0..10)
 			.into_iter()
@@ -563,7 +513,7 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		let mut ext = TestExternalities::from(storage);
+		let mut ext = sp_io::TestExternalities::from(storage);
 
 		if let Some(execute) = optional {
 			ext.execute_with(execute);

@@ -65,7 +65,7 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 pub mod pallet {
 	use cfg_traits::PreConditions;
 	use frame_support::{
-		scale_info::TypeInfo,
+		pallet_prelude::TypeInfo,
 		sp_runtime::{
 			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
 			ArithmeticError, FixedPointOperand,
