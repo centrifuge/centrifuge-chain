@@ -1,4 +1,4 @@
 [submodule "runtime/integration-tests/submodules/liquidity-pools"]
 	path = runtime/integration-tests/submodules/liquidity-pools
 	url = git@github.com:centrifuge/liquidity-pools.git
-	branch = feat/local-router
+	branch = centrifuge-chain/release-v1.0
