@@ -23,60 +23,38 @@
 // ----------------------------------------------------------------------------
 
 use frame_support::{
-	parameter_types,
-	traits::{Everything, SortedMembers, WithdrawReasons},
+	derive_impl, parameter_types,
+	traits::{SortedMembers, WithdrawReasons},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
-};
+use sp_runtime::{traits::ConstU64, BuildStorage, Perbill};
 
 use crate as pallet_crowdloan_reward;
 
 type Balance = u64;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
-// Build mock runtime
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
-		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Balances: pallet_balances,
+		Vesting: pallet_vesting,
+		CrowdloanReward: pallet_crowdloan_reward,
 	}
 );
 
-// Parameterize balances pallet
-parameter_types! {
-	pub const MaxLocks: u32 = 10;
-	pub const ExistentialDeposit: u64 = 1;
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+impl frame_system::Config for Runtime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-// Implement balances pallet configuration for mock runtime
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type RuntimeHoldReason = ();
 }
 
 // Parameterize vesting pallet
@@ -127,34 +105,6 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-// Implement frame system pallet configuration for mock runtime
-impl frame_system::Config for Runtime {
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = u64;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
-}
-
 // ----------------------------------------------------------------------------
 // Runtime externalities
 // ----------------------------------------------------------------------------
@@ -185,8 +135,8 @@ impl TestExternalitiesBuilder {
 
 	// Build a genesis storage key/value store
 	pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
@@ -201,7 +151,6 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		use frame_support::traits::GenesisBuild;
 		pallet_vesting::GenesisConfig::<Runtime> {
 			vesting: vec![(1, 1, 10, 0), (2, 10, 20, 0), (12, 10, 20, 0)],
 		}
