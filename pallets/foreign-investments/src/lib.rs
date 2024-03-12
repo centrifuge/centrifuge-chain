@@ -14,7 +14,7 @@
 //! # Foreign Investment pallet
 //!
 //! Enables investing, redeeming and collecting in foreign and non-foreign
-//! currencies. Can be regarded as an extension of `pallet-investment` which
+//! currencies. Can be regarded as an extension of `pallet-investments` which
 //! provides the same toolset for pool (non-foreign) currencies.
 //!
 //! - [`Pallet`]

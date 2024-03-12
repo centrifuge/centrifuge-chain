@@ -9,7 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
+//! # Pool Fees Pallet
+//!
+//! The Pool Fees pallet stores all the fees related to a pool and allows for
+//! these fees to be charged.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;

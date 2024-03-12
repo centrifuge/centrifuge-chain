@@ -12,13 +12,12 @@
 //
 //! # BlockRewards Pallet
 //!
-//! The BlockRewards pallet provides functionality for distributing rewards to
-//! different accounts with different currencies as well as configuring an
-//! annual treasury inflation. The distribution happens when a session (a
-//! constant time interval) finalizes. Users cannot stake manually as their
-//! collator membership is synchronized via a provider.
-//! Thus, when new collators join, they will automatically be staked and
-//! vice-versa when collators leave, they are unstaked.
+//! The BlockRewards pallet provides means of configuring and distributing block
+//! rewards to collators as well as the annual treasury inflation. The
+//! distribution happens when a session (a constant time interval) finalizes.
+//! Users cannot stake manually as their collator membership is synchronized via
+//! a provider. Thus, when new collators join, they will automatically be staked
+//! and vice-versa when collators leave, they are unstaked.
 //!
 //! The BlockRewards pallet provides functions for:
 //!

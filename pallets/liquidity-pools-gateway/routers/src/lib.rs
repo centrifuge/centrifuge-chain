@@ -9,6 +9,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Liquidity Pools Gateway Routers
+//!
+//! This crate contains the `DomainRouters` used by the Liquidity Pools Gateway
+//! pallet.
+//!
+//! The routers can be used to communicate with:
+//!
+//! Axelar - via EVM and XCM (through Moonbeam).
+//!
+//! Moonbeam - via XCM.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // polkadot/blob/19f6665a6162e68cd2651f5fe3615d6676821f90/xcm/src/v3/mod.rs#
