@@ -76,3 +76,54 @@ where
 		Ok(())
 	}
 }
+
+/// Simply bumps the storage version of a pallet
+///
+/// NOTE: Use with extreme caution! Must ensure beforehand that a migration is
+/// not necessary
+pub struct ForceMigration<P, const FROM_VERSION: u16, const TO_VERSION: u16>(
+	sp_std::marker::PhantomData<P>,
+);
+impl<P, const FROM_VERSION: u16, const TO_VERSION: u16> OnRuntimeUpgrade
+	for ForceMigration<P, FROM_VERSION, TO_VERSION>
+where
+	P: GetStorageVersion<CurrentStorageVersion = StorageVersion> + PalletInfoAccess,
+{
+	fn on_runtime_upgrade() -> Weight {
+		if P::on_chain_storage_version() == FROM_VERSION {
+			log::warn!("Double-check you really want this migration!!!!",);
+			log::info!(
+				"{LOG_PREFIX} Increasing storage version of {:?} from {:?} to {TO_VERSION:?}",
+				P::name(),
+				P::on_chain_storage_version(),
+			);
+			StorageVersion::new(TO_VERSION).put::<P>();
+
+			RocksDbWeight::get().writes(1)
+		} else {
+			log::error!(
+				"{LOG_PREFIX} Mismatching versions. Wanted to upgrade from \
+			{FROM_VERSION} but on-chain version is {:?}",
+				P::on_chain_storage_version(),
+			);
+			Zero::zero()
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::DispatchError> {
+		assert_eq!(
+			P::on_chain_storage_version(),
+			FROM_VERSION,
+			"Unexpected onchain version: Expected {FROM_VERSION:?}, received {:?}",
+			P::on_chain_storage_version(),
+		);
+		Ok(sp_std::vec![])
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		assert_eq!(P::on_chain_storage_version(), TO_VERSION);
+		Ok(())
+	}
+}

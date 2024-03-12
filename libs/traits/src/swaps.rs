@@ -98,11 +98,17 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		amount_out: Self::BalanceOut,
 	) -> Result<Self::BalanceIn, DispatchError>;
+
+	/// Returns the conversion ratio to convert currency out into currency in,
+	fn market_ratio(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+	) -> Result<Self::Ratio, DispatchError>;
 }
 
 /// A representation of a currency swap in process.
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct SwapState<AmountIn, AmountOut, Currency> {
+pub struct SwapInfo<AmountIn, AmountOut, Currency, Ratio> {
 	/// Swap not yet processed with the pending outcomming amount
 	pub remaining: Swap<AmountOut, Currency>,
 
@@ -112,6 +118,9 @@ pub struct SwapState<AmountIn, AmountOut, Currency> {
 	/// Amount of incoming currency already swapped denominated in outgoing
 	/// currency
 	pub swapped_out: AmountOut,
+
+	/// Ratio used to swap `swapped_out` into `swapped_in`
+	pub ratio: Ratio,
 }
 
 /// Used as result of `Pallet::apply_swap()`

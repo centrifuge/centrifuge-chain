@@ -153,7 +153,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1025,
+	spec_version: 1026,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1847,7 +1847,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = TrancheCurrency;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
@@ -2059,7 +2061,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1025,
+	migrations::UpgradeCentrifuge1026,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2121,7 +2123,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 106,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 107,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 108,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage} = 109,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 109,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 110,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 111,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
