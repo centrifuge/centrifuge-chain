@@ -1822,7 +1822,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = TrancheCurrency;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
@@ -2111,7 +2113,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage} = 117,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
 
