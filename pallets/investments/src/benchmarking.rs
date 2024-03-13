@@ -154,6 +154,6 @@ mod benchmarks {
 	impl_benchmark_test_suite!(
 		Pallet,
 		crate::mock::TestExternalitiesBuilder::build(),
-		crate::mock::MockRuntime
+		crate::mock::Runtime
 	);
 }

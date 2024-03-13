@@ -23,6 +23,7 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_support::{
+	derive_impl,
 	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
 	traits::{
@@ -30,9 +31,8 @@ use frame_support::{
 			fungibles::{Inspect, Mutate},
 			Fortitude, Precision, Preservation,
 		},
-		GenesisBuild, Nothing,
+		Nothing,
 	},
-	RuntimeDebug,
 };
 use orml_traits::GetByKey;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -41,8 +41,8 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-	DispatchError, DispatchResult,
+	traits::{AccountIdConversion, ConstU32},
+	BuildStorage, DispatchError, DispatchResult,
 };
 use sp_std::{
 	cell::RefCell,
@@ -53,54 +53,22 @@ use sp_std::{
 
 pub use crate as pallet_investments;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
-pub type MockAccountId = u64;
+pub type AccountId = u64;
 
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
-		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Investments: pallet_investments,
+		OrmlTokens: orml_tokens,
+		Balances: pallet_balances,
 		MockAccountant: cfg_mocks::pallet_mock_pools,
 	}
 );
 
-parameter_types! {
-	pub const BlockHashCount: u32 = 250;
-	pub const SS58Prefix: u8 = 42;
-}
-
-impl frame_system::Config for MockRuntime {
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = MockAccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = BlockNumber;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = Hash;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = Index;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 parameter_types! {
@@ -114,7 +82,7 @@ impl GetByKey<CurrencyId, u128> for ExistentialDeposit {
 	}
 }
 
-impl orml_tokens::Config for MockRuntime {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyHooks = ();
@@ -132,23 +100,17 @@ parameter_types! {
 	pub const ExistentialDeposit: u128 = 1;
 }
 
-impl pallet_balances::Config for MockRuntime {
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type MaxHolds = ConstU32<1>;
+	type RuntimeHoldReason = ();
 }
 
-impl cfg_mocks::pallet_mock_pools::Config for MockRuntime {
+impl cfg_mocks::pallet_mock_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
@@ -160,7 +122,7 @@ impl cfg_mocks::pallet_mock_pools::Config for MockRuntime {
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
-	type Id = (MockAccountId, InvestmentId);
+	type Id = (AccountId, InvestmentId);
 	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
@@ -172,8 +134,7 @@ parameter_types! {
 	pub const MaxOutstandingCollect: u32 = 10;
 }
 
-impl pallet_investments::Config for MockRuntime {
-	//type Accountant = MockAccountant<OrmlTokens>;
+impl pallet_investments::Config for Runtime {
 	type Accountant = MockAccountant;
 	type Amount = Balance;
 	type BalanceRatio = Quantity;
@@ -205,7 +166,7 @@ impl<T> PreConditions<T> for Always {
 	Encode,
 	Decode,
 	PartialEq,
-	RuntimeDebug,
+	Debug,
 	Ord,
 	PartialOrd,
 	Eq,
@@ -248,15 +209,15 @@ impl From<InvestmentId> for CurrencyId {
 pub struct TestExternalitiesBuilder;
 
 parameter_types! {
-	pub const InvestorA: MockAccountId = 1;
-	pub const InvestorB: MockAccountId = 2;
-	pub const InvestorC: MockAccountId = 3;
-	pub const InvestorD: MockAccountId = 4;
-	pub const TrancheHolderA: MockAccountId = 11;
-	pub const TrancheHolderB: MockAccountId = 12;
-	pub const TrancheHolderC: MockAccountId = 13;
-	pub const TrancheHolderD: MockAccountId = 14;
-	pub const Owner: MockAccountId = 100;
+	pub const InvestorA: AccountId = 1;
+	pub const InvestorB: AccountId = 2;
+	pub const InvestorC: AccountId = 3;
+	pub const InvestorD: AccountId = 4;
+	pub const TrancheHolderA: AccountId = 11;
+	pub const TrancheHolderB: AccountId = 12;
+	pub const TrancheHolderC: AccountId = 13;
+	pub const TrancheHolderD: AccountId = 14;
+	pub const Owner: AccountId = 100;
 }
 
 /// The pool id we use for tests
@@ -291,11 +252,11 @@ pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build() -> TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+		let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
-		orml_tokens::GenesisConfig::<MockRuntime> {
+		orml_tokens::GenesisConfig::<Runtime> {
 			balances: vec![
 				// Owner holds enough capital to satisfy redemptions
 				(
@@ -404,7 +365,7 @@ pub fn configure_accountant_mock() {
 		let state = state.clone();
 		move |id, source, dest, amount| {
 			let _ = get(&state, id)?;
-			<OrmlTokens as Mutate<MockAccountId>>::transfer(
+			<OrmlTokens as Mutate<AccountId>>::transfer(
 				id.into(),
 				source,
 				dest,
@@ -419,7 +380,7 @@ pub fn configure_accountant_mock() {
 		let state = state.clone();
 		move |buyer, id, amount| {
 			let _ = get(&state, id)?;
-			<OrmlTokens as Mutate<MockAccountId>>::mint_into(id.into(), buyer, amount).map(|_| ())
+			<OrmlTokens as Mutate<AccountId>>::mint_into(id.into(), buyer, amount).map(|_| ())
 		}
 	});
 
@@ -427,7 +388,7 @@ pub fn configure_accountant_mock() {
 		let state = state.clone();
 		move |seller, id, amount| {
 			let _ = get(&state, id)?;
-			<OrmlTokens as Mutate<MockAccountId>>::burn_from(
+			<OrmlTokens as Mutate<AccountId>>::burn_from(
 				id.into(),
 				seller,
 				amount,
@@ -440,25 +401,25 @@ pub fn configure_accountant_mock() {
 }
 
 pub(crate) fn last_event() -> RuntimeEvent {
-	let events = frame_system::Pallet::<MockRuntime>::events();
+	let events = frame_system::Pallet::<Runtime>::events();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
 	event.clone()
 }
 
 pub(crate) fn n_last_event(n: usize) -> RuntimeEvent {
-	let events = frame_system::Pallet::<MockRuntime>::events();
+	let events = frame_system::Pallet::<Runtime>::events();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(n + 1)];
 	event.clone()
 }
 
-pub(crate) fn investment_account(investment_id: InvestmentId) -> MockAccountId {
+pub(crate) fn investment_account(investment_id: InvestmentId) -> AccountId {
 	InvestmentAccount { investment_id }.into_account_truncating()
 }
 
-pub(crate) fn free_balance_of(who: MockAccountId, currency_id: CurrencyId) -> Balance {
-	<orml_tokens::Pallet<MockRuntime> as orml_traits::MultiCurrency<MockAccountId>>::free_balance(
+pub(crate) fn free_balance_of(who: AccountId, currency_id: CurrencyId) -> Balance {
+	<orml_tokens::Pallet<Runtime> as orml_traits::MultiCurrency<AccountId>>::free_balance(
 		currency_id,
 		&who,
 	)
@@ -575,7 +536,7 @@ pub(crate) fn invest_x_fulfill_x(
 /// Invest given amount per Investor into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
 pub(crate) fn invest_x_per_fulfill_x(
-	invest_per_investor: Vec<(MockAccountId, Balance)>,
+	invest_per_investor: Vec<(AccountId, Balance)>,
 	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	for (who, amount) in invest_per_investor {
@@ -625,7 +586,7 @@ pub(crate) fn redeem_x_fulfill_x(
 /// Invest given amount per Investor into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
 pub(crate) fn redeem_x_per_fulfill_x(
-	redeem_per_investor: Vec<(MockAccountId, Balance)>,
+	redeem_per_investor: Vec<(AccountId, Balance)>,
 	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	for (who, amount) in redeem_per_investor {
