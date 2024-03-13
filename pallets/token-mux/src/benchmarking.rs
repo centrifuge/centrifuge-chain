@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::swaps::OrderRatio;
+use cfg_traits::{swaps::OrderRatio, AssetMetadataOf};
 use cfg_types::tokens::{
 	CurrencyId,
 	CurrencyId::{ForeignAsset, LocalAsset},
@@ -20,8 +20,7 @@ use frame_benchmarking::v2::*;
 use frame_support::traits::fungibles::{Inspect, Mutate};
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate};
-use sp_arithmetic::traits::One;
-use sp_core::crypto::AccountId32;
+use sp_arithmetic::traits::{One, Zero};
 
 use super::*;
 
@@ -30,25 +29,21 @@ const LOCAL_CURRENCY: CurrencyId = LocalAsset(LOCAL_ASSET_ID);
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1000);
 const DECIMALS: u32 = 6;
 const AMOUNT: u128 = 1_000_000_000;
-#[cfg(test)]
-const ORDER_ID: u64 = 1;
 
 #[cfg(test)]
 fn init_mocks() {
-	use crate::{mock::MockTokenSwaps, tests::ORDER_ID};
-
-	MockTokenSwaps::mock_place_order(|_, _, _, _, _| Ok(ORDER_ID));
-	MockTokenSwaps::mock_get_order_details(|_| None);
-}
-#[cfg(test)]
-fn mock_match_swap<T: Config>(who: T::AccountId)
-where
-	AccountId32: From<T::AccountId>,
-{
 	use cfg_traits::swaps::{OrderInfo, Swap};
 	use tests::swaps::utils::mock_swap;
 
-	use crate::mock::MockTokenSwaps;
+	use crate::{
+		mock::{MockTokenSwaps, TokenMux},
+		tests::ORDER_ID,
+	};
+
+	let who = account::<mock::AccountId>("account", 0, 0);
+
+	MockTokenSwaps::mock_place_order(|_, _, _, _, _| Ok(ORDER_ID));
+	MockTokenSwaps::mock_get_order_details(|_| None);
 
 	MockTokenSwaps::mock_get_order_details(|order_id| {
 		assert_eq!(order_id, 1);
@@ -66,12 +61,7 @@ where
 		assert_eq!(order_id, ORDER_ID);
 		assert_eq!(amount_out, AMOUNT);
 
-		mock_swap(
-			FOREIGN_CURRENCY,
-			&who.clone().into(),
-			LOCAL_CURRENCY,
-			&Pallet::<T>::account().into(),
-		);
+		mock_swap(FOREIGN_CURRENCY, &who, LOCAL_CURRENCY, &TokenMux::account());
 
 		Ok(())
 	});
@@ -87,15 +77,14 @@ where
 	<T::AssetRegistry as OrmlInspect>::Balance: From<u128> + Zero,
 	<T::Tokens as Inspect<T::AccountId>>::Balance: From<u128>,
 	T::AssetRegistry: OrmlMutate,
-	AccountId32: From<T::AccountId>,
 {
 	pub fn setup_currencies() {
 		T::AssetRegistry::register_asset(
 			Some(FOREIGN_CURRENCY.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadataOf::<T::AssetRegistry> {
 				decimals: DECIMALS,
-				name: "VARIANT CURRENCY".as_bytes().to_vec(),
-				symbol: "VARIANT".as_bytes().to_vec(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata {
@@ -108,10 +97,10 @@ where
 		.unwrap();
 		T::AssetRegistry::register_asset(
 			Some(LOCAL_CURRENCY.into()),
-			orml_asset_registry::AssetMetadata {
+			AssetMetadataOf::<T::AssetRegistry> {
 				decimals: DECIMALS,
-				name: "LOCAL CURRENCY".as_bytes().to_vec(),
-				symbol: "LOCAL".as_bytes().to_vec(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata {
@@ -168,7 +157,6 @@ where
 		<T::AssetRegistry as OrmlInspect>::Balance: From<u128> + Zero,
 		<T::Tokens as Inspect<T::AccountId>>::Balance: From<u128>,
 		T::AssetRegistry: OrmlMutate,
-		AccountId32: From<T::AccountId>,
 )]
 mod benchmarks {
 	use super::*;
@@ -195,8 +183,6 @@ mod benchmarks {
 		init_mocks();
 
 		let account = Helper::<T>::swap_setup();
-		#[cfg(test)]
-		mock_match_swap::<T>(account.clone());
 
 		Helper::<T>::swap_foreign_to_local(account.clone());
 
@@ -216,8 +202,6 @@ mod benchmarks {
 		init_mocks();
 
 		let account = Helper::<T>::swap_setup();
-		#[cfg(test)]
-		mock_match_swap::<T>(account.clone());
 		let order_id = Helper::<T>::place_order(FOREIGN_CURRENCY, LOCAL_CURRENCY, &account);
 
 		#[extrinsic_call]

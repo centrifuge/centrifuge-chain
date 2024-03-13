@@ -11,27 +11,16 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_token_swaps;
+use cfg_traits::AssetMetadataOf;
 use cfg_types::tokens::{CustomMetadata, LocalAssetId};
-use frame_support::{
-	parameter_types,
-	traits::{ConstU16, ConstU32, ConstU64, GenesisBuild},
-	PalletId,
-};
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use sp_core::{crypto::AccountId32, H256};
+use frame_support::{derive_impl, parameter_types, PalletId};
+use orml_traits::parameter_type_with_key;
 use sp_io::TestExternalities;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128,
-};
+use sp_runtime::{BuildStorage, FixedU128};
 
 use crate::pallet as pallet_token_mux;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
-pub type AccountId = AccountId32;
+pub type AccountId = u64;
 pub type Balance = u128;
 pub type SwapId = u64;
 pub type Ratio = FixedU128;
@@ -51,11 +40,11 @@ pub const HAS_UNREGISTERED_LOCAL_ASSET: CurrencyId = CurrencyId::ForeignAsset(6)
 pub const USDC_WRONG_DECIMALS: CurrencyId = CurrencyId::ForeignAsset(7);
 pub const UNREGISTERED_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(2u32);
 
-pub const USER_1: AccountId = AccountId32::new([1u8; 32]);
-pub const USER_2: AccountId = AccountId32::new([2u8; 32]);
-pub const USER_NON: AccountId = AccountId32::new([4u8; 32]);
-pub const USER_UNREGISTERED: AccountId = AccountId32::new([5u8; 32]);
-pub const USER_LOCAL: AccountId = AccountId32::new([6u8; 32]);
+pub const USER_1: AccountId = 1;
+pub const USER_2: AccountId = 2;
+pub const USER_NON: AccountId = 4;
+pub const USER_UNREGISTERED: AccountId = 5;
+pub const USER_LOCAL: AccountId = 6;
 
 pub const fn token(amount: Balance) -> Balance {
 	amount * (10 as Balance).pow(USDC_DECIMALS)
@@ -64,11 +53,7 @@ pub const fn token(amount: Balance) -> Balance {
 pub const INITIAL_AMOUNT: Balance = token(1000);
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		MockTokenSwaps: pallet_mock_token_swaps,
 		TokenMux: pallet_token_mux,
@@ -83,31 +68,9 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	CustomMetadata
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = ();
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 impl pallet_mock_token_swaps::Config for Runtime {
@@ -158,14 +121,13 @@ impl pallet_token_mux::Config for Runtime {
 }
 
 fn asset_metadata(
-	currency_id: CurrencyId,
 	decimals: u32,
 	local_representation: Option<LocalAssetId>,
-) -> AssetMetadata<Balance, CustomMetadata> {
-	AssetMetadata {
+) -> AssetMetadataOf<MockRegistry> {
+	AssetMetadataOf::<MockRegistry> {
 		decimals,
-		name: format!("name_{:?}", currency_id).into_bytes().to_vec(),
-		symbol: format!("symbol_{:?}", currency_id).into_bytes().to_vec(),
+		name: Default::default(),
+		symbol: Default::default(),
 		existential_deposit: 0,
 		location: None,
 		additional: CustomMetadata {
@@ -177,8 +139,8 @@ fn asset_metadata(
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	// Add foreign currency balances of differing precisions
@@ -208,10 +170,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		};
 
 		orml_asset_registry_mock::GenesisConfig {
-			metadata: vec![(
-				currency_id,
-				asset_metadata(currency_id, decimals, local_representation),
-			)],
+			metadata: vec![(currency_id, asset_metadata(decimals, local_representation))],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
@@ -223,23 +182,19 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn new_test_ext_invalid_assets() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
 			(
 				HAS_UNREGISTERED_LOCAL_ASSET,
-				asset_metadata(
-					HAS_UNREGISTERED_LOCAL_ASSET,
-					6,
-					Some(UNREGISTERED_LOCAL_ASSET_ID),
-				),
+				asset_metadata(6, Some(UNREGISTERED_LOCAL_ASSET_ID)),
 			),
 			(
 				USDC_WRONG_DECIMALS,
-				asset_metadata(USDC_WRONG_DECIMALS, 5, Some(USDC_LOCAL_ASSET_ID)),
+				asset_metadata(5, Some(USDC_LOCAL_ASSET_ID)),
 			),
 		],
 	}

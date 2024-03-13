@@ -10,6 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+pub mod reexport {
+	pub use staging_xcm::{
+		latest::prelude::MultiLocation as __private_MultiLocation,
+		VersionedMultiLocation as __private_VersionedMultiLocation,
+	};
+}
+
 #[macro_export]
 macro_rules! impl_mock_registry {
 	($name:ident, $asset_id:ty, $balance:ty, $custom_metadata:ty) => {
@@ -28,9 +35,8 @@ macro_rules! impl_mock_registry {
 				Mutate as __private_Mutate,
 			};
 			use sp_runtime::{BoundedVec, BuildStorage};
-			use staging_xcm::{
-				latest::prelude::MultiLocation as __private_MultiLocation,
-				VersionedMultiLocation as __private_VersionedMultiLocation,
+			use $crate::mocks::orml_asset_registry::reexport::{
+				__private_MultiLocation, __private_VersionedMultiLocation,
 			};
 
 			use super::*;
