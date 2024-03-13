@@ -24,22 +24,13 @@ use cfg_types::{
 	tokens::TrancheCurrency,
 };
 use frame_support::{
-	assert_ok,
-	pallet_prelude::ConstU32,
-	parameter_types,
-	traits::{
-		fungibles::{Inspect, Mutate},
-		ConstU128, ConstU16, ConstU64,
-	},
+	assert_ok, derive_impl, parameter_types,
+	traits::fungibles::{Inspect, Mutate},
 	PalletId,
 };
 use sp_arithmetic::{traits::Zero, FixedPointNumber};
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError,
-};
+use sp_runtime::{traits::ConstU128, BuildStorage, DispatchError};
 use sp_std::vec::Vec;
 
 use crate::{
@@ -69,19 +60,12 @@ pub const NAV: Balance = 1_000_000_000_000_000;
 pub const ERR_CHANGE_GUARD_RELEASE: DispatchError =
 	DispatchError::Other("ChangeGuard release disabled if not mocked via config_change_mocks");
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-
-type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type AccountId = u64;
 pub type CurrencyId = u32;
 pub type ChangeId = H256;
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		MockTime: cfg_mocks::pallet_mock_time,
 		Balances: pallet_balances,
@@ -94,47 +78,19 @@ frame_support::construct_runtime!(
 	}
 );
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_mock_pools::Config for Runtime {
@@ -454,8 +410,8 @@ impl ExtBuilder {
 	}
 
 	pub(crate) fn build(self) -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(storage);
