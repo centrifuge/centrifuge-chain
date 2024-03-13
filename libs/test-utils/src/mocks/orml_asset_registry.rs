@@ -17,17 +17,18 @@ macro_rules! impl_mock_registry {
 
 		mod orml_asset_registry_mock {
 			use frame_support::{
-				dispatch::{
+				pallet_prelude::{
 					DispatchError as __private_DispatchError,
 					DispatchResult as __private_DispatchResult,
 				},
-				traits::GenesisBuild as __private_GenesisBuild,
+				traits::BuildGenesisConfig as __private_BuildGenesisConfig,
 			};
 			use orml_traits::asset_registry::{
 				AssetMetadata as __private_AssetMetadata, Inspect as __private_Inspect,
 				Mutate as __private_Mutate,
 			};
-			use xcm::{
+			use sp_runtime::{BoundedVec, BuildStorage};
+			use staging_xcm::{
 				latest::prelude::MultiLocation as __private_MultiLocation,
 				VersionedMultiLocation as __private_VersionedMultiLocation,
 			};
@@ -40,6 +41,7 @@ macro_rules! impl_mock_registry {
 				type AssetId = $asset_id;
 				type Balance = $balance;
 				type CustomMetadata = $custom_metadata;
+				type StringLimit = ();
 
 				fn asset_id(location: &__private_MultiLocation) -> Option<Self::AssetId> {
 					__private::STATE.with(|s| s.borrow().get_asset_from_location(location))
@@ -47,13 +49,17 @@ macro_rules! impl_mock_registry {
 
 				fn metadata(
 					asset_id: &Self::AssetId,
-				) -> Option<__private_AssetMetadata<Self::Balance, Self::CustomMetadata>> {
+				) -> Option<
+					__private_AssetMetadata<Self::Balance, Self::CustomMetadata, Self::StringLimit>,
+				> {
 					__private::STATE.with(|s| s.borrow().get_meta(asset_id))
 				}
 
 				fn metadata_by_location(
 					location: &__private_MultiLocation,
-				) -> Option<__private_AssetMetadata<Self::Balance, Self::CustomMetadata>> {
+				) -> Option<
+					__private_AssetMetadata<Self::Balance, Self::CustomMetadata, Self::StringLimit>,
+				> {
 					__private::STATE.with(|s| s.borrow().get_meta_from_location(location))
 				}
 
@@ -70,7 +76,11 @@ macro_rules! impl_mock_registry {
 			impl __private_Mutate for $name {
 				fn register_asset(
 					asset_id: Option<Self::AssetId>,
-					metadata: __private_AssetMetadata<Self::Balance, Self::CustomMetadata>,
+					metadata: __private_AssetMetadata<
+						Self::Balance,
+						Self::CustomMetadata,
+						Self::StringLimit,
+					>,
 				) -> __private_DispatchResult {
 					if let Some(asset_id) = asset_id {
 						__private::STATE.with(|s| s.borrow_mut().insert_meta(&asset_id, metadata))
@@ -84,8 +94,8 @@ macro_rules! impl_mock_registry {
 				fn update_asset(
 					asset_id: Self::AssetId,
 					decimals: Option<u32>,
-					name: Option<Vec<u8>>,
-					symbol: Option<Vec<u8>>,
+					name: Option<BoundedVec<u8, ()>>,
+					symbol: Option<BoundedVec<u8, ()>>,
 					existential_deposit: Option<Self::Balance>,
 					location: Option<Option<__private_VersionedMultiLocation>>,
 					additional: Option<Self::CustomMetadata>,
@@ -108,8 +118,33 @@ macro_rules! impl_mock_registry {
 			pub struct GenesisConfig {
 				pub metadata: Vec<(
 					$asset_id,
-					__private_AssetMetadata<$balance, $custom_metadata>,
+					__private_AssetMetadata<$balance, $custom_metadata, ()>,
 				)>,
+			}
+
+			impl __private_BuildGenesisConfig for GenesisConfig {
+				fn build(&self) {
+					for (asset, metadata) in &self.metadata {
+						__private::STATE
+							.with(|s| s.borrow_mut().insert_meta(asset, metadata.clone()))
+							.expect("Genesis must not fail")
+					}
+				}
+			}
+
+			impl BuildStorage for GenesisConfig {
+				fn assimilate_storage(
+					&self,
+					storage: &mut sp_runtime::Storage,
+				) -> Result<(), String> {
+					frame_support::__private::BasicExternalities::execute_with_storage(
+						storage,
+						|| {
+							self.build();
+							Ok(())
+						},
+					)
+				}
 			}
 
 			use serde::{
@@ -121,16 +156,6 @@ macro_rules! impl_mock_registry {
 					Serializer as __private_Serializer,
 				},
 			};
-
-			impl __private_GenesisBuild<()> for GenesisConfig {
-				fn build(&self) {
-					for (asset, metadata) in &self.metadata {
-						__private::STATE
-							.with(|s| s.borrow_mut().insert_meta(asset, metadata.clone()))
-							.expect("Genesis must not fail")
-					}
-				}
-			}
 
 			// NOTE: We need this dummy impl as `AssetMetadata` does NOT derive
 			//       serialize in std
@@ -164,7 +189,7 @@ macro_rules! impl_mock_registry {
 					pub location_to_asset: Vec<(__private_MultiLocation, $asset_id)>,
 					pub metadata: Vec<(
 						$asset_id,
-						__private_AssetMetadata<$balance, $custom_metadata>,
+						__private_AssetMetadata<$balance, $custom_metadata, ()>,
 					)>,
 				}
 
@@ -172,7 +197,7 @@ macro_rules! impl_mock_registry {
 					pub fn get_meta(
 						&self,
 						asset_id: &$asset_id,
-					) -> Option<__private_AssetMetadata<$balance, $custom_metadata>> {
+					) -> Option<__private_AssetMetadata<$balance, $custom_metadata, ()>> {
 						for (curr_id, meta) in &self.metadata {
 							if curr_id == asset_id {
 								return Some(meta.clone());
@@ -185,7 +210,7 @@ macro_rules! impl_mock_registry {
 					pub fn insert_meta(
 						&mut self,
 						asset_id: &$asset_id,
-						meta: __private_AssetMetadata<$balance, $custom_metadata>,
+						meta: __private_AssetMetadata<$balance, $custom_metadata, ()>,
 					) -> __private_DispatchResult {
 						for (curr_id, curr_meta) in &mut self.metadata {
 							if curr_id == asset_id {
@@ -231,7 +256,7 @@ macro_rules! impl_mock_registry {
 					pub fn get_meta_from_location(
 						&self,
 						location: &__private_MultiLocation,
-					) -> Option<__private_AssetMetadata<$balance, $custom_metadata>> {
+					) -> Option<__private_AssetMetadata<$balance, $custom_metadata, ()>> {
 						let asset_id = self.get_asset_from_location(location)?;
 						self.get_meta(&asset_id)
 					}
@@ -240,8 +265,8 @@ macro_rules! impl_mock_registry {
 						&mut self,
 						asset_id: $asset_id,
 						decimals: Option<u32>,
-						name: Option<Vec<u8>>,
-						symbol: Option<Vec<u8>>,
+						name: Option<BoundedVec<u8, ()>>,
+						symbol: Option<BoundedVec<u8, ()>>,
 						existential_deposit: Option<$balance>,
 						location: Option<Option<__private_VersionedMultiLocation>>,
 						additional: Option<$custom_metadata>,

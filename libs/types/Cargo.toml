@@ -26,7 +26,6 @@ sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-orml-asset-registry = { workspace = true }
 orml-traits = { workspace = true }
 staging-xcm = { workspace = true }
 
@@ -47,7 +46,6 @@ std = [
   "cfg-utils/std",
   "parity-scale-codec/std",
   "frame-support/std",
-  "orml-asset-registry/std",
   "orml-traits/std",
   "scale-info/std",
   "serde/std",
@@ -63,7 +61,6 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
@@ -71,6 +68,5 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "cfg-utils/try-runtime",
   "frame-support/try-runtime",
-  "orml-asset-registry/try-runtime",
   "sp-runtime/try-runtime",
 ]

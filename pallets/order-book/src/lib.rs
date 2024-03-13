@@ -40,7 +40,6 @@ pub mod pallet {
 		swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
 		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
 	};
-	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -83,7 +82,6 @@ pub mod pallet {
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = Self::CurrencyId,
 			Balance = BalanceOf<Self>,
-			CustomMetadata = CustomMetadata,
 		>;
 
 		/// CurrencyId that an order can be made for

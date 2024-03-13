@@ -12,14 +12,16 @@
 
 use cfg_traits::{
 	swaps::{OrderRatio, TokenSwaps},
-	ConversionToAssetBalance, ValueProvider,
+	AssetMetadataOf, ConversionToAssetBalance, ValueProvider,
 };
-use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
 use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
-use orml_traits::asset_registry::{Inspect as _, Mutate};
-use sp_runtime::{traits::checked_pow, FixedPointNumber};
+use orml_traits::asset_registry::{Inspect, Mutate};
+use sp_runtime::{
+	traits::{checked_pow, Zero},
+	FixedPointNumber,
+};
 
 use super::*;
 
@@ -41,33 +43,33 @@ struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
 where
 	T::CurrencyId: From<u32>,
-	T::AssetRegistry: orml_traits::asset_registry::Mutate,
 	T::FeederId: From<u32>,
 	T::AssetRegistry: Mutate,
+	<T::AssetRegistry as Inspect>::CustomMetadata: Default,
 {
 	pub fn setup_currencies() {
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_IN.into()),
-			AssetMetadata {
+			AssetMetadataOf::<T::AssetRegistry> {
 				decimals: 6,
-				name: "CURRENCY IN".as_bytes().to_vec(),
-				symbol: "IN".as_bytes().to_vec(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: Zero::zero(),
 				location: None,
-				additional: CustomMetadata::default(),
+				additional: Default::default(),
 			},
 		)
 		.unwrap();
 
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_OUT.into()),
-			AssetMetadata {
+			AssetMetadataOf::<T::AssetRegistry> {
 				decimals: 3,
-				name: "CURRENCY OUT".as_bytes().to_vec(),
-				symbol: "OUT".as_bytes().to_vec(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: Zero::zero(),
 				location: None,
-				additional: CustomMetadata::default(),
+				additional: Default::default(),
 			},
 		)
 		.unwrap();
@@ -137,8 +139,9 @@ where
 #[benchmarks(
     where
         T::CurrencyId: From<u32>,
-        T::AssetRegistry: orml_traits::asset_registry::Mutate,
         T::FeederId: From<u32>,
+        T::AssetRegistry: Mutate,
+        <T::AssetRegistry as Inspect>::CustomMetadata: Default,
 )]
 mod benchmarks {
 	use super::*;

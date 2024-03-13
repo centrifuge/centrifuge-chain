@@ -17,6 +17,7 @@ use cfg_primitives::{
 	Balance, PalletIndex,
 };
 use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
+use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -36,7 +37,7 @@ use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 pub const MAX_ASSET_STRING_LIMIT: u32 = 64;
 
 pub type AssetMetadata =
-	orml_asset_registry::AssetMetadata<Balance, CustomMetadata, ConstU32<MAX_ASSET_STRING_LIMIT>>;
+	asset_registry::AssetMetadata<Balance, CustomMetadata, ConstU32<MAX_ASSET_STRING_LIMIT>>;
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such

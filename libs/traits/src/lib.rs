@@ -25,6 +25,7 @@ use frame_support::{
 	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
+use orml_traits::asset_registry;
 use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
@@ -544,3 +545,10 @@ impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 pub trait HasLocalAssetRepresentation<AssetRegistry> {
 	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError>;
 }
+
+/// The asset metadata configured using the trait types
+pub type AssetMetadataOf<T> = asset_registry::AssetMetadata<
+	<T as orml_traits::asset_registry::Inspect>::Balance,
+	<T as orml_traits::asset_registry::Inspect>::CustomMetadata,
+	<T as orml_traits::asset_registry::Inspect>::StringLimit,
+>;
