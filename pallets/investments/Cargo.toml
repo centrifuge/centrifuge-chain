@@ -1,6 +1,6 @@
 [package]
 name = "pallet-investments"
-description = "Provides orders for assests and allows user to collect these orders"
+description = "Provides orders for assets and allows user to collect these orders."
 version = "1.0.0"
 authors.workspace = true
 edition.workspace = true

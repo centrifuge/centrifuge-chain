@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # Token Mux pallet
+//! # Token Mux Pallet
 //!
 //! Enables proxying variants of the same foreign assets
 //! to a local asset representation. By locking a variant, the user receives
