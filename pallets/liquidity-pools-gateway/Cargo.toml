@@ -35,8 +35,7 @@ cfg-mocks = { workspace = true, default-features = true }
 cfg-primitives = { workspace = true, default-features = true }
 hex-literal = { workspace = true }
 sp-io = { workspace = true, default-features = true }
-
-pallet-balances = { workspace = true }
+pallet-balances = { workspace = true, default-features = true }
 rand = { workspace = true, default-features = true }
 
 [features]

@@ -4,7 +4,8 @@ use cfg_traits::liquidity_pools::{Codec, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::{Pays, PostDispatchInfo, Weight},
+	dispatch::{Pays, PostDispatchInfo},
+	weights::Weight,
 };
 use sp_core::{crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{
