@@ -18,20 +18,19 @@ use cfg_mocks::{
 };
 use cfg_traits::Millis;
 use cfg_types::{permissions::PermissionScope, tokens::TrancheCurrency};
-use frame_support::traits::{
-	tokens::nonfungibles::{Create, Mutate},
-	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
+use frame_support::{
+	derive_impl,
+	traits::{
+		tokens::nonfungibles::{Create, Mutate},
+		AsEnsureOriginWithArg, ConstU64, Hooks, UnixTime,
+	},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{fixed_point::FixedU64, Perbill};
 use sp_core::{ConstU128, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, FixedU128,
-};
+use sp_runtime::{BuildStorage, DispatchError, FixedU128};
 
 use crate::{entities::changes::Change, pallet as pallet_loans};
 
@@ -77,9 +76,6 @@ pub const MAX_PRICE_VARIATION: Rate = Rate::from_rational(1, 100);
 
 pub const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
 pub type CollectionId = u16;
 pub type ItemId = u16;
 pub type Asset = (CollectionId, ItemId);
@@ -95,11 +91,7 @@ pub type PriceId = u64;
 pub type ChangeId = H256;
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		Timer: pallet_timestamp,
 		Balances: pallet_balances,
@@ -119,31 +111,10 @@ frame_support::parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 4;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -153,20 +124,13 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_uniques::Config for Runtime {
@@ -253,8 +217,8 @@ impl pallet_loans::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);

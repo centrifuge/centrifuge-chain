@@ -5,6 +5,7 @@ use cfg_traits::{
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
+use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -128,7 +129,7 @@ impl<T: Config> CreatedLoan<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ClosedLoan<T: Config> {
 	/// Block when the loan was closed
-	closed_at: T::BlockNumber,
+	closed_at: BlockNumberFor<T>,
 
 	/// Loan information
 	info: LoanInfo<T>,

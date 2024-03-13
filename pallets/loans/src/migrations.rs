@@ -12,9 +12,11 @@
 
 use cfg_traits::PoolNAV;
 use frame_support::{
-	dispatch::GetStorageVersion, inherent::Vec, log, pallet_prelude::StorageVersion, traits::Get,
+	pallet_prelude::StorageVersion,
+	traits::{Get, GetStorageVersion},
 	weights::Weight,
 };
+use sp_std::vec::Vec;
 
 use crate::{ActiveLoans, Config, Pallet};
 
@@ -39,6 +41,9 @@ mod v2 {
 }
 
 pub fn migrate_from_v2_to_v3<T: Config>() -> Weight {
+	// Avoiding to import a log crate just for a temporal migration log.
+	use frame_support::__private::log;
+
 	if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(2) {
 		log::info!("Loans: Starting migration v2 -> v3");
 

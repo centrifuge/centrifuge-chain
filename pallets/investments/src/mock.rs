@@ -40,10 +40,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
-use sp_runtime::{
-	traits::{AccountIdConversion, ConstU32},
-	BuildStorage, DispatchError, DispatchResult,
-};
+use sp_runtime::{traits::AccountIdConversion, BuildStorage, DispatchError, DispatchResult};
 use sp_std::{
 	cell::RefCell,
 	collections::btree_map::BTreeMap,
@@ -106,7 +103,6 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = ();
 }
 

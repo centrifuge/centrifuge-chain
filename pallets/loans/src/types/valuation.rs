@@ -14,8 +14,8 @@
 use cfg_primitives::SECONDS_PER_YEAR;
 use cfg_traits::{interest::InterestRate, Seconds};
 use frame_support::{
+	pallet_prelude::RuntimeDebug,
 	traits::tokens::{self},
-	RuntimeDebug,
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
