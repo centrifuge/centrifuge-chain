@@ -10,6 +10,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Pool Registry Pallet
+//!
+//! The Pool Registry pallet is used for creating, updating, and setting the
+//! metadata of pools.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
 

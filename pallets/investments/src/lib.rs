@@ -10,7 +10,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
+//! # Investments Pallet
+//!
+//! Provides orders for assets and allows user to collect these orders.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::OrderId;

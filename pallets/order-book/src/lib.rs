@@ -9,15 +9,18 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-// This pallet was made using the ZeitGeist Orderbook pallet as a reference;
-// with much of the code being copied or adapted from that pallet.
-// The ZeitGeist Orderbook pallet can be found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1
+//
+//! # Orderbook Pallet
+//!
+//! The Orderbook pallet allows orders for currency swaps to be placed and
+//! fulfilled.
+//!
+//! This pallet was made using the ZeitGeist Orderbook pallet as a reference;
+//! with much of the code being copied or adapted from that pallet.
+//! The ZeitGeist Orderbook pallet can be found here:
+//! <https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1>
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
-//! This module adds an orderbook pallet, allowing orders for currency swaps to
-//! be placed and fulfilled for currencies in an asset registry.
 
 #[cfg(test)]
 pub(crate) mod mock;
