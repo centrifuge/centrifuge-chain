@@ -91,7 +91,7 @@ impl SourceConverter {
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, DefaultNoBound};
 	use frame_system::pallet_prelude::*;
 	use sp_core::{H160, H256};
 
@@ -126,23 +126,14 @@ pub mod pallet {
 	pub type SourceConversion<T: Config> = StorageMap<_, Twox64Concat, H256, SourceConverter>;
 
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T> {
 		pub gateway: H160,
 		_phantom: core::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				gateway: Default::default(),
-				_phantom: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			GatewayContract::<T>::set(self.gateway)
 		}
@@ -290,7 +281,7 @@ where
 			msg,
 		)
 		.map(|_| ())
-		.map_err(TryDispatchError::Substrate)
+		.map_err(|e| TryDispatchError::Substrate(e))
 		{
 			Err(e) => Err(e.into()),
 			Ok(()) => Ok(()),
