@@ -22,7 +22,7 @@ use pallet_evm::{
 use pallet_liquidity_pools_gateway::EnsureLocal;
 use parity_scale_codec::{Decode, Encode};
 use sp_core::{crypto::AccountId32, ByteArray, H160, H256, U256};
-use sp_runtime::{traits::IdentityLookup, BuildStorage, ConsensusEngineId, DispatchError};
+use sp_runtime::{traits::IdentityLookup, ConsensusEngineId, DispatchError};
 use sp_std::{cell::RefCell, marker::PhantomData};
 use staging_xcm::{
 	latest::{
@@ -467,12 +467,5 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage()
-		.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(storage);
-	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
-
-	ext
+	System::externalities()
 }
