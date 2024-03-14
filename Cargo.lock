@@ -864,7 +864,7 @@ dependencies = [
  "pallet-evm 6.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "pallet-liquidity-pools-gateway",
  "parity-scale-codec 3.6.9",
- "precompile-utils 0.1.0 (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
+ "precompile-utils",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -7758,7 +7758,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec 3.6.9",
  "paste",
- "precompile-utils 0.1.0 (git+https://github.com/moonbeam-foundation/moonbeam?tag=v0.34.1)",
+ "precompile-utils",
  "slices",
  "sp-core",
  "sp-io",
@@ -10702,36 +10702,13 @@ dependencies = [
  "pallet-evm 6.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v1.1.0)",
  "parity-scale-codec 3.6.9",
  "paste",
- "precompile-utils-macro 0.1.0 (git+https://github.com/moonbeam-foundation/moonbeam?tag=v0.34.1)",
+ "precompile-utils-macro",
  "sha3 0.10.8",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "sp-weights 20.0.0 (git+https://github.com/moonbeam-foundation/polkadot-sdk?branch=moonbeam-polkadot-v1.1.0)",
-]
-
-[[package]]
-name = "precompile-utils"
-version = "0.1.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
-dependencies = [
- "environmental",
- "evm 0.39.1 (git+https://github.com/rust-blockchain/evm?rev=b7b82c7e1fc57b7449d6dfa6826600de37cc1e65)",
- "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
- "frame-support",
- "frame-system",
- "hex",
- "impl-trait-for-tuples",
- "log",
- "num_enum 0.7.2",
- "pallet-evm 6.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
- "parity-scale-codec 3.6.9",
- "precompile-utils-macro 0.1.0 (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -10745,20 +10722,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "sha3 0.10.8",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "precompile-utils-macro"
-version = "0.1.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
-dependencies = [
- "case",
- "num_enum 0.7.2",
- "prettyplease 0.2.16",
- "proc-macro2",
- "quote",
- "sp-core-hashing",
  "syn 1.0.109",
 ]
 
@@ -11683,7 +11646,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec 3.6.9",
  "polkadot-parachain-primitives",
- "precompile-utils 0.1.0 (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
+ "precompile-utils",
  "scale-info",
  "serde",
  "smallvec",

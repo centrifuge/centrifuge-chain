@@ -232,7 +232,6 @@ pallet-evm-precompile-dispatch = { git = "https://github.com/polkadot-evm/fronti
 pallet-evm-precompile-modexp = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 pallet-evm-precompile-sha3fips = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 pallet-evm-precompile-simple = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-precompile-utils = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 fc-consensus = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 fc-db = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = ["rocksdb"] }
 fc-mapping-sync = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
@@ -242,10 +241,13 @@ fp-consensus = { git = "https://github.com/polkadot-evm/frontier", default-featu
 fp-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 fp-storage = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 
-# Moonbeam
+# Moonbeam (v0.34.1 => version using polkadot v1.1.0)
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
+
+# Moonbeam (already ported to frontier, next releases will point to frontier instead)
+precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 
 # Centrifuge organization
 #fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
