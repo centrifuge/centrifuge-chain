@@ -4,7 +4,7 @@ use frame_support::{
 	traits::ConstU32,
 };
 use sp_io::TestExternalities;
-use sp_runtime::{testing::H256, BuildStorage};
+use sp_runtime::testing::H256;
 
 use crate::pallet as pallet_oracle_collection;
 
@@ -78,16 +78,7 @@ impl pallet_oracle_collection::Config for Runtime {
 }
 
 pub fn new_test_ext() -> TestExternalities {
-	let storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage()
-		.unwrap();
-
-	let mut ext = TestExternalities::new(storage);
-
-	// Bumping to one enables events
-	ext.execute_with(|| {
-		System::set_block_number(1);
-		MockTime::mock_now(|| NOW);
-	});
+	let mut ext = System::externalities();
+	ext.execute_with(|| MockTime::mock_now(|| NOW));
 	ext
 }

@@ -30,7 +30,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{fixed_point::FixedU64, Perbill};
 use sp_core::{ConstU128, H256};
-use sp_runtime::{BuildStorage, DispatchError, FixedU128};
+use sp_runtime::{DispatchError, FixedU128};
 
 use crate::{entities::changes::Change, pallet as pallet_loans};
 
@@ -217,11 +217,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage()
-		.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(storage);
+	let mut ext = System::externalities();
 	ext.execute_with(|| {
 		advance_time(BLOCK_TIME);
 

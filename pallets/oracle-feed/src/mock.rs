@@ -41,13 +41,5 @@ impl pallet_oracle_feed::Config for Runtime {
 }
 
 pub fn new_test_ext() -> TestExternalities {
-	let storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage()
-		.unwrap();
-
-	let mut ext = TestExternalities::new(storage);
-
-	// Bumping to one enables events
-	ext.execute_with(|| System::set_block_number(1));
-	ext
+	System::externalities()
 }

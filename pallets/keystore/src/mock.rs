@@ -21,7 +21,6 @@ pub type Balance = u128;
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-// Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
@@ -60,12 +59,6 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-// Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut ext = sp_io::TestExternalities::default();
-
-	// Ensure that we set a block number otherwise no events would be deposited.
-	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
-
-	ext
+	System::externalities()
 }
