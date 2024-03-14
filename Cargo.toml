@@ -40,9 +40,9 @@ members = [
   "pallets/swaps",
   "pallets/token-mux",
   "pallets/transfer-allowlist",
-  "runtime/altair",
-  "runtime/centrifuge",
-  "runtime/development",
+  #"runtime/altair",
+  #"runtime/centrifuge",
+  #"runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
 ]
