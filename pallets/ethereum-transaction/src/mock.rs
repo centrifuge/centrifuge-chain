@@ -1,36 +1,23 @@
 use std::str::FromStr;
 
-use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
+use cfg_primitives::MAX_POV_SIZE;
 use fp_evm::{FeeCalculator, Precompile, PrecompileResult};
-use frame_support::{parameter_types, traits::FindAuthor, weights::Weight};
+use frame_support::{derive_impl, parameter_types, traits::FindAuthor, weights::Weight};
 use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
 use pallet_evm::{
 	runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot,
 	FixedGasWeightMapping, IsPrecompileResult, PrecompileHandle, PrecompileSet,
 	SubstrateBlockHashMapping,
 };
-use sp_core::{
-	crypto::AccountId32, ByteArray, ConstU128, ConstU16, ConstU32, ConstU64, H160, H256, U256,
-};
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	ConsensusEngineId,
-};
+use sp_core::{crypto::AccountId32, ByteArray, ConstU128, H160, U256};
+use sp_runtime::{traits::IdentityLookup, ConsensusEngineId};
 
 use crate::pallet as pallet_ethereum_transaction;
 
 pub type Balance = u128;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		Balances: pallet_balances,
 		EVM: pallet_evm,
@@ -40,51 +27,21 @@ frame_support::construct_runtime!(
 	}
 );
 
-frame_support::parameter_types! {
-	pub const MaxInstancesPerDomain: u32 = 3;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId32;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type RuntimeHoldReason = ();
 }
 
 parameter_types! {
@@ -171,8 +128,6 @@ parameter_types! {
 		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
 		block_gas_limit.saturating_div(MAX_POV_SIZE)
 	};
-	pub GasLimitStorageGrowthRatio: u64 =
-		BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
 }
 
 impl pallet_evm::Config for Runtime {
@@ -185,7 +140,6 @@ impl pallet_evm::Config for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -214,12 +168,5 @@ impl pallet_ethereum::Config for Runtime {
 impl pallet_ethereum_transaction::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(storage);
-	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
-
-	ext
+	System::externalities()
 }
