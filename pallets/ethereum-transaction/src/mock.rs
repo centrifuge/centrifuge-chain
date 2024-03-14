@@ -21,8 +21,8 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		EVM: pallet_evm,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-		Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin},
+		Timestamp: pallet_timestamp,
+		Ethereum: pallet_ethereum,
 		EthereumTransaction: pallet_ethereum_transaction,
 	}
 );

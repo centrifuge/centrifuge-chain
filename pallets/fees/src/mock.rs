@@ -4,7 +4,7 @@ use frame_support::{
 	ConsensusEngineId, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use sp_runtime::BuildStorage;
+use sp_runtime::{traits::ConstU64, BuildStorage};
 
 use crate::{self as pallet_fees, *};
 
@@ -25,7 +25,14 @@ frame_support::construct_runtime!(
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
-	type RuntimeEvent = ();
+}
+
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type RuntimeHoldReason = ();
 }
 
 pub struct AuthorGiven;
@@ -60,30 +67,10 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();
 	type RejectOrigin = EnsureSignedBy<Admin, u64>;
-	type RuntimeEvent = ();
+	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
 	type SpendOrigin = EnsureSignedBy<Admin, u64>;
 	type SpendPeriod = ();
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = ();
-	type RuntimeHoldReason = ();
 	type WeightInfo = ();
 }
 
@@ -103,7 +90,7 @@ impl Config for Runtime {
 	type DefaultFeeValue = DefaultFeeValue;
 	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
 	type FeeKey = u8;
-	type RuntimeEvent = ();
+	type RuntimeEvent = RuntimeEvent;
 	type Treasury = Treasury;
 	type WeightInfo = ();
 }
