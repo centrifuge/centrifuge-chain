@@ -60,8 +60,6 @@ orml-xcm-support = { workspace = true }
 fp-rpc = { workspace = true }
 fp-self-contained = { workspace = true }
 
-moonbeam-relay-encoder = { workspace = true }
-
 # Locals
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
@@ -186,7 +184,6 @@ std = [
   "orml-xcm-support/std",
   "fp-rpc/std",
   "fp-self-contained/std",
-  "moonbeam-relay-encoder/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "polkadot-runtime-common/std",
   "polkadot-parachain-primitives/std",

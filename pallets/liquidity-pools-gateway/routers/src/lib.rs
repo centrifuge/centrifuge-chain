@@ -29,11 +29,11 @@ pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
 
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
 use frame_support::{
-	dispatch::{
-		DispatchError, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo, Weight,
-	},
+	dispatch::PostDispatchInfo,
 	ensure,
+	pallet_prelude::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	traits::OriginTrait,
+	weights::Weight,
 };
 use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
@@ -42,7 +42,7 @@ use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
-use xcm::{
+use staging_xcm::{
 	latest::{MultiLocation, OriginKind},
 	VersionedMultiLocation,
 };

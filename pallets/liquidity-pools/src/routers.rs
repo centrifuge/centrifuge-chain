@@ -3,7 +3,7 @@ use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{traits::ConstU32, BoundedVec};
 use sp_std::boxed::Box;
-use xcm::VersionedMultiLocation;
+use staging_xcm::VersionedMultiLocation;
 
 #[allow(clippy::derive_partial_eq_without_eq)] // XcmDomain does not impl Eq
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
@@ -44,7 +44,7 @@ where
 {
 	fn max_encoded_len() -> usize {
 		// The domain's `VersionedMultiLocation` (custom bound)
-		xcm::latest::MultiLocation::max_encoded_len()
+		staging_xcm::latest::MultiLocation::max_encoded_len()
 			// From the enum wrapping of `VersionedMultiLocation`
 			.saturating_add(1)
 			// The ethereum xcm call index (default bound)
