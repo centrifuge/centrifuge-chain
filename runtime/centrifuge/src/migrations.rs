@@ -38,7 +38,7 @@ frame_support::parameter_types! {
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
 }
 
-pub type UpgradeCentrifuge1025 = (
+pub type UpgradeCentrifuge1026 = (
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
 	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
 	// special filter currency enum
