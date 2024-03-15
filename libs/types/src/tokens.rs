@@ -34,7 +34,7 @@ use staging_xcm::{
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
-pub const MAX_ASSET_STRING_LIMIT: u32 = 64;
+pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
 
 pub type AssetMetadata =
 	asset_registry::AssetMetadata<Balance, CustomMetadata, ConstU32<MAX_ASSET_STRING_LIMIT>>;

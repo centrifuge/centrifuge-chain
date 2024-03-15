@@ -65,7 +65,8 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	MockRegistry,
 	CurrencyId,
 	Balance,
-	CustomMetadata
+	CustomMetadata,
+	()
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]

@@ -29,8 +29,8 @@ use orml_traits::asset_registry;
 use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
-		MaybeSerializeDeserialize, Member, Zero,
+		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeSerialize, MaybeSerializeDeserialize,
+		Member, Zero,
 	},
 	DispatchError,
 };
@@ -178,9 +178,6 @@ pub enum UpdateState {
 pub trait PoolMutate<AccountId, PoolId> {
 	type Balance;
 	type CurrencyId;
-	type MaxTokenNameLength: Get<u32>;
-	type MaxTokenSymbolLength: Get<u32>;
-	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;

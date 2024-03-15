@@ -21,13 +21,14 @@ use cfg_types::{
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
+	pallet_prelude::RuntimeDebug,
 	traits::{
 		fungibles::{Inspect, Mutate},
 		ReservableCurrency,
 	},
-	transactional, BoundedVec, RuntimeDebug,
+	transactional, BoundedVec,
 };
-use frame_system::pallet_prelude::*;
+use frame_system::pallet_prelude::{BlockNumberFor, *};
 use orml_traits::{
 	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
@@ -129,7 +130,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::MaxTranches,
 >;
@@ -140,25 +141,19 @@ type PoolDepositOf<T> =
 
 type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
 	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::StringLimit,
 	<T as Config>::MaxTranches,
 >;
 
-pub type PoolChangesOf<T> = PoolChanges<
-	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
-	<T as Config>::MaxTranches,
->;
+pub type PoolChangesOf<T> =
+	PoolChanges<<T as Config>::Rate, <T as Config>::StringLimit, <T as Config>::MaxTranches>;
 
 pub type PoolEssenceOf<T> = PoolEssence<
 	<T as Config>::CurrencyId,
 	<T as Config>::Balance,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::StringLimit,
 >;
 
 #[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
@@ -286,6 +281,7 @@ pub mod pallet {
 			AssetId = Self::CurrencyId,
 			Balance = Self::Balance,
 			CustomMetadata = CustomMetadata,
+			StringLimit = Self::StringLimit,
 		>;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
@@ -343,7 +339,7 @@ pub mod pallet {
 
 		/// Challenge time
 		#[pallet::constant]
-		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
+		type ChallengeTime: Get<BlockNumberFor<Self>>;
 
 		/// Pool parameter defaults
 		#[pallet::constant]
@@ -366,13 +362,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinUpdateDelay: Get<Seconds>;
 
-		/// Max length for a tranche token name
 		#[pallet::constant]
-		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
-		/// Max length for a tranche token symbol
-		#[pallet::constant]
-		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+		type StringLimit: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
 		/// Max number of Tranches
 		#[pallet::constant]
@@ -947,7 +938,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn current_block() -> <T as frame_system::Config>::BlockNumber {
+		pub(crate) fn current_block() -> BlockNumberFor<T> {
 			<frame_system::Pallet<T>>::block_number()
 		}
 
@@ -1090,9 +1081,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let old_pool = pool
-					.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-					)?;
+				let old_pool = pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1134,8 +1123,8 @@ pub mod pallet {
 						T::AssetRegistry::update_asset(
 							tranche.currency.into(),
 							None,
-							Some(updated_metadata.clone().token_name.to_vec()),
-							Some(updated_metadata.clone().token_symbol.to_vec()),
+							Some(updated_metadata.clone().token_name),
+							Some(updated_metadata.clone().token_symbol),
 							None,
 							None,
 							None,
@@ -1147,9 +1136,7 @@ pub mod pallet {
 				Self::deposit_event(Event::Updated {
 					id: *pool_id,
 					old: old_pool,
-					new: pool
-						.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-						)?,
+					new: pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);

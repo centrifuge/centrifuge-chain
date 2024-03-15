@@ -36,24 +36,3 @@ pub struct XcmMetadata {
 	/// When `None`, the `default_per_second` will be used instead.
 	pub fee_per_second: Option<Balance>,
 }
-
-pub mod consts {
-	use frame_support::parameter_types;
-
-	use super::*;
-
-	// Pools-related constants
-	pub mod pools {
-		use super::*;
-
-		parameter_types! {
-			/// The max length in bytes allowed for a tranche token name
-			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-			pub const MaxTrancheNameLengthBytes: u32 = 128;
-
-			/// The max length in bytes allowed for a tranche token symbol
-			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-			pub const MaxTrancheSymbolLengthBytes: u32 = 32;
-		}
-	}
-}

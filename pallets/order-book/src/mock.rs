@@ -67,6 +67,7 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
+	(),
 	()
 }
 

@@ -105,21 +105,18 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
-	type MaxTokenNameLength = T::MaxTokenNameLength;
-	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
-	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
 		PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
 	);
-	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
+	type TrancheInput = TrancheInput<T::Rate, T::StringLimit>;
 
 	fn create(
 		admin: T::AccountId,
 		depositor: T::AccountId,
 		pool_id: T::PoolId,
-		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
+		tranche_inputs: Vec<TrancheInput<T::Rate, T::StringLimit>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
 		pool_fees: Vec<Self::PoolFeeInput>,
@@ -155,18 +152,11 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::TrancheId,
 			T::PoolId,
 			T::MaxTranches,
-		>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-			pool_id,
-			tranche_inputs.clone(),
-			now,
-		)?;
+		>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone(), now)?;
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
-			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
-				tranche_input.metadata.token_name.clone();
-
-			let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
-				tranche_input.metadata.token_symbol.clone();
+			let token_name = tranche_input.metadata.token_name.clone();
+			let token_symbol = tranche_input.metadata.token_symbol.clone();
 
 			// The decimals of the tranche token need to match the decimals of the pool
 			// currency. Otherwise, we'd always need to convert investments to the decimals
@@ -176,8 +166,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
 			};
 
-			let metadata =
-				tranche.create_asset_metadata(decimals, token_name.to_vec(), token_symbol.to_vec());
+			let metadata = tranche.create_asset_metadata(decimals, token_name, token_symbol);
 
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
@@ -213,9 +202,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details
-				.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-				)?,
+			essence: pool_details.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
 		});
 
 		T::Permission::add(
@@ -495,8 +482,8 @@ mod benchmarks_utils {
 					Some(POOL_CURRENCY),
 					orml_asset_registry::AssetMetadata {
 						decimals: 12,
-						name: "MOCK POOL CURRENCY".as_bytes().to_vec(),
-						symbol: "MOCKPCUR".as_bytes().to_vec(),
+						name: Default::default(),
+						symbol: Default::default(),
 						existential_deposit: Zero::zero(),
 						location: None,
 						additional: CustomMetadata {

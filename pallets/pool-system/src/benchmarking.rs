@@ -215,8 +215,8 @@ where
 				Some(AUSD_CURRENCY_ID),
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
-					name: "MOCK AUSD".as_bytes().to_vec(),
-					symbol: "MOCKAUSD".as_bytes().to_vec(),
+					name: Default::default(),
+					symbol: Default::default(),
 					existential_deposit: 0,
 					location: None,
 					additional: CustomMetadata {
@@ -327,20 +327,19 @@ where
 }
 
 pub fn update_pool<T: Config<PoolId = u64>>(
-	changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>,
+	changes: PoolChanges<T::Rate, T::StringLimit, T::MaxTranches>,
 ) -> Result<UpdateState, DispatchError> {
 	Pallet::<T>::update(POOL, changes)
 }
 
 pub fn get_scheduled_update<T: Config<PoolId = u64>>(
-) -> ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>
-{
+) -> ScheduledUpdateDetails<T::Rate, T::StringLimit, T::MaxTranches> {
 	Pallet::<T>::scheduled_update(POOL).unwrap()
 }
 
 pub fn assert_input_tranches_match<T: Config>(
 	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+	target: &[TrancheInput<T::Rate, T::StringLimit>],
 ) {
 	assert_eq!(chain.len(), target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
@@ -360,7 +359,7 @@ pub fn assert_update_tranches_match<T: Config>(
 
 pub fn build_bench_input_tranches<T: Config>(
 	num_tranches: u32,
-) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
+) -> Vec<TrancheInput<T::Rate, T::StringLimit>> {
 	let senior_interest_rate =
 		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)
