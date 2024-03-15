@@ -10,5 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeDevelopment1043 =
-	(runtime_common::migrations::increase_storage_version::ForceMigration<crate::Loans, 0, 2>,);
+/// The migration set for Development & Demo.
+/// It includes all the migrations that have to be applied on that chain.
+pub type UpgradeDevelopment1044 = ();
