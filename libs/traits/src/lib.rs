@@ -547,5 +547,7 @@ pub trait HasLocalAssetRepresentation<AssetRegistry> {
 pub type AssetMetadataOf<T> = asset_registry::AssetMetadata<
 	<T as orml_traits::asset_registry::Inspect>::Balance,
 	<T as orml_traits::asset_registry::Inspect>::CustomMetadata,
-	<T as orml_traits::asset_registry::Inspect>::StringLimit,
+	StringLimitOf<T>,
 >;
+
+pub type StringLimitOf<T> = <T as orml_traits::asset_registry::Inspect>::StringLimit;

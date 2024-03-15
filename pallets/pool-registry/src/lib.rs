@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	fee::PoolFeeBucket, investments::TrancheCurrency, Permissions, PoolMutate,
+	fee::PoolFeeBucket, investments::TrancheCurrency, AssetMetadataOf, Permissions, PoolMutate,
 	PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
@@ -22,18 +22,19 @@ use cfg_types::{
 	pools::{PoolFeeInfo, PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
-use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
+use frame_support::{pallet_prelude::*, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::asset_registry::{Inspect, Mutate};
 pub use pallet::*;
 use parity_scale_codec::{HasCompact, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
 	FixedPointNumber, FixedPointOperand,
 };
 use sp_std::vec::Vec;
+use staging_xcm::VersionedMultiLocation;
 pub use weights::WeightInfo;
-use xcm::VersionedMultiLocation;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -131,14 +132,6 @@ pub mod pallet {
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// Max length for a tranche token name
-		#[pallet::constant]
-		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
-		/// Max length for a tranche token symbol
-		#[pallet::constant]
-		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
 		/// Max number of Tranches
 		#[pallet::constant]
 		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
@@ -207,9 +200,6 @@ pub mod pallet {
 		BadMetadata,
 		/// A Pool with the given ID was already registered in the past
 		PoolAlreadyRegistered,
-		/// Pre-requirements for a TrancheUpdate are not met
-		/// for example: Tranche changed but not its metadata or vice versa
-		InvalidTrancheUpdate,
 		/// No metadata for the given currency found
 		MetadataForCurrencyNotFound,
 		/// No Metadata found for the given PoolId
@@ -422,7 +412,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> cfg_traits::PoolMetadata<T::Balance, VersionedMultiLocation> for Pallet<T> {
-		type AssetMetadata = orml_asset_registry::AssetMetadata<T::Balance, Self::CustomMetadata>;
+		type AssetMetadata = AssetMetadataOf<T::AssetRegistry>;
 		type CustomMetadata = CustomMetadata;
 		type PoolId = T::PoolId;
 		type PoolMetadata = PoolMetadataOf<T>;
@@ -468,8 +458,13 @@ pub mod pallet {
 			T::AssetRegistry::update_asset(
 				currency_id,
 				decimals,
-				name,
-				symbol,
+				name.map(|s| s.try_into())
+					.transpose()
+					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?,
+				symbol
+					.map(|s| s.try_into())
+					.transpose()
+					.map_err(|_| Error::<T>::TrancheSymbolNameTooLong)?,
 				existential_deposit,
 				location,
 				additional,
