@@ -555,19 +555,11 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 				Token::Address(evm.deployed("router").address()),
 			]),
 		);
-
+		// Wire admins
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
 			"pause_admin",
-			"rely",
-			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"root",
 			"rely",
 			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
 		)
@@ -585,7 +577,27 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			Default::default(),
 			"root",
 			"rely",
+			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"root",
+			"rely",
 			Some(&[Token::Address(evm.deployed("gateway").address())]),
+		)
+		.unwrap();
+		// Wire gateway
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"file",
+			Some(&[
+				Token::FixedBytes("investmentManager".as_bytes().to_vec()),
+				Token::Address(evm.deployed("investment_manager").address()),
+			]),
 		)
 		.unwrap();
 		evm.call(
@@ -596,17 +608,6 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			Some(&[
 				Token::FixedBytes("poolManager".as_bytes().to_vec()),
 				Token::Address(evm.deployed("pool_manager").address()),
-			]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"pool_manager",
-			"file",
-			Some(&[
-				Token::FixedBytes("investmentManager".as_bytes().to_vec()),
-				Token::Address(evm.deployed("investment_manager").address()),
 			]),
 		)
 		.unwrap();
@@ -879,7 +880,8 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			target_contract_hash: BlakeTwo256::hash_of(&evm.deployed("router").deployed_bytecode),
 			fee_values: FeeValues {
 				value: sp_core::U256::zero(),
-				gas_limit: sp_core::U256::from(500_000),
+				// FIXME: Diverges from prod (500_000)
+				gas_limit: sp_core::U256::from(500_000_000),
 				gas_price: sp_core::U256::from(base_fee),
 			},
 		};
