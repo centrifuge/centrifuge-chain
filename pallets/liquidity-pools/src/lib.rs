@@ -63,7 +63,7 @@ use sp_runtime::{
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
-use xcm::{
+use staging_xcm::{
 	latest::NetworkId,
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
 	VersionedMultiLocation,
@@ -129,7 +129,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
-	use xcm::latest::MultiLocation;
+	use staging_xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
@@ -409,8 +409,8 @@ pub mod pallet {
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name);
-			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let token_name = vec_to_fixed_array(metadata.name.into_inner());
+			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
@@ -791,8 +791,8 @@ pub mod pallet {
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name);
-			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let token_name = vec_to_fixed_array(metadata.name.into_inner());
+			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
 
 			T::OutboundQueue::submit(
 				who,
