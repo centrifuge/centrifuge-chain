@@ -247,11 +247,13 @@ pub trait Runtime:
 	/// You can extend this bounds to give extra API support
 	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::Block>
 		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::Block>
-		+ apis::runtime_decl_for_loans_api::LoansApiV1<
+		+ apis::runtime_decl_for_loans_api::LoansApiV2<
 			Self::Block,
 			PoolId,
 			LoanId,
 			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+			Balance,
+			pallet_loans::entities::input::PriceCollectionInput<Self>,
 		> + apis::runtime_decl_for_pools_api::PoolsApiV1<
 			Self::Block,
 			PoolId,
@@ -265,6 +267,9 @@ pub trait Runtime:
 			AccountId,
 			TrancheCurrency,
 			InvestmentPortfolio<Balance, CurrencyId>,
+		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
+			Self::Block,
+			AccountId,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;

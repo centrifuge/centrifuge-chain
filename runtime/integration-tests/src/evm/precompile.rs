@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 
 use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, TrancheId, CFG};
+use cfg_primitives::{AccountId, Balance, CouncilCollective, PoolId, TrancheId, CFG};
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Codec};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -37,8 +37,8 @@ use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::{
 	chain::centrifuge::{
-		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
-		RuntimeEvent, RuntimeOrigin, PARA_ID,
+		FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+		PARA_ID,
 	},
 	evm::ethereum_transaction::TEST_CONTRACT_CODE,
 	utils::{
@@ -100,6 +100,7 @@ async fn axelar_precompile_execute() {
 			mintable: true,
 			permissioned: false,
 			pool_currency: false,
+			local_representation: None,
 		},
 	};
 

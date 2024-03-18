@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cfg_primitives::{AuraId, Balance, BlockNumber};
+use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use cumulus_primitives_core::CollectCollationInfo;
 use frame_support::traits::GenesisBuild;
 use fudge::{
@@ -29,7 +29,7 @@ use sp_runtime::{traits::AccountIdLookup, Storage};
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
-use crate::{chain::centrifuge::Header, generic::config::Runtime, utils::time::START_DATE};
+use crate::{generic::config::Runtime, utils::time::START_DATE};
 
 type InherentCreator<Block, InherentParachain, InherentDataProvider> = Box<
 	dyn CreateInherentDataProviders<

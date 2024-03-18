@@ -12,20 +12,19 @@
 //
 //! # BlockRewards Pallet
 //!
-//! The BlockRewards pallet provides functionality for distributing rewards to
-//! different accounts with different currencies.
-//! The distribution happens when an session (a constant time interval)
-//! finalizes. Users cannot stake manually as their collator membership is
-//! syncronized via a provider.
-//! Thus, when new collators join, they will automatically be staked and
-//! vice-versa when collators leave, they are unstaked.
+//! The BlockRewards pallet provides means of configuring and distributing block
+//! rewards to collators as well as the annual treasury inflation. The
+//! distribution happens when a session (a constant time interval) finalizes.
+//! Users cannot stake manually as their collator membership is synchronized via
+//! a provider. Thus, when new collators join, they will automatically be staked
+//! and vice-versa when collators leave, they are unstaked.
 //!
 //! The BlockRewards pallet provides functions for:
 //!
 //! - Claiming the reward given for a staked currency. The reward will be the
 //!   native network's token.
-//! - Admin methods to configure the reward amount for collators and an optional
-//!   beneficiary.
+//! - Admin methods to configure the reward amount for collators and the annual
+//!   treasury inflation.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -43,23 +42,26 @@ mod benchmarking;
 use cfg_traits::{
 	self,
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
+	Seconds, TimeAsSecs,
 };
+use cfg_types::fixed_point::FixedPointNumberExtension;
 use frame_support::{
 	pallet_prelude::*,
 	storage::transactional,
 	traits::{
+		fungible::{Inspect as FungibleInspect, Mutate as FungibleMutate},
 		fungibles::Mutate,
 		tokens::{Balance, Fortitude, Precision},
-		Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
+		OneSessionHandler,
 	},
-	DefaultNoBound,
+	DefaultNoBound, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureMul, EnsureSub, Zero},
-	FixedPointOperand, SaturatedConversion, Saturating,
+	traits::{AccountIdConversion, EnsureAdd, EnsureMul, Zero},
+	FixedPointNumber, FixedPointOperand, SaturatedConversion, Saturating,
 };
 use sp_std::{mem, vec::Vec};
 pub use weights::WeightInfo;
@@ -79,20 +81,22 @@ pub struct CollatorChanges<T: Config> {
 pub struct SessionData<T: Config> {
 	/// Amount of rewards per session for a single collator.
 	pub(crate) collator_reward: T::Balance,
-	/// Total amount of rewards per session
-	/// NOTE: Is ensured to be at least collator_reward * collator_count.
-	pub(crate) total_reward: T::Balance,
 	/// Number of current collators.
 	/// NOTE: Updated automatically and thus not adjustable via extrinsic.
 	pub collator_count: u32,
+	/// The annual treasury inflation rate
+	pub(crate) treasury_inflation_rate: T::Rate,
+	/// The timestamp of the last update used for inflation proration
+	pub(crate) last_update: Seconds,
 }
 
 impl<T: Config> Default for SessionData<T> {
 	fn default() -> Self {
 		Self {
-			collator_reward: T::Balance::zero(),
-			total_reward: T::Balance::zero(),
 			collator_count: 0,
+			collator_reward: T::Balance::zero(),
+			treasury_inflation_rate: T::Rate::zero(),
+			last_update: Seconds::zero(),
 		}
 	}
 }
@@ -105,20 +109,17 @@ impl<T: Config> Default for SessionData<T> {
 pub struct SessionChanges<T: Config> {
 	pub collators: CollatorChanges<T>,
 	pub collator_count: Option<u32>,
-	collator_reward: Option<T::Balance>,
-	total_reward: Option<T::Balance>,
+	pub collator_reward: Option<T::Balance>,
+	treasury_inflation_rate: Option<T::Rate>,
+	last_update: Seconds,
 }
-
-pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
-	<T as frame_system::Config>::AccountId,
->>::NegativeImbalance;
 
 #[frame_support::pallet]
 pub mod pallet {
 
 	use super::*;
 
-	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -129,11 +130,7 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Type used to handle balances.
-		type Balance: Balance
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
-			+ MaybeSerializeDeserialize;
+		type Balance: Balance + MaxEncodedLen + FixedPointOperand + MaybeSerializeDeserialize;
 
 		#[pallet::constant]
 		type ExistentialDeposit: Get<Self::Balance>;
@@ -150,17 +147,12 @@ pub mod pallet {
 			> + CurrencyGroupChange<GroupId = u32, CurrencyId = <Self as Config>::CurrencyId>;
 
 		/// The type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = <Self as Config>::CurrencyId, Balance = Self::Balance>
-			+ CurrencyT<Self::AccountId>;
+		type Tokens: Mutate<Self::AccountId, AssetId = <Self as Config>::CurrencyId, Balance = Self::Balance>
+			+ FungibleMutate<Self::AccountId>
+			+ FungibleInspect<Self::AccountId, Balance = Self::Balance>;
 
 		/// The currency type of the artificial block rewards currency.
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
 
 		/// The identifier of the artificial block rewards currency which is
 		/// minted and burned for collators.
@@ -176,19 +168,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type StakeGroupId: Get<u32>;
 
-		/// Max number of changes of the same type enqueued to apply in the next
-		/// session. Max calls to [`Pallet::set_collator_reward()`] or to
-		/// [`Pallet::set_total_reward()`] with the same id.
-		#[pallet::constant]
-		type MaxChangesPerSession: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
-
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
-		/// Target of receiving non-collator-rewards.
-		/// NOTE: If set to none, collators are the only group receiving
-		/// rewards.
-		type Beneficiary: OnUnbalanced<NegativeImbalanceOf<Self>>;
+		/// Treasury pallet
+		type TreasuryPalletId: Get<PalletId>;
 
 		/// The identifier type for an authority.
 		type AuthorityId: Member
@@ -197,7 +181,17 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Information of runtime weightsk
+		/// The inflation rate type
+		type Rate: Parameter
+			+ Member
+			+ FixedPointNumberExtension
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+
+		/// The source of truth for the current time in seconds
+		type Time: TimeAsSecs;
+
+		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
 	}
 
@@ -221,7 +215,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		NewSession {
 			collator_reward: T::Balance,
-			total_reward: T::Balance,
+			treasury_inflation_rate: T::Rate,
 			last_changes: SessionChanges<T>,
 		},
 		SessionAdvancementFailed {
@@ -230,18 +224,14 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
-		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`]
-		/// or [`Pallet::set_total_reward()`] reached.
-		MaxChangesPerSessionReached,
-		InsufficientTotalReward,
-	}
+	pub enum Error<T> {}
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub collators: Vec<T::AccountId>,
 		pub collator_reward: T::Balance,
-		pub total_reward: T::Balance,
+		pub treasury_inflation_rate: T::Rate,
+		pub last_update: Seconds,
 	}
 
 	#[cfg(feature = "std")]
@@ -250,7 +240,8 @@ pub mod pallet {
 			GenesisConfig {
 				collators: Default::default(),
 				collator_reward: Default::default(),
-				total_reward: Default::default(),
+				treasury_inflation_rate: Default::default(),
+				last_update: Default::default(),
 			}
 		}
 	}
@@ -265,7 +256,8 @@ pub mod pallet {
 			ActiveSessionData::<T>::mutate(|session_data| {
 				session_data.collator_count = self.collators.len().saturated_into();
 				session_data.collator_reward = self.collator_reward;
-				session_data.total_reward = self.total_reward;
+				session_data.treasury_inflation_rate = self.treasury_inflation_rate;
+				session_data.last_update = self.last_update;
 			});
 
 			// Enables rewards already in genesis session.
@@ -290,64 +282,36 @@ pub mod pallet {
 
 		/// Admin method to set the reward amount for a collator used for the
 		/// next sessions. Current session is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_collator_reward())]
+		#[pallet::weight(T::WeightInfo::set_collator_reward_per_session())]
 		#[pallet::call_index(1)]
-		pub fn set_collator_reward(
+		pub fn set_collator_reward_per_session(
 			origin: OriginFor<T>,
 			collator_reward_per_session: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextSessionChanges::<T>::try_mutate(|changes| {
-				let current = ActiveSessionData::<T>::get();
-				let total_collator_rewards = collator_reward_per_session.saturating_mul(
-					changes
-						.collator_count
-						.unwrap_or(current.collator_count)
-						.into(),
-				);
-				let total_rewards = changes.total_reward.unwrap_or(current.total_reward);
-				ensure!(
-					total_rewards >= total_collator_rewards,
-					Error::<T>::InsufficientTotalReward
-				);
+			NextSessionChanges::<T>::mutate(|c| {
+				c.collator_reward = Some(collator_reward_per_session);
+			});
 
-				changes.collator_reward = Some(collator_reward_per_session);
-				Ok(())
-			})
+			Ok(())
 		}
 
-		/// Admin method to set the total reward distribution for the next
+		/// Admin method to set the treasury inflation rate for the next
 		/// sessions. Current session is not affected by this call.
-		///
-		/// Throws if total_reward < collator_reward * collator_count.
-		#[pallet::weight(T::WeightInfo::set_total_reward())]
+		#[pallet::weight(T::WeightInfo::set_annual_treasury_inflation_rate())]
 		#[pallet::call_index(2)]
-		pub fn set_total_reward(
+		pub fn set_annual_treasury_inflation_rate(
 			origin: OriginFor<T>,
-			total_reward_per_session: T::Balance,
+			treasury_inflation_rate: T::Rate,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextSessionChanges::<T>::try_mutate(|changes| {
-				let current = ActiveSessionData::<T>::get();
-				let total_collator_rewards = changes
-					.collator_reward
-					.unwrap_or(current.collator_reward)
-					.saturating_mul(
-						changes
-							.collator_count
-							.unwrap_or(current.collator_count)
-							.into(),
-					);
-				ensure!(
-					total_reward_per_session >= total_collator_rewards,
-					Error::<T>::InsufficientTotalReward
-				);
+			NextSessionChanges::<T>::mutate(|c| {
+				c.treasury_inflation_rate = Some(treasury_inflation_rate);
+			});
 
-				changes.total_reward = Some(total_reward_per_session);
-				Ok(())
-			})
+			Ok(())
 		}
 	}
 }
@@ -361,10 +325,10 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(
+		<T::Tokens as Mutate<T::AccountId>>::mint_into(
 			T::StakeCurrencyId::get(),
 			who,
-			T::StakeAmount::get() + T::ExistentialDeposit::get(),
+			T::StakeAmount::get().saturating_add(T::ExistentialDeposit::get()),
 		)?;
 		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
@@ -379,9 +343,9 @@ impl<T: Config> Pallet<T> {
 		//       would get killed and down the line our orml-tokens prevents
 		//       that.
 		//
-		//       I.e. this means stake curreny issuance will grow over time if many
+		//       I.e. this means stake currency issuance will grow over time if many
 		//       collators leave and join.
-		T::Currency::burn_from(
+		<T::Tokens as Mutate<T::AccountId>>::burn_from(
 			T::StakeCurrencyId::get(),
 			who,
 			amount,
@@ -389,6 +353,20 @@ impl<T: Config> Pallet<T> {
 			Fortitude::Polite,
 		)
 		.map(|_| ())
+	}
+
+	/// Calculates the inflation proration based on the annual configuration and
+	/// the session duration in seconds
+	pub(crate) fn calculate_epoch_treasury_inflation(
+		annual_inflation_rate: T::Rate,
+		last_update: Seconds,
+	) -> T::Balance {
+		let total_issuance = <T::Tokens as FungibleInspect<T::AccountId>>::total_issuance();
+		let session_duration = T::Time::now().saturating_sub(last_update);
+		let inflation_proration =
+			cfg_types::pools::saturated_rate_proration(annual_inflation_rate, session_duration);
+
+		inflation_proration.saturating_mul_int(total_issuance)
 	}
 
 	/// Apply session changes and distribute rewards.
@@ -404,18 +382,25 @@ impl<T: Config> Pallet<T> {
 					// Reward collator group of last session
 					let total_collator_reward = session_data
 						.collator_reward
-						.ensure_mul(session_data.collator_count.into())?
-						.min(session_data.total_reward);
+						.ensure_mul(session_data.collator_count.into())?;
 					T::Rewards::reward_group(T::StakeGroupId::get(), total_collator_reward)?;
 
-					// Handle remaining reward
-					let remaining = session_data
-						.total_reward
-						.ensure_sub(total_collator_reward)?;
-					if !remaining.is_zero() {
-						let reward = T::Currency::issue(remaining.into());
-						// If configured, assigns reward to Beneficiary, else automatically drops it
-						T::Beneficiary::on_unbalanced(reward);
+					// Handle treasury inflation
+					let treasury_inflation = Self::calculate_epoch_treasury_inflation(
+						session_data.treasury_inflation_rate,
+						session_data.last_update,
+					);
+					if !treasury_inflation.is_zero() {
+						let _ = <T::Tokens as FungibleMutate<T::AccountId>>::mint_into(
+							&T::TreasuryPalletId::get().into_account_truncating(),
+							treasury_inflation,
+						)
+						.map_err(|e| {
+							log::error!(
+								"Failed to mint treasury inflation for session due to error {:?}",
+								e
+							)
+						});
 					}
 
 					num_joining = changes.collators.inc.len().saturated_into();
@@ -433,15 +418,17 @@ impl<T: Config> Pallet<T> {
 					session_data.collator_reward = changes
 						.collator_reward
 						.unwrap_or(session_data.collator_reward);
-					session_data.total_reward =
-						changes.total_reward.unwrap_or(session_data.total_reward);
+					session_data.treasury_inflation_rate = changes
+						.treasury_inflation_rate
+						.unwrap_or(session_data.treasury_inflation_rate);
 					session_data.collator_count = changes
 						.collator_count
 						.unwrap_or(session_data.collator_count);
+					session_data.last_update = T::Time::now();
 
 					Self::deposit_event(Event::NewSession {
-						total_reward: session_data.total_reward,
 						collator_reward: session_data.collator_reward,
+						treasury_inflation_rate: session_data.treasury_inflation_rate,
 						last_changes: mem::take(changes),
 					});
 

@@ -55,7 +55,7 @@ mod evm_router {
 				target_contract_address: test_contract_address,
 				target_contract_hash: test_contract_hash,
 				fee_values: FeeValues {
-					value: U256::from(10),
+					value: U256::from(0),
 					gas_limit: U256::from(10),
 					gas_price: U256::from(10),
 				},
@@ -337,7 +337,7 @@ mod axelar_evm {
 				target_contract_address: axelar_contract_address,
 				target_contract_hash: axelar_contract_hash,
 				fee_values: FeeValues {
-					value: U256::from(10),
+					value: U256::from(0),
 					gas_limit: U256::from(10),
 					gas_price: U256::from(10),
 				},

@@ -1,11 +1,13 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	StatusNotificationHook, Swap, SwapState, TokenSwaps,
+	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
+	StatusNotificationHook,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };
 use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::One;
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
@@ -56,6 +58,14 @@ mod util {
 		}
 	}
 
+	pub fn market_ratio(to: CurrencyId, from: CurrencyId) -> Ratio {
+		match (from, to) {
+			(POOL_CURR, FOREIGN_CURR) => Ratio::from_rational(1, STABLE_RATIO),
+			(FOREIGN_CURR, POOL_CURR) => Ratio::from_rational(STABLE_RATIO, 1),
+			_ => Ratio::one(),
+		}
+	}
+
 	pub fn configure_pool() {
 		MockPools::mock_currency_for(|pool_id| {
 			assert_eq!(pool_id, INVESTMENT_ID.of_pool());
@@ -69,22 +79,28 @@ mod util {
 
 		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_out, _| {
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: curr_in,
-					currency_out: curr_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: curr_in,
+						currency_out: curr_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(0)
 		});
 
 		MockTokenSwaps::mock_update_order(|swap_id, amount_out, _| {
-			let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+			let order = MockTokenSwaps::get_order_details(swap_id).unwrap();
 			MockTokenSwaps::mock_get_order_details(move |_| {
-				Some(Swap {
-					currency_in: swap.currency_in,
-					currency_out: swap.currency_out,
-					amount_out: amount_out,
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: order.swap.currency_in,
+						currency_out: order.swap.currency_out,
+						amount_out: amount_out,
+					},
+					ratio: OrderRatio::Market,
 				})
 			});
 			Ok(())
@@ -98,6 +114,8 @@ mod util {
 		MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
 			Ok(convert_currencies(to, from, amount_from))
 		});
+
+		MockTokenSwaps::mock_market_ratio(|to, from| Ok(util::market_ratio(to, from)));
 	}
 
 	// Setup basic investment system
@@ -126,28 +144,32 @@ mod util {
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
 		let order_id = Swaps::order_id(&USER, (INVESTMENT_ID, action)).unwrap();
-		let swap = MockTokenSwaps::get_order_details(order_id).unwrap();
+		let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
-			Some(Swap {
-				amount_out: swap.amount_out - amount_out,
-				..swap
+			Some(OrderInfo {
+				swap: Swap {
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
+				},
+				ratio: order.ratio,
 			})
 		});
 
 		Swaps::notify_status_change(
 			order_id,
-			SwapState {
+			SwapInfo {
 				remaining: Swap {
-					amount_out: swap.amount_out - amount_out,
-					..swap
+					amount_out: order.swap.amount_out - amount_out,
+					..order.swap
 				},
 				swapped_in: MockTokenSwaps::convert_by_market(
-					swap.currency_in,
-					swap.currency_out,
+					order.swap.currency_in,
+					order.swap.currency_out,
 					amount_out,
 				)
 				.unwrap(),
 				swapped_out: amount_out,
+				ratio: util::market_ratio(order.swap.currency_in, order.swap.currency_out),
 			},
 		)
 		.unwrap();
@@ -215,6 +237,19 @@ mod investment {
 				Ok(AMOUNT)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+
+			System::assert_has_event(
+				Event::SwapCreated {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					swap: Swap {
+						amount_out: AMOUNT,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+				}
+				.into(),
+			);
 		});
 	}
 
@@ -341,6 +376,21 @@ mod investment {
 				Ok(AMOUNT * 3 / 4)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+
+			System::assert_has_event(
+				Event::SwapCancelled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					remaining: Swap {
+						amount_out: 0,
+						currency_out: POOL_CURR,
+						currency_in: FOREIGN_CURR,
+					},
+					cancelled_in: AMOUNT / 4,
+					opposite_in: 3 * AMOUNT / 4,
+				}
+				.into(),
+			);
 		});
 	}
 
@@ -398,6 +448,21 @@ mod investment {
 			assert_eq!(
 				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 4))
+			);
+
+			System::assert_has_event(
+				Event::SwapFullfilled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					remaining: Swap {
+						amount_out: 3 * AMOUNT / 4,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+					swapped_in: foreign_to_pool(AMOUNT / 4),
+					swapped_out: AMOUNT / 4,
+				}
+				.into(),
 			);
 		});
 	}
@@ -1048,6 +1113,119 @@ mod investment {
 				});
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+				assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+				assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			});
+		}
+
+		#[test]
+		fn decrease_with_asymmetric_ratios_higher_decrease() {
+			const MULTIPLIER: Balance = 1000;
+
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				// We override the market with asymmetric ratios
+				MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+					Ok(match (from, to) {
+						(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from) * MULTIPLIER,
+						(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from),
+						_ => amount_from,
+					})
+				});
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				util::fulfill_last_swap(Action::Investment, 3 * AMOUNT / 4);
+
+				assert_ok!(ForeignInvestment::decrease_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+							foreign_currency: FOREIGN_CURR,
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+				assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+				assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			});
+		}
+
+		#[test]
+		fn decrease_with_asymmetric_ratios_lower_increase() {
+			const MULTIPLIER: Balance = 1000;
+
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				// We override the market with asymmetric ratios
+				MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+					Ok(match (from, to) {
+						(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from),
+						(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from) * MULTIPLIER,
+						_ => amount_from,
+					})
+				});
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				util::fulfill_last_swap(Action::Investment, 3 * AMOUNT / 4);
+
+				assert_ok!(ForeignInvestment::decrease_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					AMOUNT,
+					FOREIGN_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+							foreign_currency: FOREIGN_CURR,
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				util::fulfill_last_swap(
+					Action::Investment,
+					foreign_to_pool(3 * AMOUNT / 4) * MULTIPLIER,
+				);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),

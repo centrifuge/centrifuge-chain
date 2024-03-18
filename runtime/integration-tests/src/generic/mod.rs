@@ -14,10 +14,12 @@ pub mod utils;
 
 // Test cases
 mod cases {
+	mod account_derivation;
 	mod example;
 	mod investments;
 	mod liquidity_pools;
 	mod loans;
+	mod oracles;
 	mod proxy;
 	mod restricted_transfers;
 }

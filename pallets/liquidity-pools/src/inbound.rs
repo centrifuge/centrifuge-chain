@@ -102,7 +102,7 @@ where
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payment_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Mint additional amount of payment currency
 		T::Tokens::mint_into(payment_currency, &investor, amount)?;
@@ -134,10 +134,7 @@ where
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		// NOTE: Even though we can assume this currency to have been used as payment,
-		// the trading pair needs to be registered for the opposite direction as hin
-		// case a swap from pool to foreign results from updating the `InvestState`
-		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
 			&investor,
@@ -187,7 +184,7 @@ where
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
@@ -227,7 +224,7 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency_u128 = currency_index.index;
-		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::decrease_foreign_redemption(
 			&investor,
@@ -304,7 +301,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payment_currency = Self::try_get_currency_id(currency_index)?;
 
 		// NOTE: Dispatch of `ExecutedCollectInvest` is handled by
 		// `ExecutedCollectInvestHook`
@@ -331,7 +328,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::collect_foreign_redemption(&investor, invest_id, payout_currency)?;
 

@@ -26,14 +26,15 @@ use std::collections::BTreeMap;
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
-	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
+	currency_decimals, parachains, AccountId, AuraId, Balance, BlockNumber, CFG, MILLI_CFG,
+	SAFE_XCM_VERSION,
 };
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
 		usdc::{
 			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI,
-			CURRENCY_ID_LP_ETH_GOERLI,
+			CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH_GOERLI,
 		},
 		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
 	},
@@ -46,7 +47,10 @@ use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{
+	traits::{IdentifyAccount, Verify},
+	FixedPointNumber,
+};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
@@ -59,9 +63,10 @@ pub type CentrifugeChainSpec =
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
 
-use altair_runtime::evm::AltairPrecompiles;
-use centrifuge_runtime::evm::CentrifugePrecompiles;
-use development_runtime::evm::DevelopmentPrecompiles;
+use altair_runtime::AltairPrecompiles;
+use centrifuge_runtime::CentrifugePrecompiles;
+use cfg_types::fixed_point::Rate;
+use development_runtime::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -101,25 +106,21 @@ fn development_extensions(para_id: u32) -> Extensions {
 	}
 }
 
-pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
+pub fn get_altair_session_keys(keys: AuraId) -> altair_runtime::SessionKeys {
 	altair_runtime::SessionKeys {
 		aura: keys.clone(),
 		block_rewards: keys,
 	}
 }
 
-pub fn get_centrifuge_session_keys(
-	keys: centrifuge_runtime::AuraId,
-) -> centrifuge_runtime::SessionKeys {
+pub fn get_centrifuge_session_keys(keys: AuraId) -> centrifuge_runtime::SessionKeys {
 	centrifuge_runtime::SessionKeys {
 		aura: keys.clone(),
 		block_rewards: keys,
 	}
 }
 
-pub fn get_development_session_keys(
-	keys: development_runtime::AuraId,
-) -> development_runtime::SessionKeys {
+pub fn get_development_session_keys(keys: AuraId) -> development_runtime::SessionKeys {
 	development_runtime::SessionKeys {
 		aura: keys.clone(),
 		block_rewards: keys,
@@ -129,7 +130,7 @@ pub fn get_development_session_keys(
 type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> cfg_primitives::AccountId
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
@@ -157,15 +158,15 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 				vec![
 					(
 						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
 					),
 					(
 						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<centrifuge_runtime::AuraId>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
 					),
 					(
 						get_account_id_from_seed::<sr25519::Public>("Charlie"),
-						get_from_seed::<centrifuge_runtime::AuraId>("Charlie"),
+						get_from_seed::<AuraId>("Charlie"),
 					),
 				],
 				endowed_accounts(),
@@ -197,7 +198,7 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 			centrifuge_genesis(
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -233,7 +234,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 			centrifuge_genesis(
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -272,15 +273,15 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 				vec![
 					(
 						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<altair_runtime::AuraId>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
 					),
 					(
 						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<altair_runtime::AuraId>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
 					),
 					(
 						get_account_id_from_seed::<sr25519::Public>("Charlie"),
-						get_from_seed::<altair_runtime::AuraId>("Charlie"),
+						get_from_seed::<AuraId>("Charlie"),
 					),
 				],
 				endowed_accounts(),
@@ -312,7 +313,7 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 			altair_genesis(
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -347,7 +348,7 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 			altair_genesis(
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -382,7 +383,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 			altair_genesis(
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -449,7 +450,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<development_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -480,7 +481,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<development_runtime::AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				endowed_evm_accounts(),
@@ -497,7 +498,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	)
 }
 
-fn demo_endowed_accounts() -> Vec<cfg_primitives::AccountId> {
+fn demo_endowed_accounts() -> Vec<AccountId> {
 	vec![
 		//kANEUrMbi9xC16AfL5vSGwfvBVRoRdfWoQ8abPiXi5etFxpdP
 		hex!["e0c426785313bb7e712d66dce43ccb81a7eaef373784511fb508fff4b5df3305"].into(),
@@ -518,7 +519,7 @@ fn demo_endowed_accounts() -> Vec<cfg_primitives::AccountId> {
 	]
 }
 
-fn endowed_accounts() -> Vec<cfg_primitives::AccountId> {
+fn endowed_accounts() -> Vec<AccountId> {
 	vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -543,31 +544,34 @@ fn endowed_evm_accounts() -> Vec<([u8; 20], Option<u64>)> {
 	)]
 }
 
-fn council_members_bootstrap() -> Vec<cfg_primitives::AccountId> {
+fn council_members_bootstrap() -> Vec<AccountId> {
 	endowed_accounts().into_iter().take(4).collect()
 }
 
 fn centrifuge_genesis(
-	initial_authorities: Vec<(centrifuge_runtime::AccountId, centrifuge_runtime::AuraId)>,
-	mut endowed_accounts: Vec<centrifuge_runtime::AccountId>,
+	initial_authorities: Vec<(AccountId, AuraId)>,
+	mut endowed_accounts: Vec<AccountId>,
 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
-	total_issuance: Option<centrifuge_runtime::Balance>,
+	total_issuance: Option<Balance>,
 	id: ParaId,
-	council_members: Vec<centrifuge_runtime::AccountId>,
+	council_members: Vec<AccountId>,
 ) -> centrifuge_runtime::GenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
+		AccountConverter::<
+			centrifuge_runtime::Runtime,
+			centrifuge_runtime::xcm::LocationToAccountId,
+		>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
 	let balances = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as centrifuge_runtime::Balance)
-				.unwrap_or(0 as centrifuge_runtime::Balance);
+				.checked_div(num_endowed_accounts as Balance)
+				.unwrap_or(0 as Balance);
 			endowed_accounts
 				.iter()
 				.cloned()
@@ -661,7 +665,11 @@ fn centrifuge_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
-			total_reward: 10_048 * CFG,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
@@ -680,26 +688,29 @@ fn centrifuge_genesis(
 }
 
 fn altair_genesis(
-	initial_authorities: Vec<(altair_runtime::AccountId, altair_runtime::AuraId)>,
-	mut endowed_accounts: Vec<altair_runtime::AccountId>,
+	initial_authorities: Vec<(AccountId, AuraId)>,
+	mut endowed_accounts: Vec<AccountId>,
 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
-	total_issuance: Option<altair_runtime::Balance>,
+	total_issuance: Option<Balance>,
 	id: ParaId,
-	council_members: Vec<altair_runtime::AccountId>,
+	council_members: Vec<AccountId>,
 ) -> altair_runtime::GenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
+		AccountConverter::<
+			altair_runtime::Runtime,
+			altair_runtime::xcm::LocationToAccountId,
+		>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
 	let balances = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as altair_runtime::Balance)
-				.unwrap_or(0 as altair_runtime::Balance);
+				.checked_div(num_endowed_accounts as Balance)
+				.unwrap_or(0 as Balance);
 			endowed_accounts
 				.iter()
 				.cloned()
@@ -756,7 +767,11 @@ fn altair_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 98_630 * MILLI_AIR,
-			total_reward: 98_630 * MILLI_AIR * 100,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		block_rewards_base: Default::default(),
 		collator_allowlist: Default::default(),
@@ -798,26 +813,29 @@ const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 fn development_genesis(
-	root_key: development_runtime::AccountId,
-	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
-	mut endowed_accounts: Vec<development_runtime::AccountId>,
+	root_key: AccountId,
+	initial_authorities: Vec<(AccountId, AuraId)>,
+	mut endowed_accounts: Vec<AccountId>,
 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
-	total_issuance: Option<development_runtime::Balance>,
+	total_issuance: Option<Balance>,
 	id: ParaId,
 ) -> development_runtime::GenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
+		AccountConverter::<
+			development_runtime::Runtime,
+			development_runtime::xcm::LocationToAccountId,
+		>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
 	let (balances, token_balances) = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as development_runtime::Balance)
-				.unwrap_or(0 as development_runtime::Balance);
+				.checked_div(num_endowed_accounts as Balance)
+				.unwrap_or(0 as Balance);
 
 			(
 				// pallet_balances balances
@@ -939,7 +957,11 @@ fn development_genesis(
 				.map(|(acc, _)| acc)
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
-			total_reward: 10_048 * CFG,
+			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
+			last_update: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.expect("SystemTime before UNIX EPOCH!")
+				.as_secs(),
 		},
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
@@ -979,6 +1001,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					permissioned: false,
 					pool_currency: true,
 					transferability: CrossChainTransferability::Xcm(Default::default()),
+					local_representation: None,
 				},
 			}
 			.encode(),
@@ -1005,6 +1028,25 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					permissioned: false,
 					pool_currency: true,
 					transferability: CrossChainTransferability::Xcm(Default::default()),
+					local_representation: None,
+				},
+			}
+			.encode(),
+		),
+		(
+			CURRENCY_ID_LOCAL,
+			AssetMetadata::<Balance, CustomMetadata> {
+				decimals: 6,
+				name: b"Local USDC".to_vec(),
+				symbol: b"localUSDC".to_vec(),
+				existential_deposit: 0u128,
+				location: None,
+				additional: CustomMetadata {
+					mintable: false,
+					permissioned: false,
+					pool_currency: true,
+					transferability: CrossChainTransferability::None,
+					local_representation: None,
 				},
 			}
 			.encode(),
@@ -1014,7 +1056,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			lp_wrapped_usdc_metadata(
 				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
 				"LpEthUSDC".as_bytes().to_vec(),
-				development_runtime::liquidity_pools::LiquidityPoolsPalletIndex::get(),
+				development_runtime::LiquidityPoolsPalletIndex::get(),
 				CHAIN_ID_ETH_GOERLI_TESTNET,
 				CONTRACT_ETH_GOERLI,
 				true,

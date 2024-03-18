@@ -20,6 +20,7 @@ pallet-aura = { workspace = true }
 pallet-timestamp = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+sp-arithmetic = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -30,6 +31,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "sp-runtime/std",
+  "sp-arithmetic/std",
   "sp-std/std",
   "pallet-timestamp/std",
   "pallet-aura/std",

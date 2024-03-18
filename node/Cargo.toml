@@ -6,7 +6,7 @@ is-it-maintained-open-issues = { repository = "centrifuge/centrifuge-chain" }
 
 [package]
 name = "centrifuge-chain"
-version = "0.10.35"
+version = "0.10.37"
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
 default-run = "centrifuge-chain"

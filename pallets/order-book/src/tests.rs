@@ -10,9 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{OrderRatio, Swap, SwapState, TokenSwaps};
+use cfg_traits::swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps};
 use frame_support::{
-	assert_err, assert_noop, assert_ok,
+	assert_err, assert_ok,
 	traits::fungibles::{Inspect, InspectHold},
 };
 use sp_runtime::{DispatchError, FixedPointNumber};
@@ -72,11 +72,11 @@ mod util {
 		swapped_in: Balance,
 		swapped_out: Balance,
 	) {
-		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap_state| {
+		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap_info| {
 			assert_eq!(order_id, id);
 			assert_eq!(
-				swap_state,
-				SwapState {
+				swap_info,
+				SwapInfo {
 					remaining: Swap {
 						amount_out,
 						currency_in: CURRENCY_B,
@@ -84,79 +84,11 @@ mod util {
 					},
 					swapped_in,
 					swapped_out,
+					ratio: DEFAULT_RATIO,
 				}
 			);
 			Ok(())
 		});
-	}
-}
-
-mod min_amount {
-	use super::*;
-	#[test]
-	fn adding_trading_pair_works() {
-		new_test_ext_no_pair().execute_with(|| {
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				CURRENCY_B,
-				CURRENCY_A,
-				token_a(100),
-			));
-			assert_eq!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
-				token_a(100),
-			);
-			assert!(OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
-		})
-	}
-
-	#[test]
-	fn adding_trading_pair_fails() {
-		new_test_ext_no_pair().execute_with(|| {
-			assert_noop!(
-				OrderBook::add_trading_pair(
-					RuntimeOrigin::signed(FROM),
-					CURRENCY_B,
-					CURRENCY_A,
-					token_a(100),
-				),
-				DispatchError::BadOrigin
-			);
-			assert_noop!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
-				Error::<Runtime>::InvalidTradingPair
-			);
-			assert!(!OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
-		})
-	}
-
-	#[test]
-	fn removing_trading_pair_works() {
-		new_test_ext_no_pair().execute_with(|| {
-			assert_ok!(OrderBook::rm_trading_pair(
-				RuntimeOrigin::root(),
-				CURRENCY_B,
-				CURRENCY_A,
-			));
-			assert_noop!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
-				Error::<Runtime>::InvalidTradingPair
-			);
-		})
-	}
-
-	#[test]
-	fn removing_trading_pair_fails() {
-		new_test_ext().execute_with(|| {
-			assert_noop!(
-				OrderBook::rm_trading_pair(RuntimeOrigin::signed(FROM), CURRENCY_B, CURRENCY_A),
-				DispatchError::BadOrigin
-			);
-			assert_eq!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
-				token_a(5)
-			);
-		})
 	}
 }
 
@@ -210,47 +142,6 @@ fn create_order_without_required_min_fulfillment_amount() {
 			token_a(1),
 			OrderRatio::Custom(DEFAULT_RATIO)
 		));
-	})
-}
-
-#[test]
-fn create_order_without_required_min_amount() {
-	new_test_ext().execute_with(|| {
-		assert_err!(
-			OrderBook::place_order(
-				RuntimeOrigin::signed(FROM),
-				CURRENCY_B,
-				CURRENCY_A,
-				token_a(3),
-				OrderRatio::Custom(DEFAULT_RATIO)
-			),
-			Error::<Runtime>::BelowMinOrderAmount,
-		);
-
-		// The trait method version does not have min order amount check
-		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::place_order(
-			FROM,
-			CURRENCY_B,
-			CURRENCY_A,
-			token_a(3),
-			OrderRatio::Custom(DEFAULT_RATIO)
-		));
-	});
-}
-
-#[test]
-fn create_order_requires_pair_with_defined_min() {
-	new_test_ext().execute_with(|| {
-		assert_err!(
-			OrderBook::place_order(
-				RuntimeOrigin::signed(FROM),
-				CURRENCY_B,
-				CURRENCY_X,
-				token_a(10),
-				OrderRatio::Custom(DEFAULT_RATIO),
-			),
-			Error::<Runtime>::InvalidTradingPair
-		);
 	})
 }
 
@@ -336,31 +227,6 @@ fn update_order_without_required_min_fulfillment_amount() {
 			order_id,
 			token_a(1),
 			OrderRatio::Custom((1, 2).into()),
-		));
-	})
-}
-
-#[test]
-fn update_order_without_required_min_amount() {
-	new_test_ext().execute_with(|| {
-		let order_id = util::create_default_order(token_a(10));
-
-		assert_err!(
-			OrderBook::update_order(
-				RuntimeOrigin::signed(FROM),
-				order_id,
-				token_a(3),
-				OrderRatio::Custom((1, 2).into()),
-			),
-			Error::<Runtime>::BelowMinOrderAmount,
-		);
-
-		// The trait method version for updating order does not have min order amount
-		// check
-		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::update_order(
-			order_id,
-			token_a(3),
-			OrderRatio::Custom((1, 2).into())
 		));
 	})
 }
@@ -585,10 +451,13 @@ fn correct_order_details() {
 
 		assert_eq!(
 			OrderBook::get_order_details(order_id),
-			Some(Swap {
-				amount_out: token_a(1),
-				currency_in: CURRENCY_B,
-				currency_out: CURRENCY_A
+			Some(OrderInfo {
+				swap: Swap {
+					amount_out: token_a(1),
+					currency_in: CURRENCY_B,
+					currency_out: CURRENCY_A
+				},
+				ratio: OrderRatio::Custom(DEFAULT_RATIO)
 			})
 		);
 	});

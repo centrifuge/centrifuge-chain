@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::CFG;
+use cfg_primitives::{AccountId, CouncilCollective, CFG};
 use cfg_traits::ethereum::EthereumTransactor;
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
 use frame_support::{assert_err, dispatch::RawOrigin};
@@ -22,8 +22,7 @@ use tokio::runtime::Handle;
 
 use crate::{
 	chain::centrifuge::{
-		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
-		RuntimeEvent, PARA_ID,
+		FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall, RuntimeEvent, PARA_ID,
 	},
 	utils::{
 		env,
@@ -148,8 +147,7 @@ async fn call() {
 			U256::from(0x100000),
 		);
 
-		// NOTE: WE CAN NOTE CHECK WHETHER THE EVM ERRORS OUT
-		assert!(res.is_ok());
+		assert!(res.is_err());
 	})
 	.unwrap();
 }

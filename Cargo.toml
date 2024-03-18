@@ -38,6 +38,7 @@ members = [
   "pallets/restricted-xtokens",
   "pallets/rewards",
   "pallets/swaps",
+  "pallets/token-mux",
   "pallets/transfer-allowlist",
   "runtime/altair",
   "runtime/centrifuge",
@@ -288,6 +289,7 @@ pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-feature
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
 pallet-swaps = { path = "pallets/swaps", default-features = false }
+pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 
 # Centrifuge libs
@@ -355,10 +357,7 @@ pallet-recovery = { git = "https://github.com/paritytech//substrate", branch = "
 pallet-scheduler = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-society = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-staking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-sudo = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-timestamp = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
@@ -565,10 +564,7 @@ pallet-recovery = { git = "https://github.com/paritytech//substrate", branch = "
 pallet-scheduler = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-session-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-society = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-staking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-sudo = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-timestamp = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-tips = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }

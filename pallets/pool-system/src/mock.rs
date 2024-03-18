@@ -142,7 +142,6 @@ frame_support::construct_runtime!(
 		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
-		ParachainInfo: parachain_info::{Pallet, Storage},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		MockChangeGuard: pallet_mock_change_guard,
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
@@ -402,6 +401,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type WeightInfo = ();
 }
 
 parameter_types! {

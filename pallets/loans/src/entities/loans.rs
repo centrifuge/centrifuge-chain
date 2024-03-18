@@ -1,8 +1,7 @@
 use cfg_traits::{
 	self,
-	data::DataCollection,
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	IntoSeconds, Seconds, TimeAsSecs,
+	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
@@ -14,6 +13,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	entities::{
@@ -24,7 +24,7 @@ use crate::{
 			Pricing,
 		},
 	},
-	pallet::{AssetOf, Config, Error, PriceOf},
+	pallet::{AssetOf, Config, Error},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
@@ -229,6 +229,13 @@ impl<T: Config> ActiveLoan<T> {
 		&self.pricing
 	}
 
+	pub fn price_id(&self) -> Option<T::PriceId> {
+		match &self.pricing {
+			ActivePricing::Internal(_) => None,
+			ActivePricing::External(inner) => Some(inner.price_id()),
+		}
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
@@ -255,23 +262,21 @@ impl<T: Config> ActiveLoan<T> {
 				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
-				ActivePricing::External(pricing) => Ok(now
-					>= pricing
-						.last_updated(pool_id)?
-						.into_seconds()
-						.ensure_add(*secs)?),
+				ActivePricing::External(pricing) => {
+					Ok(now >= pricing.last_updated(pool_id).ensure_add(*secs)?)
+				}
 				ActivePricing::Internal(_) => Ok(false),
 			},
 		}
 	}
 
 	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let maturity_date = self.schedule.maturity.date();
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let maturity_date = self.schedule.maturity.date();
 				inner.present_value(self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value(pool_id)?,
+			ActivePricing::External(inner) => inner.present_value(pool_id, maturity_date)?,
 		};
 
 		self.write_down(value)
@@ -280,22 +285,21 @@ impl<T: Config> ActiveLoan<T> {
 	/// An optimized version of `ActiveLoan::present_value()` when some input
 	/// data can be used from cached collections. Instead of fetch the current
 	/// debt and prices from the pallets,
-	/// it get the values from caches previously fetched.
-	pub fn present_value_by<Rates, Prices>(
+	/// it the values from caches previously fetched.
+	pub fn present_value_by<Rates>(
 		&self,
 		rates: &Rates,
-		prices: &Prices,
+		prices: &BTreeMap<T::PriceId, T::Balance>,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
+		let maturity_date = self.schedule.maturity.date();
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let maturity_date = self.schedule.maturity.date();
 				inner.present_value_cached(rates, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value_cached(prices)?,
+			ActivePricing::External(inner) => inner.present_value_cached(prices, maturity_date)?,
 		};
 
 		self.write_down(value)
@@ -327,7 +331,7 @@ impl<T: Config> ActiveLoan<T> {
 				BorrowRestrictions::OraclePriceRequired => {
 					match &self.pricing {
 						ActivePricing::Internal(_) => true,
-						ActivePricing::External(inner) => inner.last_updated(pool_id).is_ok(),
+						ActivePricing::External(inner) => inner.has_registered_price(pool_id),
 					}
 				}
 			},
@@ -533,31 +537,46 @@ pub struct ActiveLoanInfo<T: Config> {
 
 	/// Current outstanding interest of this loan
 	pub outstanding_interest: T::Balance,
+
+	/// Current price for external loans
+	/// - If oracle set, then the price is the one coming from the oracle,
+	/// - If not set, then the price is a linear accrual using the latest
+	///   settlement price.
+	/// See [`ExternalActivePricing::current_price()`]
+	pub current_price: Option<T::Balance>,
 }
 
 impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from((pool_id, active_loan): (T::PoolId, ActiveLoan<T>)) -> Result<Self, Self::Error> {
-		let (outstanding_principal, outstanding_interest) = match &active_loan.pricing {
+		let present_value = active_loan.present_value(pool_id)?;
+
+		Ok(match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
 				let principal = active_loan
 					.total_borrowed
 					.ensure_sub(active_loan.total_repaid.principal)?;
 
-				(principal, inner.outstanding_interest(principal)?)
+				Self {
+					present_value,
+					outstanding_principal: principal,
+					outstanding_interest: inner.outstanding_interest(principal)?,
+					current_price: None,
+					active_loan,
+				}
 			}
-			ActivePricing::External(inner) => (
-				inner.outstanding_principal(pool_id)?,
-				inner.outstanding_interest()?,
-			),
-		};
+			ActivePricing::External(inner) => {
+				let maturity = active_loan.maturity_date();
 
-		Ok(Self {
-			present_value: active_loan.present_value(pool_id)?,
-			outstanding_principal,
-			outstanding_interest,
-			active_loan,
+				Self {
+					present_value,
+					outstanding_principal: inner.outstanding_principal(pool_id, maturity)?,
+					outstanding_interest: inner.outstanding_interest()?,
+					current_price: Some(inner.current_price(pool_id, maturity)?),
+					active_loan,
+				}
+			}
 		})
 	}
 }

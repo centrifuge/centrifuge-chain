@@ -11,7 +11,7 @@ use sp_core::crypto::AccountId32;
 use sp_runtime::Storage;
 
 use crate::{
-	generic::{config::Runtime, utils::currency},
+	generic::{config::Runtime, utils::currency::CurrencyInfo},
 	utils::accounts::{default_accounts, Keyring},
 };
 
@@ -67,11 +67,11 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 	}
 }
 
-pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T> {
+pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl GenesisBuild<T> {
 	orml_asset_registry::GenesisConfig::<T> {
 		assets: currency_ids
 			.into_iter()
-			.map(|currency_id| (currency_id, currency::find_metadata(currency_id).encode()))
+			.map(|currency_id| (currency_id.id(), currency_id.metadata().encode()))
 			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
 	}
