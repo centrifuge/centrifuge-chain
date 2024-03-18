@@ -469,27 +469,6 @@ pub trait TryConvert<A, B> {
 	fn try_convert(a: A) -> Result<B, Self::Error>;
 }
 
-/// Converts a balance value into an asset balance.
-// TODO: Remove usage for the one from frame_support::traits::tokens once we are
-// on the same Polkadot version
-pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
-	fn to_asset_balance(
-		balance: InBalance,
-		asset_id: AssetId,
-	) -> Result<AssetBalance, DispatchError>;
-}
-
-/// Converts an asset balance value into balance.
-// TODO: Remove usage for the one from frame_support::traits::tokens once we are
-// on the same Polkadot version
-pub trait ConversionFromAssetBalance<AssetBalance, AssetId, OutBalance> {
-	type Error;
-	fn from_asset_balance(
-		balance: AssetBalance,
-		asset_id: AssetId,
-	) -> Result<OutBalance, Self::Error>;
-}
-
 // TODO: Probably these should be in a future cfg-utils.
 // Issue: https://github.com/centrifuge/centrifuge-chain/issues/1380
 

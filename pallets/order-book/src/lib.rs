@@ -41,7 +41,7 @@ pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
 		swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
-		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
+		StatusNotificationHook, ValueProvider,
 	};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
@@ -146,10 +146,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Size of order id bounded vec in storage
-		#[pallet::constant]
-		type OrderPairVecSize: Get<u32>;
-
 		/// The default minimum fulfillment amount for orders.
 		///
 		/// NOTE: The amount is expected to be denominated in native currency.
@@ -158,15 +154,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinFulfillmentAmountNative: Get<Self::BalanceOut>;
 
-		/// Type which provides a decimal conversion from native to another
-		/// currency.
-		///
-		/// NOTE: Required for `MinFulfillmentAmountNative`.
-		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
-			Self::BalanceOut,
-			Self::CurrencyId,
-			Self::BalanceOut,
-		>;
+		#[pallet::constant]
+		type NativeDecimals: Get<u32>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
@@ -673,7 +662,16 @@ pub mod pallet {
 		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::BalanceOut, DispatchError> {
-			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
+			let to_decimals = T::AssetRegistry::metadata(&currency)
+				.ok_or(Error::<T>::InvalidCurrencyId)?
+				.decimals;
+
+			Ok(convert_balance_decimals(
+				T::NativeDecimals::get(),
+				to_decimals,
+				T::MinFulfillmentAmountNative::get().into(),
+			)?
+			.into())
 		}
 	}
 

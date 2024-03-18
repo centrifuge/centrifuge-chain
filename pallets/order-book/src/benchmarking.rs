@@ -12,10 +12,10 @@
 
 use cfg_traits::{
 	swaps::{OrderRatio, TokenSwaps},
-	AssetMetadataOf, ConversionToAssetBalance, ValueProvider,
+	AssetMetadataOf, ValueProvider,
 };
 use frame_benchmarking::{account, v2::*};
-use frame_support::traits::{fungibles::Mutate as _, Get};
+use frame_support::traits::fungibles::Mutate as _;
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect, Mutate};
 use sp_runtime::{
@@ -100,11 +100,7 @@ where
 	}
 
 	pub fn amount_out() -> T::BalanceOut {
-		let min_fulfillment = T::DecimalConverter::to_asset_balance(
-			T::MinFulfillmentAmountNative::get(),
-			CURRENCY_OUT.into(),
-		)
-		.unwrap();
+		let min_fulfillment = Pallet::<T>::min_fulfillment_amount(CURRENCY_OUT.into()).unwrap();
 
 		let decimals_out = T::AssetRegistry::metadata(&CURRENCY_OUT.into())
 			.unwrap()

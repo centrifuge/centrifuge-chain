@@ -1800,8 +1800,8 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const OrderPairVecSize: u32 = 1_000u32;
 	pub MinFulfillmentAmountNative: Balance = 10 * CFG;
+	pub NativeDecimals: u32 = cfg_primitives::currency_decimals::NATIVE;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1811,13 +1811,11 @@ impl pallet_order_book::Config for Runtime {
 	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DecimalConverter =
-		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
+	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
-	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
 	type RatioProvider = OracleRatioProviderLocalAssetExtension<
 		RuntimeOrigin,
