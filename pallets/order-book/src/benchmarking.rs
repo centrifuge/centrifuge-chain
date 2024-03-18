@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
-use frame_support::traits::{fungibles::Mutate as _, Get};
+use frame_support::traits::fungibles::Mutate as _;
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect as _, Mutate};
 use sp_runtime::{traits::checked_pow, FixedPointNumber};
