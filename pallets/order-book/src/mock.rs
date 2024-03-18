@@ -201,20 +201,6 @@ parameter_types! {
 	pub MinFulfillmentAmountNative: Balance = 2;
 }
 
-pub struct DecimalConverter;
-impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter {
-	fn to_asset_balance(
-		balance: Balance,
-		currency_in: CurrencyId,
-	) -> Result<Balance, DispatchError> {
-		Ok(match currency_in {
-			CURRENCY_A => token_a(balance),
-			CURRENCY_B => token_b(balance),
-			_ => unimplemented!(),
-		})
-	}
-}
-
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = RegistryMock;
@@ -222,10 +208,10 @@ impl order_book::Config for Runtime {
 	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DecimalConverter = DecimalConverter;
 	type FeederId = AccountId;
 	type FulfilledOrderHook = MockFulfilledOrderHook;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
+	type NativeCurrency = CurrencyId::Native;
 	type OrderIdNonce = OrderId;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;

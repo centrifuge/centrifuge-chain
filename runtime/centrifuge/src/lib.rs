@@ -1811,11 +1811,10 @@ impl pallet_order_book::Config for Runtime {
 	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DecimalConverter =
-		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
+	type NativeCurrency = CurrencyId::Native;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;

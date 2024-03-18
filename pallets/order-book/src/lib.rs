@@ -160,15 +160,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinFulfillmentAmountNative: Get<Self::BalanceOut>;
 
-		/// Type which provides a decimal conversion from native to another
-		/// currency.
-		///
-		/// NOTE: Required for `MinFulfillmentAmountNative`.
-		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
-			Self::BalanceOut,
-			Self::CurrencyId,
-			Self::BalanceOut,
-		>;
+		#[pallet::constant]
+		type NativeCurrency: Get<Self::CurrencyId>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
@@ -675,7 +668,20 @@ pub mod pallet {
 		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::BalanceOut, DispatchError> {
-			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
+			let from_decimals = T::AssetRegistry::metadata(&T::NativeCurrency::get())
+				.ok_or(Error::<T>::InvalidCurrencyId)?
+				.decimals;
+
+			let to_decimals = T::AssetRegistry::metadata(&currency)
+				.ok_or(Error::<T>::InvalidCurrencyId)?
+				.decimals;
+
+			Ok(convert_balance_decimals(
+				from_decimals,
+				to_decimals,
+				T::MinFulfillmentAmountNative::get().into(),
+			)?
+			.into())
 		}
 	}
 
