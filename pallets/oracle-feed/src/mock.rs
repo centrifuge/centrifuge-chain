@@ -1,7 +1,6 @@
 use frame_support::{derive_impl, traits::EitherOfDiverse};
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_io::TestExternalities;
-use sp_runtime::BuildStorage;
 
 use crate::pallet as pallet_oracle_feed;
 
