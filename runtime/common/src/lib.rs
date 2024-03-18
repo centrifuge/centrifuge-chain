@@ -388,9 +388,7 @@ pub mod xcm_transactor {
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
-	use cfg_traits::{
-		ConversionFromAssetBalance, ConversionToAssetBalance, IdentityCurrencyConversion,
-	};
+	use cfg_traits::IdentityCurrencyConversion;
 	use cfg_types::tokens::CurrencyId;
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;

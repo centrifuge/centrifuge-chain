@@ -1715,7 +1715,7 @@ impl pallet_order_book::Config for Runtime {
 	type FeederId = Feeder<RuntimeOrigin>;
 	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
-	type NativeCurrency = CurrencyId::Native;
+	type NativeCurrency = NativeToken;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;

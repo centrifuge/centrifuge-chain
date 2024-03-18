@@ -41,7 +41,7 @@ pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
 		swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
-		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
+		StatusNotificationHook, ValueProvider,
 	};
 	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
@@ -437,6 +437,8 @@ pub mod pallet {
 				Ok::<_, DispatchError>(*n)
 			})?;
 
+			dbg!(amount_out);
+			dbg!(min_fulfillment_amount_out);
 			ensure!(
 				amount_out >= min_fulfillment_amount_out,
 				Error::<T>::BelowMinFulfillmentAmount

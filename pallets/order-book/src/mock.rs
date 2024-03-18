@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_traits::{swaps::SwapInfo, ConversionToAssetBalance};
+use cfg_traits::swaps::SwapInfo;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
@@ -23,7 +23,7 @@ use sp_core::{ConstU128, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, FixedU128,
+	FixedU128,
 };
 
 use crate as order_book;
@@ -169,7 +169,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_types! {
-		pub const NativeToken: CurrencyId = CurrencyId::Native;
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
 
 impl pallet_restricted_tokens::Config for Runtime {
@@ -211,7 +211,7 @@ impl order_book::Config for Runtime {
 	type FeederId = AccountId;
 	type FulfilledOrderHook = MockFulfilledOrderHook;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
-	type NativeCurrency = CurrencyId::Native;
+	type NativeCurrency = NativeToken;
 	type OrderIdNonce = OrderId;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
@@ -234,6 +234,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
+			(
+				CurrencyId::Native,
+				AssetMetadata {
+					decimals: 6,
+					name: "Native".as_bytes().to_vec(),
+					symbol: "NAT".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			),
 			(
 				CURRENCY_A,
 				AssetMetadata {
