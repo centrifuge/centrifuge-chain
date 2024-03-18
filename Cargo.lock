@@ -368,7 +368,6 @@ dependencies = [
  "cfg-utils",
  "ethabi",
  "fp-evm",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
@@ -1482,13 +1481,12 @@ dependencies = [
 
 [[package]]
 name = "expander"
-version = "2.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e83c02035136f1592a47964ea60c05a50e4ed8b5892cfac197063850898d4d"
+checksum = "5f86a749cf851891866c10515ef6c299b5c69661465e9c3bbe7e07a2b77fb0f7"
 dependencies = [
  "blake2",
  "fs-err",
- "prettier-please",
  "proc-macro2",
  "quote",
  "syn 2.0.53",
@@ -4138,16 +4136,6 @@ dependencies = [
  "quote",
  "sp-core-hashing",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "prettier-please"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22020dfcf177fcc7bf5deaf7440af371400c67c0de14c399938d8ed4fb4645d3"
-dependencies = [
- "proc-macro2",
- "syn 2.0.53",
 ]
 
 [[package]]
