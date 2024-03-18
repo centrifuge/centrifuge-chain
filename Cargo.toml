@@ -324,7 +324,7 @@ pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foun
 # We only patch dependencies found in the Cargo.toml files of our moonbeam dependencies. These are:
 # - xcm-primitives
 # - pallet-xcm-transactor
-# - pallet-evm-precompile-balances-erc20
+# - pallet-evm-precompile-balances-erc20 (not all dependencies patched due precompile-utils incompatibility)
 [patch."https://github.com/moonbeam-foundation/polkadot-sdk"]
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
