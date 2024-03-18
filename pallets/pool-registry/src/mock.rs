@@ -19,8 +19,9 @@ use cfg_primitives::{
 	TrancheWeight,
 };
 use cfg_traits::{
-	fee::PoolFeeBucket, investments::OrderManager, Millis, PoolMutate, PoolUpdateGuard,
-	PreConditions, Seconds, UpdateState,
+	fee::{PoolFeeBucket, PoolFeesInspect},
+	investments::OrderManager,
+	Millis, PoolMutate, PoolUpdateGuard, PreConditions, Seconds, UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
@@ -182,6 +183,7 @@ impl pallet_pool_fees::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = OrmlTokens;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -217,7 +219,7 @@ where
 	>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
-		<<T as pallet_pool_system::Config>::PoolFees as cfg_traits::fee::PoolFees>::FeeInfo,
+		<<T as pallet_pool_system::Config>::PoolFees as cfg_traits::fee::PoolFeesMutate>::FeeInfo,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
@@ -262,6 +264,28 @@ impl<T> PreConditions<T> for Always {
 	}
 }
 
+/// NOTE: Amounts only used for weight determination
+pub struct MockPoolFeesInspect;
+impl PoolFeesInspect for MockPoolFeesInspect {
+	type PoolId = PoolId;
+
+	fn get_max_fee_count() -> u32 {
+		100
+	}
+
+	fn get_max_fees_per_bucket() -> u32 {
+		100
+	}
+
+	fn get_pool_fee_count(_pool: Self::PoolId) -> u32 {
+		100
+	}
+
+	fn get_pool_fee_bucket_count(_pool: Self::PoolId, _bucket: PoolFeeBucket) -> u32 {
+		100
+	}
+}
+
 impl Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
@@ -273,6 +297,7 @@ impl Config for Test {
 	type ModifyWriteOffPolicy = MockWriteOffPolicy;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
+	type PoolFeesInspect = MockPoolFeesInspect;
 	type PoolId = u64;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;

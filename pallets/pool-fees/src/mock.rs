@@ -175,6 +175,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = MockTime;
 	type Tokens = OrmlTokens;
+	type WeightInfo = ();
 }
 
 pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeInfoOf<Runtime> {

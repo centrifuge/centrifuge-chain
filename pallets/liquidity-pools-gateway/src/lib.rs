@@ -9,6 +9,21 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Liquidity Pools Gateway Pallet.
+//!
+//! The Liquidity Pools Gateway pallet is the main handler of incoming and
+//! outgoing Liquidity Pools messages.
+//!
+//! For incoming messages it validates the `Domain` and address of the sender,
+//! and, upon successful validation, it sends the message to the `InboundQueue`
+//! for further processing. The pallet that implements the `InboundQueue` is the
+//! Liquidity Pools pallet.
+//!
+//! For outgoing messages it's using a queue which gets serviced when a block
+//! gets finalized. Each message in the `OutboundMessageQueue` has a `Domain`
+//! assigned to it, and that `Domain` should have a corresponding `DomainRouter`
+//! which should be set prior to sending the message.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt::Debug;

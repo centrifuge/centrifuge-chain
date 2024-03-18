@@ -114,7 +114,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = InvestmentId;
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }

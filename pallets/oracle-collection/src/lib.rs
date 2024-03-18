@@ -10,8 +10,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-//! Oracle pallet to collect and aggregate oracle values.
+//
+//! # Oracle Collection Pallet
+//!
+//! Pallet used to collect and aggregate oracle values.
 //!
 //! The collection admin configures the collection allowing a list of feeders.
 //!

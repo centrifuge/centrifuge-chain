@@ -17,6 +17,7 @@ use frame_support::{
 };
 #[cfg(feature = "try-runtime")]
 use num_traits::Zero;
+#[cfg(feature = "try-runtime")]
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::FixedPointNumber;
 #[cfg(feature = "try-runtime")]
@@ -158,136 +159,6 @@ pub mod init {
 
 			log::info!("{LOG_PREFIX} Post migration checks successful");
 
-			Ok(())
-		}
-	}
-}
-
-pub mod v2 {
-	use frame_support::{
-		pallet_prelude::ValueQuery, storage_alias, DefaultNoBound, RuntimeDebugNoBound,
-	};
-	use parity_scale_codec::MaxEncodedLen;
-	use scale_info::TypeInfo;
-
-	use super::*;
-	use crate::{CollatorChanges, SessionChanges};
-
-	const LOG_PREFIX: &str = "RelativeTreasuryInflation";
-
-	#[derive(
-		Encode, Decode, TypeInfo, DefaultNoBound, MaxEncodedLen, PartialEq, Eq, RuntimeDebugNoBound,
-	)]
-	#[scale_info(skip_type_params(T))]
-	struct OldSessionData<T: Config> {
-		pub collator_reward: T::Balance,
-		pub total_reward: T::Balance,
-		pub collator_count: u32,
-	}
-
-	#[derive(
-		PartialEq,
-		Clone,
-		DefaultNoBound,
-		Encode,
-		Decode,
-		TypeInfo,
-		MaxEncodedLen,
-		RuntimeDebugNoBound,
-	)]
-	#[scale_info(skip_type_params(T))]
-	struct OldSessionChanges<T: Config> {
-		pub collators: CollatorChanges<T>,
-		pub collator_count: Option<u32>,
-		pub collator_reward: Option<T::Balance>,
-		pub total_reward: Option<T::Balance>,
-	}
-
-	#[storage_alias]
-	type ActiveSessionData<T: Config> = StorageValue<Pallet<T>, OldSessionData<T>, ValueQuery>;
-	#[storage_alias]
-	type NextSessionChanges<T: Config> = StorageValue<Pallet<T>, OldSessionChanges<T>, ValueQuery>;
-
-	pub struct RelativeTreasuryInflationMigration<T, InflationRate>(
-		PhantomData<(T, InflationRate)>,
-	);
-
-	impl<T, InflationPercentage> OnRuntimeUpgrade
-		for RelativeTreasuryInflationMigration<T, InflationPercentage>
-	where
-		T: Config,
-		InflationPercentage: Get<u32>,
-	{
-		fn on_runtime_upgrade() -> Weight {
-			if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(1) {
-				let active = ActiveSessionData::<T>::take();
-				let next = NextSessionChanges::<T>::take();
-
-				pallet::ActiveSessionData::<T>::put(SessionData {
-					collator_reward: active.collator_reward,
-					collator_count: active.collator_count,
-					treasury_inflation_rate: inflation_rate::<T>(InflationPercentage::get()),
-					last_update: T::Time::now(),
-				});
-				log::info!("{LOG_PREFIX} Translated ActiveSessionData");
-
-				pallet::NextSessionChanges::<T>::put(SessionChanges {
-					collators: next.collators,
-					collator_count: next.collator_count,
-					collator_reward: next.collator_reward,
-					treasury_inflation_rate: Some(inflation_rate::<T>(InflationPercentage::get())),
-					last_update: T::Time::now(),
-				});
-				log::info!("{LOG_PREFIX} Translated NextSessionChanges");
-				Pallet::<T>::current_storage_version().put::<Pallet<T>>();
-
-				T::DbWeight::get().reads_writes(1, 5)
-			} else {
-				log::info!("{LOG_PREFIX} BlockRewards pallet already on version 2, migration can be removed");
-				T::DbWeight::get().reads(1)
-			}
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-			assert_eq!(
-				Pallet::<T>::on_chain_storage_version(),
-				StorageVersion::new(1),
-			);
-			assert!(
-				Pallet::<T>::on_chain_storage_version() < Pallet::<T>::current_storage_version()
-			);
-
-			let active = ActiveSessionData::<T>::get();
-			let next = NextSessionChanges::<T>::get();
-
-			log::info!("{LOG_PREFIX} PRE UPGRADE: Finished");
-
-			Ok((active, next).encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), TryRuntimeError> {
-			let (old_active, old_next): (OldSessionData<T>, OldSessionChanges<T>) =
-				Decode::decode(&mut pre_state.as_slice()).expect("Pre state valid; qed");
-			let active = pallet::ActiveSessionData::<T>::get();
-			let next = pallet::NextSessionChanges::<T>::get();
-
-			assert_eq!(old_active.collator_reward, active.collator_reward);
-			assert_eq!(old_active.collator_count, active.collator_count);
-			assert_eq!(old_next.collators, next.collators);
-			assert_eq!(old_next.collator_count, next.collator_count);
-			assert_eq!(old_next.collator_reward, next.collator_reward);
-			assert_eq!(
-				next.treasury_inflation_rate,
-				Some(inflation_rate::<T>(InflationPercentage::get()))
-			);
-			assert_eq!(
-				Pallet::<T>::current_storage_version(),
-				Pallet::<T>::on_chain_storage_version()
-			);
-
-			log::info!("{LOG_PREFIX} POST UPGRADE: Finished");
 			Ok(())
 		}
 	}

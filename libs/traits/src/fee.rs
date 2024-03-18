@@ -30,7 +30,7 @@ pub enum PoolFeeBucket {
 }
 
 /// Trait to add fees to a pool
-pub trait PoolFees {
+pub trait PoolFeesMutate {
 	type PoolId;
 	type FeeInfo;
 
@@ -38,10 +38,21 @@ pub trait PoolFees {
 	///
 	/// NOTE: Assumes call permissions are separately checked beforehand.
 	fn add_fee(pool_id: Self::PoolId, bucket: PoolFeeBucket, fee: Self::FeeInfo) -> DispatchResult;
+}
+
+/// Trait to get pool fees counts
+pub trait PoolFeesInspect {
+	type PoolId;
+
+	/// Returns the maximum number of pool fees required for accurate weights
+	fn get_max_fee_count() -> u32;
 
 	/// Returns the maximum number of pool fees per bucket required for accurate
 	/// weights
 	fn get_max_fees_per_bucket() -> u32;
+
+	/// Returns the current amount of active fees for the given pool
+	fn get_pool_fee_count(pool: Self::PoolId) -> u32;
 
 	/// Returns the current amount of active fees for the given pool and bucket
 	/// pair

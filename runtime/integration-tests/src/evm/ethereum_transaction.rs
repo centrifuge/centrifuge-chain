@@ -147,8 +147,7 @@ async fn call() {
 			U256::from(0x100000),
 		);
 
-		// NOTE: WE CAN NOTE CHECK WHETHER THE EVM ERRORS OUT
-		assert!(res.is_ok());
+		assert!(res.is_err());
 	})
 	.unwrap();
 }

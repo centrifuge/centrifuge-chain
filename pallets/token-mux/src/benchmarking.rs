@@ -197,7 +197,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn match_swap_to_local() -> Result<(), BenchmarkError> {
+	fn match_swap() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 

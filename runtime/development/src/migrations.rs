@@ -10,43 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::{
-	usdc::{CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH, LOCAL_ASSET_ID},
-	CurrencyId, LocalAssetId,
-};
-
-frame_support::parameter_types! {
-	pub const UsdcVariants: [CurrencyId; 1] = [CURRENCY_ID_LP_ETH];
-	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
-	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
-	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
-	pub const AnnualTreasuryInflationPercent: u32 = 3;
-}
-
-pub type UpgradeDevelopment1042 = (
-	// Register LocalUSDC
-	runtime_common::migrations::local_currency::register::Migration<
-		super::Runtime,
-		LocalCurrencyIdUsdc,
-	>,
-	// Init local representation for all assets
-	runtime_common::migrations::local_currency::translate_metadata::Migration<
-		super::Runtime,
-		UsdcVariants,
-		LocalAssetIdUsdc,
-	>,
-	// Migrate EpochExecution struct
-	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
-	// Reset pallets
-	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
-	runtime_common::migrations::nuke::ResetPallet<
-		crate::TransferAllowList,
-		crate::RocksDbWeight,
-		0,
-	>,
-	// Apply relative treasury inflation
-	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
-		crate::Runtime,
-		AnnualTreasuryInflationPercent,
-	>,
-);
+/// The migration set for Development & Demo.
+/// It includes all the migrations that have to be applied on that chain.
+pub type UpgradeDevelopment1044 = ();

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{swaps::SwapState, AssetMetadataOf, ConversionToAssetBalance};
+use cfg_traits::{swaps::SwapInfo, AssetMetadataOf, ConversionToAssetBalance};
 use cfg_types::tokens::CurrencyId;
 use frame_support::{derive_impl, parameter_types};
 use frame_system::EnsureRoot;
@@ -27,8 +27,8 @@ pub const FEEDER: u64 = 0x42;
 pub const INITIAL_A: Balance = token_a(1000);
 pub const INITIAL_B: Balance = token_b(1000);
 
-pub const CURRENCY_A: CurrencyId = CurrencyId::ForeignAsset(1);
-pub const CURRENCY_B: CurrencyId = CurrencyId::ForeignAsset(2);
+pub const CURRENCY_A: CurrencyId = CurrencyId::ForeignAsset(1001);
+pub const CURRENCY_B: CurrencyId = CurrencyId::ForeignAsset(1002);
 pub const CURRENCY_A_DECIMALS: u32 = 9;
 pub const CURRENCY_B_DECIMALS: u32 = 12;
 
@@ -79,7 +79,7 @@ impl cfg_mocks::value_provider::pallet::Config for Runtime {
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
-	type Status = SwapState<Balance, Balance, CurrencyId>;
+	type Status = SwapInfo<Balance, Balance, CurrencyId, Ratio>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]

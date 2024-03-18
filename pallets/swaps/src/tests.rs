@@ -1,5 +1,5 @@
 use cfg_traits::{
-	swaps::{OrderInfo, OrderRatio, Swap, SwapState, SwapStatus, Swaps as TSwaps},
+	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, SwapStatus, Swaps as TSwaps},
 	StatusNotificationHook,
 };
 use frame_support::{assert_err, assert_ok};
@@ -446,7 +446,7 @@ mod fulfill {
 		new_test_ext().execute_with(|| {
 			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
 
-			let swap_state = SwapState {
+			let swap_info = SwapInfo {
 				remaining: Swap {
 					amount_out: AMOUNT,
 					currency_in: CURRENCY_A,
@@ -454,25 +454,26 @@ mod fulfill {
 				},
 				swapped_in: AMOUNT * 2,
 				swapped_out: AMOUNT / 2,
+				ratio: Ratio::from_rational(AMOUNT * 2, AMOUNT / 2),
 			};
 
 			FulfilledSwapHook::mock_notify_status_change({
-				let swap_state = swap_state.clone();
+				let swap_info = swap_info.clone();
 				move |id, status| {
 					assert_eq!(id, (USER, SWAP_ID));
-					assert_eq!(status, swap_state);
+					assert_eq!(status, swap_info);
 					Ok(())
 				}
 			});
 
-			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_state));
+			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_info));
 		});
 	}
 
 	#[test]
 	fn skip_notification() {
 		new_test_ext().execute_with(|| {
-			let swap_state = SwapState {
+			let swap_info = SwapInfo {
 				remaining: Swap {
 					amount_out: AMOUNT,
 					currency_in: CURRENCY_A,
@@ -480,11 +481,12 @@ mod fulfill {
 				},
 				swapped_in: AMOUNT * 2,
 				swapped_out: AMOUNT / 2,
+				ratio: Ratio::from_rational(AMOUNT * 2, AMOUNT / 2),
 			};
 
 			// It does not send an event because it's not an order registered in
 			// pallet_swaps
-			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_state));
+			assert_ok!(Swaps::notify_status_change(ORDER_ID, swap_info));
 		});
 	}
 }

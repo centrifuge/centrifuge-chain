@@ -10,8 +10,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-//! Oracle pallet to feed values.
+//
+//! # Oracle Feed Pallet
+//!
+//! Pallet used to feed oracle values.
+//!
 //! Feeding is permissionless given an initial fee for each key.
 //!
 //!

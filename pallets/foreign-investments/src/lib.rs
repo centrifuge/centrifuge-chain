@@ -14,7 +14,7 @@
 //! # Foreign Investment pallet
 //!
 //! Enables investing, redeeming and collecting in foreign and non-foreign
-//! currencies. Can be regarded as an extension of `pallet-investment` which
+//! currencies. Can be regarded as an extension of `pallet-investments` which
 //! provides the same toolset for pool (non-foreign) currencies.
 //!
 //! - [`Pallet`]
@@ -101,17 +101,23 @@ pub mod pallet {
 	};
 	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
 	use frame_support::pallet_prelude::*;
-	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
 
 	use super::*;
 
+	/// The current storage version.
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 	#[pallet::pallet]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	/// Configure the pallet by specifying the parameters and types on which it
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		/// Represents a foreign amount
 		type ForeignBalance: Parameter
 			+ Member
@@ -144,6 +150,9 @@ pub mod pallet {
 
 		/// Any balances used in TokenSwaps
 		type SwapBalance: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
+
+		/// Ratio used for swapping amounts
+		type SwapRatio: Parameter + Member + Copy + MaxEncodedLen + One;
 
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
@@ -258,5 +267,32 @@ pub mod pallet {
 
 		/// The decrease is greater than the current investment/redemption
 		TooMuchDecrease,
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		// The swap is created and now is wating to be fulfilled
+		SwapCreated {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			swap: SwapOf<T>,
+		},
+		// The swap was fulfilled by another participant.
+		SwapFullfilled {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			remaining: SwapOf<T>,
+			swapped_in: T::SwapBalance,
+			swapped_out: T::SwapBalance,
+		},
+		// The swap was fulfilled by cancelling an opposite swap for the same foreign investment.
+		SwapCancelled {
+			who: T::AccountId,
+			swap_id: SwapId<T>,
+			remaining: SwapOf<T>,
+			cancelled_in: T::SwapBalance,
+			opposite_in: T::SwapBalance,
+		},
 	}
 }

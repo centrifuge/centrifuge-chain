@@ -1,4 +1,4 @@
-use cfg_traits::swaps::SwapState;
+use cfg_traits::swaps::SwapInfo;
 use frame_support::derive_impl;
 use sp_runtime::FixedU128;
 
@@ -9,6 +9,7 @@ pub type Balance = u128;
 pub type OrderId = u64;
 pub type SwapId = u32;
 pub type CurrencyId = u8;
+pub type Ratio = FixedU128;
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -29,12 +30,12 @@ impl cfg_mocks::token_swaps::pallet::Config for Runtime {
 	type BalanceOut = Balance;
 	type CurrencyId = CurrencyId;
 	type OrderId = OrderId;
-	type Ratio = FixedU128;
+	type Ratio = Ratio;
 }
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = (AccountId, SwapId);
-	type Status = SwapState<Balance, Balance, CurrencyId>;
+	type Status = SwapInfo<Balance, Balance, CurrencyId, Ratio>;
 }
 
 impl pallet_swaps::Config for Runtime {

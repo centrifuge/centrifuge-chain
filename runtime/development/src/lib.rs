@@ -157,7 +157,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1042,
+	spec_version: 1044,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1092,6 +1092,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
@@ -1121,6 +1122,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type WeightInfo = weights::pallet_pool_fees::WeightInfo<Self>;
 }
 
 pub struct PoolCurrency;
@@ -1820,7 +1822,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = TrancheCurrency;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
@@ -1891,8 +1895,7 @@ impl pallet_token_mux::Config for Runtime {
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = OrmlTokens;
-	// TODO(william): Change to weights once they exist
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_token_mux::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2039,7 +2042,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1042,
+	crate::migrations::UpgradeDevelopment1044,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2110,7 +2113,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage} = 117,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
 

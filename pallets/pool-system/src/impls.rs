@@ -12,7 +12,7 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::{PoolFeeBucket, PoolFees},
+	fee::{PoolFeeBucket, PoolFeesMutate},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };

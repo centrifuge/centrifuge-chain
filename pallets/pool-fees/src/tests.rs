@@ -1365,3 +1365,50 @@ mod disbursements {
 		}
 	}
 }
+
+mod inspect {
+	use cfg_traits::fee::PoolFeesInspect;
+
+	use super::*;
+	use crate::mock::{default_chargeable_fee, NAV};
+
+	#[test]
+	fn max_fee_count() {
+		ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+			assert_eq!(
+				PoolFees::get_max_fee_count(),
+				<Runtime as Config>::MaxFeesPerPool::get()
+			);
+		})
+	}
+
+	#[test]
+	fn max_pool_fees_per_bucket() {
+		ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+			assert_eq!(
+				PoolFees::get_max_fees_per_bucket(),
+				<Runtime as Config>::MaxPoolFeesPerBucket::get()
+			);
+		})
+	}
+
+	#[test]
+	fn pool_fee_count() {
+		ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+			assert_eq!(PoolFees::get_pool_fee_count(POOL), 0u32);
+
+			add_fees(vec![default_chargeable_fee()]);
+			assert_eq!(PoolFees::get_pool_fee_count(POOL), 1u32);
+		})
+	}
+
+	#[test]
+	fn bucket_pool_fee_count() {
+		ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+			assert_eq!(PoolFees::get_pool_fee_bucket_count(POOL, BUCKET), 0u32);
+
+			add_fees(vec![default_chargeable_fee()]);
+			assert_eq!(PoolFees::get_pool_fee_bucket_count(POOL, BUCKET), 1u32);
+		})
+	}
+}

@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.42"
+version = "0.10.44"
 build = "build.rs"
 authors.workspace = true
 edition.workspace = true
