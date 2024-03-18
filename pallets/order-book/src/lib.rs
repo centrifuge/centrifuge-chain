@@ -157,7 +157,7 @@ pub mod pallet {
 		type MinFulfillmentAmountNative: Get<Self::BalanceOut>;
 
 		#[pallet::constant]
-		type NativeCurrency: Get<Self::CurrencyId>;
+		type NativeDecimals: Get<u32>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
@@ -664,16 +664,12 @@ pub mod pallet {
 		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::BalanceOut, DispatchError> {
-			let from_decimals = T::AssetRegistry::metadata(&T::NativeCurrency::get())
-				.ok_or(Error::<T>::InvalidCurrencyId)?
-				.decimals;
-
 			let to_decimals = T::AssetRegistry::metadata(&currency)
 				.ok_or(Error::<T>::InvalidCurrencyId)?
 				.decimals;
 
 			Ok(convert_balance_decimals(
-				from_decimals,
+				T::NativeDecimals::get(),
 				to_decimals,
 				T::MinFulfillmentAmountNative::get().into(),
 			)?

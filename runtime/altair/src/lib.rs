@@ -1702,6 +1702,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 
 parameter_types! {
 	pub MinFulfillmentAmountNative: Balance = 10 * CFG;
+	pub NativeDecimals: u32 = cfg_primitives::currency_decimals::NATIVE;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1714,7 +1715,7 @@ impl pallet_order_book::Config for Runtime {
 	type FeederId = Feeder<RuntimeOrigin>;
 	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
-	type NativeCurrency = NativeToken;
+	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
 	type Ratio = Ratio;
 	type RatioProvider = OracleRatioProviderLocalAssetExtension<

@@ -215,7 +215,7 @@ impl order_book::Config for Runtime {
 	type FeederId = AccountId;
 	type FulfilledOrderHook = MockFulfilledOrderHook;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
-	type NativeCurrency = NativeToken;
+	type NativeDecimals = ConstU32<NATIVE_DECIMALS>;
 	type OrderIdNonce = OrderId;
 	type Ratio = Ratio;
 	type RatioProvider = MockRatioProvider;
@@ -237,17 +237,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
-			(
-				CurrencyId::Native,
-				AssetMetadata {
-					decimals: NATIVE_DECIMALS,
-					name: "Native".as_bytes().to_vec(),
-					symbol: "NAT".as_bytes().to_vec(),
-					existential_deposit: 0,
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			),
 			(
 				CURRENCY_A,
 				AssetMetadata {
