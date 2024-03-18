@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
-use frame_support::traits::fungibles::Mutate as _;
+use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect as _, Mutate};
 use sp_runtime::{traits::checked_pow, FixedPointNumber};
@@ -46,6 +46,19 @@ where
 	T::AssetRegistry: Mutate,
 {
 	pub fn setup_currencies() {
+		T::AssetRegistry::register_asset(
+			Some(T::NativeCurrency::get()),
+			AssetMetadata {
+				decimals: 9,
+				name: "Native".as_bytes().to_vec(),
+				symbol: "NAT".as_bytes().to_vec(),
+				existential_deposit: Zero::zero(),
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+		)
+		.unwrap();
+
 		T::AssetRegistry::register_asset(
 			Some(CURRENCY_IN.into()),
 			AssetMetadata {
