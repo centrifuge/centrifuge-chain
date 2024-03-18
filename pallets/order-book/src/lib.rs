@@ -148,10 +148,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Size of order id bounded vec in storage
-		#[pallet::constant]
-		type OrderPairVecSize: Get<u32>;
-
 		/// The default minimum fulfillment amount for orders.
 		///
 		/// NOTE: The amount is expected to be denominated in native currency.
@@ -437,8 +433,6 @@ pub mod pallet {
 				Ok::<_, DispatchError>(*n)
 			})?;
 
-			dbg!(amount_out);
-			dbg!(min_fulfillment_amount_out);
 			ensure!(
 				amount_out >= min_fulfillment_amount_out,
 				Error::<T>::BelowMinFulfillmentAmount
