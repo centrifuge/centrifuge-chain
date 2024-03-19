@@ -286,7 +286,7 @@ where
 			msg,
 		)
 		.map(|_| ())
-		.map_err(|e| TryDispatchError::Substrate(e))
+		.map_err(TryDispatchError::Substrate)
 		{
 			Err(e) => Err(e.into()),
 			Ok(()) => Ok(()),
