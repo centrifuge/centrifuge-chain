@@ -560,7 +560,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
 				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Utility(pallet_utility::Call::batch{..}) |
+				// Borrowers should be able to swap back and forth between local currencies and their variants
+				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
 			),
 			ProxyType::Invest => matches!(
 				c,
