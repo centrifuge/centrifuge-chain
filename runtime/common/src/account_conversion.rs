@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
-use cfg_traits::TryConvert;
+//use cfg_traits::TryConvert;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
 use sp_core::{Get, H160};
 use sp_runtime::traits::Convert;
-use xcm::*;
+//use staging_xcm::*;
 
 /// Common converter code for translating accounts across different
 /// domains and chains.
@@ -75,15 +75,16 @@ impl<R, XcmConverter> Convert<(Domain, [u8; 32]), AccountId> for AccountConverte
 	}
 }
 
+/* TODO-v1.1.0
 impl<R, XcmConverter> TryConvert<v3::MultiLocation, AccountId> for AccountConverter<R, XcmConverter>
 where
-	XcmConverter: xcm_executor::traits::Convert<v3::MultiLocation, AccountId>,
+	XcmConverter: Convert<v3::MultiLocation, AccountId>,
 {
 	type Error = v3::MultiLocation;
 
 	fn try_convert(location: v3::MultiLocation) -> Result<AccountId, Self::Error> {
 		// Try xcm logic first
-		match XcmConverter::convert_ref(location).ok() {
+		match XcmConverter::convert(location) {
 			Some(acc) => Ok(acc),
 			None => {
 				// match EVM logic
@@ -102,6 +103,7 @@ where
 		}
 	}
 }
+*/
 
 #[cfg(test)]
 mod tests {

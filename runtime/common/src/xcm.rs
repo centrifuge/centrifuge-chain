@@ -17,19 +17,18 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	EVMChainId, ParaId,
 };
-use frame_support::{
-	sp_std::marker::PhantomData,
-	traits::{fungibles::Mutate, Everything, Get},
-};
-use polkadot_parachain::primitives::Sibling;
+use frame_support::traits::{fungibles::Mutate, Everything, Get};
+use frame_system::pallet_prelude::BlockNumberFor;
+use polkadot_parachain_primitives::primitives::Sibling;
 use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
-use xcm::v3::{
+use sp_std::marker::PhantomData;
+use staging_xcm::v3::{
 	prelude::*,
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
 	Junctions::{X1, X2},
 	MultiAsset, MultiLocation, NetworkId, OriginKind,
 };
-use xcm_builder::{
+use staging_xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ParentIsPreset, SiblingParachainConvertsVia,
 	SignedToAccountId32, TakeRevenue, TakeWeightCredit,
@@ -63,7 +62,7 @@ impl<
 
 /// A utils function to un-bloat and simplify the instantiation of
 /// `GeneralKey` values
-pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
+pub fn general_key(data: &[u8]) -> staging_xcm::latest::Junction {
 	GeneralKey {
 		length: data.len().min(32) as u8,
 		data: cfg_utils::vec_to_fixed_array(data.to_vec()),
@@ -87,7 +86,7 @@ where
 
 pub struct LpInstanceRelayer<ParaAsEvmChain, Runtime>(PhantomData<(ParaAsEvmChain, Runtime)>);
 impl<ParaAsEvmChain, Runtime>
-	xcm_executor::traits::ConvertOrigin<<Runtime as frame_system::Config>::RuntimeOrigin>
+	staging_xcm_executor::traits::ConvertOrigin<<Runtime as frame_system::Config>::RuntimeOrigin>
 	for LpInstanceRelayer<ParaAsEvmChain, Runtime>
 where
 	ParaAsEvmChain: TryConvert<ParaId, EVMChainId>,
@@ -145,8 +144,7 @@ where
 {
 	fn get() -> Option<NetworkId> {
 		Some(NetworkId::ByGenesis(
-			frame_system::BlockHash::<T>::get(<T as frame_system::Config>::BlockNumber::zero())
-				.into(),
+			frame_system::BlockHash::<T>::get(BlockNumberFor::<T>::zero()).into(),
 		))
 	}
 }
@@ -177,12 +175,12 @@ where
 /// reverse-lookup using the AssetRegistry. In the registry, we register CFG
 /// using its absolute, non-anchored MultliLocation so we need to unanchor the
 /// input location for Centrifuge-native assets for that to work.
-impl<T> xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert<T>
+impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
 		+ parachain_info::Config,
 {
-	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		let para_id = parachain_info::Pallet::<T>::parachain_id();
 		let unanchored_location = match location {
 			MultiLocation {
@@ -192,12 +190,12 @@ where
 				parents: 1,
 				interior: interior
 					.pushed_front_with(Parachain(u32::from(para_id)))
-					.map_err(|_| location)?,
+					.ok()?,
 			},
 			x => x,
 		};
 
-		orml_asset_registry::Pallet::<T>::location_to_asset_id(unanchored_location).ok_or(location)
+		orml_asset_registry::Pallet::<T>::location_to_asset_id(unanchored_location)
 	}
 }
 
@@ -213,7 +211,7 @@ where
 			..
 		} = asset
 		{
-			<Self as xcm_executor::traits::Convert<_, _>>::convert(location).ok()
+			Self::convert(location)
 		} else {
 			None
 		}
@@ -228,16 +226,12 @@ where
 		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
 	fn take_revenue(revenue: MultiAsset) {
-		use xcm_executor::traits::Convert;
-
 		if let MultiAsset {
 			id: Concrete(location),
 			fun: Fungible(amount),
 		} = revenue
 		{
-			if let Ok(currency_id) =
-				<CurrencyIdConvert<T> as Convert<MultiLocation, CurrencyId>>::convert(location)
-			{
+			if let Some(currency_id) = CurrencyIdConvert::<T>::convert(location) {
 				let treasury_account = cfg_types::ids::TREASURY_PALLET_ID.into_account_truncating();
 				let _ = pallet_restricted_tokens::Pallet::<T>::mint_into(
 					currency_id,
@@ -282,37 +276,24 @@ mod test {
 		RouterMock,
 	};
 	use cfg_primitives::OutboundMessageNonce;
-	use frame_support::{assert_ok, traits::EnsureOrigin};
+	use frame_support::{assert_ok, derive_impl, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
 	use pallet_liquidity_pools_gateway::{EnsureLocal, GatewayOrigin};
-	use sp_core::{ConstU16, ConstU32, ConstU64, H256};
-	use sp_runtime::{
-		testing::Header,
-		traits::{BlakeTwo256, IdentityLookup},
-		DispatchError,
-	};
-	use xcm_executor::traits::ConvertOrigin;
+	use sp_core::{ConstU32, ConstU64};
+	use sp_runtime::DispatchError;
+	use staging_xcm_executor::traits::ConvertOrigin;
 
 	use super::*;
 
-	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type AccountId = u64;
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap()
-			.into()
+		System::externalities()
 	}
 
 	// For testing the pallet, we construct a mock runtime.
 	frame_support::construct_runtime!(
-		pub enum Runtime where
-			Block = Block,
-			NodeBlock = Block,
-			UncheckedExtrinsic = UncheckedExtrinsic,
-		{
+		pub enum Runtime {
 			System: frame_system,
 			Gateway: pallet_liquidity_pools_gateway,
 			MockLP: pallet_mock_liquidity_pools,
@@ -321,31 +302,9 @@ mod test {
 		}
 	);
 
+	#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 	impl frame_system::Config for Runtime {
-		type AccountData = ();
-		type AccountId = AccountId;
-		type BaseCallFilter = frame_support::traits::Everything;
-		type BlockHashCount = ConstU64<250>;
-		type BlockLength = ();
-		type BlockNumber = u64;
-		type BlockWeights = ();
-		type DbWeight = ();
-		type Hash = H256;
-		type Hashing = BlakeTwo256;
-		type Header = Header;
-		type Index = u64;
-		type Lookup = IdentityLookup<Self::AccountId>;
-		type MaxConsumers = ConstU32<16>;
-		type OnKilledAccount = ();
-		type OnNewAccount = ();
-		type OnSetCode = ();
-		type PalletInfo = PalletInfo;
-		type RuntimeCall = RuntimeCall;
-		type RuntimeEvent = RuntimeEvent;
-		type RuntimeOrigin = RuntimeOrigin;
-		type SS58Prefix = ConstU16<42>;
-		type SystemWeightInfo = ();
-		type Version = ();
+		type Block = frame_system::mocking::MockBlock<Runtime>;
 	}
 
 	impl pallet_mock_try_convert::Config<pallet_mock_try_convert::Instance1> for Runtime {

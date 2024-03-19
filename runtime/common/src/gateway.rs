@@ -12,7 +12,7 @@
 
 use cfg_primitives::AccountId;
 use pallet_evm::AddressMapping;
-use polkadot_parachain::primitives::Sibling;
+use polkadot_parachain_primitives::primitives::Sibling;
 use sp_core::{crypto::AccountId32, Get, H160};
 use sp_runtime::traits::AccountIdConversion;
 
@@ -23,7 +23,7 @@ pub struct GatewayAccountProvider<T, XcmConverter>(core::marker::PhantomData<(T,
 impl<T, XcmConverter> GatewayAccountProvider<T, XcmConverter>
 where
 	T: pallet_evm_chain_id::Config + parachain_info::Config,
-	XcmConverter: xcm_executor::traits::Convert<xcm::v3::MultiLocation, AccountId>,
+	XcmConverter: sp_runtime::traits::Convert<staging_xcm::v3::MultiLocation, AccountId>,
 {
 	pub fn get_gateway_account() -> AccountId {
 		let sender_account: AccountId =

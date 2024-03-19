@@ -11,9 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{LoanId, PoolId};
-use frame_support::{dispatch::TypeInfo, parameter_types, BoundedVec};
+use frame_support::{parameter_types, BoundedVec};
+use scale_info::TypeInfo;
 use sp_runtime::codec::{Decode, Encode};
-use sp_std::vec;
 
 parameter_types! {
 	pub const IpfsHashLength: u32 = 64;
@@ -34,6 +34,6 @@ pub enum Remark {
 
 impl Default for Remark {
 	fn default() -> Self {
-		Remark::Named(BoundedVec::try_from(vec![]).unwrap())
+		Remark::Named(BoundedVec::default())
 	}
 }

@@ -17,10 +17,11 @@ use cfg_types::{
 	locations::Location,
 	tokens::{CurrencyId, FilterCurrency},
 };
-use frame_support::{dispatch::TypeInfo, traits::IsSubType, RuntimeDebugNoBound};
+use frame_support::{traits::IsSubType, RuntimeDebugNoBound};
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use sp_core::Hasher;
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
@@ -28,7 +29,8 @@ use sp_runtime::{
 	DispatchError, DispatchResult, TokenError,
 };
 use sp_std::vec::Vec;
-use xcm::v3::{MultiAsset, MultiLocation};
+use staging_xcm::v3::{MultiAsset, MultiLocation};
+
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
