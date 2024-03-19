@@ -18,25 +18,6 @@ fn main() {
 		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
-	/*
-	match Command::new("git")
-		.args(&["fetch", "--all", "--recurse-submodules=yes"])
-		.output()
-	{
-		Ok(o) if o.status.success() => {}
-		Ok(o) => {
-			println!(
-				"cargo:warning=Git fetch failed with: \n  - status: {}\n   -stderr: {}",
-				o.status,
-				String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
-			);
-		}
-		Err(err) => {
-			println!("cargo:warning=Failed to execute git command: {}", err);
-		}
-	}
-	 */
-
 	let mut verified_dir = Vec::new();
 	for path in paths {
 		if let Ok(dir_entry) = path.as_ref() {

@@ -188,7 +188,7 @@ pub trait EvmEnv<T: Runtime> {
 		&mut self,
 		name: impl Into<String>,
 		contract: impl Into<String>,
-		address: H160,
+		address: Option<H160>,
 	) -> &mut Self;
 
 	fn contract(&self, name: impl Into<String>) -> ContractInfo;

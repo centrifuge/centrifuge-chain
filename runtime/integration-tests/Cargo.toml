@@ -12,6 +12,7 @@ build = "build.rs"
 [dependencies]
 ethabi = { workspace = true, features = ["std", "full-serde"] }
 ethereum = { workspace = true, features = ["std"] }
+evm = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
 fudge-core = { workspace = true }
 getrandom = { workspace = true }
@@ -20,10 +21,10 @@ hex-literal = { workspace = true }
 lazy_static = { workspace = true }
 parity-scale-codec = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing-subscriber = { workspace = true }
-serde_json = { workspace = true }
 
 node-primitives = { workspace = true, features = ["std"] }
 sc-block-builder = { workspace = true }
