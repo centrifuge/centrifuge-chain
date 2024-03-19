@@ -692,9 +692,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.4.2"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
+checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
 
 [[package]]
 name = "bitvec"
@@ -839,9 +839,9 @@ checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
 
 [[package]]
 name = "bs58"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5353f36341f7451062466f0b755b96ac3a9547e4d7f6b70d603fc721a7d7896"
+checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
  "tinyvec",
 ]
@@ -2771,7 +2771,7 @@ dependencies = [
 [[package]]
 name = "fp-account"
 version = "1.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "hex",
  "impl-serde",
@@ -2790,7 +2790,7 @@ dependencies = [
 [[package]]
 name = "fp-consensus"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "ethereum",
  "parity-scale-codec 3.6.9",
@@ -2802,7 +2802,7 @@ dependencies = [
 [[package]]
 name = "fp-ethereum"
 version = "1.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "ethereum",
  "ethereum-types 0.14.1",
@@ -2830,7 +2830,7 @@ dependencies = [
 [[package]]
 name = "fp-evm"
 version = "3.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "evm 0.39.1 (git+https://github.com/rust-blockchain/evm?rev=b7b82c7e1fc57b7449d6dfa6826600de37cc1e65)",
  "frame-support",
@@ -2846,7 +2846,7 @@ dependencies = [
 [[package]]
 name = "fp-rpc"
 version = "3.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "ethereum",
  "ethereum-types 0.14.1",
@@ -2863,7 +2863,7 @@ dependencies = [
 [[package]]
 name = "fp-self-contained"
 version = "1.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "frame-support",
  "parity-scale-codec 3.6.9",
@@ -2875,7 +2875,7 @@ dependencies = [
 [[package]]
 name = "fp-storage"
 version = "2.0.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "parity-scale-codec 3.6.9",
  "serde",
@@ -4409,7 +4409,7 @@ version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85c833ca1e66078851dba29046874e38f08b2c883700aa29a03ddd3b23814ee8"
 dependencies = [
- "bitflags 2.4.2",
+ "bitflags 2.5.0",
  "libc",
  "redox_syscall 0.4.1",
 ]
@@ -5539,7 +5539,7 @@ dependencies = [
 [[package]]
 name = "pallet-base-fee"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "frame-support",
@@ -5774,7 +5774,7 @@ dependencies = [
 [[package]]
 name = "pallet-ethereum"
 version = "4.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "ethereum",
  "ethereum-types 0.14.1",
@@ -5845,7 +5845,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "environmental",
  "evm 0.39.1 (git+https://github.com/rust-blockchain/evm?rev=b7b82c7e1fc57b7449d6dfa6826600de37cc1e65)",
@@ -5871,7 +5871,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-chain-id"
 version = "1.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5905,7 +5905,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-blake2"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
 ]
@@ -5913,7 +5913,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-bn128"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "sp-core 21.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
@@ -5923,7 +5923,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-dispatch"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "frame-support",
@@ -5935,7 +5935,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-modexp"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "num",
@@ -5944,7 +5944,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-sha3fips"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "tiny-keccak",
@@ -5953,7 +5953,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-simple"
 version = "2.0.0-dev"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "fp-evm 3.0.0-dev (git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0)",
  "ripemd",
@@ -7120,7 +7120,7 @@ name = "polkadot-node-metrics"
 version = "1.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
 dependencies = [
- "bs58 0.5.0",
+ "bs58 0.5.1",
  "futures",
  "futures-timer",
  "log",
@@ -7321,7 +7321,7 @@ name = "polkadot-runtime-metrics"
 version = "1.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
 dependencies = [
- "bs58 0.5.0",
+ "bs58 0.5.1",
  "frame-benchmarking",
  "parity-scale-codec 3.6.9",
  "polkadot-primitives",
@@ -7464,7 +7464,7 @@ dependencies = [
 [[package]]
 name = "precompile-utils"
 version = "0.1.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "environmental",
  "evm 0.39.1 (git+https://github.com/rust-blockchain/evm?rev=b7b82c7e1fc57b7449d6dfa6826600de37cc1e65)",
@@ -7501,7 +7501,7 @@ dependencies = [
 [[package]]
 name = "precompile-utils-macro"
 version = "0.1.0"
-source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#de5a3df59d3ada67c8cacdb79e607ad0b229ec5b"
+source = "git+https://github.com/polkadot-evm/frontier?branch=polkadot-v1.1.0#7544791796a93e85716241b72ba68b7c7231376f"
 dependencies = [
  "case",
  "num_enum 0.7.2",
@@ -8390,7 +8390,7 @@ version = "0.38.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ea3e1a662af26cd7a3ba09c0297a31af215563ecf42817c98df621387f4e949"
 dependencies = [
- "bitflags 2.4.2",
+ "bitflags 2.5.0",
  "errno",
  "libc",
  "linux-raw-sys 0.4.13",
@@ -9822,7 +9822,7 @@ dependencies = [
  "bitflags 1.3.2",
  "blake2",
  "bounded-collections",
- "bs58 0.5.0",
+ "bs58 0.5.1",
  "dyn-clonable",
  "ed25519-zebra",
  "futures",
@@ -9869,7 +9869,7 @@ dependencies = [
  "bitflags 1.3.2",
  "blake2",
  "bounded-collections",
- "bs58 0.5.0",
+ "bs58 0.5.1",
  "dyn-clonable",
  "ed25519-zebra",
  "futures",
@@ -11091,7 +11091,7 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c5bb1d698276a2443e5ecfabc1008bf15a36c12e6a7176e7bf089ea9131140"
 dependencies = [
- "bitflags 2.4.2",
+ "bitflags 2.5.0",
  "bytes",
  "futures-core",
  "futures-util",
