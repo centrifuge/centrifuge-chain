@@ -160,23 +160,12 @@ pub mod pallet {
 			// NOTE: The Ethereuem side of things never returns a DispatchError
 			//       if the execution failed. But we can check that manually by
 			//       querying the `Pending` storage of the pallet-ethereum.
-			let receipt = frame_support::storage::transactional::with_transaction(|| {
-				// We do not want to apply an on_finalize, we just want to emulate the value
-				// after it to fet the resulting receipt.
-				pallet_ethereum::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
+			let pending = pallet_ethereum::Pending::<T>::get();
+			let (_, _, receipt) = pending.last().ok_or(DispatchError::Other(
+				"Ethereum not adding pending storage. Unexpected.",
+			))?;
 
-				let receipt = match pallet_ethereum::CurrentReceipts::<T>::get() {
-					Some(list) => list.last().cloned().ok_or(DispatchError::Other(
-						"Ethereum not adding pending storage. Unexpected.",
-					)),
-					None => Err(DispatchError::Other("Should have some receipts")),
-				};
-
-				// only check if there is no error in applying it
-				sp_runtime::TransactionOutcome::Rollback(receipt)
-			})?;
-
-			if Pallet::<T>::valid_code(&receipt) {
+			if Pallet::<T>::valid_code(receipt) {
 				Ok(info)
 			} else {
 				Err(Error::<T>::EvmExecutionFailed.into())
