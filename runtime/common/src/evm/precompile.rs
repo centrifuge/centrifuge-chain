@@ -13,7 +13,7 @@
 use core::marker::PhantomData;
 
 use frame_support::traits::Get;
-use pallet_evm_precompile_balances_erc20::{Erc20BalancesPrecompile, Erc20Metadata};
+//use pallet_evm_precompile_balances_erc20::{Erc20BalancesPrecompile, Erc20Metadata};
 use pallet_evm_precompile_blake2::Blake2F;
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
 use pallet_evm_precompile_dispatch::Dispatch;
@@ -23,6 +23,7 @@ use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripe
 use precompile_utils::precompile_set::*;
 use sp_core::H160;
 
+/*
 pub struct NativeErc20Metadata<Symbol>(PhantomData<Symbol>);
 impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
 	fn name() -> &'static str {
@@ -41,6 +42,7 @@ impl<Symbol: Get<&'static str>> Erc20Metadata for NativeErc20Metadata<Symbol> {
 		true
 	}
 }
+*/
 
 type EthereumPrecompilesChecks = (AcceptDelegateCall, CallableByContract, CallableByPrecompile);
 
@@ -51,7 +53,7 @@ type EthereumPrecompilesChecks = (AcceptDelegateCall, CallableByContract, Callab
 pub const LP_AXELAR_GATEWAY: u64 = 0x800;
 
 #[precompile_utils::precompile_name_from_address]
-pub type RuntimePrecompilesAt<R, Symbol> = (
+pub type RuntimePrecompilesAt<R> = (
 	// Ethereum precompiles:
 	// We allow DELEGATECALL to stay compliant with Ethereum behavior.
 	PrecompileAt<AddressU64<0x1>, ECRecover, EthereumPrecompilesChecks>,
@@ -68,11 +70,11 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	PrecompileAt<AddressU64<0x401>, Dispatch<R>>,
 	PrecompileAt<AddressU64<0x402>, ECRecoverPublicKey, (CallableByContract, CallableByPrecompile)>,
 	// Moonbeam specific precompiles:
-	PrecompileAt<
+	/*PrecompileAt<
 		AddressU64<0x802>,
 		Erc20BalancesPrecompile<R, NativeErc20Metadata<Symbol>>,
 		(CallableByContract, CallableByPrecompile),
-	>,
+	>,*/
 	// Centrifuge specific precompiles:
 	PrecompileAt<
 		AddressU64<LP_AXELAR_GATEWAY>,
@@ -81,7 +83,7 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	>,
 );
 
-pub type Precompiles<R, Symbol> = PrecompileSetBuilder<R, RuntimePrecompilesAt<R, Symbol>>;
+pub type Precompiles<R> = PrecompileSetBuilder<R, RuntimePrecompilesAt<R>>;
 
 pub trait H160Addresses {
 	fn h160_addresses() -> impl Iterator<Item = H160>;

@@ -42,7 +42,7 @@ members = [
   "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
-  #"runtime/development",
+  "runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
 ]
@@ -311,7 +311,7 @@ vergen = "3.0.4"
 # of such dependencies to add the corresponding patch in the patch section below.
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
-pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
+#pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 
 # Cargo patch for moonbeam crates
 #
