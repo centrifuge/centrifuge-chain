@@ -71,6 +71,7 @@ tokio = { version = "1.15", features = ["macros"] }
 tracing-subscriber = "0.2"
 ethabi = { version = "16.0", default-features = false }
 ethereum = { version = "0.14.0", default-features = false }
+evm = { git = "https://github.com/moonbeam-foundation/evm", rev = "a33ac87ad7462b7e7029d12c385492b2a8311d1c", default-features = false }
 async-trait = "0.1"
 clap = { version = "4.0.9", features = ["derive"] }
 futures = "0.3.25"

@@ -8,7 +8,7 @@ use sp_runtime::DispatchError;
 use crate::{
 	generic::{
 		config::Runtime,
-		env,
+		env, utils,
 		utils::{
 			evm,
 			evm::{ContractInfo, DeployedContractInfo},
@@ -18,7 +18,7 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-const GAS_LIMIT: u64 = 5_000_000;
+const GAS_LIMIT: u64 = 15_000_000;
 const VALIDATE: bool = true;
 const TRANSACTIONAL: bool = true;
 
@@ -82,10 +82,31 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 		&mut self,
 		name: impl Into<String>,
 		contract: impl Into<String>,
-		address: H160,
+		address: Option<H160>,
 	) -> &mut Self {
 		let contract = self.contract(contract);
-		let runtime_code = pallet_evm::AccountCodes::<T>::get(address);
+		let (address, runtime_code) = if let Some(given) = address {
+			let code = pallet_evm::AccountCodes::<T>::get(given);
+			assert_eq!(
+				code, contract.deployed_bytecode,
+				"Can not register contract. Contract bytecode not matching."
+			);
+
+			(given, code)
+		} else {
+			let mut found = pallet_evm::AccountCodes::<T>::iter()
+				.filter(|(_, code)| code == &contract.deployed_bytecode)
+				.collect::<Vec<_>>();
+
+			assert_eq!(
+				found.len(),
+				1,
+				"Can not register contract. Multiple where found."
+			);
+
+			found.pop().expect("Len is one. qed.")
+		};
+
 		self.deployed_contracts.insert(
 			name.into(),
 			DeployedContractInfo::new(
@@ -139,23 +160,29 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 				who.into(),
 				init,
 				0u8.into(),
-				GAS_LIMIT,
+				10 * GAS_LIMIT,
 				Some(base_fee),
 				None,
 				None,
 				Vec::new(),
-				// NOTE: Taken from pallet-evm implementation
-				VALIDATE,
-				// NOTE: Taken from pallet-evm implementation
-				TRANSACTIONAL,
+				false,
+				false,
 				None,
 				None,
-				<T as pallet_evm::Config>::config(),
+				// NOTE: We are using a non standard config here to be able to use large contracts
+				//       that are foundry based deployers
+				&evm::deployment_config(),
 			)
-			.expect(ESSENTIAL)
+			.expect("Contract creation failed.")
 		};
 
-		self.register(name, what, create_info.value)
+		assert!(
+			matches!(create_info.exit_reason, ExitReason::Succeed(_)),
+			"{}",
+			format!("Contract creation failed: {:?}", create_info.exit_reason)
+		);
+
+		self.register(name, what, Some(create_info.value))
 	}
 
 	fn call(
@@ -194,9 +221,9 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			None,
 			Vec::new(),
 			// NOTE: Taken from pallet-evm implementation
-			VALIDATE,
-			// NOTE: Taken from pallet-evm implementation
 			TRANSACTIONAL,
+			// NOTE: Taken from pallet-evm implementation
+			VALIDATE,
 			None,
 			None,
 			<T as pallet_evm::Config>::config(),

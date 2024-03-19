@@ -10982,6 +10982,7 @@ dependencies = [
  "development-runtime",
  "ethabi",
  "ethereum",
+ "evm",
  "fp-self-contained",
  "frame-support",
  "frame-system",

@@ -13,6 +13,9 @@
 //! Testing essential account derivations that are done in the runtime
 
 use cfg_primitives::AccountId;
+use cfg_types::tokens::{CurrencyId, LocalAssetId};
+use hex_literal::hex;
+use parity_scale_codec::Encode;
 use runtime_common::apis::runtime_decl_for_account_conversion_api::AccountConversionApi;
 use sp_runtime::traits::{Get, Zero};
 use xcm::v3::{
@@ -56,16 +59,16 @@ fn local_evm_account<T: Runtime>() {
 		T::Api::conversion_of(MultiLocation::new(
 			0,
 			X1(AccountKey20 {
-				key: KEY_20,
-				network: network_id(pallet_evm_chain_id::Pallet::<T>::get()),
+				key: hex!("6854f6671c1934c77cf7592b0b264f762614014e"),
+				network: network_id(42220),
 			}),
 		))
 		.unwrap()
 	});
 
 	assert_eq!(
-		evm_derivation_copy(env.parachain_state(pallet_evm_chain_id::Pallet::<T>::get)),
-		derived
+		evm_derivation_copy(env.parachain_state(pallet_evm_chain_id::Pallet::<T>::get)).to_string(),
+		derived.to_string()
 	);
 }
 
@@ -204,6 +207,16 @@ fn remote_account_on_relay<T: Runtime>() {
 	);
 }
 
+#[test]
+fn test() {
+	let hex= hex::decode("0406000000080000000000b34c137000000000d22c7fa5727badcc7a92b60bf581c56c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f47ef0650000000001cddcb0caa04ad1b53c2e3b0300000000000014bbf08ac60201000000b34c137000000000c988c10a808bed8ec048f2e62c90d9bb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f47ef0650000000008d22c7fa5727badcc7a92b60bf581c56cc988c10a808bed8ec048f2e62c90d9bb0200000000000000b34c1370000000002c010000000000003c000000000000000001000000f47ef065000000000000000000a0724e1809000000000000000000000000000000000000000000000000000000000000000000000000000000000000").unwrap();
+	let mut pool: pallet_pool_system::PoolDetailsOf<centrifuge_runtime::Runtime> =
+		parity_scale_codec::Decode::decode(&mut hex.as_slice()).unwrap();
+	pool.currency = CurrencyId::ForeignAsset(100005);
+
+	panic!("0x{}", hex::encode(pool.encode()));
+}
+
 fn remote_account_on_sibling<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -211,9 +224,9 @@ fn remote_account_on_sibling<T: Runtime>() {
 		T::Api::conversion_of(MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachain_info::Pallet::<T>::get().into()),
+				Parachain(2031),
 				AccountId32 {
-					id: KEY_32,
+					id: hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"),
 					network: Some(NetworkId::ByGenesis(
 						frame_system::BlockHash::<T>::get(T::BlockNumber::zero()).0,
 					)),
@@ -227,8 +240,9 @@ fn remote_account_on_sibling<T: Runtime>() {
 		AccountId::new([
 			126, 34, 185, 2, 219, 222, 98, 177, 214, 201, 96, 61, 209, 76, 224, 101, 48, 109, 75,
 			24, 52, 172, 163, 5, 23, 233, 74, 249, 105, 114, 211, 143
-		]),
-		derived
+		])
+		.to_string(),
+		derived.to_string()
 	);
 }
 
