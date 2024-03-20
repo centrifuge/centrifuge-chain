@@ -35,7 +35,6 @@ pallet-aura = { workspace = true }
 [dev-dependencies]
 pallet-authorship = { workspace = true, default-features = true }
 sp-consensus-aura = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 cfg-mocks = { workspace = true, default-features = true }
 

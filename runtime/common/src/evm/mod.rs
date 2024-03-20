@@ -17,7 +17,7 @@ use sp_core::{crypto::ByteArray, H160};
 use sp_runtime::{ConsensusEngineId, Permill};
 use sp_std::marker::PhantomData;
 
-pub mod precompile;
+//pub mod precompile;
 
 // From Moonbeam:
 //

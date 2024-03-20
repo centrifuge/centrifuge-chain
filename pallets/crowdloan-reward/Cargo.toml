@@ -34,7 +34,6 @@ cfg-types = { workspace = true, default_features = true }
 pallet-vesting = { workspace = true, default_features = true }
 serde = { workspace = true }
 sp-core = { workspace = true, default_features = true }
-sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

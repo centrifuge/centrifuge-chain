@@ -39,7 +39,6 @@ pallet-balances = { workspace = true, default-features = true }
 pallet-restricted-tokens = { workspace = true, default-features = true }
 pallet-rewards = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

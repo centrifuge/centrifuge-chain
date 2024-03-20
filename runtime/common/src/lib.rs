@@ -21,7 +21,7 @@ pub mod changes;
 pub mod evm;
 pub mod fees;
 pub mod gateway;
-pub mod migrations;
+//pub mod migrations;
 pub mod oracle;
 pub mod remarks;
 pub mod transfer_filter;
@@ -362,6 +362,7 @@ pub mod investment_portfolios {
 	}
 }
 
+/*
 pub mod xcm_transactor {
 	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
@@ -385,6 +386,7 @@ pub mod xcm_transactor {
 		}
 	}
 }
+*/
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
@@ -451,6 +453,7 @@ pub mod foreign_investments {
 	}
 }
 
+/*
 pub mod liquidity_pools {
 	use cfg_primitives::{Balance, PoolId, TrancheId};
 	use cfg_types::{domain_address::Domain, fixed_point::Ratio};
@@ -458,6 +461,7 @@ pub mod liquidity_pools {
 	pub type LiquidityPoolsMessage =
 		pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 }
+*/
 
 pub mod origin {
 	use cfg_primitives::AccountId;

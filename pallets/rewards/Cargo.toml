@@ -30,7 +30,6 @@ orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true }
 serde = { workspace = true }
 sp-core = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

@@ -31,7 +31,6 @@ pallet-authorship = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-fees = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

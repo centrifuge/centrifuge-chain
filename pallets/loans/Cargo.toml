@@ -35,7 +35,6 @@ frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 pallet-balances = { workspace = true, default-features = true }
 pallet-interest-accrual = { workspace = true, default-features = true }

@@ -28,7 +28,6 @@ frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

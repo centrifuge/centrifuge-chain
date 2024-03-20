@@ -47,7 +47,6 @@ pallet-timestamp = { workspace = true, default-features = true }
 parachain-info = { workspace = true, default-features = true }
 serde = { workspace = true }
 sp-core = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

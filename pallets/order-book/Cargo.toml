@@ -38,7 +38,6 @@ cfg-test-utils = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-restricted-tokens = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

@@ -21,10 +21,9 @@ members = [
   "pallets/interest-accrual",
   "pallets/investments",
   "pallets/keystore",
-  "pallets/liquidity-pools",
+  #"pallets/liquidity-pools",
   "pallets/liquidity-pools-gateway",
-  "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
-  "pallets/liquidity-pools-gateway/routers",
+  #"pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -252,8 +251,6 @@ mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch
 pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0", default-features = false }
 
 # Centrifuge pallets
-axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
-liquidity-pools-gateway-routers = { path = "pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
@@ -266,7 +263,6 @@ pallet-foreign-investments = { path = "pallets/foreign-investments", default-fea
 pallet-interest-accrual = { path = "pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "pallets/investments", default-features = false }
 pallet-keystore = { path = "pallets/keystore", default-features = false }
-pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = false }
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
@@ -309,8 +305,8 @@ vergen = "3.0.4"
 # We need to patch their dependencies to avoid duplicate same crates.
 # NOTE: If new moonbeam dependencies must be added, please check the Cargo.toml file
 # of such dependencies to add the corresponding patch in the patch section below.
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
-pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
+#xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
+#pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 #pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 
 # Cargo patch for moonbeam crates
@@ -325,20 +321,3 @@ pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam
 # - xcm-primitives
 # - pallet-xcm-transactor
 # - pallet-evm-precompile-balances-erc20 (not all dependencies patched due precompile-utils incompatibility)
-[patch."https://github.com/moonbeam-foundation/polkadot-sdk"]
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-staging-xcm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-staging-xcm-executor = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-
-[patch."https://github.com/moonbeam-foundation/open-runtime-module-library"]
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }

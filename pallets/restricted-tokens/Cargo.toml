@@ -37,7 +37,6 @@ cfg-types = { workspace = true, default_features = true }
 orml-tokens = { workspace = true, default_features = true }
 orml-traits = { workspace = true, default_features = true }
 pallet-balances = { workspace = true, default_features = true }
-sp-io = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

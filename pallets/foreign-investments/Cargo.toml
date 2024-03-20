@@ -29,7 +29,6 @@ frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, default-features = true }
-sp-io = { workspace = true, default-features = true }
 
 cfg-mocks = { workspace = true, default-features = true }
 pallet-swaps = { workspace = true, default-features = true }

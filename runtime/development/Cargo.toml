@@ -51,7 +51,6 @@ polkadot-runtime-common = { workspace = true }
 staging-xcm = { workspace = true }
 staging-xcm-builder = { workspace = true }
 staging-xcm-executor = { workspace = true }
-xcm-primitives = { workspace = true }
 
 orml-traits = { workspace = true }
 orml-xcm-support = { workspace = true }
@@ -63,11 +62,9 @@ fp-self-contained = { workspace = true }
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
-liquidity-pools-gateway-routers = { workspace = true }
 runtime-common = { workspace = true }
 
 # Pallet list
-axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-dmp-queue = { workspace = true }
@@ -102,7 +99,6 @@ pallet-identity = { workspace = true }
 pallet-interest-accrual = { workspace = true }
 pallet-investments = { workspace = true }
 pallet-keystore = { workspace = true }
-pallet-liquidity-pools = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
@@ -134,7 +130,6 @@ pallet-uniques = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
-pallet-xcm-transactor = { workspace = true }
 parachain-info = { workspace = true }
 
 [build-dependencies]
@@ -177,7 +172,6 @@ std = [
   "staging-xcm/std",
   "staging-xcm-builder/std",
   "staging-xcm-executor/std",
-  "xcm-primitives/std",
   "orml-traits/std",
   "orml-xcm-support/std",
   "fp-rpc/std",
@@ -191,10 +185,8 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "runtime-common/std",
-  "liquidity-pools-gateway-routers/std",
 
   # Pallet list
-  "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-dmp-queue/std",
@@ -229,7 +221,6 @@ std = [
   "pallet-interest-accrual/std",
   "pallet-investments/std",
   "pallet-keystore/std",
-  "pallet-liquidity-pools/std",
   "pallet-liquidity-pools-gateway/std",
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
@@ -261,7 +252,6 @@ std = [
   "pallet-utility/std",
   "pallet-vesting/std",
   "pallet-xcm/std",
-  "pallet-xcm-transactor/std",
   "parachain-info/std",
 ]
 
@@ -278,7 +268,6 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "staging-xcm-builder/runtime-benchmarks",
   "staging-xcm-executor/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
   "polkadot-runtime-common/runtime-benchmarks",
   "polkadot-parachain-primitives/runtime-benchmarks",
 
@@ -287,10 +276,8 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
-  "liquidity-pools-gateway-routers/runtime-benchmarks",
 
   # Pallet list
-  "axelar-gateway-precompile/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -317,7 +304,6 @@ runtime-benchmarks = [
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
-  "pallet-liquidity-pools/runtime-benchmarks",
   "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
@@ -347,7 +333,6 @@ runtime-benchmarks = [
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
-  "pallet-xcm-transactor/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -367,10 +352,8 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "runtime-common/try-runtime",
-  "liquidity-pools-gateway-routers/try-runtime",
 
   # Pallet list
-  "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
@@ -405,7 +388,6 @@ try-runtime = [
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
   "pallet-keystore/try-runtime",
-  "pallet-liquidity-pools/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
@@ -437,7 +419,6 @@ try-runtime = [
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
-  "pallet-xcm-transactor/try-runtime",
   "parachain-info/try-runtime",
 ]
 
