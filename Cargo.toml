@@ -14,13 +14,11 @@ members = [
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
   "pallets/crowdloan-reward",
-  "pallets/ethereum-transaction",
   "pallets/fees",
   "pallets/foreign-investments",
   "pallets/interest-accrual",
   "pallets/investments",
   "pallets/keystore",
-  "pallets/liquidity-pools-gateway",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -207,33 +205,6 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
-
-# Frontier
-fp-rpc = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-self-contained = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-base-fee = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-ethereum = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = [
-  "forbid-evm-reentrancy",
-] }
-pallet-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = [
-  "forbid-evm-reentrancy",
-] }
-pallet-evm-chain-id = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-blake2 = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-bn128 = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-modexp = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-sha3fips = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-simple = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-precompile-utils = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-consensus = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-db = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = ["rocksdb"] }
-fc-mapping-sync = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-rpc = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-rpc-core = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-consensus = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-storage = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0" }

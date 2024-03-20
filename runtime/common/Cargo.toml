@@ -34,14 +34,6 @@ staging-xcm-executor = { workspace = true }
 
 orml-traits = { workspace = true }
 
-pallet-evm-precompile-blake2 = { workspace = true }
-pallet-evm-precompile-bn128 = { workspace = true }
-pallet-evm-precompile-dispatch = { workspace = true }
-pallet-evm-precompile-modexp = { workspace = true }
-pallet-evm-precompile-sha3fips = { workspace = true }
-pallet-evm-precompile-simple = { workspace = true }
-precompile-utils = { workspace = true }
-
 # Local
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
@@ -62,7 +54,6 @@ pallet-anchors = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-balances = { workspace = true }
-pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
@@ -71,10 +62,6 @@ pallet-crowdloan-claim = { workspace = true }
 pallet-crowdloan-reward = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-elections-phragmen = { workspace = true }
-pallet-ethereum = { workspace = true }
-pallet-ethereum-transaction = { workspace = true }
-pallet-evm = { workspace = true }
-pallet-evm-chain-id = { workspace = true }
 pallet-fees = { workspace = true }
 pallet-foreign-investments = { workspace = true }
 pallet-identity = { workspace = true }
@@ -132,17 +119,6 @@ std = [
   "pallet-anchors/std",
   "pallet-authorship/std",
   "pallet-balances/std",
-  "pallet-base-fee/std",
-  "pallet-ethereum/std",
-  "pallet-evm-chain-id/std",
-  "pallet-evm-precompile-blake2/std",
-  "pallet-evm-precompile-bn128/std",
-  "pallet-evm-precompile-dispatch/std",
-  "pallet-evm-precompile-modexp/std",
-  "pallet-evm-precompile-sha3fips/std",
-  "pallet-evm-precompile-simple/std",
-  "pallet-evm/std",
-  "precompile-utils/std",
   "pallet-investments/std",
   "pallet-liquidity-pools-gateway/std",
   "pallet-loans/std",
@@ -185,7 +161,6 @@ std = [
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
-  "pallet-base-fee/std",
   "pallet-block-rewards/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
@@ -194,10 +169,6 @@ std = [
   "pallet-crowdloan-reward/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
-  "pallet-ethereum/std",
-  "pallet-ethereum-transaction/std",
-  "pallet-evm/std",
-  "pallet-evm-chain-id/std",
   "pallet-fees/std",
   "pallet-foreign-investments/std",
   "pallet-identity/std",
@@ -267,9 +238,6 @@ runtime-benchmarks = [
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
-  "pallet-ethereum/runtime-benchmarks",
-  "pallet-ethereum-transaction/runtime-benchmarks",
-  "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-foreign-investments/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
@@ -326,7 +294,6 @@ try-runtime = [
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
-  "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
@@ -335,10 +302,6 @@ try-runtime = [
   "pallet-crowdloan-reward/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
-  "pallet-ethereum/try-runtime",
-  "pallet-ethereum-transaction/try-runtime",
-  "pallet-evm/try-runtime",
-  "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-foreign-investments/try-runtime",
   "pallet-identity/try-runtime",
