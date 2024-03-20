@@ -28,7 +28,7 @@ sp-std = { workspace = true }
 lazy_static = { workspace = true }
 orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true }
-serde = { workspace = true }
+serde = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 

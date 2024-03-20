@@ -47,7 +47,6 @@ xcm-primitives = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true, default-features = true }
-serde = { workspace = true }
 
 # Substrate crates & pallets
 pallet-balances = { workspace = true }
