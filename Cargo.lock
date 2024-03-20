@@ -1081,25 +1081,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chainbridge"
-version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v1.1.0-latest-deps#6006515bfa90d7391ee25546b8cfa5bb78607bbe"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "substrate-wasm-builder",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1953,7 +1934,6 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
- "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1987,7 +1967,6 @@ dependencies = [
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
- "pallet-bridge",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -2019,7 +1998,6 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
- "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
  "pallet-rewards",
@@ -5546,27 +5524,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-bridge"
-version = "2.0.0"
-dependencies = [
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "chainbridge",
- "frame-support",
- "frame-system",
- "pallet-authorship",
- "pallet-balances",
- "pallet-fees",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-collator-allowlist"
 version = "2.0.0"
 dependencies = [
@@ -6318,20 +6275,6 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-remarks"
-version = "0.0.1"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.1.0#042820a379e12687572bebfb1d05406a649804b1"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
  "sp-runtime",
  "sp-std",
 ]
@@ -8009,7 +7952,6 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -8032,7 +7974,6 @@ dependencies = [
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
- "pallet-bridge",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -8070,7 +8011,6 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
- "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
  "pallet-rewards",

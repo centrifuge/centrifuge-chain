@@ -65,7 +65,6 @@ cfg-types = { workspace = true }
 runtime-common = { workspace = true }
 
 # Pallet list
-chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-dmp-queue = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
@@ -81,7 +80,6 @@ pallet-authorship = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
-pallet-bridge = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
@@ -113,7 +111,6 @@ pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
-pallet-remarks = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
 pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
@@ -187,7 +184,6 @@ std = [
   "runtime-common/std",
 
   # Pallet list
-  "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
@@ -203,7 +199,6 @@ std = [
   "pallet-balances/std",
   "pallet-base-fee/std",
   "pallet-block-rewards/std",
-  "pallet-bridge/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
@@ -235,7 +230,6 @@ std = [
   "pallet-pool-system/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
-  "pallet-remarks/std",
   "pallet-restricted-tokens/std",
   "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
@@ -278,7 +272,6 @@ runtime-benchmarks = [
   "runtime-common/runtime-benchmarks",
 
   # Pallet list
-  "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
@@ -287,7 +280,6 @@ runtime-benchmarks = [
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
-  "pallet-bridge/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
@@ -318,7 +310,6 @@ runtime-benchmarks = [
   "pallet-pool-system/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
-  "pallet-remarks/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-restricted-xtokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
@@ -354,7 +345,6 @@ try-runtime = [
   "runtime-common/try-runtime",
 
   # Pallet list
-  "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
@@ -370,7 +360,6 @@ try-runtime = [
   "pallet-balances/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",
-  "pallet-bridge/try-runtime",
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
@@ -402,7 +391,6 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
-  "pallet-remarks/try-runtime",
   "pallet-restricted-tokens/try-runtime",
   "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",

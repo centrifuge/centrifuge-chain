@@ -10,7 +10,6 @@ members = [
   "libs/types",
   "libs/utils",
   "pallets/anchors",
-  "pallets/bridge",
   "pallets/block-rewards",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
@@ -21,9 +20,7 @@ members = [
   "pallets/interest-accrual",
   "pallets/investments",
   "pallets/keystore",
-  #"pallets/liquidity-pools",
   "pallets/liquidity-pools-gateway",
-  #"pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -39,11 +36,8 @@ members = [
   "pallets/swaps",
   "pallets/token-mux",
   "pallets/transfer-allowlist",
-  #"runtime/altair",
-  #"runtime/centrifuge",
   "runtime/development",
   "runtime/common",
-  #"runtime/integration-tests",
 ]
 
 [workspace.package]
@@ -241,19 +235,12 @@ fp-consensus = { git = "https://github.com/polkadot-evm/frontier", default-featu
 fp-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 fp-storage = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 
-# Centrifuge organization
-#fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
-#fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.1.0-latest-deps" }
-
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0" }
-pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0", default-features = false }
 
 # Centrifuge pallets
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
-pallet-bridge = { path = "pallets/bridge", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
 pallet-crowdloan-claim = { path = "pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "pallets/crowdloan-reward", default-features = false }
