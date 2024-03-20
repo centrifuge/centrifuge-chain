@@ -27,7 +27,6 @@ orml-traits = { workspace = true }
 [dev-dependencies]
 frame-system = { workspace = true, default_features = true }
 cfg-mocks = { workspace = true, default_features = true }
-mock-builder = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

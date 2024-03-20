@@ -1,3 +1,4 @@
+/*
 pub mod asset_registry;
 pub mod change_guard;
 pub mod currency_conversion;
@@ -122,3 +123,4 @@ mod test {
 		});
 	}
 }
+*/

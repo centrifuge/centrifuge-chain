@@ -29,8 +29,6 @@ cfg-types = { workspace = true }
 orml-traits = { workspace = true }
 staging-xcm = { workspace = true }
 
-mock-builder = { workspace = true }
-
 [features]
 default = ["std"]
 std = [
@@ -47,7 +45,6 @@ std = [
   "sp-runtime/std",
   "orml-traits/std",
   "staging-xcm/std",
-  "mock-builder/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

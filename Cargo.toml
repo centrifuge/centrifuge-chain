@@ -206,9 +206,6 @@ orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-libra
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 
-# Foss3
-mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0" }
-
 # Centrifuge pallets
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
