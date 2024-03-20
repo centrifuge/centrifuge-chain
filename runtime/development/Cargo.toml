@@ -10,9 +10,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-getrandom = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true, optional = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -26,100 +24,14 @@ sp-inherents = { workspace = true }
 sp-io = { workspace = true }
 sp-offchain = { workspace = true }
 sp-runtime = { workspace = true }
-sp-session = { workspace = true }
 sp-std = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
 
-frame-benchmarking = { workspace = true, optional = true }        # For benchmarking
 frame-executive = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-frame-system-benchmarking = { workspace = true, optional = true } # For benchmarking
 frame-system-rpc-runtime-api = { workspace = true }
-frame-try-runtime = { workspace = true, optional = true }         # For try-runtime
-
-cumulus-pallet-session-benchmarking = { workspace = true, optional = true } # For benchmarking
-cumulus-primitives-core = { workspace = true }
-cumulus-primitives-timestamp = { workspace = true }
-cumulus-primitives-utility = { workspace = true }
-
-pallet-transaction-payment-rpc-runtime-api = { workspace = true }
-polkadot-parachain-primitives = { workspace = true }
-polkadot-runtime-common = { workspace = true }
-
-staging-xcm = { workspace = true }
-staging-xcm-builder = { workspace = true }
-staging-xcm-executor = { workspace = true }
-
-orml-traits = { workspace = true }
-orml-xcm-support = { workspace = true }
-
-# Locals
-cfg-primitives = { workspace = true }
-cfg-traits = { workspace = true }
-cfg-types = { workspace = true }
-runtime-common = { workspace = true }
-
-# Pallet list
-cumulus-pallet-aura-ext = { workspace = true }
-cumulus-pallet-dmp-queue = { workspace = true }
-cumulus-pallet-parachain-system = { workspace = true }
-cumulus-pallet-xcm = { workspace = true }
-cumulus-pallet-xcmp-queue = { workspace = true }
-orml-asset-registry = { workspace = true }
-orml-tokens = { workspace = true }
-orml-xcm = { workspace = true }
-orml-xtokens = { workspace = true }
-pallet-anchors = { workspace = true }
-pallet-aura = { workspace = true }
-pallet-authorship = { workspace = true }
-pallet-balances = { workspace = true }
-pallet-block-rewards = { workspace = true }
-pallet-collator-allowlist = { workspace = true }
-pallet-collator-selection = { workspace = true }
-pallet-collective = { workspace = true }
-pallet-crowdloan-claim = { workspace = true }
-pallet-crowdloan-reward = { workspace = true }
-pallet-democracy = { workspace = true }
-pallet-elections-phragmen = { workspace = true }
-pallet-fees = { workspace = true }
-pallet-foreign-investments = { workspace = true }
-pallet-identity = { workspace = true }
-pallet-interest-accrual = { workspace = true }
-pallet-investments = { workspace = true }
-pallet-keystore = { workspace = true }
-pallet-liquidity-pools-gateway = { workspace = true }
-pallet-liquidity-rewards = { workspace = true }
-pallet-loans = { workspace = true }
-pallet-membership = { workspace = true }
-pallet-multisig = { workspace = true }
-pallet-oracle-collection = { workspace = true }
-pallet-oracle-feed = { workspace = true }
-pallet-order-book = { workspace = true }
-pallet-permissions = { workspace = true }
-pallet-pool-fees = { workspace = true }
-pallet-pool-registry = { workspace = true }
-pallet-pool-system = { workspace = true }
-pallet-preimage = { workspace = true }
-pallet-proxy = { workspace = true }
-pallet-restricted-tokens = { workspace = true }
-pallet-restricted-xtokens = { workspace = true }
-pallet-rewards = { workspace = true }
-pallet-scheduler = { workspace = true }
-pallet-session = { workspace = true }
-pallet-sudo = { workspace = true }
-pallet-swaps = { workspace = true }
-pallet-timestamp = { workspace = true }
-pallet-token-mux = { workspace = true }
-pallet-transaction-payment = { workspace = true }
-pallet-transfer-allowlist = { workspace = true }
-pallet-treasury = { workspace = true }
-pallet-uniques = { workspace = true }
-pallet-utility = { workspace = true }
-pallet-vesting = { workspace = true }
-pallet-xcm = { workspace = true }
-parachain-info = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true }
@@ -129,7 +41,6 @@ default = ["std"]
 
 std = [
   "parity-scale-codec/std",
-  "getrandom/std",
   "hex/std",
   "scale-info/std",
   "serde/std",
@@ -143,7 +54,6 @@ std = [
   "sp-inherents/std",
   "sp-io/std",
   "sp-offchain/std",
-  "sp-session/std",
   "sp-std/std",
   "sp-transaction-pool/std",
   "sp-version/std",
@@ -151,251 +61,4 @@ std = [
   "frame-system/std",
   "frame-system-rpc-runtime-api/std",
   "frame-executive/std",
-  "frame-try-runtime?/std",
-  "frame-system-benchmarking?/std",
-  "frame-benchmarking?/std",
-  "cumulus-primitives-core/std",
-  "cumulus-primitives-timestamp/std",
-  "cumulus-primitives-utility/std",
-  "cumulus-pallet-session-benchmarking?/std",
-  "staging-xcm/std",
-  "staging-xcm-builder/std",
-  "staging-xcm-executor/std",
-  "orml-traits/std",
-  "orml-xcm-support/std",
-  "pallet-transaction-payment-rpc-runtime-api/std",
-  "polkadot-runtime-common/std",
-  "polkadot-parachain-primitives/std",
-
-  # Locals
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "runtime-common/std",
-
-  # Pallet list
-  "cumulus-pallet-aura-ext/std",
-  "cumulus-pallet-dmp-queue/std",
-  "cumulus-pallet-parachain-system/std",
-  "cumulus-pallet-xcm/std",
-  "cumulus-pallet-xcmp-queue/std",
-  "orml-asset-registry/std",
-  "orml-tokens/std",
-  "orml-xcm/std",
-  "orml-xtokens/std",
-  "pallet-anchors/std",
-  "pallet-aura/std",
-  "pallet-authorship/std",
-  "pallet-balances/std",
-  "pallet-block-rewards/std",
-  "pallet-collator-allowlist/std",
-  "pallet-collator-selection/std",
-  "pallet-collective/std",
-  "pallet-crowdloan-claim/std",
-  "pallet-crowdloan-reward/std",
-  "pallet-democracy/std",
-  "pallet-elections-phragmen/std",
-  "pallet-fees/std",
-  "pallet-foreign-investments/std",
-  "pallet-identity/std",
-  "pallet-interest-accrual/std",
-  "pallet-investments/std",
-  "pallet-keystore/std",
-  "pallet-liquidity-pools-gateway/std",
-  "pallet-liquidity-rewards/std",
-  "pallet-loans/std",
-  "pallet-membership/std",
-  "pallet-multisig/std",
-  "pallet-oracle-collection/std",
-  "pallet-oracle-feed/std",
-  "pallet-order-book/std",
-  "pallet-permissions/std",
-  "pallet-pool-fees/std",
-  "pallet-pool-registry/std",
-  "pallet-pool-system/std",
-  "pallet-preimage/std",
-  "pallet-proxy/std",
-  "pallet-restricted-tokens/std",
-  "pallet-restricted-xtokens/std",
-  "pallet-rewards/std",
-  "pallet-scheduler/std",
-  "pallet-session/std",
-  "pallet-sudo/std",
-  "pallet-swaps/std",
-  "pallet-timestamp/std",
-  "pallet-token-mux/std",
-  "pallet-transaction-payment/std",
-  "pallet-transfer-allowlist/std",
-  "pallet-treasury/std",
-  "pallet-uniques/std",
-  "pallet-utility/std",
-  "pallet-vesting/std",
-  "pallet-xcm/std",
-  "parachain-info/std",
 ]
-
-runtime-benchmarks = [
-  # Enabling optional
-  "hex-literal",
-  "frame-system-benchmarking/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
-
-  # Substrate related
-  "sp-runtime/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "staging-xcm-builder/runtime-benchmarks",
-  "staging-xcm-executor/runtime-benchmarks",
-  "polkadot-runtime-common/runtime-benchmarks",
-  "polkadot-parachain-primitives/runtime-benchmarks",
-
-  # Locals
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "runtime-common/runtime-benchmarks",
-
-  # Pallet list
-  "cumulus-pallet-parachain-system/runtime-benchmarks",
-  "cumulus-pallet-xcmp-queue/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "orml-tokens/runtime-benchmarks",
-  "orml-xtokens/runtime-benchmarks",
-  "pallet-anchors/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
-  "pallet-block-rewards/runtime-benchmarks",
-  "pallet-collator-allowlist/runtime-benchmarks",
-  "pallet-collator-selection/runtime-benchmarks",
-  "pallet-collective/runtime-benchmarks",
-  "pallet-crowdloan-claim/runtime-benchmarks",
-  "pallet-crowdloan-reward/runtime-benchmarks",
-  "pallet-democracy/runtime-benchmarks",
-  "pallet-elections-phragmen/runtime-benchmarks",
-  "pallet-fees/runtime-benchmarks",
-  "pallet-foreign-investments/runtime-benchmarks",
-  "pallet-identity/runtime-benchmarks",
-  "pallet-interest-accrual/runtime-benchmarks",
-  "pallet-investments/runtime-benchmarks",
-  "pallet-keystore/runtime-benchmarks",
-  "pallet-liquidity-pools-gateway/runtime-benchmarks",
-  "pallet-liquidity-rewards/runtime-benchmarks",
-  "pallet-loans/runtime-benchmarks",
-  "pallet-membership/runtime-benchmarks",
-  "pallet-multisig/runtime-benchmarks",
-  "pallet-oracle-collection/runtime-benchmarks",
-  "pallet-oracle-feed/runtime-benchmarks",
-  "pallet-order-book/runtime-benchmarks",
-  "pallet-permissions/runtime-benchmarks",
-  "pallet-pool-fees/runtime-benchmarks",
-  "pallet-pool-registry/runtime-benchmarks",
-  "pallet-pool-system/runtime-benchmarks",
-  "pallet-preimage/runtime-benchmarks",
-  "pallet-proxy/runtime-benchmarks",
-  "pallet-restricted-tokens/runtime-benchmarks",
-  "pallet-restricted-xtokens/runtime-benchmarks",
-  "pallet-rewards/runtime-benchmarks",
-  "pallet-scheduler/runtime-benchmarks",
-  "pallet-sudo/runtime-benchmarks",
-  "pallet-swaps/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "pallet-token-mux/runtime-benchmarks",
-  "pallet-transfer-allowlist/runtime-benchmarks",
-  "pallet-treasury/runtime-benchmarks",
-  "pallet-uniques/runtime-benchmarks",
-  "pallet-utility/runtime-benchmarks",
-  "pallet-vesting/runtime-benchmarks",
-  "pallet-xcm/runtime-benchmarks",
-]
-
-try-runtime = [
-  # Enabling optional
-  "frame-try-runtime/try-runtime",
-
-  # Substrate related
-  "sp-runtime/try-runtime",
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "frame-executive/try-runtime",
-  "polkadot-runtime-common/try-runtime",
-
-  # Locals
-  "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
-  "cfg-types/try-runtime",
-  "runtime-common/try-runtime",
-
-  # Pallet list
-  "cumulus-pallet-aura-ext/try-runtime",
-  "cumulus-pallet-dmp-queue/try-runtime",
-  "cumulus-pallet-parachain-system/try-runtime",
-  "cumulus-pallet-xcm/try-runtime",
-  "cumulus-pallet-xcmp-queue/try-runtime",
-  "orml-asset-registry/try-runtime",
-  "orml-tokens/try-runtime",
-  "orml-xcm/try-runtime",
-  "orml-xtokens/try-runtime",
-  "pallet-anchors/try-runtime",
-  "pallet-aura/try-runtime",
-  "pallet-authorship/try-runtime",
-  "pallet-balances/try-runtime",
-  "pallet-block-rewards/try-runtime",
-  "pallet-collator-allowlist/try-runtime",
-  "pallet-collator-selection/try-runtime",
-  "pallet-collective/try-runtime",
-  "pallet-crowdloan-claim/try-runtime",
-  "pallet-crowdloan-reward/try-runtime",
-  "pallet-democracy/try-runtime",
-  "pallet-elections-phragmen/try-runtime",
-  "pallet-fees/try-runtime",
-  "pallet-foreign-investments/try-runtime",
-  "pallet-identity/try-runtime",
-  "pallet-interest-accrual/try-runtime",
-  "pallet-investments/try-runtime",
-  "pallet-keystore/try-runtime",
-  "pallet-liquidity-pools-gateway/try-runtime",
-  "pallet-liquidity-rewards/try-runtime",
-  "pallet-loans/try-runtime",
-  "pallet-membership/try-runtime",
-  "pallet-multisig/try-runtime",
-  "pallet-oracle-collection/try-runtime",
-  "pallet-oracle-feed/try-runtime",
-  "pallet-order-book/try-runtime",
-  "pallet-permissions/try-runtime",
-  "pallet-pool-fees/try-runtime",
-  "pallet-pool-registry/try-runtime",
-  "pallet-pool-system/try-runtime",
-  "pallet-preimage/try-runtime",
-  "pallet-proxy/try-runtime",
-  "pallet-restricted-tokens/try-runtime",
-  "pallet-restricted-xtokens/try-runtime",
-  "pallet-rewards/try-runtime",
-  "pallet-scheduler/try-runtime",
-  "pallet-session/try-runtime",
-  "pallet-sudo/try-runtime",
-  "pallet-swaps/try-runtime",
-  "pallet-timestamp/try-runtime",
-  "pallet-token-mux/try-runtime",
-  "pallet-transaction-payment/try-runtime",
-  "pallet-transfer-allowlist/try-runtime",
-  "pallet-treasury/try-runtime",
-  "pallet-uniques/try-runtime",
-  "pallet-utility/try-runtime",
-  "pallet-vesting/try-runtime",
-  "pallet-xcm/try-runtime",
-  "parachain-info/try-runtime",
-]
-
-# A feature that should be enabled when the runtime should be build for on-chain
-# deployment. This will disable stuff that shouldn't be part of the on-chain wasm
-# to make it smaller like logging for example.
-on-chain-release-build = [
-  "sp-api/disable-logging",
-  "runtime-common/on-chain-release-build",
-]
-
-# Used by integration testing
-instant-voting = []
-
-# Set timing constants (e.g. session period) to faster versions to speed up testing.
-fast-runtime = []

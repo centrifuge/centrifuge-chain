@@ -1563,20 +1563,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cumulus-pallet-session-benchmarking"
-version = "3.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-session",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "cumulus-pallet-xcm"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
@@ -1651,37 +1637,6 @@ dependencies = [
  "sp-storage",
  "sp-trie",
  "tracing",
-]
-
-[[package]]
-name = "cumulus-primitives-timestamp"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "cumulus-primitives-core",
- "futures",
- "parity-scale-codec",
- "sp-inherents",
- "sp-std",
- "sp-timestamp",
-]
-
-[[package]]
-name = "cumulus-primitives-utility"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "cumulus-primitives-core",
- "frame-support",
- "log",
- "parity-scale-codec",
- "polkadot-runtime-common",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "staging-xcm",
- "staging-xcm-builder",
- "staging-xcm-executor",
 ]
 
 [[package]]
@@ -1912,88 +1867,12 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.44"
 dependencies = [
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-parachain-system",
- "cumulus-pallet-session-benchmarking",
- "cumulus-pallet-xcm",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "cumulus-primitives-timestamp",
- "cumulus-primitives-utility",
- "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
- "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
- "frame-try-runtime",
- "getrandom 0.2.12",
  "hex",
- "hex-literal 0.3.4",
- "orml-asset-registry",
- "orml-tokens",
- "orml-traits",
- "orml-xcm",
- "orml-xcm-support",
- "orml-xtokens",
- "pallet-anchors",
- "pallet-aura",
- "pallet-authorship",
- "pallet-balances",
- "pallet-block-rewards",
- "pallet-collator-allowlist",
- "pallet-collator-selection",
- "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
- "pallet-democracy",
- "pallet-elections-phragmen",
- "pallet-fees",
- "pallet-foreign-investments",
- "pallet-identity",
- "pallet-interest-accrual",
- "pallet-investments",
- "pallet-keystore",
- "pallet-liquidity-pools-gateway",
- "pallet-liquidity-rewards",
- "pallet-loans",
- "pallet-membership",
- "pallet-multisig",
- "pallet-oracle-collection",
- "pallet-oracle-feed",
- "pallet-order-book",
- "pallet-permissions",
- "pallet-pool-fees",
- "pallet-pool-registry",
- "pallet-pool-system",
- "pallet-preimage",
- "pallet-proxy",
- "pallet-restricted-tokens",
- "pallet-restricted-xtokens",
- "pallet-rewards",
- "pallet-scheduler",
- "pallet-session",
- "pallet-sudo",
- "pallet-swaps",
- "pallet-timestamp",
- "pallet-token-mux",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transfer-allowlist",
- "pallet-treasury",
- "pallet-uniques",
- "pallet-utility",
- "pallet-vesting",
- "pallet-xcm",
- "parachain-info",
  "parity-scale-codec",
- "polkadot-parachain-primitives",
- "polkadot-runtime-common",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-api",
@@ -2004,13 +1883,9 @@ dependencies = [
  "sp-io",
  "sp-offchain",
  "sp-runtime",
- "sp-session",
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
- "staging-xcm",
- "staging-xcm-builder",
- "staging-xcm-executor",
  "static_assertions",
  "substrate-wasm-builder",
 ]
@@ -2784,21 +2659,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frame-system-benchmarking"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "frame-system-rpc-runtime-api"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
@@ -3008,10 +2868,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "190092ea657667030ac6a35e305e62fc4dd69fd98ac98631e5d3a2b1575a12b5"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -6037,18 +5895,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-transaction-payment-rpc-runtime-api"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "pallet-transaction-payment",
- "parity-scale-codec",
- "sp-api",
- "sp-runtime",
- "sp-weights",
 ]
 
 [[package]]
