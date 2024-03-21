@@ -22,10 +22,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{
-	traits::{ConstU32, Get},
-	DispatchError, TokenError,
-};
+use sp_runtime::{traits::Get, DispatchError, TokenError};
 use staging_xcm::{
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
 	v3::{MultiLocation, NetworkId},
@@ -36,8 +33,12 @@ use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
 pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
 
-pub type AssetMetadata =
-	asset_registry::AssetMetadata<Balance, CustomMetadata, ConstU32<MAX_ASSET_STRING_LIMIT>>;
+frame_support::parameter_types! {
+	#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const AssetStringLimit: u32 = MAX_ASSET_STRING_LIMIT;
+}
+
+pub type AssetMetadata = asset_registry::AssetMetadata<Balance, CustomMetadata, AssetStringLimit>;
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such

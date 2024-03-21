@@ -106,13 +106,7 @@ pub mod pallet {
 			+ FixedPointOperand;
 
 		/// The currency-id of this pallet
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + Ord + TypeInfo + MaxEncodedLen;
 
 		/// Checks the pre conditions for every transfer via the user api (i.e.
 		/// extrinsics)

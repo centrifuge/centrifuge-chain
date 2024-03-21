@@ -8,15 +8,13 @@
 //! burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::fees::{self, Fee, FeeKey};
+use cfg_traits::fees::{self, Fee};
 use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 	DefaultNoBound,
 };
 pub use pallet::*;
-use parity_scale_codec::EncodeLike;
-use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -54,7 +52,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// Key type used for storing and identifying fees.
-		type FeeKey: FeeKey + EncodeLike + MaxEncodedLen;
+		type FeeKey: Parameter + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		/// The currency mechanism.
 		type Currency: Currency<Self::AccountId>;
@@ -85,7 +83,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_fees: Vec<(T::FeeKey, BalanceOf<T>)>,
+		pub initial_fees: sp_std::vec::Vec<(T::FeeKey, BalanceOf<T>)>,
 	}
 
 	// The build of genesis for the pallet.

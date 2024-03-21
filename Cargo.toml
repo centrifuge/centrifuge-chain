@@ -42,7 +42,7 @@ members = [
   "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
-  #"runtime/development",
+  "runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
 ]

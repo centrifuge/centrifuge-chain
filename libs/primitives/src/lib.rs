@@ -84,8 +84,8 @@ pub mod types {
 	/// IBalance is the signed version of the Balance for orml tokens
 	pub type IBalance = i128;
 
-	/// Index of a transaction in the chain.
-	pub type Index = u32;
+	/// Nonce of a transaction in the chain.
+	pub type Nonce = u32;
 
 	/// A hash of some data used by the chain.
 	pub type Hash = <BlakeTwo256 as traits::Hash>::Output;

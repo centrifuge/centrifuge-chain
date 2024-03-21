@@ -34,7 +34,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, str::FromStr, vec::Vec};
+use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -101,7 +101,6 @@ pub trait Reward {
 		+ Copy
 		+ Debug
 		+ Default
-		+ FromStr
 		+ Hash
 		+ MaybeDisplay
 		+ MaybeSerializeDeserialize

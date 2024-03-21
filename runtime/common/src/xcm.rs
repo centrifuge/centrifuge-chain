@@ -20,7 +20,7 @@ use cfg_types::{
 use frame_support::traits::{fungibles::Mutate, Everything, Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use polkadot_parachain_primitives::primitives::Sibling;
-use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
+use sp_runtime::traits::{AccountIdConversion, Convert, MaybeEquivalence, Zero};
 use sp_std::marker::PhantomData;
 use staging_xcm::v3::{
 	prelude::*,
@@ -171,6 +171,7 @@ where
 	}
 }
 
+/* TODO: polkadot-v1.1.0
 /// Convert an incoming `MultiLocation` into a `CurrencyId` through a
 /// reverse-lookup using the AssetRegistry. In the registry, we register CFG
 /// using its absolute, non-anchored MultliLocation so we need to unanchor the
@@ -217,6 +218,17 @@ where
 		}
 	}
 }
+*/
+
+impl<T> MaybeEquivalence<MultiLocation, CurrencyId> for CurrencyIdConvert<T> {
+	fn convert(a: &MultiLocation) -> Option<CurrencyId> {
+		todo!()
+	}
+
+	fn convert_back(b: &CurrencyId) -> Option<MultiLocation> {
+		todo!()
+	}
+}
 
 pub struct ToTreasury<T>(PhantomData<T>);
 impl<T> TakeRevenue for ToTreasury<T>
@@ -226,6 +238,7 @@ where
 		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
 	fn take_revenue(revenue: MultiAsset) {
+		/* TODO: polkadot-v1.1.0
 		if let MultiAsset {
 			id: Concrete(location),
 			fun: Fungible(amount),
@@ -240,6 +253,7 @@ where
 				);
 			}
 		}
+		*/
 	}
 }
 

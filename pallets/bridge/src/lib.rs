@@ -116,7 +116,6 @@ pub mod pallet {
 
 		/// Key used to retrieve the fee that are charged when transferring
 		/// native tokens to target chains.
-		#[pallet::constant]
 		type NativeTokenTransferFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Weight information for extrinsics in this pallet

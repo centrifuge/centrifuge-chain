@@ -1,13 +1,13 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::fees::{Fee, FeeKey, Fees};
+	use cfg_traits::fees::{Fee, Fees};
 	use frame_support::{pallet_prelude::*, traits::tokens::Balance};
 	use mock_builder::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Balance: Balance;
-		type FeeKey: FeeKey;
+		type FeeKey;
 	}
 
 	#[pallet::pallet]
