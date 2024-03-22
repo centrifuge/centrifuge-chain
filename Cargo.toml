@@ -42,7 +42,7 @@ members = [
   "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
-  "runtime/development",
+  #"runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
 ]
@@ -215,33 +215,6 @@ orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-libra
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 
-# Frontier
-fp-rpc = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-self-contained = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-base-fee = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-ethereum = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = [
-  "forbid-evm-reentrancy",
-] }
-pallet-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = [
-  "forbid-evm-reentrancy",
-] }
-pallet-evm-chain-id = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-blake2 = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-bn128 = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-modexp = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-sha3fips = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-simple = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-precompile-utils = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-consensus = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-db = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0", features = ["rocksdb"] }
-fc-mapping-sync = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-rpc = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fc-rpc-core = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-consensus = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-evm = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-fp-storage = { git = "https://github.com/polkadot-evm/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-
 # Centrifuge organization
 #fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
 #fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
@@ -304,6 +277,32 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 vergen = "3.0.4"
 
+# Moonbeam fork of polkadot-evm/frontier
+fp-rpc = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-self-contained = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-base-fee = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-ethereum = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0", features = [
+  "forbid-evm-reentrancy",
+] }
+pallet-evm = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0", features = [
+  "forbid-evm-reentrancy",
+] }
+pallet-evm-chain-id = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-blake2 = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-bn128 = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-modexp = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-sha3fips = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-simple = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fc-consensus = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fc-db = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0", features = ["rocksdb"] }
+fc-mapping-sync = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fc-rpc = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fc-rpc-core = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-consensus = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-evm = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-storage = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+
 # Moonbeam (tag v0.34.1 => version using a moonbeam fork related to polkadot v1.1.0)
 # WARN: Moonbeam dependencies use forks of polkadot, orml and frontier repos.
 # We need to patch their dependencies to avoid duplicate same crates.
@@ -312,6 +311,7 @@ vergen = "3.0.4"
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
+precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 
 # Cargo patch for moonbeam crates
 #
@@ -320,11 +320,6 @@ pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foun
 # from these forked reposities, which lead to multiple cargo issues due to duplication versions of crates being found.
 # With the rules below, we tell cargo that whenever it finds a crate with source in `moonbeam-foundation/`, that it should use
 # the specific official revision of the respective repository at hand.
-#
-# We only patch dependencies found in the Cargo.toml files of our moonbeam dependencies. These are:
-# - xcm-primitives
-# - pallet-xcm-transactor
-# - pallet-evm-precompile-balances-erc20 (not all dependencies patched due precompile-utils incompatibility)
 [patch."https://github.com/moonbeam-foundation/polkadot-sdk"]
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
@@ -335,6 +330,25 @@ pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch 
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core-hashing = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-debug-derive = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-storage = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-tracing = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-wasm-interface = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-weights = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-api-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-panic-handler = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-trie = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core-hashing-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-version-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 staging-xcm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
@@ -342,3 +356,25 @@ staging-xcm-executor = { git = "https://github.com/paritytech/polkadot-sdk", bra
 
 [patch."https://github.com/moonbeam-foundation/open-runtime-module-library"]
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
+
+[patch."https://github.com/moonbeam-foundation/frontier"]
+fp-rpc = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fp-self-contained = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-base-fee = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-ethereum = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-chain-id = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-blake2 = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-bn128 = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-modexp = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-sha3fips = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+pallet-evm-precompile-simple = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fc-consensus = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fc-db = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fc-mapping-sync = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fc-rpc = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fc-rpc-core = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fp-consensus = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fp-evm = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
+fp-storage = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
