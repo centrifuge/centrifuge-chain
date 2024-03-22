@@ -13,11 +13,11 @@
 use cfg_primitives::Balance;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
+	Serialize,
+	Deserialize,
 	Clone,
 	Copy,
 	Default,

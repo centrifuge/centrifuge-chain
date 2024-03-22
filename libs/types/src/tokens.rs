@@ -20,7 +20,6 @@ use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAsset
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
 use staging_xcm::{
@@ -61,8 +60,9 @@ pub type AssetMetadata = asset_registry::AssetMetadata<Balance, CustomMetadata, 
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	#[default]
@@ -92,9 +92,20 @@ pub enum CurrencyId {
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LocalAssetId(pub u32);
 
 impl From<LocalAssetId> for CurrencyId {
@@ -116,9 +127,20 @@ impl TryFrom<CurrencyId> for LocalAssetId {
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum StakingCurrency {
 	/// An emulated internal, non-transferable currency
 	/// Its issuance and holding is handled inherently
@@ -220,9 +242,20 @@ where
 /// enables us to use the `TrancheCurrency` type separately where solely this
 /// enum variant would be relevant. Most notably, in the `struct Tranche`.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
 	pub pool_id: PoolId,
 	pub tranche_id: TrancheId,
@@ -253,8 +286,9 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 
 /// A type describing our custom additional metadata stored in the
 /// OrmlAssetRegistry.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
+	Serialize,
+	Deserialize,
 	Clone,
 	Copy,
 	Default,
@@ -312,8 +346,9 @@ pub struct CustomMetadata {
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CrossChainTransferability {
 	/// The asset is not transferable cross-chain
 	#[default]
@@ -342,9 +377,20 @@ impl CrossChainTransferability {
 /// therefore we only support EVM tokens. In the far future, we might support
 /// wrapped tokens from other chains such as Cosmos based ones.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {

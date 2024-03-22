@@ -42,7 +42,7 @@ members = [
   "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
-  #"runtime/development",
+  "runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
 ]
@@ -279,7 +279,7 @@ vergen = "3.0.4"
 
 # Moonbeam fork of polkadot-evm/frontier
 fp-rpc = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
-fp-self-contained = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-self-contained = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0", features = ["serde"] }
 pallet-base-fee = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
 pallet-ethereum = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0", features = [
   "forbid-evm-reentrancy",
