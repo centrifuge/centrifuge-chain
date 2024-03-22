@@ -30,8 +30,9 @@ use staging_xcm::v3::{
 };
 use staging_xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ParentIsPreset, SiblingParachainConvertsVia,
-	SignedToAccountId32, TakeRevenue, TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily, HashedDescription,
+	ParentIsPreset, SiblingParachainConvertsVia, SignedToAccountId32, TakeRevenue,
+	TakeWeightCredit,
 };
 
 use crate::xcm_fees::default_per_second;
@@ -70,11 +71,8 @@ pub fn general_key(data: &[u8]) -> staging_xcm::latest::Junction {
 }
 
 /// How we convert an `[AccountId]` into an XCM MultiLocation
-pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
-impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
-where
-	AccountId: Into<[u8; 32]>,
-{
+pub struct AccountIdToMultiLocation;
+impl<AccountId: Into<[u8; 32]>> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
 		X1(AccountId32 {
 			network: None,
@@ -156,32 +154,12 @@ where
 /// `MultiLocation`.
 pub struct CurrencyIdConvert<T>(PhantomData<T>);
 
-/// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// We use the `AssetRegistry` to lookup the associated `MultiLocation` for
-/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
-impl<T> Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert<T>
-where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
-{
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		orml_asset_registry::Pallet::<T>::metadata(&id)
-			.filter(|m| m.additional.transferability.includes_xcm())
-			.and_then(|m| m.location)
-			.and_then(|l| l.try_into().ok())
-	}
-}
-
-/* TODO: polkadot-v1.1.0
-/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
-/// reverse-lookup using the AssetRegistry. In the registry, we register CFG
-/// using its absolute, non-anchored MultliLocation so we need to unanchor the
-/// input location for Centrifuge-native assets for that to work.
-impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
+impl<T> MaybeEquivalence<MultiLocation, CurrencyId> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
 		+ parachain_info::Config,
 {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+	fn convert(location: &MultiLocation) -> Option<CurrencyId> {
 		let para_id = parachain_info::Pallet::<T>::parachain_id();
 		let unanchored_location = match location {
 			MultiLocation {
@@ -193,18 +171,53 @@ where
 					.pushed_front_with(Parachain(u32::from(para_id)))
 					.ok()?,
 			},
-			x => x,
+			x => *x,
 		};
 
 		orml_asset_registry::Pallet::<T>::location_to_asset_id(unanchored_location)
 	}
+
+	fn convert_back(id: &CurrencyId) -> Option<MultiLocation> {
+		orml_asset_registry::Pallet::<T>::metadata(id)
+			.filter(|m| m.additional.transferability.includes_xcm())
+			.and_then(|m| m.location)
+			.and_then(|l| l.try_into().ok())
+	}
 }
+
+/// Convert our `CurrencyId` type into its `MultiLocation` representation.
+/// We use the `AssetRegistry` to lookup the associated `MultiLocation` for
+/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
+impl<T> Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ parachain_info::Config,
+{
+	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+		<Self as MaybeEquivalence<_, _>>::convert_back(&id)
+	}
+}
+
+/*
+/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// reverse-lookup using the AssetRegistry. In the registry, we register CFG
+/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// input location for Centrifuge-native assets for that to work.
+impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
+where
+	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ parachain_info::Config,
+{
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		<Self as MaybeEquivalence<_, _>>::convert(location)
+	}
+}
+*/
 
 impl<T> Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config
-		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId>,
+		+ parachain_info::Config,
 {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
 		if let MultiAsset {
@@ -212,21 +225,10 @@ where
 			..
 		} = asset
 		{
-			Self::convert(location)
+			<Self as MaybeEquivalence<_, _>>::convert(&location)
 		} else {
 			None
 		}
-	}
-}
-*/
-
-impl<T> MaybeEquivalence<MultiLocation, CurrencyId> for CurrencyIdConvert<T> {
-	fn convert(a: &MultiLocation) -> Option<CurrencyId> {
-		todo!()
-	}
-
-	fn convert_back(b: &CurrencyId) -> Option<MultiLocation> {
-		todo!()
 	}
 }
 
@@ -238,13 +240,14 @@ where
 		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
 	fn take_revenue(revenue: MultiAsset) {
-		/* TODO: polkadot-v1.1.0
 		if let MultiAsset {
 			id: Concrete(location),
 			fun: Fungible(amount),
 		} = revenue
 		{
-			if let Some(currency_id) = CurrencyIdConvert::<T>::convert(location) {
+			if let Some(currency_id) =
+				<CurrencyIdConvert<T> as MaybeEquivalence<_, _>>::convert(&location)
+			{
 				let treasury_account = cfg_types::ids::TREASURY_PALLET_ID.into_account_truncating();
 				let _ = pallet_restricted_tokens::Pallet::<T>::mint_into(
 					currency_id,
@@ -253,7 +256,6 @@ where
 				);
 			}
 		}
-		*/
 	}
 }
 
@@ -280,7 +282,8 @@ pub type LocationToAccountId<RelayNetwork> = (
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
 	// Generate remote accounts according to polkadot standards
-	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
+	//cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
+	HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 );
 
 #[cfg(test)]

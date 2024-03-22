@@ -32,7 +32,6 @@ use cfg_primitives::{
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
 	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
-	TryConvert as _,
 };
 use cfg_types::{
 	fee_keys::{Fee, FeeKey},
@@ -96,15 +95,15 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
-	account_conversion::AccountConverter,
+	account_conversion::{self, AccountConverter, AccountMapping},
 	asset_registry,
 	changes::FastDelay,
 	evm::{
 		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
-		WEIGHT_PER_GAS,
+		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	gateway::GatewayAccountProvider,
+	gateway,
 	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
@@ -1265,7 +1264,7 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
@@ -1829,8 +1828,8 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
-	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAccountToAccountId = AccountConverter;
+	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
@@ -1850,7 +1849,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -1943,7 +1942,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for Runtime {
-	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
+	type AddressMapping = AccountMapping<Runtime>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressTruncated;
@@ -1952,6 +1951,7 @@ impl pallet_evm::Config for Runtime {
 	type FeeCalculator = BaseFee;
 	type FindAuthor = FindAuthorTruncated<Self>;
 	type GasLimitPovSizeRatio = ConstU64<GAS_LIMIT_POV_SIZE_RATIO>;
+	type GasLimitStorageGrowthRatio = ConstU64<GAS_LIMIT_STORAGE_GROWTH_RATIO>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -2476,7 +2476,7 @@ impl_runtime_apis! {
 	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
 		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
-			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+			account_conversion::location_to_account::<LocationToAccountId>(location)
 		}
 	}
 
@@ -2706,21 +2706,26 @@ impl_runtime_apis! {
 		fn gas_limit_multiplier_support() {}
 
 		fn pending_block(
-					xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
-				) -> (
-					Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
-				) {
-					for ext in xts.into_iter() {
-						let _ = Executive::apply_extrinsic(ext);
-					}
+			xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
+		) -> (
+			Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
+		) {
+			for ext in xts.into_iter() {
+				let _ = Executive::apply_extrinsic(ext);
+			}
 
-					Ethereum::on_finalize(System::block_number() + 1);
+			Ethereum::on_finalize(System::block_number() + 1);
 
-					(
-						pallet_ethereum::CurrentBlock::<Runtime>::get(),
-						pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
-					)
-				 }
+			(
+				pallet_ethereum::CurrentBlock::<Runtime>::get(),
+				pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
+			)
+		 }
+
+		fn initialize_pending_block(header: &<Block as BlockT>::Header) {
+			Executive::initialize_block(header)
+		}
+
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {

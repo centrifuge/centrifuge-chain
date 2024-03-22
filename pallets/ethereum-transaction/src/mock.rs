@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use cfg_primitives::MAX_POV_SIZE;
 use fp_evm::{FeeCalculator, Precompile, PrecompileResult};
 use frame_support::{derive_impl, parameter_types, traits::FindAuthor, weights::Weight};
 use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
@@ -9,7 +8,7 @@ use pallet_evm::{
 	FixedGasWeightMapping, IsPrecompileResult, PrecompileHandle, PrecompileSet,
 	SubstrateBlockHashMapping,
 };
-use sp_core::{crypto::AccountId32, ByteArray, ConstU128, H160, U256};
+use sp_core::{crypto::AccountId32, ByteArray, ConstU128, ConstU64, H160, U256};
 use sp_runtime::{traits::IdentityLookup, ConsensusEngineId};
 
 use crate::pallet as pallet_ethereum_transaction;
@@ -124,10 +123,6 @@ parameter_types! {
 	pub BlockGasLimit: U256 = U256::max_value();
 	pub WeightPerGas: Weight = Weight::from_parts(20_000, 0);
 	pub MockPrecompiles: MockPrecompileSet = MockPrecompileSet;
-	pub GasLimitPovSizeRatio: u64 = {
-		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
-		block_gas_limit.saturating_div(MAX_POV_SIZE)
-	};
 }
 
 impl pallet_evm::Config for Runtime {
@@ -139,7 +134,8 @@ impl pallet_evm::Config for Runtime {
 	type Currency = Balances;
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
-	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitPovSizeRatio = ConstU64<1>;
+	type GasLimitStorageGrowthRatio = ConstU64<1>;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();

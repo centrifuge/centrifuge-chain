@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
-use cfg_primitives::{OutboundMessageNonce, MAX_POV_SIZE};
+use cfg_primitives::{OutboundMessageNonce, BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use cumulus_primitives_core::{
@@ -201,6 +201,8 @@ parameter_types! {
 		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
 		block_gas_limit.saturating_div(MAX_POV_SIZE)
 	};
+	pub GasLimitStorageGrowthRatio: u64 =
+		BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
 }
 
 impl pallet_evm::Config for Runtime {
@@ -213,6 +215,7 @@ impl pallet_evm::Config for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();

@@ -16,22 +16,14 @@ use polkadot_parachain_primitives::primitives::Sibling;
 use sp_core::{crypto::AccountId32, Get, H160};
 use sp_runtime::traits::AccountIdConversion;
 
-use crate::account_conversion::AccountConverter;
+use crate::account_conversion::AccountMapping;
 
-pub struct GatewayAccountProvider<T, XcmConverter>(core::marker::PhantomData<(T, XcmConverter)>);
+pub fn get_gateway_account<T: pallet_evm_chain_id::Config + parachain_info::Config>() -> AccountId {
+	let sender_account: AccountId =
+		Sibling::from(parachain_info::Pallet::<T>::get()).into_account_truncating();
 
-impl<T, XcmConverter> GatewayAccountProvider<T, XcmConverter>
-where
-	T: pallet_evm_chain_id::Config + parachain_info::Config,
-	XcmConverter: sp_runtime::traits::Convert<staging_xcm::v3::MultiLocation, AccountId>,
-{
-	pub fn get_gateway_account() -> AccountId {
-		let sender_account: AccountId =
-			Sibling::from(parachain_info::Pallet::<T>::get()).into_account_truncating();
+	let truncated_sender_account =
+		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20]);
 
-		let truncated_sender_account =
-			H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20]);
-
-		AccountConverter::<T, XcmConverter>::into_account_id(truncated_sender_account)
-	}
+	AccountMapping::<T>::into_account_id(truncated_sender_account)
 }

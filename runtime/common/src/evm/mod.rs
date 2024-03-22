@@ -46,6 +46,15 @@ pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
 //       (https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408)
 pub const GAS_LIMIT_POV_SIZE_RATIO: u64 = 4;
 
+// pub const GasLimitStorageGrowthRatio: u64 =
+// 	 BlockGasLimit::get().min(u64::MAX.into()).low_u64().
+// saturating_div(BLOCK_STORAGE_LIMIT);
+//
+// NOTE: The above results in a value of 366 which is the same value that
+// moonbeam is using       in their staging environment. As we can not
+// constantly assert this value we hardcode       it for now.
+pub const GAS_LIMIT_STORAGE_GROWTH_RATIO: u64 = 366;
+
 pub struct BaseFeeThreshold;
 
 // Set our ideal block fullness to 50%. Anything between 50%-100% will cause the
