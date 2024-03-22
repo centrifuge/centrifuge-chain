@@ -282,7 +282,6 @@ pub type LocationToAccountId<RelayNetwork> = (
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
 	// Generate remote accounts according to polkadot standards
-	//cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
 	HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 );
 
