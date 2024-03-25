@@ -44,8 +44,8 @@ pub trait CurrencyInfo {
 	fn metadata(&self) -> AssetMetadata {
 		AssetMetadata {
 			decimals: self.decimals(),
-			name: self.name().as_bytes().to_vec(),
-			symbol: self.symbol().as_bytes().to_vec(),
+			name: self.name().as_bytes().to_vec().try_into().unwrap(),
+			symbol: self.symbol().as_bytes().to_vec().try_into().unwrap(),
 			existential_deposit: self.ed(),
 			location: self.location(),
 			additional: self.custom(),

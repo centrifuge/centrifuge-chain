@@ -12,7 +12,7 @@ use cfg_types::{
 	locations::Location,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
-	tokens::{CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
+	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
 };
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
@@ -56,6 +56,7 @@ pub trait Runtime:
 		RuntimeEvent = Self::RuntimeEventExt,
 		Lookup = AccountIdLookup<AccountId, ()>,
 		RuntimeOrigin = Self::RuntimeOriginExt,
+		Block = Self::BlockExt,
 		Hash = H256,
 	> + pallet_pool_system::Config<
 		CurrencyId = CurrencyId,
@@ -91,6 +92,7 @@ pub trait Runtime:
 		AssetId = CurrencyId,
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
+		StringLimit = AssetStringLimit,
 	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 	+ pallet_timestamp::Config<Moment = Millis>
 	+ pallet_aura::Config<Moment = Millis, AuthorityId = AuraId>

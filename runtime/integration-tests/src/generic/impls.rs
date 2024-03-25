@@ -25,16 +25,17 @@ impl_runtime!(development_runtime, Development);
 impl_runtime!(altair_runtime, Altair);
 impl_runtime!(centrifuge_runtime, Centrifuge);
 
+/*
 /// Implements fudge support for a runtime
 macro_rules! impl_fudge_support {
 	(
-        $fudge_companion_type:ident,
-        $relay_path:ident,
+		$fudge_companion_type:ident,
+		$relay_path:ident,
 		$relay_session_keys:expr,
-        $parachain_path:ident,
-        $parachain_id:literal,
-        $sibling_id:literal
-    ) => {
+		$parachain_path:ident,
+		$parachain_id:literal,
+		$sibling_id:literal
+	) => {
 		const _: () = {
 			use fudge::primitives::{Chain, ParaId};
 			use polkadot_core_primitives::Block as RelayBlock;
@@ -228,3 +229,4 @@ pub fn default_polkadot_session_keys() -> polkadot_runtime::SessionKeys {
 		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
 	}
 }
+*/
