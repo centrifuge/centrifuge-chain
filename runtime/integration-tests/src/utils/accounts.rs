@@ -24,6 +24,7 @@ use sp_core::{
 };
 use sp_runtime::AccountId32;
 
+/*
 use crate::{
 	chain::{centrifuge, centrifuge::PARA_ID, relay},
 	utils::env::TestEnv,
@@ -125,6 +126,7 @@ fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayNonce {
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
+*/
 
 fn nonce<Runtime, AccountId, Nonce>(who: AccountId) -> Nonce
 where

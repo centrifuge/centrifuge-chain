@@ -9,7 +9,7 @@ macro_rules! impl_runtime {
 
 			impl Runtime for $runtime_path::Runtime {
 				type Api = Self;
-				type Block = $runtime_path::Block;
+				type BlockExt = $runtime_path::Block;
 				type MaxTranchesExt = $runtime_path::MaxTranches;
 				type RuntimeCallExt = $runtime_path::RuntimeCall;
 				type RuntimeEventExt = $runtime_path::RuntimeEvent;
@@ -175,7 +175,7 @@ impl_fudge_support!(
 
 impl_fudge_support!(
 	FudgeAltair,
-	kusama_runtime,
+	staging_kusama_runtime,
 	default_kusama_session_keys(),
 	altair_runtime,
 	2088,
@@ -200,12 +200,13 @@ pub fn default_rococo_session_keys() -> rococo_runtime::SessionKeys {
 		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
 		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
 		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
-		beefy: sp_consensus_beefy::crypto::AuthorityId::from_slice([0u8; 33].as_slice()).unwrap(),
+		beefy: sp_consensus_beefy::ecdsa_crypto::AuthorityId::from_slice([0u8; 33].as_slice())
+			.unwrap(),
 	}
 }
 
-pub fn default_kusama_session_keys() -> kusama_runtime::SessionKeys {
-	kusama_runtime::SessionKeys {
+pub fn default_kusama_session_keys() -> staging_kusama_runtime::SessionKeys {
+	staging_kusama_runtime::SessionKeys {
 		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
 		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
 		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())

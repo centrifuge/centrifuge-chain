@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
+use cfg_primitives::{AuraId, Balance, Header};
 use cumulus_primitives_core::CollectCollationInfo;
 use frame_support::traits::GenesisBuild;
 use fudge::{
@@ -14,7 +14,7 @@ use fudge::{
 	TWasmExecutor,
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
-use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_parachain_primitives::primitives::Id as ParaId;
 use polkadot_primitives::runtime_api::ParachainHost;
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sc_block_builder::BlockBuilderApi;
@@ -76,11 +76,8 @@ pub type RelayClient<ConstructApi> = TFullClient<RelayBlock, ConstructApi, TWasm
 pub type ParachainClient<Block, ConstructApi> = TFullClient<Block, ConstructApi, TWasmExecutor>;
 
 pub trait FudgeHandle<T: Runtime> {
-	type RelayRuntime: frame_system::Config<
-			BlockNumber = BlockNumber,
-			AccountId = AccountId32,
-			Lookup = AccountIdLookup<AccountId32, ()>,
-		> + polkadot_runtime_parachains::paras::Config
+	type RelayRuntime: frame_system::Config<AccountId = AccountId32, Lookup = AccountIdLookup<AccountId32, ()>>
+		+ polkadot_runtime_parachains::paras::Config
 		+ polkadot_runtime_parachains::session_info::Config
 		+ polkadot_runtime_parachains::initializer::Config
 		+ polkadot_runtime_parachains::hrmp::Config

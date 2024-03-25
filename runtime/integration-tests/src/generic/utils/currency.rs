@@ -31,7 +31,7 @@ pub trait CurrencyInfo {
 		&self.symbol()
 	}
 
-	fn location(&self) -> Option<xcm::VersionedMultiLocation> {
+	fn location(&self) -> Option<staging_xcm::VersionedMultiLocation> {
 		None
 	}
 
@@ -41,7 +41,7 @@ pub trait CurrencyInfo {
 		0
 	}
 
-	fn metadata(&self) -> AssetMetadata<Balance, CustomMetadata> {
+	fn metadata(&self) -> AssetMetadata {
 		AssetMetadata {
 			decimals: self.decimals(),
 			name: self.name().as_bytes().to_vec(),
@@ -149,7 +149,7 @@ pub const fn usd18(amount: Balance) -> Balance {
 
 pub fn register_currency<T: Runtime>(
 	currency: impl CurrencyInfo,
-	adaptor: impl FnOnce(&mut AssetMetadata<Balance, CustomMetadata>),
+	adaptor: impl FnOnce(&mut AssetMetadata),
 ) {
 	let mut meta = currency.metadata();
 	adaptor(&mut meta);

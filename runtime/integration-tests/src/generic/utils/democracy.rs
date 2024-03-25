@@ -1,10 +1,7 @@
 use std::ops::Add;
 
 use cfg_primitives::{Balance, BlockNumber, CouncilCollective};
-use frame_support::{
-	dispatch::{GetDispatchInfo, Weight},
-	traits::Bounded,
-};
+use frame_support::{dispatch::GetDispatchInfo, traits::Bounded, weights::Weight};
 use pallet_collective::{Call as CouncilCall, MemberCount, ProposalIndex};
 use pallet_democracy::{
 	AccountVote, Call as DemocracyCall, Conviction, PropIndex, ReferendumIndex, ReferendumInfo,
