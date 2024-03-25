@@ -11579,7 +11579,6 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec 3.6.9",
  "polkadot-core-primitives 1.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
- "polkadot-node-primitives 1.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "polkadot-parachain-primitives 1.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "polkadot-primitives 1.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
  "polkadot-runtime",
