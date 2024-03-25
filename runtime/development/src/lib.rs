@@ -14,7 +14,7 @@
 //! Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
+// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 512.
 #![recursion_limit = "512"]
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
@@ -215,7 +215,6 @@ impl frame_system::Config for Runtime {
 	/// pruned first).
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = RuntimeBlockLength;
-	/// The index type for blocks.
 	type BlockWeights = RuntimeBlockWeights;
 	type DbWeight = RocksDbWeight;
 	/// The type for hashing blocks and tries.
@@ -2720,12 +2719,11 @@ impl_runtime_apis! {
 				pallet_ethereum::CurrentBlock::<Runtime>::get(),
 				pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
 			)
-		 }
+		}
 
 		fn initialize_pending_block(header: &<Block as BlockT>::Header) {
 			Executive::initialize_block(header)
 		}
-
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {

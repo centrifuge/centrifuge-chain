@@ -40,8 +40,8 @@ members = [
   "pallets/swaps",
   "pallets/token-mux",
   "pallets/transfer-allowlist",
-  #"runtime/altair",
-  #"runtime/centrifuge",
+  "runtime/altair",
+  "runtime/centrifuge",
   "runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
@@ -306,8 +306,6 @@ fp-storage = { git = "https://github.com/lemunozm/frontier", default-features = 
 # Moonbeam (tag v0.34.1 => version using a moonbeam fork related to polkadot v1.1.0)
 # WARN: Moonbeam dependencies use forks of polkadot, orml and frontier repos.
 # We need to patch their dependencies to avoid duplicate same crates.
-# NOTE: If new moonbeam dependencies must be added, please check the Cargo.toml file
-# of such dependencies to add the corresponding patch in the patch section below.
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
 pallet-evm-precompile-balances-erc20 = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, tag = "v0.34.1" }
@@ -320,6 +318,11 @@ precompile-utils = { git = "https://github.com/moonbeam-foundation/moonbeam", de
 # from these forked reposities, which lead to multiple cargo issues due to duplication versions of crates being found.
 # With the rules below, we tell cargo that whenever it finds a crate with source in `moonbeam-foundation/`, that it should use
 # the specific official revision of the respective repository at hand.
+#
+# How to know if we should add new patches?
+# - Do `cargo tree`
+# - Search for `moonbeam-foundation/polkadot-sdk` or `moonbeam-foundation-open-runtime-module-library`
+# - For any occurence found, add here a patch.
 [patch."https://github.com/moonbeam-foundation/polkadot-sdk"]
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
