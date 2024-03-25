@@ -14,9 +14,9 @@
 #![cfg(test)]
 #![allow(unused)]
 
-//mod evm;
+mod evm;
 mod generic;
-//mod rewards;
+mod rewards;
 mod utils;
 
 /// Re-exports the correct runtimes that we run the integration tests with
