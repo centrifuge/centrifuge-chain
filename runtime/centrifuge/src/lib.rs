@@ -2756,8 +2756,9 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use frame_support::traits::TrackedStorageKey;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
 			impl frame_system_benchmarking::Config for Runtime {}

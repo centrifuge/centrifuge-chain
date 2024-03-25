@@ -7,6 +7,7 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
+use sp_std::vec; // required for #[benchmarks]
 
 use super::*;
 use crate::{pallet::Config, Pallet as BlockRewards};

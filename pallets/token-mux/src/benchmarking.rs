@@ -21,6 +21,7 @@ use frame_support::traits::fungibles::{Inspect, Mutate};
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate};
 use sp_arithmetic::traits::{One, Zero};
+use sp_std::vec; // required for #[benchmarks]
 
 use super::*;
 
