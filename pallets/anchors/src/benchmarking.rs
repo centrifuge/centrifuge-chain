@@ -17,6 +17,7 @@ use sp_runtime::{
 	traits::{Hash, One},
 	DispatchError,
 };
+use sp_std::vec::Vec;
 
 use super::*;
 
