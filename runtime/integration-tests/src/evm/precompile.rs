@@ -32,8 +32,8 @@ use parity_scale_codec::Encode;
 use runtime_common::{account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY};
 use sp_core::{Get, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
+use staging_xcm::{v3::MultiLocation, VersionedMultiLocation};
 use tokio::runtime::Handle;
-use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::{
 	chain::centrifuge::{
