@@ -268,6 +268,22 @@ fn allow_investment_currency<T: Runtime>() {
 		super::setup_tranches(evm);
 	});
 
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"isAllowedAsInvestmentCurrency",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		));
+	});
+
 	env.state_mut(|_evm| {
 		assert_ok!(
 			pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
@@ -277,10 +293,23 @@ fn allow_investment_currency<T: Runtime>() {
 			),
 		);
 		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
 
-		// TODO(william): Check allowed investment currencies on EVM side and
-		// deploy lp there
-	})
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"isAllowedAsInvestmentCurrency",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		));
+	});
 }
 
 fn disallow_investment_currency<T: Runtime>() {
