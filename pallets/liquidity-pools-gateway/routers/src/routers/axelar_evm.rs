@@ -54,6 +54,19 @@ where
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
+	pub fn new(
+		router: EVMRouter<T>,
+		evm_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
+		liquidity_pools_contract_address: H160,
+	) -> Self {
+		Self {
+			router,
+			evm_chain,
+			liquidity_pools_contract_address,
+			_marker: Default::default(),
+		}
+	}
+
 	/// Calls the init function on the EVM router.
 	pub fn do_init(&self) -> DispatchResult {
 		self.router.do_init()

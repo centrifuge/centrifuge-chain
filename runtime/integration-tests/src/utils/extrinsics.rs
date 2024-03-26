@@ -135,12 +135,7 @@ fn sign_centrifuge(
 	let raw_payload = SignedPayload::from_raw(call.clone(), extra.clone(), additional);
 	let signature = MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
 
-	CentrifugeUnchecked::new_signed(
-		call,
-		CentrifugeAddress::Id(who.to_account_id()),
-		signature,
-		extra,
-	)
+	CentrifugeUnchecked::new_signed(call, CentrifugeAddress::Id(who.id()), signature, extra)
 }
 
 fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
@@ -178,12 +173,7 @@ fn sign_relay(
 	let raw_payload = SignedPayload::from_raw(call.clone(), extra.clone(), additional);
 	let signature = MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
 
-	RelayUnchecked::new_signed(
-		call,
-		RelayAddress::Id(who.to_account_id()),
-		signature,
-		extra,
-	)
+	RelayUnchecked::new_signed(call, RelayAddress::Id(who.id()), signature, extra)
 }
 
 /// Retrieves the latest centrifuge nonce for a given account.
@@ -194,7 +184,7 @@ pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
 			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
-				who.clone().to_account_id().into(),
+				who.clone().id().into(),
 			)
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
@@ -206,9 +196,7 @@ pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 /// also used with         the same `who` as the sender**
 pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
 	env.relay
-		.with_state(|| {
-			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
-		})
+		.with_state(|| nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().id().into()))
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
 
@@ -260,8 +248,8 @@ mod tests {
 		let (alice_before, bob_before) = env
 			.with_state(Chain::Para(PARA_ID), || {
 				(
-					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.id()),
 				)
 			})
 			.unwrap();
@@ -271,8 +259,8 @@ mod tests {
 		let (alice_after, bob_after) = env
 			.with_state(Chain::Para(PARA_ID), || {
 				(
-					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.id()),
 				)
 			})
 			.unwrap();
@@ -291,8 +279,8 @@ mod tests {
 		let (alice_after, bob_after) = env
 			.with_state(Chain::Para(PARA_ID), || {
 				(
-					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.id()),
 				)
 			})
 			.unwrap();

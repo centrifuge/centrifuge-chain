@@ -62,11 +62,7 @@ async fn collator_list_synchronized() {
 	let mut env = test_env_with_centrifuge_storage(Handle::current(), genesis);
 
 	let collators = default_collators();
-	let collator_accounts: Vec<AccountId> = collators
-		.clone()
-		.iter()
-		.map(|c| c.to_account_id())
-		.collect();
+	let collator_accounts: Vec<AccountId> = collators.clone().iter().map(|c| c.id()).collect();
 
 	add_collator(&mut env, collators[0]);
 	add_collator(&mut env, collators[1]);

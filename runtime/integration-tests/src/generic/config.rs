@@ -60,6 +60,7 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		PoolId = PoolId,
+		Rate = Rate,
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
@@ -67,6 +68,7 @@ pub trait Runtime:
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
+		InterestRate = Rate,
 		Balance = Balance,
 		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
@@ -149,6 +151,10 @@ pub trait Runtime:
 	+ pallet_evm_chain_id::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
+	+ pallet_evm::Config<
+		Runner = pallet_evm::runner::stack::Runner<Self>,
+		Currency = pallet_balances::Pallet<Self>,
+	> + axelar_gateway_precompile::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

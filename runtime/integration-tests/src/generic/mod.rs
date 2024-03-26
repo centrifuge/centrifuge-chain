@@ -5,6 +5,7 @@
 
 pub mod env;
 pub mod envs {
+	pub mod evm_env;
 	pub mod fudge_env;
 	pub mod runtime_env;
 }
@@ -17,8 +18,9 @@ mod cases {
 	mod account_derivation;
 	mod example;
 	mod investments;
-	mod liquidity_pools;
+	mod liquidity_pools_transfers;
 	mod loans;
+	mod lp;
 	mod oracles;
 	mod proxy;
 	mod restricted_transfers;

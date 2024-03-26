@@ -85,6 +85,16 @@ pub enum DomainAddress {
 	EVM(EVMChainId, [u8; 20]),
 }
 
+impl DomainAddress {
+	pub fn evm(chain_id: EVMChainId, address: [u8; 20]) -> Self {
+		Self::EVM(chain_id, address)
+	}
+
+	pub fn centrifuge(address: [u8; 32]) -> Self {
+		Self::Centrifuge(address)
+	}
+}
+
 impl From<DomainAddress> for Domain {
 	fn from(x: DomainAddress) -> Self {
 		match x {

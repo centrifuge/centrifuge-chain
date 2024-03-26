@@ -51,11 +51,8 @@ async fn env_works() {
 	default_genesis_block_rewards(&mut genesis);
 	let mut env = test_env_with_centrifuge_storage(Handle::current(), genesis);
 
-	let collator_accounts: Vec<AccountId> = default_collators()
-		.clone()
-		.iter()
-		.map(|c| c.to_account_id())
-		.collect();
+	let collator_accounts: Vec<AccountId> =
+		default_collators().clone().iter().map(|c| c.id()).collect();
 
 	// Ensure default collators are neither candidates nor invulnerables
 	env.with_state(Chain::Para(PARA_ID), || {
@@ -76,6 +73,6 @@ async fn genesis_collators_are_staked() {
 
 	// Ensure default collators are neither candidates nor invulnerables
 	env.with_state(Chain::Para(PARA_ID), || {
-		assert_all_staked(&[Keyring::Admin.to_account_id()]);
+		assert_all_staked(&[Keyring::Admin.id()]);
 	});
 }

@@ -94,7 +94,7 @@ fn create_builder(
 
 	state.insert_storage(
 		pallet_balances::GenesisConfig::<centrifuge::Runtime> {
-			balances: vec![(Keyring::Alice.to_account_id(), 10000 * CFG)],
+			balances: vec![(Keyring::Alice.id(), 10000 * CFG)],
 		}
 		.build_storage()
 		.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),

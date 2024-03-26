@@ -43,7 +43,7 @@ where
 		+ DistributedRewards
 		+ GroupRewards<Balance = Balance, GroupId = GroupId>,
 {
-	let staker = Keyring::Alice.to_account_id();
+	let staker = Keyring::Alice.id();
 	let expected_reward = 200 * CFG;
 	ApiEnv::new(Handle::current())
 		.startup(|| {
