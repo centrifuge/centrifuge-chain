@@ -1,18 +1,12 @@
 use cfg_primitives::CFG;
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards};
 use cfg_types::tokens::CurrencyId;
 use frame_support::assert_ok;
 use runtime_common::apis::{runtime_decl_for_rewards_api::RewardsApiV1, RewardDomain};
 use sp_runtime::traits::Get;
 
 use crate::{
-	generic::{
-		config::Runtime,
-		env::Env,
-		envs::runtime_env::RuntimeEnv,
-		utils,
-		utils::genesis::{self, Genesis},
-	},
+	generic::{config::Runtime, env::Env, envs::runtime_env::RuntimeEnv, utils},
 	utils::accounts::Keyring,
 };
 
