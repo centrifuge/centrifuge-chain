@@ -13,27 +13,30 @@
 use cfg_primitives::{Balance, PoolId};
 use cfg_traits::TimeAsSecs;
 use cfg_types::{
-	domain_address::Domain,
+	domain_address::{Domain, DomainAddress},
+	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
-use ethabi::{ethereum_types::H160, FixedBytes, Token, Uint};
-use frame_support::{assert_ok, traits::OriginTrait};
+use ethabi::{ethereum_types::H160, Token, Uint};
+use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
+use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::traits::Hash;
 
 use crate::{
 	generic::{
 		cases::lp::{
-			utils, utils::Decoder, LocalUSDC, DAI, DECIMALS_6, DEFAULT_BALANCE,
-			EVM_DOMAIN_CHAIN_ID, FRAX, INVESTOR, POOL_A, POOL_B, USDC,
+			names, utils,
+			utils::{pool_a_tranche_id, Decoder},
+			LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
-	utils::accounts::Keyring,
+	utils::{accounts::Keyring, time::secs::SECONDS_PER_YEAR},
 };
 
 #[test]
@@ -251,12 +254,82 @@ fn disallow_investment_currency<T: Runtime>() {
 }
 
 fn update_member<T: Runtime>() {
-	let mut evm = super::setup::<T, _>(|evm| {
+	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
 		super::setup_investment_currencies(evm);
 		super::setup_deploy_lps(evm);
+	});
+
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Bob.into())]),
+			)
+			.unwrap()
+			.value
+		));
+	});
+
+	env.state_mut(|evm| {
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::<T, ()>::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::Bob.into(),
+			),
+			POOL_A,
+			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
+		);
+
+		// Address given MUST match derived allowlisted address for that domain
+		assert_noop!(
+			pallet_liquidity_pools::Pallet::<T>::update_member(
+				Keyring::Bob.as_origin(),
+				POOL_A,
+				pool_a_tranche_id::<T>(),
+				DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Alice.into()),
+				SECONDS_PER_YEAR,
+			),
+			pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember
+		);
+
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			Keyring::Bob.as_origin(),
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			SECONDS_PER_YEAR,
+		));
+
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Bob.into())]),
+			)
+			.unwrap()
+			.value
+		));
+
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Alice.into())]),
+			)
+			.unwrap()
+			.value
+		));
 	});
 }
 

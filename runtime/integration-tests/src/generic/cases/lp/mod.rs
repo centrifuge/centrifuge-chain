@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, TrancheId, CFG, SECONDS_PER_HOUR};
+use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
 use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -37,7 +37,7 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	generic::{
-		cases::lp::utils::Decoder,
+		cases::lp::utils::{pool_a_tranche_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},
 		config::Runtime,
 		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
@@ -48,7 +48,10 @@ use crate::{
 			give_balance,
 		},
 	},
-	utils::accounts::Keyring,
+	utils::{
+		accounts::{default_investors, Keyring},
+		tokens::evm_balances,
+	},
 };
 
 pub mod investments;
@@ -180,15 +183,6 @@ pub mod utils {
 		fn decode(&self) -> T;
 	}
 
-	// TODO(william): Ensure works as expected
-	impl<T: Input> Decoder<bool> for T {
-		fn decode(&self) -> bool {
-			assert_eq!(self.input().len(), 32usize);
-
-			*(&self.input().iter().all(|b| b.is_zero()))
-		}
-	}
-
 	impl<T: Input> Decoder<H160> for T {
 		fn decode(&self) -> H160 {
 			assert_eq!(self.input().len(), 32usize);
@@ -210,6 +204,15 @@ pub mod utils {
 			assert_eq!(self.input().len(), 32usize);
 
 			H256::from(to_fixed_array(self.input()))
+		}
+	}
+
+	impl<T: Input> Decoder<bool> for T {
+		fn decode(&self) -> bool {
+			assert!(self.input().len() == 32);
+
+			// In EVM the last byte of the U256 is set to 1 if true else to false
+			self.input()[31] == 1u8
 		}
 	}
 
@@ -252,6 +255,20 @@ const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
 const INVESTOR: Keyring = Keyring::Bob;
+
+pub mod names {
+	pub const POOL_A_T_1: &str = "lp_pool_a_tranche_1";
+
+	pub const RM_POOL_A_T_1: &str = "rm_lp_pool_a_tranche_1";
+
+	pub const POOL_B_T_1: &str = "lp_pool_b_tranche_1";
+
+	pub const RM_POOL_B_T_1: &str = "rm_lp_pool_b_tranche_1";
+
+	pub const POOL_B_T_2: &str = "lp_pool_b_tranche_2";
+
+	pub const RM_POOL_B_T_2: &str = "rm_lp_pool_b_tranche_2";
+}
 
 #[allow(non_camel_case_types)]
 pub struct USDC;
@@ -396,7 +413,7 @@ pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
 		setup_tranches(evm);
 		setup_investment_currencies(evm);
 		setup_deploy_lps(evm);
-		// TODO: Needs setup investors too here
+		setup_investors(evm)
 	})
 }
 
@@ -410,6 +427,8 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			.storage(),
 	);
 	env.state_mut(|evm| {
+		evm_balances::<T>(DEFAULT_BALANCE * CFG);
+
 		evm.load_contracts();
 
 		// Fund gateway sender
@@ -1297,6 +1316,38 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
+	evm.register(
+		names::POOL_A_T_1,
+		"TrancheToken",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheToken",
+				Some(&[
+					Token::Uint(POOL_A.into()),
+					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+	evm.register(
+		names::RM_POOL_A_T_1,
+		"RestrictionManager",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::POOL_A_T_1,
+				"restrictionManager",
+				None,
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
 	// AddTranche 1 of B
 	let tranche_id = {
 		let tranche_id = utils::pool_b_tranche_1_id::<T>();
@@ -1322,6 +1373,23 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
+	evm.register(
+		"lp_pool_b_tranche_1",
+		"TrancheToken",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheToken",
+				Some(&[
+					Token::Uint(POOL_B.into()),
+					Token::FixedBytes(pool_b_tranche_1_id::<T>().to_vec()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
 
 	// AddTranche 2 of B
 	let tranche_id = {
@@ -1348,6 +1416,23 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
+	evm.register(
+		"lp_pool_b_tranche_2",
+		"TrancheToken",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheToken",
+				Some(&[
+					Token::Uint(POOL_B.into()),
+					Token::FixedBytes(pool_b_tranche_2_id::<T>().to_vec()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
 }
 
 /// Sets up the provided address as investor for all tranches in Pool A and B on
@@ -1811,6 +1896,51 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		OriginFor::<T>::signed(Keyring::Alice.into()),
 		FRAX.id()
 	));
+
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+}
+
+pub fn setup_investors<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
+	default_investors().into_iter().for_each(|investor| {
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			POOL_A,
+			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			investor.as_origin(),
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			SECONDS_PER_YEAR,
+		));
+
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			POOL_B,
+			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			investor.as_origin(),
+			POOL_B,
+			pool_b_tranche_1_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			SECONDS_PER_YEAR,
+		));
+
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			POOL_B,
+			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			investor.as_origin(),
+			POOL_B,
+			pool_b_tranche_2_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			SECONDS_PER_YEAR,
+		));
+	});
 
 	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 }
