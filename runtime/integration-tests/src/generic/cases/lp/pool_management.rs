@@ -23,7 +23,7 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
 use runtime_common::account_conversion::AccountConverter;
-use sp_runtime::traits::Hash;
+use sp_runtime::{traits::Hash, DispatchError};
 
 use crate::{
 	generic::{
@@ -186,20 +186,78 @@ fn add_tranche<T: Runtime>() {
 		super::setup_pools(evm);
 	});
 
-	env.state_mut(|evm| {
-		let tranche_id = utils::pool_a_tranche_id::<T>();
+	env.state(|evm| {
+		assert_noop!(
+			evm.call(
+				Keyring::Alice,
+				Default::default(),
+				"pool_manager",
+				"deployTranche",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+				]),
+			),
+			DispatchError::Other("EVM call failed: Revert")
+		);
+	});
+
+	env.state_mut(|_| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
-			tranche_id,
+			pool_a_tranche_id::<T>(),
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
 
-		// TODO(william): Actually check tranche was added on EVM side
+	env.state_mut(|evm| {
+		// Tranche id does not exist before adding and deploying tranche
+		assert_eq!(
+			Decoder::<sp_core::H160>::decode(
+				&evm.view(
+					Keyring::Alice,
+					"pool_manager",
+					"getTrancheToken",
+					Some(&[
+						Token::Uint(Uint::from(POOL_A)),
+						Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					]),
+				)
+				.unwrap()
+				.value,
+			),
+			[0u8; 20].into()
+		);
 
-		// TODO: Check EVM side and deploy tranche there
+		assert_ok!(evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"pool_manager",
+			"deployTranche",
+			Some(&[
+				Token::Uint(Uint::from(POOL_A)),
+				Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+			]),
+		));
+		assert_ne!(
+			Decoder::<sp_core::H160>::decode(
+				&evm.view(
+					Keyring::Alice,
+					"pool_manager",
+					"getTrancheToken",
+					Some(&[
+						Token::Uint(Uint::from(POOL_A)),
+						Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					]),
+				)
+				.unwrap()
+				.value,
+			),
+			[0u8; 20].into()
+		);
 	});
 }
 
