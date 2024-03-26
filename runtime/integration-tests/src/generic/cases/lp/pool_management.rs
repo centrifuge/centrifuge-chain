@@ -23,14 +23,14 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
 use runtime_common::account_conversion::AccountConverter;
-use sp_runtime::{traits::Hash, DispatchError};
+use sp_runtime::DispatchError;
 
 use crate::{
 	generic::{
 		cases::lp::{
 			names, utils,
 			utils::{pool_a_tranche_id, Decoder},
-			LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
+			LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
@@ -318,26 +318,50 @@ fn disallow_investment_currency<T: Runtime>() {
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
 		super::setup_investment_currencies(evm);
-		super::setup_deploy_lps(evm);
 	});
 
-	// disallow investment currencies
-	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
-		for pool in [POOL_A, POOL_B] {
-			env.state_mut(|_evm| {
-				assert_ok!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						OriginFor::<T>::signed(Keyring::Admin.into()),
-						pool,
-						currency
-					),
-				);
-				utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"isAllowedAsInvestmentCurrency",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		));
+	});
 
-				// TODO(william): Actually check whether LP is blocked
-			})
-		}
-	}
+	env.state_mut(|_evm| {
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+				OriginFor::<T>::signed(Keyring::Admin.into()),
+				POOL_A,
+				USDC.id()
+			),
+		);
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"isAllowedAsInvestmentCurrency",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		));
+	});
 }
 
 fn update_member<T: Runtime>() {
@@ -362,7 +386,7 @@ fn update_member<T: Runtime>() {
 		));
 	});
 
-	env.state_mut(|evm| {
+	env.state_mut(|_| {
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::<T, ()>::convert_evm_address(
 				EVM_DOMAIN_CHAIN_ID,

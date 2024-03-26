@@ -9,7 +9,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use ethabi::Token;
 
 use crate::generic::{cases::lp::setup_full, config::Runtime, env::EnvEvmExtension};
 

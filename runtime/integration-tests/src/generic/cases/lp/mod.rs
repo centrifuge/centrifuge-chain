@@ -18,10 +18,7 @@ use cfg_types::{
 	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
-use ethabi::{
-	ethereum_types::{H160, U256},
-	FixedBytes, Token, Uint,
-};
+use ethabi::{ethereum_types::U256, FixedBytes, Token, Uint};
 use frame_support::{
 	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
 };
@@ -60,12 +57,10 @@ pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::{Balance, TrancheId};
-	use cfg_traits::Seconds;
 	use ethabi::ethereum_types::{H160, H256, U256};
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
-	use sp_runtime::traits::Zero;
 	use xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
