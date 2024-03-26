@@ -86,6 +86,9 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	) -> &mut Self {
 		let contract = self.contract(contract);
 		let runtime_code = pallet_evm::AccountCodes::<T>::get(address);
+
+		assert_ne!(address, H160::zero());
+
 		self.deployed_contracts.insert(
 			name.into(),
 			DeployedContractInfo::new(

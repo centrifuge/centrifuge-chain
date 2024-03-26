@@ -251,63 +251,12 @@ fn disallow_investment_currency<T: Runtime>() {
 }
 
 fn update_member<T: Runtime>() {
-	let mut env = super::setup::<T, _>(|evm| {
+	let mut evm = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
 		super::setup_investment_currencies(evm);
 		super::setup_deploy_lps(evm);
-		super::setup_investor(evm);
-	});
-
-	env.state_mut(|evm| {
-		// FIXME: Fails with Revert
-		// TODO(william): How to perform this call properly?
-		// Assertion method 1 (direct): Check restriction manager
-		/*
-		let restriction_manager = evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"restriction_manager_factory",
-			"newRestrictionManager",
-			Some(&[
-				Token::Uint(Uint::from(0u8)),
-				Token::Address(evm.deployed("lp_pool_a_tranche_1_usdc").address()),
-				Token::Array(vec![Token::Address(evm.deployed("pool_manager").address())]),
-			]),
-		);
-		 */
-
-		// FIXME: Fails with Revert
-		// Assertion method 2 (indirect): Attempt to request deposit which requires
-		let request_call_lp_contract = evm.call(
-			Keyring::Bob,
-			Default::default(),
-			"lp_pool_a_tranche_1_usdc",
-			"requestDeposit",
-			Some(&[
-				Token::Uint(Uint::from(DEFAULT_BALANCE * DECIMALS_6)),
-				Token::Address(INVESTOR.into()),
-				Token::Address(INVESTOR.into()),
-				Token::Bytes(vec![]),
-			]),
-		);
-		request_call_lp_contract.unwrap();
-
-		// FIXME(william): Function not callable because not exposed
-		/*
-		   let bob_is_member = Decoder::<bool>::decode(
-			   &evm.view(
-				   Keyring::Alice,
-				   "restriction_manager",
-				   "hasMember",
-				   Some(&[Token::Address(INVESTOR.into())]),
-			   )
-			   .unwrap()
-			   .value,
-		   );
-		   assert!(bob_is_member);
-		*/
 	});
 }
 
