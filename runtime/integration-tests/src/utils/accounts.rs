@@ -19,6 +19,7 @@ use ethabi::ethereum_types::{H160, H256};
 use frame_support::traits::OriginTrait;
 use fudge::primitives::Chain;
 use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
+use pallet_evm::AddressMapping;
 use sp_core::{ecdsa, ed25519, sr25519, Hasher, Pair as PairT};
 use sp_runtime::{AccountId32, MultiSignature};
 
@@ -157,14 +158,7 @@ impl Keyring {
 	}
 
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		let h160: H160 = self.into();
-
-		runtime_common::account_conversion::AccountConverter::<(), ()>::convert_evm_address(
-			// TODO: creating a balance storage with
-			//       this call fails as not executed within externalties
-			// pallet_evm_chain_id::ChainId::<T>::get(),
-			0, h160.0,
-		)
+		runtime_common::account_conversion::AccountConverter::<T, ()>::into_account_id(self.into())
 	}
 
 	pub fn as_multi(self) -> sp_runtime::MultiSigner {
@@ -255,6 +249,15 @@ impl From<Keyring> for sp_core::H160 {
 		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
 			&Into::<ecdsa::Pair>::into(value).public().as_ref(),
 		)))
+	}
+}
+
+impl From<Keyring> for [u8; 20] {
+	fn from(value: Keyring) -> Self {
+		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
+			&Into::<ecdsa::Pair>::into(value).public().as_ref(),
+		)))
+		.0
 	}
 }
 

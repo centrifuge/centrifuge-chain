@@ -13,27 +13,30 @@
 use cfg_primitives::{Balance, PoolId};
 use cfg_traits::TimeAsSecs;
 use cfg_types::{
-	domain_address::Domain,
+	domain_address::{Domain, DomainAddress},
+	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
-use ethabi::{ethereum_types::H160, FixedBytes, Token, Uint};
-use frame_support::{assert_ok, traits::OriginTrait};
+use ethabi::{ethereum_types::H160, Token, Uint};
+use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
+use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::traits::Hash;
 
 use crate::{
 	generic::{
 		cases::lp::{
-			utils, utils::Decoder, LocalUSDC, DAI, DECIMALS_6, DEFAULT_BALANCE,
-			EVM_DOMAIN_CHAIN_ID, FRAX, INVESTOR, POOL_A, POOL_B, USDC,
+			names, utils,
+			utils::{pool_a_tranche_id, Decoder},
+			LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
-	utils::accounts::Keyring,
+	utils::{accounts::Keyring, time::secs::SECONDS_PER_YEAR},
 };
 
 #[test]
@@ -257,57 +260,76 @@ fn update_member<T: Runtime>() {
 		super::setup_tranches(evm);
 		super::setup_investment_currencies(evm);
 		super::setup_deploy_lps(evm);
-		super::setup_investor(evm);
+	});
+
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Bob.into())]),
+			)
+			.unwrap()
+			.value
+		));
 	});
 
 	env.state_mut(|evm| {
-		// FIXME: Fails with Revert
-		// TODO(william): How to perform this call properly?
-		// Assertion method 1 (direct): Check restriction manager
-		/*
-		let restriction_manager = evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"restriction_manager_factory",
-			"newRestrictionManager",
-			Some(&[
-				Token::Uint(Uint::from(0u8)),
-				Token::Address(evm.deployed("lp_pool_a_tranche_1_usdc").address()),
-				Token::Array(vec![Token::Address(evm.deployed("pool_manager").address())]),
-			]),
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::<T, ()>::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::Bob.into(),
+			),
+			POOL_A,
+			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
 		);
-		 */
 
-		// FIXME: Fails with Revert
-		// Assertion method 2 (indirect): Attempt to request deposit which requires
-		let request_call_lp_contract = evm.call(
-			Keyring::Bob,
-			Default::default(),
-			"lp_pool_a_tranche_1_usdc",
-			"requestDeposit",
-			Some(&[
-				Token::Uint(Uint::from(DEFAULT_BALANCE * DECIMALS_6)),
-				Token::Address(INVESTOR.into()),
-				Token::Address(INVESTOR.into()),
-				Token::Bytes(vec![]),
-			]),
+		// Address given MUST match derived allowlisted address for that domain
+		assert_noop!(
+			pallet_liquidity_pools::Pallet::<T>::update_member(
+				Keyring::Bob.as_origin(),
+				POOL_A,
+				pool_a_tranche_id::<T>(),
+				DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Alice.into()),
+				SECONDS_PER_YEAR,
+			),
+			pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember
 		);
-		request_call_lp_contract.unwrap();
 
-		// FIXME(william): Function not callable because not exposed
-		/*
-		   let bob_is_member = Decoder::<bool>::decode(
-			   &evm.view(
-				   Keyring::Alice,
-				   "restriction_manager",
-				   "hasMember",
-				   Some(&[Token::Address(INVESTOR.into())]),
-			   )
-			   .unwrap()
-			   .value,
-		   );
-		   assert!(bob_is_member);
-		*/
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			Keyring::Bob.as_origin(),
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			SECONDS_PER_YEAR,
+		));
+
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Bob.into())]),
+			)
+			.unwrap()
+			.value
+		));
+
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RM_POOL_A_T_1,
+				"hasMember",
+				Some(&[Token::Address(Keyring::Alice.into())]),
+			)
+			.unwrap()
+			.value
+		));
 	});
 }
 

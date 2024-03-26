@@ -48,11 +48,6 @@ pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	accounts.extend(
 		default_accounts()
 			.into_iter()
-			.map(|k| (k.id_ecdsa::<T>(), balance)),
-	);
-	accounts.extend(
-		default_accounts()
-			.into_iter()
 			.map(|k| (k.id_ed25519(), balance)),
 	);
 
@@ -69,18 +64,6 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 					.clone()
 					.into_iter()
 					.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
-					.collect::<Vec<_>>()
-			})
-			.flatten(),
-	);
-	accounts.extend(
-		default_accounts()
-			.into_iter()
-			.map(|keyring| {
-				values
-					.clone()
-					.into_iter()
-					.map(|(curency_id, balance)| (keyring.id_ecdsa::<T>(), curency_id, balance))
 					.collect::<Vec<_>>()
 			})
 			.flatten(),
