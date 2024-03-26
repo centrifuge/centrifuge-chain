@@ -1900,7 +1900,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 }
 
-pub fn setup_investors<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
+pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	default_investors().into_iter().for_each(|investor| {
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
@@ -1940,6 +1940,40 @@ pub fn setup_investors<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			SECONDS_PER_YEAR,
 		));
+
+		evm.call(
+			Keyring::Admin,
+			Default::default(),
+			"usdc",
+			"mint",
+			Some(&[
+				Token::Address(investor.into()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Admin,
+			Default::default(),
+			"frax",
+			"mint",
+			Some(&[
+				Token::Address(investor.into()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Admin,
+			Default::default(),
+			"dai",
+			"mint",
+			Some(&[
+				Token::Address(investor.into()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
 	});
 
 	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
