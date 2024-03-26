@@ -153,7 +153,7 @@ pub mod pallet {
 					}),
 			})?;
 
-			// NOTE: The Ethereuem side of things never returns a DispatchError
+			// NOTE: The Ethereum side of things never returns a DispatchError
 			//       if the execution failed. But we can check that manually by
 			//       querying the `Pending` storage of the pallet-ethereum.
 			let pending = pallet_ethereum::Pending::<T>::get();

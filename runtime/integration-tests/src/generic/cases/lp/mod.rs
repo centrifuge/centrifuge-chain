@@ -11,12 +11,17 @@
 // GNU General Public License for more details.
 
 use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR};
+use cfg_primitives::{Balance, PoolId, TrancheId, CFG, SECONDS_PER_HOUR};
+use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
-use ethabi::{ethereum_types::U256, FixedBytes, Token, Uint};
+use ethabi::{
+	ethereum_types::{H160, U256},
+	FixedBytes, Token, Uint,
+};
 use frame_support::{
 	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
 };
@@ -26,6 +31,7 @@ use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 use pallet_evm::FeeCalculator;
+use runtime_common::account_conversion::AccountConverter;
 use sp_core::Get;
 use sp_runtime::traits::{BlakeTwo256, Hash};
 
@@ -51,10 +57,12 @@ pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::{Balance, TrancheId};
+	use cfg_traits::Seconds;
 	use ethabi::ethereum_types::{H160, H256, U256};
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
+	use sp_runtime::traits::Zero;
 	use xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -172,9 +180,18 @@ pub mod utils {
 		fn decode(&self) -> T;
 	}
 
+	// TODO(william): Ensure works as expected
+	impl<T: Input> Decoder<bool> for T {
+		fn decode(&self) -> bool {
+			assert_eq!(self.input().len(), 32usize);
+
+			*(&self.input().iter().all(|b| b.is_zero()))
+		}
+	}
+
 	impl<T: Input> Decoder<H160> for T {
 		fn decode(&self) -> H160 {
-			assert!(self.input().len() == 32);
+			assert_eq!(self.input().len(), 32usize);
 
 			H160::from(to_fixed_array(&self.input()[12..]))
 		}
@@ -182,7 +199,7 @@ pub mod utils {
 
 	impl<T: Input> Decoder<sp_core::H160> for T {
 		fn decode(&self) -> sp_core::H160 {
-			assert!(self.input().len() == 32);
+			assert_eq!(self.input().len(), 32usize);
 
 			sp_core::H160::from(to_fixed_array(&self.input()[12..]))
 		}
@@ -190,7 +207,7 @@ pub mod utils {
 
 	impl<T: Input> Decoder<H256> for T {
 		fn decode(&self) -> H256 {
-			assert!(self.input().len() == 32);
+			assert_eq!(self.input().len(), 32usize);
 
 			H256::from(to_fixed_array(self.input()))
 		}
@@ -198,7 +215,7 @@ pub mod utils {
 
 	impl<T: Input> Decoder<Balance> for T {
 		fn decode(&self) -> Balance {
-			assert!(self.input().len() == 32);
+			assert_eq!(self.input().len(), 32usize);
 
 			Balance::from_be_bytes(to_fixed_array(&self.input()[16..]))
 		}
@@ -233,6 +250,8 @@ pub const DEFAULT_BALANCE: Balance = 1_000_000;
 const DECIMALS_6: Balance = 1_000_000;
 const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
+const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
+const INVESTOR: Keyring = Keyring::Bob;
 
 #[allow(non_camel_case_types)]
 pub struct USDC;
@@ -1324,6 +1343,214 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
 			Token::FixedBytes(FixedBytes::from(tranche_id)),
+		]),
+	)
+	.unwrap();
+}
+
+/// Sets up the provided address as investor for all tranches in Pool A and B on
+/// Centrifuge Chain as well as EVM. Also mints default balance on both sides.
+pub fn setup_investor<T: Runtime>(evm: &mut impl EvmEnv<T>) {
+	// POOL A
+	let tranche_id = utils::pool_a_tranche_id::<T>();
+	crate::generic::utils::pool::give_role::<T>(
+		AccountConverter::<T, ()>::convert_evm_address(
+			EVM_DOMAIN_CHAIN_ID,
+			H160::from(INVESTOR).into(),
+		),
+		POOL_A,
+		PoolRole::TrancheInvestor(tranche_id, INVESTOR_VALIDIDITY),
+	);
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_A,
+		tranche_id,
+		DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, H160::from(INVESTOR).into()),
+		INVESTOR_VALIDIDITY,
+	),);
+
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+	// POOL B - Tranche 1
+	let tranche_id = utils::pool_b_tranche_1_id::<T>();
+	crate::generic::utils::pool::give_role::<T>(
+		AccountConverter::<T, ()>::convert_evm_address(
+			EVM_DOMAIN_CHAIN_ID,
+			H160::from(INVESTOR).into(),
+		),
+		POOL_B,
+		PoolRole::TrancheInvestor(tranche_id, INVESTOR_VALIDIDITY),
+	);
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_B,
+		tranche_id,
+		DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, H160::from(INVESTOR).into()),
+		INVESTOR_VALIDIDITY,
+	),);
+
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+	// POOL B - Tranche 2
+	let tranche_id = utils::pool_b_tranche_2_id::<T>();
+	crate::generic::utils::pool::give_role::<T>(
+		AccountConverter::<T, ()>::convert_evm_address(
+			EVM_DOMAIN_CHAIN_ID,
+			H160::from(INVESTOR).into(),
+		),
+		POOL_B,
+		PoolRole::TrancheInvestor(tranche_id, INVESTOR_VALIDIDITY),
+	);
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_B,
+		tranche_id,
+		DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, H160::from(INVESTOR).into()),
+		INVESTOR_VALIDIDITY,
+	),);
+
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+	// Fund investor
+	evm.call(
+		Keyring::Admin,
+		Default::default(),
+		"usdc",
+		"mint",
+		Some(&[
+			Token::Address(INVESTOR.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		Keyring::Admin,
+		Default::default(),
+		"frax",
+		"mint",
+		Some(&[
+			Token::Address(INVESTOR.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	evm.call(
+		Keyring::Admin,
+		Default::default(),
+		"dai",
+		"mint",
+		Some(&[
+			Token::Address(INVESTOR.into()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	// POOL A
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"usdc",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_a_tranche_1_usdc").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"frax",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_a_tranche_1_frax").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"dai",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_a_tranche_1_dai").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	// POOL B - Tranche 1
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"usdc",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_1_usdc").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"frax",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_1_frax").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"dai",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_1_dai").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+
+	// POOL B - Tranche 2
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"usdc",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_2_usdc").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"frax",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_2_frax").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		INVESTOR.clone(),
+		Default::default(),
+		"dai",
+		"approve",
+		Some(&[
+			Token::Address(evm.deployed("lp_pool_b_tranche_2_dai").address()),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
 	.unwrap();

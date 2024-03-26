@@ -16,15 +16,18 @@ use cfg_types::{
 	domain_address::Domain,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
-use ethabi::{ethereum_types::H160, Token, Uint};
+use ethabi::{ethereum_types::H160, FixedBytes, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
+use pallet_pool_system::Config;
+use sp_runtime::traits::Hash;
 
 use crate::{
 	generic::{
 		cases::lp::{
-			utils, utils::Decoder, LocalUSDC, DAI, EVM_DOMAIN_CHAIN_ID, FRAX, POOL_A, POOL_B, USDC,
+			utils, utils::Decoder, LocalUSDC, DAI, DECIMALS_6, DEFAULT_BALANCE,
+			EVM_DOMAIN_CHAIN_ID, FRAX, INVESTOR, POOL_A, POOL_B, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
@@ -180,15 +183,18 @@ fn add_tranche<T: Runtime>() {
 		super::setup_pools(evm);
 	});
 
-	env.state_mut(|_evm| {
+	env.state_mut(|evm| {
+		let tranche_id = utils::pool_a_tranche_id::<T>();
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
-			utils::pool_a_tranche_id::<T>(),
+			tranche_id,
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+		// TODO(william): Actually check tranche was added on EVM side
 
 		// TODO: Check EVM side and deploy tranche there
 	});
@@ -211,8 +217,8 @@ fn allow_investment_currency<T: Runtime>() {
 		);
 		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
-		// TODO: Check allowed investment currencies on EVM side and deploy lp
-		//       there
+		// TODO(william): Check allowed investment currencies on EVM side and
+		// deploy lp there
 	})
 }
 
@@ -238,14 +244,71 @@ fn disallow_investment_currency<T: Runtime>() {
 				);
 				utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 
-				// TODO: Actually check whether LP is blocked
+				// TODO(william): Actually check whether LP is blocked
 			})
 		}
 	}
 }
 
 fn update_member<T: Runtime>() {
-	todo!("use setup full because of tranche id req")
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+		super::setup_investor(evm);
+	});
+
+	env.state_mut(|evm| {
+		// FIXME: Fails with Revert
+		// TODO(william): How to perform this call properly?
+		// Assertion method 1 (direct): Check restriction manager
+		/*
+		let restriction_manager = evm.call(
+			Keyring::Alice,
+			Default::default(),
+			"restriction_manager_factory",
+			"newRestrictionManager",
+			Some(&[
+				Token::Uint(Uint::from(0u8)),
+				Token::Address(evm.deployed("lp_pool_a_tranche_1_usdc").address()),
+				Token::Array(vec![Token::Address(evm.deployed("pool_manager").address())]),
+			]),
+		);
+		 */
+
+		// FIXME: Fails with Revert
+		// Assertion method 2 (indirect): Attempt to request deposit which requires
+		let request_call_lp_contract = evm.call(
+			Keyring::Bob,
+			Default::default(),
+			"lp_pool_a_tranche_1_usdc",
+			"requestDeposit",
+			Some(&[
+				Token::Uint(Uint::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Address(INVESTOR.into()),
+				Token::Address(INVESTOR.into()),
+				Token::Bytes(vec![]),
+			]),
+		);
+		request_call_lp_contract.unwrap();
+
+		// FIXME(william): Function not callable because not exposed
+		/*
+		   let bob_is_member = Decoder::<bool>::decode(
+			   &evm.view(
+				   Keyring::Alice,
+				   "restriction_manager",
+				   "hasMember",
+				   Some(&[Token::Address(INVESTOR.into())]),
+			   )
+			   .unwrap()
+			   .value,
+		   );
+		   assert!(bob_is_member);
+		*/
+	});
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {
