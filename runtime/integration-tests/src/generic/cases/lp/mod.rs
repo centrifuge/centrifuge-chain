@@ -765,7 +765,9 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			"file",
 			Some(&[
 				Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
-				Token::String(evm.deployed("router").address().to_string()),
+				// FIXME: Use EVM_LP_INSTANCE
+				Token::String("0x1111111111111111111111111111111111111111".into()),
+				// Token::String(evm.deployed("router").address().to_string()),
 			]),
 		)
 		.unwrap();

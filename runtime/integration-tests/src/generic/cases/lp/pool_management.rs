@@ -38,7 +38,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	add_currency::<development_runtime::Runtime>()
+	update_member::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
