@@ -152,7 +152,7 @@ pub mod pallet {
 			+ FungibleInspect<Self::AccountId, Balance = Self::Balance>;
 
 		/// The currency type of the artificial block rewards currency.
-		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + Ord + MaxEncodedLen;
 
 		/// The identifier of the artificial block rewards currency which is
 		/// minted and burned for collators.
@@ -227,6 +227,7 @@ pub mod pallet {
 	pub enum Error<T> {}
 
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
 		pub collators: Vec<T::AccountId>,
 		pub collator_reward: T::Balance,
@@ -234,20 +235,8 @@ pub mod pallet {
 		pub last_update: Seconds,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				collators: Default::default(),
-				collator_reward: Default::default(),
-				treasury_inflation_rate: Default::default(),
-				last_update: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			T::Rewards::attach_currency(T::StakeCurrencyId::get(), T::StakeGroupId::get()).expect(
 				"Should be able to attach default block rewards staking currency to collator group",

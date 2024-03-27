@@ -28,6 +28,7 @@ frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 bitflags = { workspace = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

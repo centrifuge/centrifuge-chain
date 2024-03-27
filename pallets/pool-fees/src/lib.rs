@@ -113,7 +113,6 @@ pub mod pallet {
 		type Rate: Parameter
 			+ Member
 			+ cfg_types::fixed_point::FixedPointNumberExtension
-			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
 

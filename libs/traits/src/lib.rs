@@ -19,21 +19,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
-	scale_info::TypeInfo,
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
-	Parameter, RuntimeDebug,
+	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use orml_traits::asset_registry;
+use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
-		MaybeSerializeDeserialize, Member, Zero,
+		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeSerialize, MaybeSerializeDeserialize,
+		Member, Zero,
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, str::FromStr, vec::Vec};
+use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -100,7 +101,6 @@ pub trait Reward {
 		+ Copy
 		+ Debug
 		+ Default
-		+ FromStr
 		+ Hash
 		+ MaybeDisplay
 		+ MaybeSerializeDeserialize
@@ -177,9 +177,6 @@ pub enum UpdateState {
 pub trait PoolMutate<AccountId, PoolId> {
 	type Balance;
 	type CurrencyId;
-	type MaxTokenNameLength: Get<u32>;
-	type MaxTokenSymbolLength: Get<u32>;
-	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
@@ -523,3 +520,12 @@ impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 pub trait HasLocalAssetRepresentation<AssetRegistry> {
 	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError>;
 }
+
+/// The asset metadata configured using the trait types
+pub type AssetMetadataOf<T> = asset_registry::AssetMetadata<
+	<T as orml_traits::asset_registry::Inspect>::Balance,
+	<T as orml_traits::asset_registry::Inspect>::CustomMetadata,
+	StringLimitOf<T>,
+>;
+
+pub type StringLimitOf<T> = <T as orml_traits::asset_registry::Inspect>::StringLimit;

@@ -3,7 +3,11 @@ use cfg_traits::{
 	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
-use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebug, RuntimeDebugNoBound};
+use frame_support::{
+	ensure,
+	pallet_prelude::{DispatchResult, RuntimeDebug},
+	RuntimeDebugNoBound,
+};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;

@@ -23,13 +23,9 @@ use sp_std::vec::Vec;
 use crate::fixed_point::FixedPointNumberExtension;
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
+pub struct TrancheMetadata<StringLimit: Get<u32>> {
+	pub token_name: BoundedVec<u8, StringLimit>,
+	pub token_symbol: BoundedVec<u8, StringLimit>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

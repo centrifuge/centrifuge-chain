@@ -14,8 +14,6 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-frame-benchmarking = { workspace = true, optional = true }
-
 ethabi = { workspace = true }
 fp-evm = { workspace = true }
 pallet-evm = { workspace = true }
@@ -46,10 +44,8 @@ std = [
   "cfg-traits/std",
   "cfg-utils/std",
   "ethabi/std",
-  "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",

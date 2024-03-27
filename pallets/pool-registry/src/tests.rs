@@ -10,15 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::PoolMetadata;
-use cfg_types::{pools::TrancheMetadata, tokens::CustomMetadata};
+use cfg_traits::{AssetMetadataOf, PoolMetadata};
+use cfg_types::pools::TrancheMetadata;
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use orml_traits::Change;
 use pallet_pool_system::{
 	pool_types::PoolChanges,
 	tranches::{TrancheInput, TrancheType},
 };
-use xcm::VersionedMultiLocation;
+use staging_xcm::VersionedMultiLocation;
 
 use crate::{mock::*, pallet, pallet::Error, PoolMetadataOf};
 
@@ -169,10 +169,10 @@ fn trait_pool_metadata_create_tranche_token_metadata() {
 		.execute_with(|| {
 			let pool_id = 0;
 			let tranche_id: [u8; 16] = [0u8; 16];
-			let metadata = orml_asset_registry::AssetMetadata::<Balance, CustomMetadata> {
+			let metadata = AssetMetadataOf::<RegistryMock> {
 				decimals: 12,
-				name: "Test Token".into(),
-				symbol: "TEST".into(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: None,
 				additional: Default::default(),
@@ -194,10 +194,10 @@ fn trait_pool_metadata_get_tranche_token_metadata() {
 		.execute_with(|| {
 			let pool_id = 0;
 			let tranche_id: [u8; 16] = [0u8; 16];
-			let metadata = orml_asset_registry::AssetMetadata::<Balance, CustomMetadata> {
+			let metadata = AssetMetadataOf::<RegistryMock> {
 				decimals: 12,
-				name: "Test Token".into(),
-				symbol: "TEST".into(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: None,
 				additional: Default::default(),
@@ -234,18 +234,18 @@ fn trait_pool_metadata_update_tranche_token_metadata() {
 		.execute_with(|| {
 			let pool_id = 0;
 			let tranche_id: [u8; 16] = [0u8; 16];
-			let old = orml_asset_registry::AssetMetadata::<Balance, CustomMetadata> {
+			let old = AssetMetadataOf::<RegistryMock> {
 				decimals: 12,
-				name: "Old".into(),
-				symbol: "OLD".into(),
+				name: Default::default(),
+				symbol: Default::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: None,
 				additional: Default::default(),
 			};
-			let new = orml_asset_registry::AssetMetadata::<Balance, CustomMetadata> {
+			let new = AssetMetadataOf::<RegistryMock> {
 				decimals: 14,
-				name: "New".into(),
-				symbol: "NEW".into(),
+				name: Vec::from(b"New").try_into().unwrap(),
+				symbol: Vec::from(b"NEW").try_into().unwrap(),
 				existential_deposit: 2_000_000_000_000,
 				location: None,
 				additional: Default::default(),
@@ -263,8 +263,8 @@ fn trait_pool_metadata_update_tranche_token_metadata() {
 				pool_id,
 				tranche_id,
 				Some(new.decimals.clone()),
-				Some(new.name.clone()),
-				Some(new.symbol.clone()),
+				Some(new.name.clone().into_inner()),
+				Some(new.symbol.clone().into_inner()),
 				Some(new.existential_deposit.clone()),
 				None,
 				None

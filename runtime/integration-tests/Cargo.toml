@@ -53,7 +53,7 @@ cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
 kusama-runtime = { workspace = true, features = ["std"] }
 polkadot-core-primitives = { workspace = true, features = ["std"] }
-polkadot-parachain = { workspace = true, features = ["std"] }
+polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
@@ -64,8 +64,8 @@ pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }
 pallet-im-online = { workspace = true, features = ["std"] }
 
-xcm = { workspace = true, features = ["std"] }
-xcm-executor = { workspace = true, features = ["std"] }
+staging-xcm = { workspace = true, features = ["std"] }
+staging-xcm-executor = { workspace = true, features = ["std"] }
 
 orml-traits = { workspace = true, features = ["std"] }
 

@@ -12,61 +12,33 @@
 
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
-	parameter_types,
-	sp_io::TestExternalities,
-	sp_runtime::{
-		testing::{Header, H256},
-		traits::{BlakeTwo256, IdentityLookup},
-	},
-	traits::{Contains, EitherOfDiverse, Everything, SortedMembers},
-	weights::Weight,
+	derive_impl, parameter_types,
+	traits::{Contains, EitherOfDiverse, SortedMembers},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_runtime::traits::AccountIdConversion;
+use scale_info::TypeInfo;
+use sp_io::TestExternalities;
+use sp_runtime::{traits::AccountIdConversion, BuildStorage};
 
 ///! Mock environment setup for testing the pallet-permissions
 use crate::{self as pallet_permissions};
 
-#[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	scale_info::TypeInfo,
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub enum OrganisationRole {
 	SeniorExeutive,
 	HeadOfSaubermaching,
 	Admin,
 }
 
-#[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	scale_info::TypeInfo,
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub enum XcmRole {
 	Sender,
 	Receiver,
 }
 
-#[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	scale_info::TypeInfo,
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub enum Role {
 	Organisation(OrganisationRole),
 	Xcm(XcmRole),
@@ -74,7 +46,7 @@ pub enum Role {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
+		#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 		pub struct OrgStorage: u32 {
 			const SENIOR_EXEC = 0b00000001;
 			const HEAD_OF_SAUBERMACHING  = 0b00000010;
@@ -84,23 +56,14 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
+		#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 		pub struct XcmStorage: u32 {
 			const SENDER = 0b00000001;
 			const RECEIVER  = 0b00000010;
 		}
 }
 
-#[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	scale_info::TypeInfo,
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-	MaxEncodedLen,
-)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub struct Storage {
 	org: OrgStorage,
 	xcm: XcmStorage,
@@ -115,16 +78,7 @@ impl Default for Storage {
 	}
 }
 
-#[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	scale_info::TypeInfo,
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-	MaxEncodedLen,
-)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub enum Scope {
 	PalletA,
 	PalletB,
@@ -271,55 +225,19 @@ mod dummy {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type AccountId = u64;
 
-// Build mock runtime
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		Dummy: pallet_dummy::{Pallet, Call}
+	pub enum Runtime {
+		System: frame_system,
+		Permissions: pallet_permissions,
+		Dummy: pallet_dummy
 	}
 );
 
-// Parameterize frame system pallet
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-			pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_parts(1024, 0).set_proof_size(u64::MAX).into());
-}
-
-// Implement frame system configuration for the mock runtime
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = ();
-	type AccountId = AccountId;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = BlockWeights;
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 parameter_types! {
@@ -401,8 +319,8 @@ pub struct TestExternalitiesBuilder;
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self, optional: impl FnOnce()) -> TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		let mut ext = TestExternalities::from(storage);

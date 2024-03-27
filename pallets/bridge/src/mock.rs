@@ -22,31 +22,17 @@
 
 use cfg_primitives::{constants::CFG, Balance};
 use chainbridge::{constants::DEFAULT_RELAYER_VOTE_THRESHOLD, types::ResourceId, EnsureBridge};
-use frame_support::{
-	parameter_types,
-	traits::{Everything, SortedMembers},
-	PalletId,
-};
-use frame_system::{
-	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureNever, EnsureSignedBy,
-};
+use frame_support::{derive_impl, parameter_types, traits::SortedMembers, PalletId};
+use frame_system::{EnsureNever, EnsureSignedBy};
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::BuildStorage;
 
 use crate::{self as pallet_bridge, Config as BridgePalletConfig};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
 // ----------------------------------------------------------------------------
-
-// Types used to build the mock runtime
-type UncheckedExtrinsic = MockUncheckedExtrinsic<Runtime>;
-type Block = MockBlock<Runtime>;
 
 pub(crate) const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 pub(crate) const TEST_CHAIN_ID: u8 = 5;
@@ -66,17 +52,14 @@ pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 // Build mock runtime
 frame_support::construct_runtime!(
 
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Runtime
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Storage},
-		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Event<T>},
-		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
+		System: frame_system,
+		Authorship: pallet_authorship,
+		Balances: pallet_balances,
+		ChainBridge: chainbridge,
+		Fees: pallet_fees,
+		Bridge: pallet_bridge,
 	}
 );
 
@@ -91,37 +74,10 @@ impl SortedMembers<u64> for TestUserId {
 	}
 }
 
-// Parameterize FRAME system pallet
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
-// Implement FRAME system pallet configuration trait for the mock runtime
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = u64;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 parameter_types! {
@@ -135,13 +91,13 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = ();
 	type WeightInfo = ();
 }
 
@@ -229,8 +185,8 @@ impl TestExternalitiesBuilder {
 	pub(crate) fn build(self) -> TestExternalities {
 		let bridge_id = ChainBridge::account_id();
 
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		// pre-fill balances

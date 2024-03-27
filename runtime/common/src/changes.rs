@@ -1,4 +1,4 @@
-use frame_support::RuntimeDebug;
+use frame_support::pallet_prelude::RuntimeDebug;
 use pallet_loans::entities::changes::Change as LoansChange;
 use pallet_oracle_collection::types::Change as OracleCollectionChange;
 use pallet_pool_fees::types::Change as PoolFeesChange;

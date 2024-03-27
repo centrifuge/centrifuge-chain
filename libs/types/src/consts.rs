@@ -10,22 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// Pools-related constants
-pub mod pools {
-	use frame_support::parameter_types;
-	use scale_info::TypeInfo;
-
-	parameter_types! {
-		/// The max length in bytes allowed for a tranche token name
-		#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-		pub const MaxTrancheNameLengthBytes: u32 = 128;
-
-		/// The max length in bytes allowed for a tranche token symbol
-		#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-		pub const MaxTrancheSymbolLengthBytes: u32 = 32;
-	}
-}
-
 // Rewards-related constants
 pub mod rewards {
 	use cfg_primitives::{Balance, CFG};

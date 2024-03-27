@@ -7,8 +7,8 @@ use super::*;
 benchmarks! {
   initialize {
 		let ratio = Perbill::from_percent(2u32);
-		let vesting_period: T::BlockNumber = 3u32.into();
-		let vesting_start: T::BlockNumber = 4u32.into();
+		let vesting_period = 3u32.into();
+		let vesting_start = 4u32.into();
   }: _(RawOrigin::Root, ratio, vesting_period, vesting_start )
   verify {
 		assert_eq!(
@@ -20,14 +20,14 @@ benchmarks! {
   }
 
   set_vesting_start {
-	let start: T::BlockNumber = 1u32.into();
+	let start = 1u32.into();
   }: _(RawOrigin::Root, start)
   verify {
 		assert_eq!(Pallet::<T>::vesting_start().unwrap(), 1u32.into());
   }
 
   set_vesting_period {
-	let period: T::BlockNumber = 1u32.into();
+	let period = 1u32.into();
   }: _(RawOrigin::Root, period)
   verify {
 		assert_eq!(Pallet::<T>::vesting_period().unwrap(), 1u32.into());

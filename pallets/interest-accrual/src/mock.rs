@@ -1,50 +1,24 @@
 use cfg_traits::Millis;
-use frame_support::{parameter_types, traits::Hooks, weights::constants::RocksDbWeight};
-use sp_core::H256;
+use frame_support::{derive_impl, parameter_types, traits::Hooks};
 use sp_io::TestExternalities;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::BuildStorage;
 
 use crate::*;
 
 pub type Balance = u128;
 pub type Rate = sp_arithmetic::fixed_point::FixedU128;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
+frame_support::construct_runtime!(
+	pub enum Runtime {
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		InterestAccrual: crate,
+	}
+);
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const SS58Prefix: u8 = 42;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = ();
-	type AccountId = u64;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = RocksDbWeight;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -67,26 +41,15 @@ impl Config for Runtime {
 	type Weights = ();
 }
 
-// Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		InterestAccrual: crate::{Pallet, Storage, Event<T>},
-	}
-);
-
+#[allow(unused)]
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	const SECONDS: u64 = 1000;
 	const START_DATE: u64 = 1640995200;
 
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
+
 	let mut externalities = TestExternalities::new(storage);
 	externalities.execute_with(|| {
 		System::set_block_number(1);

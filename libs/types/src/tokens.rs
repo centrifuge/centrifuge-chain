@@ -17,19 +17,27 @@ use cfg_primitives::{
 	Balance, PalletIndex,
 };
 use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
-pub use orml_asset_registry::AssetMetadata;
+use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
-use xcm::{
+use staging_xcm::{
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
 	v3::{MultiLocation, NetworkId},
 	VersionedMultiLocation,
 };
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
+
+pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
+
+frame_support::parameter_types! {
+	#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const AssetStringLimit: u32 = MAX_ASSET_STRING_LIMIT;
+}
+
+pub type AssetMetadata = asset_registry::AssetMetadata<Balance, CustomMetadata, AssetStringLimit>;
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -52,8 +60,9 @@ use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	#[default]
@@ -83,9 +92,20 @@ pub enum CurrencyId {
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LocalAssetId(pub u32);
 
 impl From<LocalAssetId> for CurrencyId {
@@ -107,9 +127,20 @@ impl TryFrom<CurrencyId> for LocalAssetId {
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum StakingCurrency {
 	/// An emulated internal, non-transferable currency
 	/// Its issuance and holding is handled inherently
@@ -211,9 +242,20 @@ where
 /// enables us to use the `TrancheCurrency` type separately where solely this
 /// enum variant would be relevant. Most notably, in the `struct Tranche`.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
 	pub pool_id: PoolId,
 	pub tranche_id: TrancheId,
@@ -244,8 +286,9 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 
 /// A type describing our custom additional metadata stored in the
 /// OrmlAssetRegistry.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
+	Serialize,
+	Deserialize,
 	Clone,
 	Copy,
 	Default,
@@ -303,8 +346,9 @@ pub struct CustomMetadata {
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CrossChainTransferability {
 	/// The asset is not transferable cross-chain
 	#[default]
@@ -333,9 +377,20 @@ impl CrossChainTransferability {
 /// therefore we only support EVM tokens. In the far future, we might support
 /// wrapped tokens from other chains such as Cosmos based ones.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {
@@ -486,15 +541,19 @@ pub mod usdc {
 		chain_id: EVMChainId,
 		contract_address_usdc: [u8; 20],
 		pool_currency: bool,
-	) -> AssetMetadata<Balance, CustomMetadata> {
-		AssetMetadata {
+	) -> Result<AssetMetadata, DispatchError> {
+		Ok(AssetMetadata {
 			decimals: DECIMALS,
-			name,
-			symbol,
+			name: name
+				.try_into()
+				.map_err(|_| DispatchError::Other("asset name exceeds limit"))?,
+			symbol: symbol
+				.try_into()
+				.map_err(|_| DispatchError::Other("asset symbol exceeds limit"))?,
 			existential_deposit: EXISTENTIAL_DEPOSIT,
 			location: Some(VersionedMultiLocation::V3(MultiLocation {
 				parents: 0,
-				interior: xcm::v3::Junctions::X3(
+				interior: staging_xcm::v3::Junctions::X3(
 					PalletInstance(pallet_index),
 					GlobalConsensus(NetworkId::Ethereum { chain_id }),
 					AccountKey20 {
@@ -510,7 +569,7 @@ pub mod usdc {
 				pool_currency,
 				local_representation: Some(LOCAL_ASSET_ID),
 			},
-		}
+		})
 	}
 }
 

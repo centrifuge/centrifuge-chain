@@ -1,19 +1,4 @@
 use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
-use parity_scale_codec::FullCodec;
-use scale_info::TypeInfo;
-use sp_runtime::traits::MaybeSerializeDeserialize;
-
-/// Type used for identity the key used to retrieve the fees.
-pub trait FeeKey:
-	FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + PartialEq
-{
-}
-
-impl<
-		T: FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + PartialEq,
-	> FeeKey for T
-{
-}
 
 /// A way to identify a fee value.
 pub enum Fee<Balance, FeeKey> {
@@ -37,7 +22,7 @@ impl<Balance: Copy, FeeKey: Clone> Fee<Balance, FeeKey> {
 pub trait Fees {
 	type AccountId;
 	type Balance: Balance;
-	type FeeKey: FeeKey;
+	type FeeKey;
 
 	/// Get the fee balance for a fee key
 	fn fee_value(key: Self::FeeKey) -> Self::Balance;
@@ -62,8 +47,8 @@ pub trait Fees {
 		fee: Fee<Self::Balance, Self::FeeKey>,
 	) -> DispatchResult;
 
-	/// Allows to initialize an initial state required for a pallet that
-	/// calls pay a fee
+	/// Allows to initialize an initial state required for a pallet that pay a
+	/// fee
 	#[cfg(feature = "runtime-benchmarks")]
 	fn add_fee_requirements(_from: &Self::AccountId, _fee: Fee<Self::Balance, Self::FeeKey>) {}
 }

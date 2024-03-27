@@ -20,6 +20,7 @@ use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*, whitelisted_
 use frame_support::traits::fungibles::Mutate;
 use frame_system::RawOrigin;
 use sp_runtime::{traits::One, Perquintill};
+use sp_std::vec; // required for #[benchmarks]
 
 use crate::{Call, Config, CurrencyOf, Pallet};
 
@@ -154,6 +155,6 @@ mod benchmarks {
 	impl_benchmark_test_suite!(
 		Pallet,
 		crate::mock::TestExternalitiesBuilder::build(),
-		crate::mock::MockRuntime
+		crate::mock::Runtime
 	);
 }

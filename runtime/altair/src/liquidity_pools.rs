@@ -24,8 +24,8 @@ use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
 use runtime_common::{
-	account_conversion::AccountConverter, gateway::GatewayAccountProvider,
-	liquidity_pools::LiquidityPoolsMessage, transfer_filter::PreLpTransfer,
+	account_conversion::AccountConverter, gateway, liquidity_pools::LiquidityPoolsMessage,
+	transfer_filter::PreLpTransfer,
 };
 
 use crate::{
@@ -80,7 +80,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {

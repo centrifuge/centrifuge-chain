@@ -1,25 +1,20 @@
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::fees::{Fee, FeeKey, Fees};
+	use cfg_traits::fees::{Fee, Fees};
 	use frame_support::{pallet_prelude::*, traits::tokens::Balance};
 	use mock_builder::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Balance: Balance;
-		type FeeKey: FeeKey;
+		type FeeKey;
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_fee_value(f: impl Fn(T::FeeKey) -> T::Balance + 'static) {

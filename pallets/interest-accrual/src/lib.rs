@@ -57,7 +57,7 @@
 //! When we want to compute the interest accrued on some value, the
 //! high-level equation is:
 //!
-//! ```ignore
+//! ```text
 //! rate_per_second.pow(debt_age) * debt_base_value
 //! ```
 //!
@@ -67,7 +67,7 @@
 //! created at the same time as each other (or the rate), we must
 //! include a correction factor to the shared interest rate accrual:
 //!
-//! ```ignore
+//! ```text
 //! correction_factor = ???;
 //! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
 //! ```
@@ -75,7 +75,7 @@
 //! This correction factor is just the accumulated interest at the
 //! time the debt was created:
 //!
-//! ```ignore
+//! ```text
 //! correction_factor = rate_per_second.pow(rate_age_at_time_of_debt_creation);
 //! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
 //! // Equivalent to:
@@ -86,7 +86,7 @@
 //! precompute the correction factor applied to the base debt as the
 //! normalized debt
 //!
-//! ```ignore
+//! ```text
 //! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_debt_creation);
 //! ```
 //!
@@ -108,7 +108,7 @@
 //! over" with a new base debt - our accrued debt from the old rate -
 //! and a new interest rate.
 //!
-//! ```ignore
+//! ```text
 //! current_debt = normalized_debt * accrued_rate(old_interest_rate);
 //! normalized_debt = current_debt / accrued_rate(new_interest_rate);
 //! ```
@@ -128,7 +128,8 @@ use cfg_traits::{
 	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
-use frame_support::{BoundedVec, RuntimeDebug};
+use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
+use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
@@ -244,8 +245,8 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_: BlockNumberFor<T>) -> Weight {
 			let then = LastUpdated::<T>::get();
 			let now = T::Time::now();
 			LastUpdated::<T>::set(now);

@@ -24,7 +24,7 @@ sp-runtime = { workspace = true }
 
 # XCM
 pallet-xcm-transactor = { workspace = true }
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 xcm-primitives = { workspace = true }
 
 # EVM
@@ -45,8 +45,8 @@ lazy_static = { workspace = true }
 
 cumulus-primitives-core = { workspace = true, default-features = true }
 
-xcm-builder = { workspace = true, default-features = true }
-xcm-executor = { workspace = true, default-features = true }
+staging-xcm-builder = { workspace = true, default-features = true }
+staging-xcm-executor = { workspace = true, default-features = true }
 
 pallet-evm-chain-id = { workspace = true, default-features = true }
 pallet-evm-precompile-simple = { workspace = true, default-features = true }
@@ -73,7 +73,7 @@ std = [
   "frame-system/std",
   "sp-std/std",
   "sp-core/std",
-  "xcm/std",
+  "staging-xcm/std",
   "pallet-liquidity-pools-gateway/std",
   "pallet-xcm-transactor/std",
   "pallet-ethereum/std",
@@ -99,6 +99,7 @@ runtime-benchmarks = [
   "pallet-evm/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "staging-xcm-builder/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

@@ -10,14 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#[cfg(test)]
-use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, Seconds};
-#[cfg(test)]
-use cfg_types::{
-	fixed_point::{Quantity, Rate},
-	tokens::TrancheCurrency,
-};
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CustomMetadata},
@@ -25,9 +18,10 @@ use cfg_types::{
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
+	pallet_prelude::RuntimeDebug,
 	sp_runtime::ArithmeticError,
 	traits::{fungibles::Inspect, Get, Len},
-	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
+	Blake2_128, BoundedVec, Parameter, StorageHasher,
 };
 use orml_traits::asset_registry::AssetMetadata;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -46,14 +40,10 @@ use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
 pub type Seniority = u32;
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
+pub struct TrancheInput<Rate, StringLimit: Get<u32>> {
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Option<Seniority>,
-	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+	pub metadata: TrancheMetadata<StringLimit>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -71,17 +61,13 @@ pub enum TrancheLoc<TrancheId> {
 
 /// The core metadata about a tranche which we can attach to an event
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
+pub struct TrancheEssence<TrancheCurrency, Rate, StringLimit: Get<u32>> {
 	/// Currency that the tranche is denominated in
 	pub currency: TrancheCurrency,
 	/// Type of the tranche (Residual or NonResidual)
 	pub ty: TrancheType<Rate>,
 	/// Metadata of a Tranche
-	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+	pub metadata: TrancheMetadata<StringLimit>,
 }
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -136,23 +122,6 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub last_updated_interest: Seconds,
 
 	pub _phantom: PhantomData<Weight>,
-}
-
-#[cfg(test)]
-impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
-	fn default() -> Self {
-		Self {
-			tranche_type: TrancheType::Residual,
-			seniority: 1,
-			currency: TrancheCurrency::generate(0, [0u8; 16]),
-			debt: Zero::zero(),
-			reserve: Zero::zero(),
-			loss: Zero::zero(),
-			ratio: Perquintill::one(),
-			last_updated_interest: 0,
-			_phantom: PhantomData::default(),
-		}
-	}
 }
 
 impl<Balance, Rate, Weight, Currency> Tranche<Balance, Rate, Weight, Currency>
@@ -222,14 +191,14 @@ where
 		Ok(self.debt)
 	}
 
-	pub fn create_asset_metadata(
+	pub fn create_asset_metadata<StringLimit: Get<u32>>(
 		&self,
 		decimals: u32,
-		token_name: Vec<u8>,
-		token_symbol: Vec<u8>,
-	) -> AssetMetadata<Balance, CustomMetadata>
+		token_name: BoundedVec<u8, StringLimit>,
+		token_symbol: BoundedVec<u8, StringLimit>,
+	) -> AssetMetadata<Balance, CustomMetadata, StringLimit>
 	where
-		Balance: Zero,
+		Balance: Clone + sp_std::fmt::Debug + Eq + PartialEq,
 		Currency: Encode,
 		CustomMetadata: Parameter + Member + TypeInfo,
 	{
@@ -298,41 +267,6 @@ where
 	pub salt: TrancheSalt<PoolId>,
 }
 
-#[cfg(test)]
-impl
-	Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, crate::mock::MaxTranches>
-{
-	pub fn new(
-		pool: PoolId,
-		tranches: Vec<Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>>,
-	) -> Result<Self, DispatchError> {
-		let mut ids = Vec::with_capacity(tranches.len());
-		let mut salt = (0, pool);
-
-		for (index, _tranche) in tranches.iter().enumerate() {
-			ids.push(Tranches::<
-				Balance,
-				Rate,
-				TrancheWeight,
-				TrancheCurrency,
-				TrancheId,
-				PoolId,
-				crate::mock::MaxTranches,
-			>::id_from_salt(salt));
-			salt = (index.ensure_add(1)?.ensure_into()?, pool);
-		}
-
-		Ok(Self {
-			tranches: BoundedVec::<
-				Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>,
-				crate::mock::MaxTranches,
-			>::truncate_from(tranches),
-			ids: BoundedVec::<TrancheId, crate::mock::MaxTranches>::truncate_from(ids),
-			salt,
-		})
-	}
-}
-
 // The solution struct for a specific tranche
 #[derive(
 	Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
@@ -360,14 +294,13 @@ where
 	PoolId: Copy + Encode,
 	MaxTranches: Get<u32>,
 {
-	pub fn from_input<MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn from_input<StringLimit>(
 		pool: PoolId,
-		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+		tranche_inputs: Vec<TrancheInput<Rate, StringLimit>>,
 		now: Seconds,
 	) -> Result<Self, DispatchError>
 	where
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+		StringLimit: Get<u32>,
 	{
 		let tranches = BoundedVec::with_bounded_capacity(tranche_inputs.len());
 		let ids = BoundedVec::with_bounded_capacity(tranche_inputs.len());
@@ -379,11 +312,7 @@ where
 		};
 
 		for (index, tranche_input) in tranche_inputs.into_iter().enumerate() {
-			tranches.add::<MaxTokenNameLength, MaxTokenSymbolLength>(
-				index.ensure_into()?,
-				tranche_input,
-				now,
-			)?;
+			tranches.add::<StringLimit>(index.ensure_into()?, tranche_input, now)?;
 		}
 
 		Ok(tranches)
@@ -518,15 +447,14 @@ where
 		Ok(tranche)
 	}
 
-	pub fn replace<MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn replace<StringLimit>(
 		&mut self,
 		at: TrancheIndex,
-		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
+		tranche: TrancheInput<Rate, StringLimit>,
 		now: Seconds,
 	) -> DispatchResult
 	where
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+		StringLimit: Get<u32>,
 	{
 		let at_idx = at;
 		let i_at: usize = at.ensure_into()?;
@@ -600,15 +528,14 @@ where
 		Ok(())
 	}
 
-	pub fn add<MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn add<StringLimit>(
 		&mut self,
 		at: TrancheIndex,
-		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
+		tranche: TrancheInput<Rate, StringLimit>,
 		now: Seconds,
 	) -> DispatchResult
 	where
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+		StringLimit: Get<u32>,
 	{
 		let at_idx = at;
 		let i_at: usize = at.ensure_into()?;
@@ -1059,22 +986,6 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 	pub seniority: Seniority,
 
 	pub _phantom: PhantomData<Weight>,
-}
-
-#[cfg(test)]
-impl Default for EpochExecutionTranche<Balance, Quantity, TrancheWeight, TrancheCurrency> {
-	fn default() -> Self {
-		Self {
-			currency: TrancheCurrency::generate(0, [0u8; 16]),
-			supply: 0,
-			price: Quantity::one(),
-			invest: 0,
-			redeem: 0,
-			min_risk_buffer: Default::default(),
-			seniority: 0,
-			_phantom: Default::default(),
-		}
-	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -1555,6 +1466,7 @@ pub mod test {
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches =
 		Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, MaxTranches>;
+	type StringLimit = sp_runtime::traits::ConstU32<128>;
 
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1568,6 +1480,72 @@ pub mod test {
 
 	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
+
+	#[cfg(test)]
+	impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, MaxTranches> {
+		pub fn new(
+			pool: PoolId,
+			tranches: Vec<Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>>,
+		) -> Result<Self, DispatchError> {
+			let mut ids = Vec::with_capacity(tranches.len());
+			let mut salt = (0, pool);
+
+			for (index, _tranche) in tranches.iter().enumerate() {
+				ids.push(Tranches::<
+					Balance,
+					Rate,
+					TrancheWeight,
+					TrancheCurrency,
+					TrancheId,
+					PoolId,
+					MaxTranches,
+				>::id_from_salt(salt));
+				salt = (index.ensure_add(1)?.ensure_into()?, pool);
+			}
+
+			Ok(Self {
+				tranches: BoundedVec::<
+					Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>,
+					MaxTranches,
+				>::truncate_from(tranches),
+				ids: BoundedVec::<TrancheId, MaxTranches>::truncate_from(ids),
+				salt,
+			})
+		}
+	}
+
+	#[cfg(test)]
+	impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
+		fn default() -> Self {
+			Self {
+				tranche_type: TrancheType::Residual,
+				seniority: 1,
+				currency: TrancheCurrency::generate(0, [0u8; 16]),
+				debt: Zero::zero(),
+				reserve: Zero::zero(),
+				loss: Zero::zero(),
+				ratio: Perquintill::one(),
+				last_updated_interest: 0,
+				_phantom: PhantomData::default(),
+			}
+		}
+	}
+
+	#[cfg(test)]
+	impl Default for EpochExecutionTranche<Balance, Quantity, TrancheWeight, TrancheCurrency> {
+		fn default() -> Self {
+			Self {
+				currency: TrancheCurrency::generate(0, [0u8; 16]),
+				supply: 0,
+				price: Quantity::one(),
+				invest: 0,
+				redeem: 0,
+				min_risk_buffer: Default::default(),
+				seniority: 0,
+				_phantom: Default::default(),
+			}
+		}
+	}
 
 	fn residual(id: u8) -> TTranche {
 		residual_base(id, 0, 0, 0)
@@ -1839,13 +1817,13 @@ pub mod test {
 		fn create_asset_metadata_works() {
 			let tranche = non_residual(3, Some(10), None);
 			let decimals: u32 = 10;
-			let name: Vec<u8> = "Glimmer".into();
-			let symbol: Vec<u8> = "GLMR".into();
+			let name: BoundedVec<u8, StringLimit> = Vec::from(b"Glimmer").try_into().unwrap();
+			let symbol: BoundedVec<u8, StringLimit> = Vec::from(b"GLMR").try_into().unwrap();
 			let asset_metadata = tranche.create_asset_metadata(decimals, name, symbol);
 
 			assert_eq!(asset_metadata.existential_deposit, 0);
-			assert_eq!(asset_metadata.name[..], [71, 108, 105, 109, 109, 101, 114]);
-			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
+			assert_eq!(&asset_metadata.name[..], b"Glimmer");
+			assert_eq!(&asset_metadata.symbol[..], b"GLMR");
 			assert_eq!(asset_metadata.decimals, decimals);
 			assert_eq!(asset_metadata.location, None);
 		}
@@ -2081,20 +2059,6 @@ pub mod test {
 			assert_ne!(next, next_again)
 		}
 
-		struct TokenNameLen;
-		impl Get<u32> for TokenNameLen {
-			fn get() -> u32 {
-				16u32
-			}
-		}
-
-		struct TokenSymLen;
-		impl Get<u32> for TokenSymLen {
-			fn get() -> u32 {
-				8u32
-			}
-		}
-
 		// Replace should work if interest is lower than tranche w/ lower index
 		// ("next").
 		#[test]
@@ -2115,8 +2079,8 @@ pub mod test {
 				seniority,
 				tranche_type,
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+					token_name: BoundedVec::<u8, StringLimit>::default(),
+					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
 
@@ -2158,8 +2122,8 @@ pub mod test {
 					min_risk_buffer: min_risk_buffer,
 				},
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+					token_name: BoundedVec::<u8, StringLimit>::default(),
+					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
 
@@ -2195,8 +2159,8 @@ pub mod test {
 				seniority,
 				tranche_type,
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+					token_name: BoundedVec::<u8, StringLimit>::default(),
+					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
 
@@ -2234,8 +2198,8 @@ pub mod test {
 					min_risk_buffer: min_risk_buffer,
 				},
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+					token_name: BoundedVec::<u8, StringLimit>::default(),
+					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
 
@@ -3223,8 +3187,8 @@ pub mod test {
 					min_risk_buffer: Perquintill::from_percent(5),
 				},
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+					token_name: BoundedVec::<u8, StringLimit>::default(),
+					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
 			assert_ok!(tranches.add(2, input, 0u64));

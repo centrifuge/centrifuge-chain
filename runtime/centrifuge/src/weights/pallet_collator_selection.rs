@@ -168,4 +168,14 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(0, 2519).saturating_mul(c.into()))
 			.saturating_add(Weight::from_parts(0, 2259).saturating_mul(r.into()))
 	}
+
+	fn add_invulnerable(_: u32, _: u32) -> Weight {
+        // Pending to generate
+        Weight::default()
+    }
+
+	fn remove_invulnerable(_: u32) -> Weight {
+        // Pending to generate
+        Weight::default()
+    }
 }

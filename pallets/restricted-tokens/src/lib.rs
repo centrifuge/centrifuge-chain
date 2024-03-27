@@ -65,7 +65,7 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 pub mod pallet {
 	use cfg_traits::PreConditions;
 	use frame_support::{
-		scale_info::TypeInfo,
+		pallet_prelude::TypeInfo,
 		sp_runtime::{
 			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
 			ArithmeticError, FixedPointOperand,
@@ -106,13 +106,7 @@ pub mod pallet {
 			+ FixedPointOperand;
 
 		/// The currency-id of this pallet
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + Ord + TypeInfo + MaxEncodedLen;
 
 		/// Checks the pre conditions for every transfer via the user api (i.e.
 		/// extrinsics)

@@ -5,7 +5,7 @@ use sp_std::default::Default;
 
 use crate::MessageMock;
 
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use super::*;
 
@@ -16,12 +16,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_init(f: impl Fn() -> DispatchResult + 'static) {

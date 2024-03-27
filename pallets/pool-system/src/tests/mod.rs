@@ -24,7 +24,6 @@ use cfg_types::{
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::storage::StateVersion;
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber, Perquintill, TokenError,
@@ -383,12 +382,10 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			})
 			.collect::<Vec<_>>();
 
-		let prev_root = frame_support::storage_root(StateVersion::V0);
-		assert_eq!(
+		frame_support::assert_storage_noop!(assert_eq!(
 			PoolSystem::inspect_solution(pool, &epoch, &full_solution).unwrap(),
 			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
-		);
-		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
+		));
 	});
 }
 
@@ -2393,8 +2390,8 @@ fn create_tranche_token_metadata() {
 					tranche_type: TrancheType::Residual,
 					seniority: None,
 					metadata: TrancheMetadata {
-						token_name,
-						token_symbol,
+						token_name: token_name.clone(),
+						token_symbol: token_symbol.clone(),
 					}
 				},
 				TrancheInput {
@@ -2423,8 +2420,8 @@ fn create_tranche_token_metadata() {
 				// The decimals of the tranche token need to match the decimals for the pool
 				// currency.
 				decimals: 12,
-				name: "SuperToken".into(),
-				symbol: "ST".into(),
+				name: token_name,
+				symbol: token_symbol,
 				existential_deposit: 0,
 				location: None,
 				additional: CustomMetadata {
@@ -2683,7 +2680,7 @@ mod pool_fees {
 	use super::*;
 	use crate::{mock::default_pool_fees, Event};
 
-	const POOL_OWNER: MockAccountId = 2;
+	const POOL_OWNER: AccountId = 2;
 	const INVESTMENT_AMOUNT: Balance = DEFAULT_POOL_MAX_RESERVE / 10;
 	const NAV_AMOUNT: Balance = INVESTMENT_AMOUNT / 2 + 2_345_000;
 	const FEE_AMOUNT_FIXED: Balance = NAV_AMOUNT / 10;

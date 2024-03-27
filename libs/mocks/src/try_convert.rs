@@ -1,4 +1,4 @@
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::TryConvert;
 	use frame_support::pallet_prelude::*;
@@ -17,12 +17,7 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config<I>, I: 'static = ()> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config<I>, I: 'static = ()> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		pub fn mock_try_convert(f: impl Fn(T::From) -> Result<T::To, T::Error> + 'static) {

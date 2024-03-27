@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::fee::PoolFeeBucket;
-use frame_support::dispatch::TypeInfo;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 
 use crate::{Config, PoolFeeInfoOf};
 

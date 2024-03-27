@@ -63,7 +63,7 @@ use frame_support::{
 	},
 	PalletId,
 };
-use frame_system::ensure_root;
+use frame_system::{ensure_root, pallet_prelude::BlockNumberFor};
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 use sp_runtime::{
@@ -121,26 +121,6 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_vesting::Config {
 		/// Constant configuration parameter to store the module identifier for
 		/// the pallet.
-		///
-		/// The module identifier may be of the form
-		/// ```PalletId(*b"cc/rwrd")```. This constant is set when building this
-		/// config trait for the runtime.
-		///
-		/// # Example
-		/// ```rust,ignore
-		///
-		/// // Parameterize crowdloan reward pallet configuration
-		/// parameter_types! {
-		///   pub const CrowdloanRewardPalletId: PalletId =
-		/// PalletId(*b"cc/rwrd"); }
-		///
-		/// // Implement crowdloan reward pallet's configuration trait for the
-		/// runtime impl pallet_crowdloarn_reward::Config for Runtime {
-		///   type Event = Event;
-		///   type WeightInfo = ();
-		///   type PalletId = CrowdloanRewardPalletId;
-		/// }
-		/// ```
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -172,17 +152,17 @@ pub mod pallet {
 
 		/// Event triggered when the reward module is ready to reward
 		/// contributors \[vesting_start, vesting_period, direct_payout_ratio\]
-		RewardPalletInitialized(T::BlockNumber, T::BlockNumber, Perbill),
+		RewardPalletInitialized(BlockNumberFor<T>, BlockNumberFor<T>, Perbill),
 
 		/// Direct payout ratio for contributors has been updated
 		/// \[payout_ratio\]
 		DirectPayoutRatioUpdated(Perbill),
 
 		/// Vesting period has been updated
-		VestingPeriodUpdated(T::BlockNumber),
+		VestingPeriodUpdated(BlockNumberFor<T>),
 
 		/// Start of vesting has been updated
-		VestingStartUpdated(T::BlockNumber),
+		VestingStartUpdated(BlockNumberFor<T>),
 	}
 
 	#[pallet::type_value]
@@ -200,12 +180,12 @@ pub mod pallet {
 	/// Over which period are the contributions vested.
 	#[pallet::storage]
 	#[pallet::getter(fn vesting_period)]
-	pub(super) type VestingPeriod<T: Config> = StorageValue<_, T::BlockNumber>;
+	pub(super) type VestingPeriod<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
 	/// At which block number does the vesting start.
 	#[pallet::storage]
 	#[pallet::getter(fn vesting_start)]
-	pub(super) type VestingStart<T: Config> = StorageValue<_, T::BlockNumber>;
+	pub(super) type VestingStart<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
 	// ----------------------------------------------------------------------------
 	// Pallet errors
@@ -241,8 +221,8 @@ pub mod pallet {
 		pub fn initialize(
 			origin: OriginFor<T>,
 			direct_payout_ratio: Perbill,
-			vesting_period: T::BlockNumber,
-			vesting_start: T::BlockNumber,
+			vesting_period: BlockNumberFor<T>,
+			vesting_start: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure!(
 				Self::is_origin_administrator(origin).is_ok(),
@@ -267,7 +247,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn set_vesting_start(
 			origin: OriginFor<T>,
-			start: T::BlockNumber,
+			start: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -294,7 +274,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn set_vesting_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -364,7 +344,7 @@ impl<T: Config> Reward for Pallet<T>
 where
 	BalanceOf<T>: Send + Sync,
 {
-	type BlockNumber = T::BlockNumber;
+	type BlockNumber = BlockNumberFor<T>;
 	type ContributionAmount = BalanceOf<T>;
 	type ParachainAccountId = T::AccountId;
 

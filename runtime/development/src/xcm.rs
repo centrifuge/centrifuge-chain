@@ -33,13 +33,13 @@ use runtime_common::{
 	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
-use xcm::{latest::Weight as XcmWeight, prelude::*, v3::MultiLocation};
-use xcm_builder::{
+use staging_xcm::{latest::Weight as XcmWeight, prelude::*, v3::MultiLocation};
+use staging_xcm_builder::{
 	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter,
 	NoChecking, RelayChainAsNative, SiblingParachainAsNative, SignedAccountId32AsNative,
 	SovereignSignedViaLocation,
 };
-use xcm_executor::{traits::JustTry, XcmExecutor};
+use staging_xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
@@ -82,7 +82,8 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 /// transferred, how fees are calculated, what barriers we impose on incoming
 /// XCM messages, etc.
 pub struct XcmConfig;
-impl xcm_executor::Config for XcmConfig {
+impl staging_xcm_executor::Config for XcmConfig {
+	type Aliasers = Nothing;
 	type AssetClaims = PolkadotXcm;
 	type AssetExchanger = ();
 	type AssetLocker = ();
@@ -275,7 +276,7 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;

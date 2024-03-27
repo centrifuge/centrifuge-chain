@@ -14,8 +14,7 @@
 //! Copied over from sp_arithmetic
 
 use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
-#[cfg(feature = "std")]
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use sp_arithmetic::{
 	helpers_128bit::multiply_by_rational_with_rounding,
 	traits::{
@@ -474,6 +473,8 @@ pub type Quantity = FixedU128<DECIMALS_18>;
 	Ord,
 	scale_info::TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
 pub struct FixedU128<const DIV: u128>(u128);
 
@@ -786,32 +787,6 @@ impl<const DIV: u128> sp_std::str::FromStr for FixedU128<DIV> {
 			.parse()
 			.map_err(|_| "invalid string input for fixed point number")?;
 		Ok(Self::from_inner(inner))
-	}
-}
-
-// Manual impl `Serialize` as serde_json does not support i128.
-// TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
-#[cfg(feature = "std")]
-impl<const DIV: u128> Serialize for FixedU128<DIV> {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
-		serializer.serialize_str(&self.to_string())
-	}
-}
-
-// Manual impl `Deserialize` as serde_json does not support i128.
-// TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
-#[cfg(feature = "std")]
-impl<'de, const DIV: u128> Deserialize<'de> for FixedU128<DIV> {
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where
-		D: Deserializer<'de>,
-	{
-		use sp_std::str::FromStr;
-		let s = String::deserialize(deserializer)?;
-		FixedU128::from_str(&s).map_err(de::Error::custom)
 	}
 }
 
