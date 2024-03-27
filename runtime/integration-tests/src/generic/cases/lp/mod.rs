@@ -1697,6 +1697,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 /// Centrifuge Chain as well as EVM. Also mints default balance on both sides.
 pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	default_investors().into_iter().for_each(|investor| {
+		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_A,
@@ -1736,6 +1737,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
+		// Fund investor on EVM side
 		evm.call(
 			Keyring::Admin,
 			Default::default(),
@@ -1765,6 +1767,107 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"mint",
 			Some(&[
 				Token::Address(investor.into()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+
+		// Approve stable transfers on EVM side
+		evm.call(
+			investor,
+			Default::default(),
+			"usdc",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_A_T_1_USDC).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"dai",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_A_T_1_DAI).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"frax",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_A_T_1_FRAX).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"usdc",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_1_USDC).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"dai",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_1_DAI).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"frax",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_1_FRAX).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"usdc",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_2_USDC).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"dai",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_2_DAI).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"frax",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_B_T_2_FRAX).address()),
 				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 			]),
 		)
