@@ -1,0 +1,51 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+name: Code coverage
+concurrency:
+  group: 'codecov-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+permissions:
+    id-token: write
+    contents: read
+jobs:
+  codecov:
+    runs-on: ubuntu-latest-8-cores
+    if: github.event.pull_request.draft == false || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Install Tarpaulin
+        run: cargo install --locked cargo-tarpaulin
+        
+      - name: generate codecov reports
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo tarpaulin --timeout 300 -e runtime-integration-tests --features fast-runtime \
+          --exclude-files runtime/*/src/migrations.rs --exclude-files runtime/common/src/migrations \
+          --exclude-files pallets/rewards/src/migrations/new_instance.rs --exclude-files pallets/block-rewards/src/migrations.rs \
+          --workspace --exclude-files **/mock.rs **/weights.rs **/weights/* --out xml
+
+    # UPLOAD REPORTS (requires cargo 1.70.0)
+      - name: Upload to codecov.io
+        if: ${{ always() }}
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          # token: ${{ secrets.CODECOV_TOKEN }}
+          # files: ./coverage1.xml,./coverage2.xml # optional
+          # flags: unittests # optional
+          # name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)       

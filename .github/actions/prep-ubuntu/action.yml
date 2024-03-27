@@ -31,7 +31,7 @@ runs:
 
     - name: Disable cache on forks and dependabot
       if:  github.event_name == 'pull_request'
-      shell: sh
+      shell: bash
       run: |
         if [ "${{ github.event.pull_request.head.repo.fork }}" == "true" ] || \
            [ "${{ github.actor }}" == "dependabot[bot]" ] || \
