@@ -14,7 +14,6 @@
 use std::collections::HashMap;
 
 use cfg_primitives::{AuraId, BlockNumber, Nonce};
-use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
@@ -41,7 +40,7 @@ use sp_core::H256;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{BlakeTwo256, Extrinsic},
-	DigestItem, Storage,
+	BuildStorage, DigestItem, Storage,
 };
 use tokio::runtime::Handle;
 
@@ -805,6 +804,7 @@ fn test_env(
 		state.insert_storage(
 			frame_system::GenesisConfig {
 				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
+				_config: Default::default(),
 			}
 			.build_storage::<RelayRt>()
 			.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
@@ -924,11 +924,11 @@ fn get_parachain_builder(
 		.expect("ESSENTIAL: Pallet Aura GenesisBuild must not fail at this stage."),
 	);
 	state.insert_storage(
-		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::build_storage(
-			&parachain_info::GenesisConfig {
-				parachain_id: ParaId::from(para_id),
-			},
-		)
+		parachain_info::GenesisConfig {
+			_config: Default::default(),
+			parachain_id: ParaId::from(para_id),
+		}
+		.build_storage()
 		.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
 	);
 

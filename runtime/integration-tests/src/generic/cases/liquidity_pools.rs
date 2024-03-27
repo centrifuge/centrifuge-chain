@@ -21,7 +21,7 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::{RawOrigin, Weight},
+	dispatch::RawOrigin,
 	traits::{
 		fungible::Mutate as FungibleMutate,
 		fungibles::{Inspect, Mutate as FungiblesMutate},
@@ -39,7 +39,7 @@ use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayO
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use parity_scale_codec::Encode;
 use polkadot_core_primitives::BlakeTwo256;
-use polkadot_parachain::primitives::{Id, ValidationCode};
+use polkadot_parachain_primitives::primitives::{Id, ValidationCode};
 use polkadot_runtime_parachains::{
 	paras,
 	paras::{ParaGenesisArgs, ParaKind},
@@ -52,7 +52,10 @@ use runtime_common::{
 };
 use sp_core::{Get, H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert as C2, EnsureAdd, Hash, One, Zero},
+	traits::{
+		AccountIdConversion, BadOrigin, ConstU32, Convert as C1, Convert as C2, EnsureAdd, Hash,
+		One, Zero,
+	},
 	BoundedVec, BuildStorage, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 	WeakBoundedVec,
 };
@@ -65,7 +68,6 @@ use staging_xcm::{
 	},
 	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
 };
-use staging_xcm_executor::traits::Convert as C1;
 
 use crate::{
 	generic::{
@@ -81,7 +83,7 @@ pub mod utils {
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(id).into_account_truncating()
+		polkadot_parachain_primitives::primitives::Sibling::from(id).into_account_truncating()
 	}
 
 	pub fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
@@ -184,10 +186,22 @@ pub mod utils {
 	}
 
 	pub fn register_ausd<T: Runtime + FudgeSupport>() {
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		let meta: AssetMetadata<
+			Balance,
+			CustomMetadata,
+			<T as pallet_pool_system::Config>::StringLimit,
+		> = AssetMetadata {
 			decimals: 12,
-			name: "Acala Dollar".into(),
-			symbol: "AUSD".into(),
+			name: BoundedVec::<
+				u8,
+				<development_runtime::Runtime as pallet_pool_system::Config>::StringLimit,
+			>::try_from("Acala Dollar".as_bytes().to_vec())
+			.expect("Can create BoundedVec for token name"),
+			symbol: BoundedVec::<
+				u8,
+				<development_runtime::Runtime as pallet_pool_system::Config>::StringLimit,
+			>::try_from("AUSD".as_bytes().to_vec())
+			.expect("Can create BoundedVec for token symbol"),
 			existential_deposit: 1_000_000_000,
 			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
@@ -285,6 +299,7 @@ mod development {
 
 	mod utils {
 		use cfg_types::oracles::OracleKey;
+		use frame_support::weights::Weight;
 		use runtime_common::oracle::Feeder;
 
 		use super::*;
@@ -321,14 +336,14 @@ mod development {
 							// liquidity pools AddTranche message.
 							token_name: BoundedVec::<
 								u8,
-								<T as pallet_pool_system::Config>::MaxTokenNameLength,
+								<T as pallet_pool_system::Config>::StringLimit,
 							>::try_from("A highly advanced tranche".as_bytes().to_vec())
-							.expect(""),
+							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
-								<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
+								<T as pallet_pool_system::Config>::StringLimit,
 							>::try_from("TrNcH".as_bytes().to_vec())
-							.expect(""),
+							.expect("Can create BoundedVec for token symbol"),
 						}
 					},
 					TrancheInput {
@@ -5730,7 +5745,11 @@ mod altair {
 			env: &mut FudgeEnv<T>,
 			transfer_amount: Balance,
 			currency_id: CurrencyId,
-			meta: AssetMetadata<Balance, CustomMetadata>,
+			meta: AssetMetadata<
+				Balance,
+				CustomMetadata,
+				<T as pallet_pool_system::Config>::StringLimit,
+			>,
 		) {
 			env.parachain_state_mut(|| {
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
@@ -6333,7 +6352,7 @@ mod centrifuge {
 	use super::*;
 
 	mod utils {
-		use xcm::v3::NetworkId;
+		use staging_xcm::v3::NetworkId;
 
 		use super::*;
 
@@ -6461,18 +6480,20 @@ mod centrifuge {
 				name: "Centrifuge".into(),
 				symbol: "CFG".into(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V2(xcm::v2::MultiLocation::new(
-					1,
-					xcm::v2::Junctions::X2(
-						xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
-						xcm::v2::Junction::GeneralKey(
-							WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-								parachains::polkadot::centrifuge::CFG_KEY.into(),
-								None,
+				location: Some(VersionedMultiLocation::V2(
+					staging_xcm::v2::MultiLocation::new(
+						1,
+						staging_xcm::v2::Junctions::X2(
+							staging_xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
+							staging_xcm::v2::Junction::GeneralKey(
+								WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+									parachains::polkadot::centrifuge::CFG_KEY.into(),
+									None,
+								),
 							),
 						),
 					),
-				))),
+				)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()

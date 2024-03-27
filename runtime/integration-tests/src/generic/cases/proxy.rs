@@ -3,7 +3,7 @@ use cfg_types::{tokens::CrossChainTransferability, xcm::XcmMetadata};
 use frame_support::{assert_err, assert_ok, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
-use xcm::{
+use staging_xcm::{
 	prelude::Parachain,
 	v3::{Junction, Junctions::*, MultiLocation, WeightLimit},
 	VersionedMultiLocation,
