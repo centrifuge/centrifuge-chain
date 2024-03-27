@@ -109,6 +109,7 @@ use runtime_common::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
 	permissions::PoolAdminCheck,
+	rewards::SingleCurrencyMovement,
 	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -567,7 +568,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
                 RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution { .. }) |
                 RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch { .. }) |
                 RuntimeCall::Utility(pallet_utility::Call::batch_all { .. }) |
-                RuntimeCall::Utility(pallet_utility::Call::batch { .. })
+                RuntimeCall::Utility(pallet_utility::Call::batch { .. }) |
+				// Borrowers should be able to swap back and forth between local currencies and their variants
+				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
 			),
 			ProxyType::Invest => matches!(
 				c,
@@ -1677,7 +1682,7 @@ impl pallet_rewards::mechanism::gap::Config for Runtime {
 	type Rate = FixedI128;
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
@@ -1704,13 +1709,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	// BlockRewards have exactly one group and currency
-	#[derive(scale_info::TypeInfo)]
-	pub const SingleCurrencyMovement: u32 = 1;
-}
-
-impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
@@ -2087,11 +2086,11 @@ construct_runtime!(
 		// Removed: Nft = 103
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
-		LiquidityRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
+		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
-		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
+		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
@@ -2422,15 +2421,15 @@ impl_runtime_apis! {
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
 		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
-				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
 			}
 		}
 
 		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
-				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 			}
 		}
 	}

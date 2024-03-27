@@ -694,3 +694,10 @@ pub mod permissions {
 		}
 	}
 }
+
+pub mod rewards {
+	frame_support::parameter_types! {
+		#[derive(scale_info::TypeInfo)]
+		pub const SingleCurrencyMovement: u32 = 1;
+	}
+}
