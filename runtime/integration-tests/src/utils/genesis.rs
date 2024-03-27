@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Utilitites around populating a genesis storage
+//! Utilities around populating a genesis storage
 use cfg_types::{
 	fixed_point::Rate,
 	tokens::{CurrencyId, CustomMetadata},
@@ -145,10 +145,8 @@ where
 			orml_asset_registry::Pallet::<Runtime>::do_register_asset(
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
-					name: BoundedVec::<u8, _>::try_from("mock_name".as_bytes())
-						.expect("Can create bounded vec for token name"),
-					symbol: BoundedVec::<u8, _>::try_from("mock_symbol")
-						.expect("Can create bounded vec for token symbol"),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 0u128.into(),
 					location: None,
 					additional: CustomMetadata {

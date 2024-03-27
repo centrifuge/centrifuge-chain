@@ -48,6 +48,7 @@ cumulus-primitives-utility = { workspace = true }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 polkadot-runtime-common = { workspace = true }
+polkadot-runtime-parachains = { workspace = true }
 
 staging-xcm = { workspace = true }
 staging-xcm-builder = { workspace = true }

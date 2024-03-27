@@ -31,6 +31,8 @@ pub mod pallet_multisig;
 pub mod pallet_oracle_collection;
 pub mod pallet_oracle_feed;
 pub mod pallet_order_book;
+pub mod pallet_parachains_config;
+pub mod pallet_parachains_paras;
 pub mod pallet_permissions;
 pub mod pallet_pool_fees;
 pub mod pallet_pool_registry;
