@@ -2,7 +2,7 @@ pub mod handle;
 
 use std::collections::HashMap;
 
-use cfg_primitives::{Balance, BlockNumber, Index};
+use cfg_primitives::{Balance, BlockNumber, Nonce};
 use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
@@ -27,7 +27,7 @@ pub trait FudgeSupport: Runtime {
 /// Evironment that uses fudge to interact with the runtime
 pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 	handle: T::FudgeHandle,
-	nonce_storage: HashMap<Keyring, Index>,
+	nonce_storage: HashMap<Keyring, Nonce>,
 }
 
 impl<T: Runtime + FudgeSupport> Default for FudgeEnv<T> {
@@ -119,9 +119,9 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 type ApiRefOf<'a, T> = ApiRef<
 	'a,
 	<ParachainClient<
-		<T as Runtime>::Block,
+		<T as Runtime>::BlockExt,
 		<<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::ParachainConstructApi,
-	> as sp_api::ProvideRuntimeApi<<T as Runtime>::Block>>::Api,
+	> as sp_api::ProvideRuntimeApi<<T as Runtime>::BlockExt>>::Api,
 >;
 
 /// Specialized fudge methods

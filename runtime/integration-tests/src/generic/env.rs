@@ -1,4 +1,4 @@
-use cfg_primitives::{Address, Balance, BlockNumber, Index};
+use cfg_primitives::{Address, Balance, BlockNumber, Nonce};
 use cfg_traits::{IntoSeconds, Seconds};
 use parity_scale_codec::Encode;
 use sp_runtime::{
@@ -166,7 +166,7 @@ pub mod utils {
 	pub fn create_extrinsic<T: Runtime>(
 		who: Keyring,
 		call: impl Into<T::RuntimeCallExt>,
-		nonce: Index,
+		nonce: Nonce,
 	) -> <T::Block as Block>::Extrinsic {
 		let runtime_call = call.into();
 		let signed_extra = (

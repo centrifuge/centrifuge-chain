@@ -13,7 +13,7 @@
 //! Utilities to create a relay-chain-parachain setup
 use std::collections::HashMap;
 
-use cfg_primitives::{AuraId, BlockNumber, Index};
+use cfg_primitives::{AuraId, BlockNumber, Nonce};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
@@ -31,7 +31,7 @@ use lazy_static::lazy_static;
 pub use macros::*;
 use parity_scale_codec::{Decode, Encode};
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
-use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_parachain_primitives::primitives::Id as ParaId;
 use polkadot_runtime_parachains::{configuration, configuration::HostConfiguration, dmp};
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullBackend, TFullClient, TaskManager};
@@ -548,7 +548,7 @@ impl TestEnv {
 
 	/// Returns the next nonce to be used
 	/// **WARN: Increases the nonce counter on `NonceManager**
-	fn fetch_add_nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+	fn fetch_add_nonce(&mut self, chain: Chain, who: Keyring) -> Nonce {
 		let manager = self.nonce_manager.clone();
 		self.with_state(chain, || {
 			manager
@@ -561,7 +561,7 @@ impl TestEnv {
 
 	/// Returns the next nonce to be used. Does NOT increase counter in
 	/// `NonceManager`
-	fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+	fn nonce(&mut self, chain: Chain, who: Keyring) -> Nonce {
 		let manager = self.nonce_manager.clone();
 		self.with_state(chain, || {
 			manager

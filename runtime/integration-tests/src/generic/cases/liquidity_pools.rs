@@ -22,7 +22,6 @@ use cfg_utils::vec_to_fixed_array;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{RawOrigin, Weight},
-	pallet_prelude::GenesisBuild,
 	traits::{
 		fungible::Mutate as FungibleMutate,
 		fungibles::{Inspect, Mutate as FungiblesMutate},
@@ -54,9 +53,10 @@ use runtime_common::{
 use sp_core::{Get, H160, U256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert as C2, EnsureAdd, Hash, One, Zero},
-	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, WeakBoundedVec,
+	BoundedVec, BuildStorage, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
+	WeakBoundedVec,
 };
-use xcm::{
+use staging_xcm::{
 	latest::NetworkId,
 	prelude::XCM_VERSION,
 	v3::{
@@ -65,7 +65,7 @@ use xcm::{
 	},
 	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
 };
-use xcm_executor::traits::Convert as C1;
+use staging_xcm_executor::traits::Convert as C1;
 
 use crate::{
 	generic::{
@@ -7348,7 +7348,7 @@ mod centrifuge {
 
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
-				<paras::GenesisConfig as GenesisBuild<FudgeRelayRuntime<T>>>::build_storage(
+				<paras::GenesisConfig as BuildStorage<FudgeRelayRuntime<T>>>::build_storage(
 					&paras::GenesisConfig {
 						paras: vec![(
 							1000.into(),
