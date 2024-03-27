@@ -239,6 +239,14 @@ pub mod utils {
 			}
 		}
 	}
+
+	impl<T: Input> Decoder<u8> for T {
+		fn decode(&self) -> u8 {
+			assert_eq!(self.input().len(), 32usize);
+
+			self.input()[31]
+		}
+	}
 }
 
 pub const POOL_A: PoolId = 1;

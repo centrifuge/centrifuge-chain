@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Balance, PoolId};
-use cfg_traits::TimeAsSecs;
+use cfg_traits::{PoolMetadata, TimeAsSecs, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::PoolRole,
@@ -23,7 +23,7 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
 use runtime_common::account_conversion::AccountConverter;
-use sp_runtime::DispatchError;
+use sp_runtime::{traits::Zero, DispatchError};
 
 use crate::{
 	generic::{
@@ -43,7 +43,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	increase_invest_order::<development_runtime::Runtime>()
+	update_tranche_token_metadata::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -447,13 +447,97 @@ fn update_member<T: Runtime>() {
 }
 
 fn update_tranche_token_metadata<T: Runtime>() {
-	let _env = super::setup::<T, _>(|evm| {
+	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
 	});
 
-	todo!("update_tranche_token_metadata")
+	let decimals_new = 42;
+	let name_new = b"NEW_NAME".to_vec();
+	let symbol_new = b"NEW_SYMBOL".to_vec();
+
+	let (decimals_old, name_evm, symbol_evm) = env.state(|evm| {
+		let meta = orml_asset_registry::Metadata::<T>::get(CurrencyId::Tranche(
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+		))
+		.unwrap();
+		assert!(meta.name.is_empty());
+		assert!(meta.symbol.is_empty());
+
+		let decimals = Decoder::<u8>::decode(
+			&evm.view(Keyring::Alice, names::POOL_A_T_1, "decimals", Some(&[]))
+				.unwrap()
+				.value,
+		);
+
+		// name and decimals are of EVM type String
+		let name = &evm
+			.view(Keyring::Alice, names::POOL_A_T_1, "name", Some(&[]))
+			.unwrap()
+			.value;
+		let symbol = &evm
+			.view(Keyring::Alice, names::POOL_A_T_1, "symbol", Some(&[]))
+			.unwrap()
+			.value;
+		assert_eq!(u32::from(decimals), meta.decimals);
+
+		(meta.decimals, name.clone(), symbol.clone())
+	});
+
+	env.state_mut(|_evm| {
+		assert_ok!(
+			pallet_pool_registry::Pallet::<T>::update_tranche_token_metadata(
+				POOL_A,
+				pool_a_tranche_id::<T>().into(),
+				Some(decimals_new.clone()),
+				Some(name_new.clone()),
+				Some(symbol_new.clone()),
+				None,
+				None,
+				None
+			),
+		);
+
+		assert_ok!(
+			pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
+				OriginFor::<T>::signed(Keyring::Alice.into()),
+				POOL_A,
+				pool_a_tranche_id::<T>(),
+				Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			)
+		);
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
+
+	env.state(|evm| {
+		// Decimals cannot be changed
+		let decimals = u32::from(Decoder::<u8>::decode(
+			&evm.view(Keyring::Alice, names::POOL_A_T_1, "decimals", Some(&[]))
+				.unwrap()
+				.value,
+		));
+		assert_ne!(decimals, decimals_new);
+		assert_eq!(decimals, decimals_old);
+
+		// name and decimals are of EVM type String
+		let name = &evm
+			.view(Keyring::Alice, names::POOL_A_T_1, "name", Some(&[]))
+			.unwrap()
+			.value;
+		let symbol = &evm
+			.view(Keyring::Alice, names::POOL_A_T_1, "symbol", Some(&[]))
+			.unwrap()
+			.value;
+
+		assert_ne!(*name, name_evm);
+		assert_ne!(*symbol, symbol_evm);
+
+		// contained in slice [64..71]
+		assert!(name.windows(name_new.len()).any(|w| w == name_new));
+		assert!(symbol.windows(symbol_new.len()).any(|w| w == symbol_new));
+	});
 }
 
 fn update_tranche_token_price<T: Runtime>() {
