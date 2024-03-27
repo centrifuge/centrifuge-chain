@@ -22,7 +22,7 @@ use cfg_types::{
 };
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
-use frame_support::{assert_err, assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_err, assert_ok, dispatch::RawOrigin, BoundedVec};
 use fudge::primitives::Chain;
 use hex::ToHex;
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
@@ -91,8 +91,14 @@ async fn axelar_precompile_execute() {
 
 	let currency_metadata = AssetMetadata {
 		decimals: 18,
-		name: "Test".into(),
-		symbol: "TST".into(),
+		name: BoundedVec::<u8, <Runtime as pallet_pool_system::Config>::StringLimit>::try_from(
+			"Test".as_bytes().to_vec(),
+		)
+		.expect("Can create BoundedVec for token name"),
+		symbol: BoundedVec::<u8, <Runtime as pallet_pool_system::Config>::StringLimit>::try_from(
+			"TST".as_bytes().to_vec(),
+		)
+		.expect("Can create BoundedVec for token symbol"),
 		existential_deposit: ED,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::here())),
 		additional: CustomMetadata {

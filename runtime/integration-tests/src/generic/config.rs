@@ -162,7 +162,7 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
-	>
+	> + polkadot_runtime_parachains::paras::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

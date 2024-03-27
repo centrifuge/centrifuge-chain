@@ -52,6 +52,7 @@ cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
 staging-kusama-runtime = { workspace = true, features = ["std"] }
 polkadot-core-primitives = { workspace = true, features = ["std"] }
+polkadot-node-primitives = { workspace = true }
 polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-runtime = { workspace = true, features = ["std"] }

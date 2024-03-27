@@ -15,13 +15,13 @@ use cfg_types::{
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
-	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::{RawOrigin, Weight},
+	dispatch::RawOrigin,
 	traits::{
 		fungible::Mutate as FungibleMutate,
 		fungibles::{Inspect, Mutate as FungiblesMutate},
@@ -32,27 +32,30 @@ use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, EVMRouter, EthereumXCMRouter,
 	FeeValues, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
-use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
+use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use parity_scale_codec::Encode;
 use polkadot_core_primitives::BlakeTwo256;
-use polkadot_parachain::primitives::{Id, ValidationCode};
+use polkadot_parachain_primitives::primitives::{Id, ValidationCode};
 use polkadot_runtime_parachains::{
 	paras,
 	paras::{ParaGenesisArgs, ParaKind},
 };
 use runtime_common::{
-	account_conversion::AccountConverter,
+	account_conversion::{convert_evm_address, AccountConverter},
 	foreign_investments::IdentityPoolCurrencyConverter,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
 };
 use sp_core::{Get, H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert as C2, EnsureAdd, Hash, One, Zero},
+	traits::{
+		AccountIdConversion, BadOrigin, ConstU32, Convert as C1, Convert as C2, EnsureAdd, Hash,
+		One, Zero,
+	},
 	BoundedVec, BuildStorage, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 	WeakBoundedVec,
 };
@@ -65,7 +68,6 @@ use staging_xcm::{
 	},
 	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
 };
-use staging_xcm_executor::traits::Convert as C1;
 
 use crate::{
 	generic::{
@@ -81,7 +83,7 @@ pub mod utils {
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(id).into_account_truncating()
+		polkadot_parachain_primitives::primitives::Sibling::from(id).into_account_truncating()
 	}
 
 	pub fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
@@ -184,10 +186,10 @@ pub mod utils {
 	}
 
 	pub fn register_ausd<T: Runtime + FudgeSupport>() {
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		let meta: AssetMetadata = AssetMetadata {
 			decimals: 12,
-			name: "Acala Dollar".into(),
-			symbol: "AUSD".into(),
+			name: BoundedVec::default(),
+			symbol: BoundedVec::default(),
 			existential_deposit: 1_000_000_000,
 			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
@@ -285,6 +287,7 @@ mod development {
 
 	mod utils {
 		use cfg_types::oracles::OracleKey;
+		use frame_support::weights::Weight;
 		use runtime_common::oracle::Feeder;
 
 		use super::*;
@@ -321,14 +324,14 @@ mod development {
 							// liquidity pools AddTranche message.
 							token_name: BoundedVec::<
 								u8,
-								<T as pallet_pool_system::Config>::MaxTokenNameLength,
+								<T as pallet_pool_system::Config>::StringLimit,
 							>::try_from("A highly advanced tranche".as_bytes().to_vec())
-							.expect(""),
+							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
-								<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
+								<T as pallet_pool_system::Config>::StringLimit,
 							>::try_from("TrNcH".as_bytes().to_vec())
-							.expect(""),
+							.expect("Can create BoundedVec for token symbol"),
 						}
 					},
 					TrancheInput {
@@ -351,10 +354,10 @@ mod development {
 		}
 
 		pub fn register_glmr<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Glimmer".into(),
-				symbol: "GLMR".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: GLMR_ED,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -739,9 +742,7 @@ mod development {
 			assert_eq!(
 				orml_tokens::Pallet::<T>::balance(
 					default_investment_id::<T>().into(),
-					&AccountConverter::<T, LocationToAccountId>::convert(
-						DEFAULT_OTHER_DOMAIN_ADDRESS
-					)
+					&AccountConverter::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
 				),
 				0
 			);
@@ -775,10 +776,10 @@ mod development {
 		///
 		/// NOTE: Assumes to be executed within an externalities environment.
 		fn register_usdt<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
-				name: "Tether USDT".into(),
-				symbol: "USDT".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: USDT_ED,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -1027,7 +1028,7 @@ mod development {
 
 				// Whitelist destination as TrancheInvestor of this Pool
 				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
+					AccountConverter::convert(new_member.clone()),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
 				);
@@ -1035,7 +1036,7 @@ mod development {
 				// Verify the Investor role was set as expected in Permissions
 				assert!(pallet_permissions::Pallet::<T>::has(
 					PermissionScope::Pool(pool_id),
-					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
+					AccountConverter::convert(new_member.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, DEFAULT_VALIDITY)),
 				));
 
@@ -1218,8 +1219,8 @@ mod development {
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					AssetMetadata {
-						name: "Test".into(),
-						symbol: "TEST".into(),
+						name: BoundedVec::default(),
+						symbol: BoundedVec::default(),
 						decimals: 12,
 						location: None,
 						existential_deposit: 1_000_000,
@@ -1393,8 +1394,8 @@ mod development {
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					AssetMetadata {
-						name: "Test".into(),
-						symbol: "TEST".into(),
+						name: BoundedVec::default(),
+						symbol: BoundedVec::default(),
 						decimals: 12,
 						location: None,
 						existential_deposit: 1_000_000,
@@ -1586,8 +1587,8 @@ mod development {
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					AssetMetadata {
-						name: "Test".into(),
-						symbol: "TEST".into(),
+						name: BoundedVec::default(),
+						symbol: BoundedVec::default(),
 						decimals: 12,
 						location: None,
 						existential_deposit: 1_000_000,
@@ -1846,9 +1847,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 
@@ -1901,9 +1901,8 @@ mod development {
 					let invest_amount: u128 = 10 * decimals(12);
 					let decrease_amount = invest_amount / 3;
 					let final_amount = invest_amount - decrease_amount;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 
@@ -1992,9 +1991,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let invest_amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 
@@ -2092,9 +2090,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let sending_domain_locator =
@@ -2244,9 +2241,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let invest_amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let sending_domain_locator =
@@ -2477,9 +2473,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 
@@ -2537,9 +2532,8 @@ mod development {
 					let redeem_amount = 10 * decimals(12);
 					let decrease_amount = redeem_amount / 3;
 					let final_amount = redeem_amount - decrease_amount;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let sending_domain_locator =
@@ -2655,9 +2649,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let redeem_amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let sending_domain_locator =
@@ -2753,9 +2746,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -2908,9 +2900,8 @@ mod development {
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
 					let redeem_amount = 10 * decimals(12);
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -3137,10 +3128,7 @@ mod development {
 							let invest_amount: u128 = 10 * decimals(12);
 							let decrease_amount = invest_amount + 1;
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							create_currency_pool::<T>(
@@ -3189,10 +3177,7 @@ mod development {
 							let redeem_amount: u128 = 10 * decimals(12);
 							let decrease_amount = redeem_amount + 1;
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							create_currency_pool::<T>(
@@ -3246,10 +3231,7 @@ mod development {
 							let pool_id = POOL_ID;
 							let amount: u128 = 10 * decimals(12);
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							create_currency_pool::<T>(
@@ -3332,10 +3314,7 @@ mod development {
 							let pool_id = POOL_ID;
 							let amount: u128 = 10 * decimals(12);
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							create_currency_pool::<T>(
@@ -3431,10 +3410,7 @@ mod development {
 						env.parachain_state_mut(|| {
 							let pool_id = POOL_ID;
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3513,10 +3489,7 @@ mod development {
 						env.parachain_state_mut(|| {
 							let pool_id = POOL_ID;
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3599,10 +3572,7 @@ mod development {
 						env.parachain_state_mut(|| {
 							let pool_id = POOL_ID;
 							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
+								AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3681,9 +3651,8 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
@@ -3799,9 +3768,8 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
@@ -3942,9 +3910,8 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let trader: AccountId = Keyring::Alice.into();
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -4061,9 +4028,8 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
+					let investor: AccountId =
+						AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
@@ -4379,7 +4345,7 @@ mod development {
 				let valid_until = u64::MAX;
 
 				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					AccountConverter::convert(dest_address.clone()),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
 				);
@@ -4556,12 +4522,12 @@ mod development {
 				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
 				// (invalid_pool_id, valid_tranche_id)
 				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					AccountConverter::convert(dest_address.clone()),
 					invalid_pool_id,
 					PoolRole::TrancheInvestor(valid_tranche_id, valid_until),
 				);
 				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					AccountConverter::convert(dest_address.clone()),
 					valid_pool_id,
 					PoolRole::TrancheInvestor(invalid_tranche_id, valid_until),
 				);
@@ -4594,10 +4560,10 @@ mod development {
 			let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
 			// CFG Metadata
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Development".into(),
-				symbol: "CFG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -4809,10 +4775,7 @@ mod development {
 				) {
 					let chain_id = env.parachain_state(|| pallet_evm_chain_id::Pallet::<T>::get());
 
-					let derived_account = AccountConverter::<T, ()>::convert_evm_address(
-						chain_id,
-						address.to_fixed_bytes(),
-					);
+					let derived_account = convert_evm_address(chain_id, address.to_fixed_bytes());
 
 					env.parachain_state_mut(|| {
 						pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
@@ -4825,9 +4788,9 @@ mod development {
 
 			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::<T>::default()
+					Genesis::default()
 						.add(genesis::balances::<T>(cfg(1_000)))
-						.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+						.add(genesis::council_members::<T, CouncilCollective>(
 							get_council_members(),
 						))
 						.storage(),
@@ -5157,9 +5120,9 @@ mod development {
 
 		fn set_domain_router<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::<T>::default()
+				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+					.add(genesis::council_members::<T, CouncilCollective>(
 						get_council_members(),
 					))
 					.storage(),
@@ -5228,9 +5191,9 @@ mod development {
 
 		fn add_remove_instances<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::<T>::default()
+				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+					.add(genesis::council_members::<T, CouncilCollective>(
 						get_council_members(),
 					))
 					.storage(),
@@ -5286,9 +5249,9 @@ mod development {
 
 		fn process_msg<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::<T>::default()
+				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+					.add(genesis::council_members::<T, CouncilCollective>(
 						get_council_members(),
 					))
 					.storage(),
@@ -5358,10 +5321,10 @@ mod altair {
 		use super::*;
 
 		pub fn register_air<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Altair".into(),
-				symbol: "AIR".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -5384,10 +5347,10 @@ mod altair {
 		}
 
 		pub fn register_ksm<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 12,
-				name: "Kusama".into(),
-				symbol: "KSM".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
 				additional: CustomMetadata {
@@ -5448,10 +5411,10 @@ mod altair {
 				);
 
 				// Register AIR as foreign asset in the sibling parachain
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 18,
-					name: "Altair".into(),
-					symbol: "AIR".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -5479,10 +5442,10 @@ mod altair {
 				);
 
 				// Register AIR as foreign asset in the sibling parachain
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 18,
-					name: "Altair".into(),
-					symbol: "AIR".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -5730,7 +5693,7 @@ mod altair {
 			env: &mut FudgeEnv<T>,
 			transfer_amount: Balance,
 			currency_id: CurrencyId,
-			meta: AssetMetadata<Balance, CustomMetadata>,
+			meta: AssetMetadata,
 		) {
 			env.parachain_state_mut(|| {
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
@@ -5797,10 +5760,10 @@ mod altair {
 
 			let transfer_amount: Balance = ksm(2);
 			let currency_id = CurrencyId::ForeignAsset(3001);
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 12,
-				name: "Kusama".into(),
-				symbol: "KSM".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
 				additional: CustomMetadata {
@@ -5870,10 +5833,10 @@ mod altair {
 				1,
 				X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
 			);
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Sibling Native Token".into(),
-				symbol: "SBLNG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(asset_location)),
 				additional: CustomMetadata {
@@ -5982,10 +5945,10 @@ mod altair {
 					general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
 				),
 			);
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
-				name: "Wormhole USDC".into(),
-				symbol: "WUSDC".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1,
 				location: Some(VersionedMultiLocation::V3(asset_location)),
 				additional: CustomMetadata {
@@ -6079,10 +6042,10 @@ mod altair {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 18,
-					name: "Altair".into(),
-					symbol: "AIR".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						0,
@@ -6106,10 +6069,10 @@ mod altair {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 12,
-					name: "Acala Dollar".into(),
-					symbol: "AUSD".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -6137,10 +6100,10 @@ mod altair {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 12,
-					name: "Tranche Token 1".into(),
-					symbol: "TRNCH".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -6189,7 +6152,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way AIR is represented out in the wild
@@ -6231,7 +6194,7 @@ mod altair {
 			env.parachain_state_mut(|| {
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
-					Err(tranche_multilocation),
+					None,
 				);
 			});
 
@@ -6261,7 +6224,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-					Ok(AUSD_CURRENCY_ID),
+					Some(AUSD_CURRENCY_ID),
 				);
 
 				assert_eq!(
@@ -6281,7 +6244,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
-					Ok(KSM_ASSET_ID),
+					Some(KSM_ASSET_ID),
 				);
 
 				assert_eq!(
@@ -6300,7 +6263,7 @@ mod altair {
 			);
 
 			env.parachain_state_mut(|| {
-				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
+				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_none());
 			});
 		}
 
@@ -6333,7 +6296,7 @@ mod centrifuge {
 	use super::*;
 
 	mod utils {
-		use xcm::v3::NetworkId;
+		use staging_xcm::v3::NetworkId;
 
 		use super::*;
 
@@ -6350,10 +6313,10 @@ mod centrifuge {
 		/// Register DOT in the asset registry.
 		/// It should be executed within an externalities environment.
 		pub fn register_dot<T: Runtime>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 10,
-				name: "Polkadot".into(),
-				symbol: "DOT".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 100_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
 				additional: CustomMetadata {
@@ -6369,10 +6332,10 @@ mod centrifuge {
 		}
 
 		pub fn register_lp_eth_usdc<T: Runtime>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
-				name: "LP Ethereum Wrapped USDC".into(),
-				symbol: "LpEthUSDC".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					0,
@@ -6399,10 +6362,10 @@ mod centrifuge {
 		}
 
 		pub fn register_usdc<T: Runtime>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
-				name: "USD Circle".into(),
-				symbol: "USDC".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -6427,10 +6390,10 @@ mod centrifuge {
 		/// Register CFG in the asset registry.
 		/// It should be executed within an externalities environment.
 		pub fn register_cfg<T: Runtime>(para_id: u32) {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Centrifuge".into(),
-				symbol: "CFG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -6456,23 +6419,25 @@ mod centrifuge {
 		/// production. It should be executed within an externalities
 		/// environment.
 		pub fn register_cfg_v2<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Centrifuge".into(),
-				symbol: "CFG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V2(xcm::v2::MultiLocation::new(
-					1,
-					xcm::v2::Junctions::X2(
-						xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
-						xcm::v2::Junction::GeneralKey(
-							WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-								parachains::polkadot::centrifuge::CFG_KEY.into(),
-								None,
+				location: Some(VersionedMultiLocation::V2(
+					staging_xcm::v2::MultiLocation::new(
+						1,
+						staging_xcm::v2::Junctions::X2(
+							staging_xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
+							staging_xcm::v2::Junction::GeneralKey(
+								WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+									parachains::polkadot::centrifuge::CFG_KEY.into(),
+									None,
+								),
 							),
 						),
 					),
-				))),
+				)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -6489,10 +6454,10 @@ mod centrifuge {
 		/// Register a token whose `CrossChainTransferability` does NOT include
 		/// XCM.
 		pub fn register_no_xcm_token<T: Runtime + FudgeSupport>() {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "NO XCM".into(),
-				symbol: "NXCM".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: None,
 				additional: CustomMetadata {
@@ -6613,10 +6578,10 @@ mod centrifuge {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 18,
-					name: "Centrifuge".into(),
-					symbol: "CFG".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						0,
@@ -6640,10 +6605,10 @@ mod centrifuge {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 12,
-					name: "Acala Dollar".into(),
-					symbol: "AUSD".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -6671,10 +6636,10 @@ mod centrifuge {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
-				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				let meta: AssetMetadata = AssetMetadata {
 					decimals: 12,
-					name: "Tranche Token 1".into(),
-					symbol: "TRNCH".into(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
 					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 						1,
@@ -6724,7 +6689,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way CFG is represented out in the wild
@@ -6763,7 +6728,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way CFG is represented out in the wild
@@ -6807,7 +6772,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(dot_location),
-					Ok(DOT_ASSET_ID),
+					Some(DOT_ASSET_ID),
 				);
 
 				assert_eq!(
@@ -6829,7 +6794,7 @@ mod centrifuge {
 			);
 
 			env.parachain_state_mut(|| {
-				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
+				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_none());
 			});
 		}
 
@@ -7348,18 +7313,18 @@ mod centrifuge {
 
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
-				<paras::GenesisConfig as BuildStorage<FudgeRelayRuntime<T>>>::build_storage(
-					&paras::GenesisConfig {
-						paras: vec![(
-							1000.into(),
-							ParaGenesisArgs {
-								genesis_head: Default::default(),
-								validation_code: ValidationCode::from(vec![0, 1, 2, 3]),
-								para_kind: ParaKind::Parachain,
-							},
-						)],
-					},
-				)
+				paras::GenesisConfig::<T> {
+					_config: Default::default(),
+					paras: vec![(
+						1000.into(),
+						ParaGenesisArgs {
+							genesis_head: Default::default(),
+							validation_code: ValidationCode::from(vec![0, 1, 2, 3]),
+							para_kind: ParaKind::Parachain,
+						},
+					)],
+				}
+				.build_storage()
 				.unwrap(),
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
@@ -7653,10 +7618,10 @@ mod centrifuge {
 			let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
 			// CFG Metadata
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Centrifuge".into(),
-				symbol: "CFG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
@@ -7991,10 +7956,10 @@ mod centrifuge {
 				1,
 				X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
 			);
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
-				name: "Sibling Native Token".into(),
-				symbol: "SBLNG".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V3(asset_location)),
 				additional: CustomMetadata {
@@ -8104,10 +8069,10 @@ mod centrifuge {
 					general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
 				),
 			);
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
-				name: "Wormhole USDC".into(),
-				symbol: "WUSDC".into(),
+				name: BoundedVec::default(),
+				symbol: BoundedVec::default(),
 				existential_deposit: 1,
 				location: Some(VersionedMultiLocation::V3(asset_location)),
 				additional: CustomMetadata {

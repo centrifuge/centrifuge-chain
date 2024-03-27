@@ -13,7 +13,7 @@
 use frame_support::{dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
 use pallet_evm::FeeCalculator;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::account_conversion::{convert_evm_address, AccountConverter};
 use sp_core::{Get, H160, U256};
 
 use crate::{
@@ -28,8 +28,7 @@ pub fn mint_balance_into_derived_account(env: &mut TestEnv, address: H160, balan
 		})
 		.unwrap();
 
-	let derived_account =
-		AccountConverter::<Runtime, ()>::convert_evm_address(chain_id, address.to_fixed_bytes());
+	let derived_account = convert_evm_address(chain_id, address.to_fixed_bytes());
 
 	env.with_mut_state(Chain::Para(PARA_ID), || {
 		Balances::mint_into(&derived_account.into(), balance).unwrap()
@@ -44,8 +43,7 @@ pub fn deploy_contract(env: &mut TestEnv, address: H160, code: Vec<u8>) {
 		})
 		.unwrap();
 
-	let derived_address =
-		AccountConverter::<Runtime, ()>::convert_evm_address(chain_id, address.to_fixed_bytes());
+	let derived_address = convert_evm_address(chain_id, address.to_fixed_bytes());
 
 	let transaction_create_cost = env
 		.with_state(Chain::Para(PARA_ID), || {

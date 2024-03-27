@@ -25,7 +25,6 @@ impl_runtime!(development_runtime, Development);
 impl_runtime!(altair_runtime, Altair);
 impl_runtime!(centrifuge_runtime, Centrifuge);
 
-/*
 /// Implements fudge support for a runtime
 macro_rules! impl_fudge_support {
 	(
@@ -215,6 +214,8 @@ pub fn default_kusama_session_keys() -> staging_kusama_runtime::SessionKeys {
 		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
 		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
 		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
+		beefy: sp_consensus_beefy::ecdsa_crypto::AuthorityId::from_slice([0u8; 33].as_slice())
+			.unwrap(),
 	}
 }
 
@@ -229,4 +230,3 @@ pub fn default_polkadot_session_keys() -> polkadot_runtime::SessionKeys {
 		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
 	}
 }
-*/

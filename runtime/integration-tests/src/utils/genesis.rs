@@ -10,14 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Utilitites around populating a genesis storage
+//! Utilities around populating a genesis storage
 use cfg_types::{
 	fixed_point::Rate,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
-use sp_runtime::{AccountId32, FixedPointNumber, Storage};
+use sp_runtime::{AccountId32, BoundedVec, BuildStorage, FixedPointNumber, Storage};
 
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
@@ -145,8 +145,8 @@ where
 			orml_asset_registry::Pallet::<Runtime>::do_register_asset(
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
-					name: b"mock_name".to_vec(),
-					symbol: b"mock_symbol".to_vec(),
+					name: BoundedVec::default(),
+					symbol: BoundedVec::default(),
 					existential_deposit: 0u128.into(),
 					location: None,
 					additional: CustomMetadata {

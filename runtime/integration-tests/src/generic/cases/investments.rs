@@ -39,10 +39,12 @@ mod common {
 
 	pub fn initialize_state_for_investments<E: Env<T>, T: Runtime>() -> E {
 		let mut env = E::from_parachain_storage(
-			Genesis::<T>::default()
-				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-				.add(genesis::assets(vec![Box::new(Usd6)]))
-				.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
+			Genesis::default()
+				.add(genesis::balances::<T>(
+					T::ExistentialDeposit::get() + FOR_FEES,
+				))
+				.add(genesis::assets::<T>(vec![Box::new(Usd6)]))
+				.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 				.storage(),
 		);
 

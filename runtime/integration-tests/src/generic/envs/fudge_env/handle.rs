@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use cfg_primitives::{AuraId, Balance, Header};
 use cumulus_primitives_core::CollectCollationInfo;
-use frame_support::traits::GenesisBuild;
 use fudge::{
 	digest::{DigestCreator as DigestCreatorT, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
 	inherent::{
@@ -18,14 +17,13 @@ use polkadot_parachain_primitives::primitives::Id as ParaId;
 use polkadot_primitives::runtime_api::ParachainHost;
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sc_block_builder::BlockBuilderApi;
-use sc_client_api::Backend;
 use sc_service::{TFullBackend, TFullClient};
 use sp_api::{ApiExt, ConstructRuntimeApi};
 use sp_consensus_aura::{sr25519::AuthorityId, AuraApi};
 use sp_consensus_babe::BabeApi;
 use sp_consensus_slots::SlotDuration;
 use sp_core::{crypto::AccountId32, ByteArray, H256};
-use sp_runtime::{traits::AccountIdLookup, Storage};
+use sp_runtime::{traits::AccountIdLookup, BuildStorage, Storage};
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
@@ -96,7 +94,7 @@ pub trait FudgeHandle<T: Runtime> {
 	type RelayApi: BlockBuilderApi<RelayBlock>
 		+ BabeApi<RelayBlock>
 		+ ParachainHost<RelayBlock>
-		+ ApiExt<RelayBlock, StateBackend = <TFullBackend<RelayBlock> as Backend<RelayBlock>>::State>
+		+ ApiExt<RelayBlock>
 		+ TaggedTransactionQueue<RelayBlock>;
 
 	type ParachainConstructApi: ConstructRuntimeApi<
@@ -108,7 +106,7 @@ pub trait FudgeHandle<T: Runtime> {
 		+ 'static;
 
 	type ParachainApi: BlockBuilderApi<T::Block>
-		+ ApiExt<T::Block, StateBackend = <TFullBackend<T::Block> as Backend<T::Block>>::State>
+		+ ApiExt<T::Block>
 		+ AuraApi<T::Block, AuthorityId>
 		+ TaggedTransactionQueue<T::Block>
 		+ CollectCollationInfo<T::Block>;
@@ -157,7 +155,7 @@ pub trait FudgeHandle<T: Runtime> {
 			Self::RelayRuntime,
 		>::default();
 
-		let mut host_config = HostConfiguration::<u32>::default();
+		let mut host_config = HostConfiguration::default();
 		host_config.max_downward_message_size = 1024;
 		host_config.hrmp_channel_max_capacity = 100;
 		host_config.hrmp_channel_max_message_size = 1024;
@@ -182,10 +180,11 @@ pub trait FudgeHandle<T: Runtime> {
 
 		state
 			.insert_storage(
-				frame_system::GenesisConfig {
+				frame_system::GenesisConfig::<T> {
 					code: code.to_vec(),
+					_config: Default::default(),
 				}
-				.build_storage::<Self::RelayRuntime>()
+				.build_storage()
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");
@@ -265,10 +264,11 @@ pub trait FudgeHandle<T: Runtime> {
 
 		state
 			.insert_storage(
-				frame_system::GenesisConfig {
+				frame_system::GenesisConfig::<T> {
 					code: code.to_vec(),
+					_config: Default::default(),
 				}
-				.build_storage::<T>()
+				.build_storage()
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");
@@ -283,11 +283,11 @@ pub trait FudgeHandle<T: Runtime> {
 			.expect("ESSENTIAL: Storage can be inserted");
 		state
 			.insert_storage(
-				<parachain_info::GenesisConfig as GenesisBuild<T>>::build_storage(
-					&parachain_info::GenesisConfig {
-						parachain_id: para_id,
-					},
-				)
+				parachain_info::GenesisConfig::<T> {
+					_config: Default::default(),
+					parachain_id: para_id,
+				}
+				.build_storage()
 				.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");

@@ -14,7 +14,6 @@
 use std::collections::HashMap;
 
 use cfg_primitives::{AuraId, BlockNumber, Nonce};
-use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
@@ -41,7 +40,7 @@ use sp_core::H256;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{BlakeTwo256, Extrinsic},
-	DigestItem, Storage,
+	BuildStorage, DigestItem, Storage,
 };
 use tokio::runtime::Handle;
 
@@ -803,10 +802,11 @@ fn test_env(
 		);
 
 		state.insert_storage(
-			frame_system::GenesisConfig {
+			frame_system::GenesisConfig::<RelayRt> {
 				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
+				_config: Default::default(),
 			}
-			.build_storage::<RelayRt>()
+			.build_storage()
 			.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
 		);
 
@@ -893,8 +893,8 @@ fn test_env(
 fn get_parachain_builder(
 	handle: Handle,
 	inherent_builder: InherentBuilder<
-		TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>,
 		TFullBackend<RelayBlock>,
+		TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>,
 	>,
 	para_id: u32,
 	centrifuge_storage: Option<Storage>,
@@ -908,12 +908,13 @@ fn get_parachain_builder(
 		.expect("ESSENTIAL: State provider can be created.");
 
 	state.insert_storage(
-		frame_system::GenesisConfig {
+		frame_system::GenesisConfig::<Runtime> {
 			code: CentrifugeCode
 				.expect("ESSENTIAL: Centrifuge WASM is some.")
 				.to_vec(),
+			_config: Default::default(),
 		}
-		.build_storage::<Runtime>()
+		.build_storage()
 		.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
 	);
 	state.insert_storage(
@@ -924,11 +925,11 @@ fn get_parachain_builder(
 		.expect("ESSENTIAL: Pallet Aura GenesisBuild must not fail at this stage."),
 	);
 	state.insert_storage(
-		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::build_storage(
-			&parachain_info::GenesisConfig {
-				parachain_id: ParaId::from(para_id),
-			},
-		)
+		parachain_info::GenesisConfig::<Runtime> {
+			_config: Default::default(),
+			parachain_id: ParaId::from(para_id),
+		}
+		.build_storage()
 		.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
 	);
 

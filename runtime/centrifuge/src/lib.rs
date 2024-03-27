@@ -64,6 +64,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
+	offchain::SendTransactionTypes,
 	EnsureRoot, EnsureSigned,
 };
 use orml_traits::currency::MutationHooks;
@@ -2019,6 +2020,29 @@ impl axelar_gateway_precompile::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl polkadot_runtime_parachains::configuration::Config for Runtime {
+	type WeightInfo = weights::pallet_parachains_config::WeightInfo<Runtime>;
+}
+
+impl polkadot_runtime_parachains::shared::Config for Runtime {}
+
+impl<C> SendTransactionTypes<C> for Runtime
+where
+	RuntimeCall: From<C>,
+{
+	type Extrinsic = UncheckedExtrinsic;
+	type OverarchingCall = RuntimeCall;
+}
+
+impl polkadot_runtime_parachains::paras::Config for Runtime {
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type OnNewHead = ();
+	type QueueFootprinter = ();
+	type RuntimeEvent = RuntimeEvent;
+	type UnsignedPriority = ();
+	type WeightInfo = weights::pallet_parachains_paras::WeightInfo<Runtime>;
+}
+
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
@@ -2089,6 +2113,7 @@ construct_runtime!(
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 69,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config<T>, Event<T>} = 70,
+		Paras: polkadot_runtime_parachains::paras::{Pallet, Call, Storage, Event, Config<T>, ValidateUnsigned} = 72,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
