@@ -6152,7 +6152,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way AIR is represented out in the wild
@@ -6194,7 +6194,7 @@ mod altair {
 			env.parachain_state_mut(|| {
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
-					Err(tranche_multilocation),
+					None,
 				);
 			});
 
@@ -6224,7 +6224,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-					Ok(AUSD_CURRENCY_ID),
+					Some(AUSD_CURRENCY_ID),
 				);
 
 				assert_eq!(
@@ -6244,7 +6244,7 @@ mod altair {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
-					Ok(KSM_ASSET_ID),
+					Some(KSM_ASSET_ID),
 				);
 
 				assert_eq!(
@@ -6263,7 +6263,7 @@ mod altair {
 			);
 
 			env.parachain_state_mut(|| {
-				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
+				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_none());
 			});
 		}
 
@@ -6689,7 +6689,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way CFG is represented out in the wild
@@ -6728,7 +6728,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-					Ok(CurrencyId::Native),
+					Some(CurrencyId::Native),
 				);
 
 				// The canonical way CFG is represented out in the wild
@@ -6772,7 +6772,7 @@ mod centrifuge {
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(dot_location),
-					Ok(DOT_ASSET_ID),
+					Some(DOT_ASSET_ID),
 				);
 
 				assert_eq!(
@@ -6794,7 +6794,7 @@ mod centrifuge {
 			);
 
 			env.parachain_state_mut(|| {
-				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
+				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_none());
 			});
 		}
 
