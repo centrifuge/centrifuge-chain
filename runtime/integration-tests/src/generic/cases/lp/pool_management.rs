@@ -28,9 +28,11 @@ use sp_runtime::DispatchError;
 use crate::{
 	generic::{
 		cases::lp::{
-			names, utils,
+			names,
+			names::POOL_A_T_1_USDC,
+			utils,
 			utils::{pool_a_tranche_id, Decoder},
-			LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
@@ -41,7 +43,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	update_member::<development_runtime::Runtime>()
+	increase_invest_order::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -462,6 +464,34 @@ fn update_tranche_token_price<T: Runtime>() {
 	});
 
 	todo!("update_tranche_token_price")
+}
+
+// FIXME: Fails with Revert
+fn increase_invest_order<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+		super::setup_investors(evm);
+	});
+
+	env.state_mut(|evm| {
+		evm.call(
+			Keyring::TrancheInvestor(1),
+			Default::default(),
+			POOL_A_T_1_USDC,
+			"requestDeposit",
+			Some(&[
+				Token::Uint(Uint::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Address(Keyring::TrancheInvestor(1).into()),
+				Token::Address(Keyring::TrancheInvestor(1).into()),
+				Token::Bytes(vec![]),
+			]),
+		)
+		.unwrap();
+	})
 }
 
 crate::test_for_runtimes!(all, add_currency);
