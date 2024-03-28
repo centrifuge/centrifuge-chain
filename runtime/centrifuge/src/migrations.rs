@@ -12,7 +12,7 @@
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1027 = migrate_anemoy_external_prices::Migration<super::Runtime>;
+pub type UpgradeCentrifuge1028 = migrate_anemoy_external_prices::Migration<super::Runtime>;
 
 mod migrate_anemoy_external_prices {
 	use cfg_primitives::PoolId;
