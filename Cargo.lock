@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.37"
+version = "0.10.39"
 dependencies = [
  "altair-runtime",
  "async-trait",
