@@ -103,6 +103,7 @@ use runtime_common::{
 	},
 	permissions::PoolAdminCheck,
 	remarks::Remark,
+	rewards::SingleCurrencyMovement,
 	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -1204,9 +1205,6 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 // Block Rewards
 
 parameter_types! {
-	// BlockRewards have exactly one group and currency
-	#[derive(scale_info::TypeInfo)]
-	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 	pub const BlockRewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;

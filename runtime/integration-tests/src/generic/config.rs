@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
-	Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
+	IBalance, Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -29,11 +29,13 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 	oracle::Feeder,
 	remarks::Remark,
+	rewards::SingleCurrencyMovement,
 };
 use sp_core::H256;
 use sp_runtime::{
 	scale_info::TypeInfo,
 	traits::{AccountIdLookup, Block, Dispatchable, Get, Member},
+	FixedI128,
 };
 
 /// Kind of runtime to check in runtime time
@@ -149,6 +151,17 @@ pub trait Runtime:
 	+ pallet_evm_chain_id::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
+	+ pallet_rewards::Config<
+		pallet_rewards::Instance1,
+		GroupId = u32,
+		CurrencyId = CurrencyId,
+		RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+			Balance,
+			IBalance,
+			FixedI128,
+			SingleCurrencyMovement,
+		>,
+	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -270,6 +283,11 @@ pub trait Runtime:
 		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
 			Self::Block,
 			AccountId,
+		> + apis::runtime_decl_for_rewards_api::RewardsApiV1<
+			Self::Block,
+			AccountId,
+			Balance,
+			CurrencyId,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;

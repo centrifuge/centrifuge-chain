@@ -17,7 +17,6 @@
 mod evm;
 mod generic;
 mod rewards;
-mod runtime_apis;
 mod utils;
 
 /// Re-exports the correct runtimes that we run the integration tests with
