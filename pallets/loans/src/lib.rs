@@ -247,7 +247,7 @@ pub mod pallet {
 	/// `ClosedLoan` because here we try to minimize the iteration speed over
 	/// all active loans in a pool.
 	#[pallet::storage]
-	pub(crate) type ActiveLoans<T: Config> = StorageMap<
+	pub type ActiveLoans<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,

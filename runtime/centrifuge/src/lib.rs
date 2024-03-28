@@ -1676,7 +1676,8 @@ impl pallet_investments::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 100;
+	pub const MaxActiveLoansPerPool: u32 = 1000;
+	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
 	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
@@ -1703,7 +1704,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
-	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollectionSize = MaxRegisteredPricesPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider =
