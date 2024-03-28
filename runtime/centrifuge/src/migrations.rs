@@ -19,7 +19,7 @@ mod migrate_anemoy_external_prices {
 	use cfg_traits::data::DataRegistry;
 	use cfg_types::oracles::OracleKey;
 	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-	use pallet_loans::{entities::pricing::Pricing, WeightInfo};
+	use pallet_loans::{entities::pricing::ActivePricing, WeightInfo};
 
 	const LOG_PREFIX: &str = "MigrateAnemoyPrices:";
 	const ANEMOY_POOL_ID: PoolId = 4139607887;
@@ -36,18 +36,18 @@ mod migrate_anemoy_external_prices {
 		fn on_runtime_upgrade() -> Weight {
 			log::info!("{LOG_PREFIX}: STARTING Migrating Anemoy Price Ids.");
 			let active_loans = pallet_loans::ActiveLoans::<R>::get(ANEMOY_POOL_ID);
-			active_loans.into_iter().for_each(|(_, loan)| {
-				if let Pricing::External(pricing) = loan.pricing() {
+			active_loans.clone().into_iter().for_each(|(_, loan)| {
+				if let ActivePricing::External(pricing) = loan.pricing() {
 					match pallet_oracle_collection::Pallet::<R>::register_id(
-						pricing.price_id,
+						&pricing.price_id(),
 						&ANEMOY_POOL_ID,
 					) {
 						Ok(_) => {
-							log::info!("{LOG_PREFIX}: Registered PriceId: {:?}", pricing.price_id)
+							log::info!("{LOG_PREFIX}: Registered PriceId: {:?}", pricing.price_id())
 						}
 						Err(e) => log::info!(
 							"{LOG_PREFIX}: Failed to register PriceId: {:?}, with error: {:?}.",
-							pricing.price_id,
+							pricing.price_id(),
 							e
 						),
 					}
