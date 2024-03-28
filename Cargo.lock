@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.37"
+version = "0.10.39"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -993,7 +993,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.27"
+version = "0.10.28"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.44"
+version = "0.10.45"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",

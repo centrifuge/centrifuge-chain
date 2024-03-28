@@ -12,4 +12,4 @@
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1044 = ();
+pub type UpgradeDevelopment1045 = ();
