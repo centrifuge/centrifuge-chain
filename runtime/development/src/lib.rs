@@ -69,7 +69,6 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	offchain::SendTransactionTypes,
 	EnsureRoot, EnsureSigned,
 };
 use orml_traits::currency::MutationHooks;

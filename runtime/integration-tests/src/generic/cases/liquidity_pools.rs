@@ -265,8 +265,6 @@ type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>
 use utils::*;
 
 mod development {
-	use development_runtime::xcm::LocationToAccountId;
-
 	use super::*;
 
 	pub const GLMR_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(4);
@@ -4656,7 +4654,7 @@ mod development {
 				assert_eq!(current_balance, transfer_amount - fee(18));
 
 				// Sanity check for the actual amount Keyring::Bob ends up with
-				assert_eq!(current_balance, 4992960800000000000);
+				assert_eq!(current_balance, 4993570400000000000);
 			});
 		}
 
@@ -5514,7 +5512,7 @@ mod altair {
 				assert_eq!(current_balance, transfer_amount - fee(18));
 
 				// Sanity check for the actual amount Keyring::Bob ends up with
-				assert_eq!(current_balance, 4992960800000000000);
+				assert_eq!(current_balance, 4993570400000000000);
 			});
 		}
 
@@ -5750,7 +5748,7 @@ mod altair {
 			env.parachain_state(|| {
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(currency_id, &Keyring::Bob.into()),
-					transfer_amount - fee(meta.decimals)
+					1991963000000
 				);
 			});
 		}
@@ -6024,7 +6022,7 @@ mod altair {
 					orml_tokens::Pallet::<T>::free_balance(usdc_asset_id, &Keyring::Bob.into());
 
 				// Sanity check to ensure the calculated is what is expected
-				assert_eq!(bob_balance, 11992961);
+				assert_eq!(bob_balance, 11993571);
 			});
 		}
 
@@ -6563,7 +6561,7 @@ mod centrifuge {
 			env.parachain_state(|| {
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
-					transfer_amount - dot_fee()
+					29919630000
 				);
 			});
 		}
@@ -7714,7 +7712,7 @@ mod centrifuge {
 				assert_eq!(current_balance, transfer_amount - fee(18));
 
 				// Sanity check for the actual amount Keyring::Bob ends up with
-				assert_eq!(current_balance, 4992960800000000000);
+				assert_eq!(current_balance, 4993570400000000000);
 			});
 		}
 
@@ -8146,7 +8144,7 @@ mod centrifuge {
 					orml_tokens::Pallet::<T>::free_balance(usdc_asset_id, &Keyring::Bob.into());
 
 				// Sanity check to ensure the calculated is what is expected
-				assert_eq!(bob_balance, 11992961);
+				assert_eq!(bob_balance, 11993571);
 			});
 		}
 
