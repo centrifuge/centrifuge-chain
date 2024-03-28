@@ -7313,7 +7313,7 @@ mod centrifuge {
 
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
-				paras::GenesisConfig::<T> {
+				paras::GenesisConfig::<FudgeRelayRuntime<T>> {
 					_config: Default::default(),
 					paras: vec![(
 						1000.into(),

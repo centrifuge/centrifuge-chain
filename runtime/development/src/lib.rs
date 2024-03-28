@@ -1998,29 +1998,6 @@ impl axelar_gateway_precompile::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl polkadot_runtime_parachains::configuration::Config for Runtime {
-	type WeightInfo = weights::pallet_parachains_config::WeightInfo<Runtime>;
-}
-
-impl polkadot_runtime_parachains::shared::Config for Runtime {}
-
-impl<C> SendTransactionTypes<C> for Runtime
-where
-	RuntimeCall: From<C>,
-{
-	type Extrinsic = UncheckedExtrinsic;
-	type OverarchingCall = RuntimeCall;
-}
-
-impl polkadot_runtime_parachains::paras::Config for Runtime {
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type OnNewHead = ();
-	type QueueFootprinter = ();
-	type RuntimeEvent = RuntimeEvent;
-	type UnsignedPriority = ();
-	type WeightInfo = weights::pallet_parachains_paras::WeightInfo<Runtime>;
-}
-
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
@@ -2092,7 +2069,6 @@ construct_runtime!(
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 72,
-		Paras: polkadot_runtime_parachains::paras::{Pallet, Call, Storage, Event, Config<T>, ValidateUnsigned} = 73,
 
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,

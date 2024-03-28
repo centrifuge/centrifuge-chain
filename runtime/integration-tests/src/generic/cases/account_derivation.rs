@@ -188,10 +188,7 @@ fn remote_account_on_relay<T: Runtime>() {
 				AccountId32 {
 					id: KEY_32,
 					network: Some(NetworkId::ByGenesis(
-						frame_system::BlockHash::<T>::get(
-							<<T::BlockExt as BlockT>::Header as HeaderT>::Number::zero(),
-						)
-						.0,
+						frame_system::BlockHash::<T>::get::<u32>(Zero::zero()).0,
 					)),
 				},
 			),
