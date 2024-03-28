@@ -109,7 +109,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn update_collection(n: Linear<1, 10>, m: Linear<1, 10>) -> Result<(), BenchmarkError> {
+	fn update_collection(n: Linear<1, 10>, m: Linear<1, 100>) -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
