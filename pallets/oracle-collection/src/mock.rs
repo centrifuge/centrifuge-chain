@@ -24,7 +24,7 @@ pub const NOW: Timestamp = 1000;
 
 frame_support::parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
-	pub const MaxFeedersPerKey: u32 = 10;
+	pub const MaxFeedersPerKey: u32 = 5;
 }
 
 frame_support::construct_runtime!(
@@ -96,7 +96,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type CollectionId = CollectionId;
 	type FeederId = AccountId;
 	type IsAdmin = MockIsAdmin;
-	type MaxCollectionSize = ConstU32<10>;
+	type MaxCollectionSize = ConstU32<100>;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider = MockProvider;
