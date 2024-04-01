@@ -192,41 +192,36 @@ macro_rules! construct_async_run {
 	    let runner = $cli.create_runner($cmd)?;
 	    let first_evm_block = chain_spec::Extensions::try_get(&*runner.config().chain_spec)
 	        .map(|e| e.first_evm_block).unwrap_or(1);
-            match runner.config().chain_spec.identify() {
-                ChainIdentity::Altair => {
-		    runner.async_run(|$config| {
-				let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_altair_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Centrifuge => {
-		    runner.async_run(|$config| {
-				let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_centrifuge_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Development => {
-		    runner.async_run(|$config| {
-				let $components = evm::new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_development_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-            }
+
+        match runner.config().chain_spec.identify() {
+            ChainIdentity::Altair => runner.async_run(|$config| {
+                let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_altair_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            }),
+                ChainIdentity::Centrifuge => runner.async_run(|$config| {
+                let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_centrifuge_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            }),
+            ChainIdentity::Development => runner.async_run(|$config| {
+                let $components = evm::new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_development_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            })
+        }
 	}}
 }
 

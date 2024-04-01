@@ -80,32 +80,6 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
 	pub pending_create_inherent_data_providers: CIDP,
 }
 
-/* TODO: check if it can be removed
-impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
-	fn clone(&self) -> Self {
-		Self {
-			client: self.client.clone(),
-			pool: self.pool.clone(),
-			graph: self.graph.clone(),
-			converter: self.converter.clone(),
-			is_authority: self.is_authority,
-			enable_dev_signer: self.enable_dev_signer,
-			network: self.network.clone(),
-			sync: self.sync.clone(),
-			frontier_backend: self.frontier_backend.clone(),
-			overrides: self.overrides.clone(),
-			block_data_cache: self.block_data_cache.clone(),
-			filter_pool: self.filter_pool.clone(),
-			max_past_logs: self.max_past_logs,
-			fee_history_cache: self.fee_history_cache.clone(),
-			fee_history_cache_limit: self.fee_history_cache_limit,
-			execute_gas_limit_multiplier: self.execute_gas_limit_multiplier,
-			forced_parent_hashes: self.forced_parent_hashes.clone(),
-		}
-	}
-}
-*/
-
 pub fn overrides_handle<B: BlockT<Hash = H256>, C, BE>(client: Arc<C>) -> Arc<OverrideHandle<B>>
 where
 	C: ProvideRuntimeApi<B> + StorageProvider<B, BE> + AuxStore,
