@@ -25,6 +25,7 @@ use fc_db::Backend as FrontierBackend;
 use sc_executor::NativeElseWasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
+use sp_core::U256;
 
 use crate::rpc::{
 	self,
@@ -117,13 +118,7 @@ pub fn build_altair_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -174,6 +169,7 @@ pub async fn start_altair_node(
 	Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
+
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -193,6 +189,22 @@ pub async fn start_altair_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -216,12 +228,13 @@ pub async fn start_altair_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,
@@ -317,13 +330,7 @@ pub fn build_centrifuge_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -374,6 +381,7 @@ pub async fn start_centrifuge_node(
 	Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
+
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -393,6 +401,22 @@ pub async fn start_centrifuge_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -416,12 +440,13 @@ pub async fn start_centrifuge_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,
@@ -517,13 +542,7 @@ pub fn build_development_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -594,6 +613,22 @@ pub async fn start_development_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -620,12 +655,13 @@ pub async fn start_development_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,
@@ -710,3 +746,100 @@ pub async fn start_development_node(
 	)
 	.await
 }
+
+/* //TODO
+/// Starts a `ServiceBuilder` for a full service.
+///
+/// Use this macro if you don't actually need the full service, but just the
+/// builder in order to be able to perform chain operations.
+pub fn new_partial(
+	config: &Configuration,
+) -> Result<
+	PartialComponents<
+		ParachainClient,
+		ParachainBackend,
+		(),
+		sc_consensus::DefaultImportQueue<Block>,
+		sc_transaction_pool::FullPool<Block, ParachainClient>,
+		(
+			ParachainBlockImport,
+			Option<Telemetry>,
+			Option<TelemetryWorkerHandle>,
+		),
+	>,
+	sc_service::Error,
+> {
+	let telemetry = config
+		.telemetry_endpoints
+		.clone()
+		.filter(|x| !x.is_empty())
+		.map(|endpoints| -> Result<_, sc_telemetry::Error> {
+			let worker = TelemetryWorker::new(16)?;
+			let telemetry = worker.handle().new_telemetry(endpoints);
+			Ok((worker, telemetry))
+		})
+		.transpose()?;
+
+	let heap_pages = config
+		.default_heap_pages
+		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
+			extra_pages: h as _,
+		});
+
+	let wasm = WasmExecutor::builder()
+		.with_execution_method(config.wasm_method)
+		.with_onchain_heap_alloc_strategy(heap_pages)
+		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_max_runtime_instances(config.max_runtime_instances)
+		.with_runtime_cache_size(config.runtime_cache_size)
+		.build();
+
+	let executor = ParachainExecutor::new_with_wasm_executor(wasm);
+
+	let (client, backend, keystore_container, task_manager) =
+		sc_service::new_full_parts::<Block, RuntimeApi, _>(
+			config,
+			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+			executor,
+		)?;
+	let client = Arc::new(client);
+
+	let telemetry_worker_handle = telemetry.as_ref().map(|(worker, _)| worker.handle());
+
+	let telemetry = telemetry.map(|(worker, telemetry)| {
+		task_manager
+			.spawn_handle()
+			.spawn("telemetry", None, worker.run());
+		telemetry
+	});
+
+	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
+		config.transaction_pool.clone(),
+		config.role.is_authority().into(),
+		config.prometheus_registry(),
+		task_manager.spawn_essential_handle(),
+		client.clone(),
+	);
+
+	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
+
+	let import_queue = build_import_queue(
+		client.clone(),
+		block_import.clone(),
+		config,
+		telemetry.as_ref().map(|telemetry| telemetry.handle()),
+		&task_manager,
+	)?;
+
+	Ok(PartialComponents {
+		backend,
+		client,
+		import_queue,
+		keystore_container,
+		task_manager,
+		transaction_pool,
+		select_chain: (),
+		other: (block_import, telemetry, telemetry_worker_handle),
+	})
+}
+*/

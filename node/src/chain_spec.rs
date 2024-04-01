@@ -42,7 +42,7 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::{account_conversion::AccountConverter, evm::precompile::H160Addresses};
+use runtime_common::{account_conversion::convert_evm_address, evm::precompile::H160Addresses};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
 };
-use xcm::{
+use staging_xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
 };
@@ -560,10 +560,7 @@ fn centrifuge_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<
-			centrifuge_runtime::Runtime,
-			centrifuge_runtime::xcm::LocationToAccountId,
-		>::convert_evm_address(chain_id, addr)
+		convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -586,6 +583,7 @@ fn centrifuge_genesis(
 			code: centrifuge_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
+			..Default::default()
 		},
 		balances: centrifuge_runtime::BalancesConfig { balances },
 		orml_asset_registry: Default::default(),
@@ -610,7 +608,10 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
+		parachain_info: centrifuge_runtime::ParachainInfoConfig {
+			parachain_id: id,
+			..Default::default()
+		},
 		collator_selection: centrifuge_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities
 				.iter()
@@ -675,14 +676,17 @@ fn centrifuge_genesis(
 		base_fee: Default::default(),
 		evm_chain_id: centrifuge_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
+			..Default::default()
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
 			accounts: precompile_account_genesis::<CentrifugePrecompiles>(),
+			..Default::default()
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
+			..Default::default()
 		},
 	}
 }
@@ -699,10 +703,7 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<
-			altair_runtime::Runtime,
-			altair_runtime::xcm::LocationToAccountId,
-		>::convert_evm_address(chain_id, addr)
+		convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -725,6 +726,7 @@ fn altair_genesis(
 			code: altair_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
+			..Default::default()
 		},
 		balances: altair_runtime::BalancesConfig { balances },
 		orml_asset_registry: Default::default(),
@@ -750,7 +752,10 @@ fn altair_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		parachain_info: altair_runtime::ParachainInfoConfig { parachain_id: id },
+		parachain_info: altair_runtime::ParachainInfoConfig {
+			parachain_id: id,
+			..Default::default()
+		},
 		collator_selection: altair_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities
 				.iter()
@@ -796,14 +801,17 @@ fn altair_genesis(
 		base_fee: Default::default(),
 		evm_chain_id: altair_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
+			..Default::default()
 		},
 		ethereum: Default::default(),
-		evm: centrifuge_runtime::EVMConfig {
+		evm: altair_runtime::EVMConfig {
 			accounts: precompile_account_genesis::<AltairPrecompiles>(),
+			..Default::default()
 		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
+			..Default::default()
 		},
 	}
 }
@@ -824,10 +832,7 @@ fn development_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<
-			development_runtime::Runtime,
-			development_runtime::xcm::LocationToAccountId,
-		>::convert_evm_address(chain_id, addr)
+		convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -870,6 +875,7 @@ fn development_genesis(
 			code: development_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
+			..Default::default()
 		},
 		balances: development_runtime::BalancesConfig { balances },
 		orml_asset_registry: development_runtime::OrmlAssetRegistryConfig {
@@ -902,7 +908,10 @@ fn development_genesis(
 		sudo: development_runtime::SudoConfig {
 			key: Some(root_key),
 		},
-		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
+		parachain_info: development_runtime::ParachainInfoConfig {
+			parachain_id: id,
+			..Default::default()
+		},
 		collator_selection: development_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities
 				.iter()
@@ -966,15 +975,18 @@ fn development_genesis(
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
+			..Default::default()
 		},
 		ethereum: Default::default(),
-		evm: centrifuge_runtime::EVMConfig {
+		evm: development_runtime::EVMConfig {
 			accounts: precompile_account_genesis::<DevelopmentPrecompiles>(),
+			..Default::default()
 		},
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: development_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
+			..Default::default()
 		},
 	}
 }
@@ -983,12 +995,15 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 	vec![
 		(
 			DEV_USDT_CURRENCY_ID,
-			AssetMetadata::<Balance, CustomMetadata> {
+			AssetMetadata {
 				decimals: 6,
-				name: b"Tether USD".to_vec(),
-				symbol: b"USDT".to_vec(),
+				name: b"Tether USD"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
+				symbol: b"USDT".to_vec().try_into().expect("fit in the BoundedVec"),
 				existential_deposit: 0u128,
-				location: Some(xcm::VersionedMultiLocation::V3(MultiLocation {
+				location: Some(staging_xcm::VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
 					interior: X3(
 						Parachain(parachains::rococo::rocksmine::ID),
@@ -1008,12 +1023,15 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 		),
 		(
 			DEV_AUSD_CURRENCY_ID,
-			AssetMetadata::<Balance, CustomMetadata> {
+			AssetMetadata {
 				decimals: 12,
-				name: b"Acala USD".to_vec(),
-				symbol: b"AUSD".to_vec(),
+				name: b"Acala USD"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
+				symbol: b"AUSD".to_vec().try_into().expect("fit in the BoundedVec"),
 				existential_deposit: 0u128,
-				location: Some(xcm::VersionedMultiLocation::V3(MultiLocation {
+				location: Some(staging_xcm::VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
 					interior: X2(
 						Parachain(parachains::rococo::acala::ID),
@@ -1035,10 +1053,16 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 		),
 		(
 			CURRENCY_ID_LOCAL,
-			AssetMetadata::<Balance, CustomMetadata> {
+			AssetMetadata {
 				decimals: 6,
-				name: b"Local USDC".to_vec(),
-				symbol: b"localUSDC".to_vec(),
+				name: b"Local USDC"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
+				symbol: b"localUSDC"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
 				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
@@ -1054,8 +1078,14 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 		(
 			CURRENCY_ID_LP_ETH_GOERLI,
 			lp_wrapped_usdc_metadata(
-				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
-				"LpEthUSDC".as_bytes().to_vec(),
+				b"LP Ethereum Wrapped USDC"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
+				b"LpEthUSDC"
+					.to_vec()
+					.try_into()
+					.expect("fit in the BoundedVec"),
 				development_runtime::LiquidityPoolsPalletIndex::get(),
 				CHAIN_ID_ETH_GOERLI_TESTNET,
 				CONTRACT_ETH_GOERLI,

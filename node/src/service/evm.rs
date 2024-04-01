@@ -23,7 +23,8 @@ use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
 use cumulus_client_service::{
 	build_network, build_relay_chain_interface, prepare_node_config, start_collator,
-	start_full_node, BuildNetworkParams, StartCollatorParams, StartFullNodeParams,
+	start_full_node, BuildNetworkParams, CollatorSybilResistance, StartCollatorParams,
+	StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
@@ -70,6 +71,10 @@ pub struct EthConfiguration {
 	#[clap(long)]
 	pub enable_dev_signer: bool,
 
+	/// The dynamic-fee pallet target gas price set by block author
+	#[arg(long, default_value = "1")]
+	pub target_gas_price: u64,
+
 	/// Maximum allowed gas limit will be `block.gas_limit *
 	/// execute_gas_limit_multiplier` when using eth_call/eth_estimateGas.
 	#[clap(long, default_value = "10")]
@@ -101,7 +106,7 @@ pub struct BlockImport<B: BlockT, I, C> {
 impl<B, I, C> BlockImport<B, I, C>
 where
 	B: BlockT,
-	I: BlockImportT<B, Transaction = sp_api::TransactionFor<C, B>> + Send + Sync,
+	I: BlockImportT<B> + Send + Sync,
 	I::Error: Into<ConsensusError>,
 	C: ProvideRuntimeApi<B> + Send + Sync + HeaderBackend<B> + AuxStore + BlockOf,
 {
@@ -126,14 +131,13 @@ impl<B, I, C> BlockImportT<B> for BlockImport<B, I, C>
 where
 	B: BlockT,
 	<B::Header as HeaderT>::Number: PartialOrd,
-	I: BlockImportT<B, Transaction = sp_api::TransactionFor<C, B>> + Send + Sync,
+	I: BlockImportT<B> + Send + Sync,
 	I::Error: Into<ConsensusError>,
 	C: ProvideRuntimeApi<B> + Send + Sync + HeaderBackend<B> + AuxStore + BlockOf,
 	C::Api: EthereumRuntimeRPCApi<B>,
 	C::Api: BlockBuilderApi<B>,
 {
 	type Error = ConsensusError;
-	type Transaction = sp_api::TransactionFor<C, B>;
 
 	async fn check_block(
 		&mut self,
@@ -144,7 +148,7 @@ where
 
 	async fn import_block(
 		&mut self,
-		block: BlockImportParams<B, Self::Transaction>,
+		block: BlockImportParams<B>,
 	) -> Result<ImportResult, Self::Error> {
 		// Validate that there is one and exactly one frontier log,
 		// but only on blocks created after frontier was enabled.
@@ -175,7 +179,7 @@ pub fn new_partial<RuntimeApi, BIQ, Executor>(
 		FullClient<RuntimeApi, Executor>,
 		FullBackend,
 		(),
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<Block>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
 		(
 			ParachainBlockImport<RuntimeApi, Executor>,
@@ -195,7 +199,7 @@ where
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>
+		+ sp_api::ApiExt<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
@@ -207,10 +211,7 @@ where
 		&TaskManager,
 		FrontierBackend<Block>,
 		BlockNumber,
-	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
-		sc_service::Error,
-	>,
+	) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -334,7 +335,7 @@ where
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>
+		+ sp_api::ApiExt<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>
@@ -364,10 +365,7 @@ where
 		&TaskManager,
 		FrontierBackend<Block>,
 		BlockNumber,
-	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
-		sc_service::Error,
-	>,
+	) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>,
 	BIC: FnOnce(
 		Arc<FullClient<RuntimeApi, Executor>>,
 		ParachainBlockImport<RuntimeApi, Executor>,
@@ -429,6 +427,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			relay_chain_interface: relay_chain_interface.clone(),
 			import_queue: params.import_queue,
+			sybil_resistance_level: CollatorSybilResistance::Resistant, // because of Aura
 		})
 		.await?;
 
@@ -609,10 +608,8 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<
-			Block,
-			StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>, Block>,
-		> + sp_offchain::OffchainWorkerApi<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
