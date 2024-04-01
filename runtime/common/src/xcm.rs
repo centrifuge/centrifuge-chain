@@ -198,10 +198,9 @@ where
 	}
 }
 
-/*
 /// Convert an incoming `MultiLocation` into a `CurrencyId` through a
 /// reverse-lookup using the AssetRegistry. In the registry, we register CFG
-/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// using its absolute, non-anchored MultiLocation so we need to unanchor the
 /// input location for Centrifuge-native assets for that to work.
 impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
@@ -209,10 +208,9 @@ where
 		+ parachain_info::Config,
 {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
-		<Self as MaybeEquivalence<_, _>>::convert(location)
+		<Self as MaybeEquivalence<_, _>>::convert(&location)
 	}
 }
-*/
 
 impl<T> Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert<T>
 where

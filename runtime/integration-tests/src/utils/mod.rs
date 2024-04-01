@@ -10,23 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-/*
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
-*/
 
 pub mod accounts;
-/*
 pub mod env;
 pub mod evm;
 pub mod extrinsics;
 pub mod genesis;
-*/
 pub mod logs;
 pub mod time;
-/*
 pub mod tokens;
-
 
 /// The relay native token's asset id
 pub const RELAY_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(5);
@@ -42,4 +36,3 @@ pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
 pub const GLMR_ED: Balance = 1_000_000;
 pub const AUSD_ED: Balance = 1_000_000_000;
 pub const USDT_ED: Balance = 10_000;
-*/

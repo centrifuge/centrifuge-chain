@@ -10745,6 +10745,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec 3.6.9",
  "polkadot-core-primitives",
+ "polkadot-node-primitives",
  "polkadot-parachain-primitives",
  "polkadot-primitives",
  "polkadot-runtime",

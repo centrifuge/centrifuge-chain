@@ -13,7 +13,7 @@ mod impls;
 pub mod utils;
 
 // Test cases
-/*mod cases {
+mod cases {
 	mod account_derivation;
 	mod example;
 	mod investments;
@@ -23,7 +23,7 @@ pub mod utils;
 	mod proxy;
 	mod restricted_transfers;
 	mod rewards;
-}*/
+}
 
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage
