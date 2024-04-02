@@ -152,7 +152,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1027,
+	spec_version: 1028,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1665,6 +1665,7 @@ impl pallet_investments::Config for Runtime {
 
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
+	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
 	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
@@ -1672,7 +1673,7 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 100;
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
-	pub const MaxFeedersPerKey: u32 = 10;
+	pub const MaxFeedersPerKey: u32 = 5;
 }
 
 impl pallet_oracle_feed::Config for Runtime {
@@ -1691,7 +1692,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
-	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollectionSize = MaxRegisteredPricesPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider =
@@ -2051,7 +2052,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1027,
+	migrations::UpgradeCentrifuge1028,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
