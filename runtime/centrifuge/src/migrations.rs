@@ -10,189 +10,62 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, PoolId};
-use cfg_types::tokens::{
-	usdc::{
-		CURRENCY_ID_AXELAR, CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ARB,
-		CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO, CURRENCY_ID_LP_CELO_WORMHOLE, CURRENCY_ID_LP_ETH,
-		LOCAL_ASSET_ID,
-	},
-	CurrencyId, LocalAssetId,
-};
+/// The migration set for Centrifuge @ Polkadot.
+/// It includes all the migrations that have to be applied on that chain.
+pub type UpgradeCentrifuge1028 = migrate_anemoy_external_prices::Migration<super::Runtime>;
 
-frame_support::parameter_types! {
-	pub const ClaimsPalletName: &'static str = "Claims";
-	pub const MigrationPalletName: &'static str = "Migration";
-	pub const UsdcVariants: [CurrencyId; 6] = [CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_AXELAR, CURRENCY_ID_LP_ETH, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO];
-	pub const LocalAssetIdUsdc: LocalAssetId = LOCAL_ASSET_ID;
-	pub const LocalCurrencyIdUsdc: CurrencyId = CURRENCY_ID_LOCAL;
-	pub const PoolIdAnemoy: PoolId = 4_139_607_887;
-	pub const PoolCurrencyAnemoy: CurrencyId = CURRENCY_ID_DOT_NATIVE;
-	pub const UsdcDot: CurrencyId = CURRENCY_ID_DOT_NATIVE;
-	pub const UsdcEth: CurrencyId = CURRENCY_ID_LP_ETH;
-	pub const UsdcBase: CurrencyId = CURRENCY_ID_LP_BASE;
-	pub const UsdcArb: CurrencyId = CURRENCY_ID_LP_ARB;
-	pub const UsdcCeloWormhole: CurrencyId = CURRENCY_ID_LP_CELO_WORMHOLE;
-	pub const UsdcCelo: CurrencyId = CURRENCY_ID_LP_CELO;
-	pub const MinOrderAmount: Balance = 10u128.pow(6);
-	pub const AnnualTreasuryInflationPercent: u32 = 3;
-}
+mod migrate_anemoy_external_prices {
+	use cfg_primitives::PoolId;
+	use cfg_traits::data::DataRegistry;
+	use cfg_types::oracles::OracleKey;
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+	use pallet_loans::{entities::pricing::ActivePricing, WeightInfo};
 
-pub type UpgradeCentrifuge1026 = (
-	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
-	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
-	// special filter currency enum
-	runtime_common::migrations::transfer_allowlist_currency::Migration<super::Runtime>,
-	// Removes tinlake reward claims pallet
-	runtime_common::migrations::nuke::KillPallet<ClaimsPalletName, crate::RocksDbWeight>,
-	// Register LocalUSDC
-	runtime_common::migrations::local_currency::register::Migration<
-		super::Runtime,
-		LocalCurrencyIdUsdc,
-	>,
-	// Register new canonical USDC on Celo
-	runtime_common::migrations::update_celo_usdcs::AddNewCeloUsdc<super::Runtime>,
-	// Update custom metadata by initiating local representation for all assets
-	runtime_common::migrations::local_currency::translate_metadata::Migration<
-		super::Runtime,
-		UsdcVariants,
-		LocalAssetIdUsdc,
-	>,
-	// Change name and symbol of Celo Wormhole USDC
-	// NOTE: Needs to happen after metadata translation because expects new CustomMetadata
-	runtime_common::migrations::update_celo_usdcs::UpdateWormholeUsdc<super::Runtime>,
-	// Switch pool currency from Polkadot USDC to Local USDC
-	runtime_common::migrations::local_currency::migrate_pool_currency::Migration<
-		super::Runtime,
-		PoolIdAnemoy,
-		PoolCurrencyAnemoy,
-		LocalCurrencyIdUsdc,
-	>,
-	// Removes unused migration pallet
-	runtime_common::migrations::nuke::KillPallet<MigrationPalletName, crate::RocksDbWeight>,
-	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
-	// Bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::ResetPallet<crate::OrderBook, crate::RocksDbWeight, 0>,
-	// Apply relative treasury inflation
-	pallet_block_rewards::migrations::v2::RelativeTreasuryInflationMigration<
-		crate::Runtime,
-		AnnualTreasuryInflationPercent,
-	>,
-	// Bump balances storage version from v0 to v1 and mark balance of CheckingAccount as inactive,
-	// see https://github.com/paritytech/substrate/pull/12813
-	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
-	// Assets were already migrated to V3 MultiLocation but version not increased from 0 to 2
-	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
-	// Burns tokens from other domains that are falsly not burned when they were transferred back
-	// to their domain
-	burn_unburned::Migration<super::Runtime>,
-	// Bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::ResetPallet<
-		crate::ForeignInvestments,
-		crate::RocksDbWeight,
-		0,
-	>,
-);
-
-mod burn_unburned {
-	const LOG_PREFIX: &str = "BurnUnburnedMigration: ";
-	const LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
-	const ETH_DOMAIN: Domain = Domain::EVM(1);
-
-	use cfg_types::{domain_address::Domain, tokens::CurrencyId};
-	use frame_support::traits::{
-		fungibles::Mutate,
-		tokens::{Fortitude, Precision},
-		OnRuntimeUpgrade,
-	};
-	use pallet_order_book::weights::Weight;
-	use sp_runtime::traits::{Convert, Get};
-
-	pub struct Migration<T>
+	const LOG_PREFIX: &str = "MigrateAnemoyPrices:";
+	const ANEMOY_POOL_ID: PoolId = 4139607887;
+	/// Simply bumps the storage version of a pallet
+	///
+	/// NOTE: Use with caution! Must ensure beforehand that a migration is not
+	/// necessary
+	pub struct Migration<R>(sp_std::marker::PhantomData<R>);
+	impl<R> OnRuntimeUpgrade for Migration<R>
 	where
-		T: orml_tokens::Config + frame_system::Config,
+		R: pallet_loans::Config<PoolId = PoolId, PriceId = OracleKey>
+			+ pallet_oracle_collection::Config<CollectionId = PoolId, OracleKey = OracleKey>,
 	{
-		_phantom: sp_std::marker::PhantomData<T>,
-	}
-
-	impl<T> OnRuntimeUpgrade for Migration<T>
-	where
-		T: orml_tokens::Config<CurrencyId = CurrencyId> + frame_system::Config,
-	{
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::TryRuntimeError> {
-			use sp_runtime::traits::Zero;
-
-			let pre_data = orml_tokens::Accounts::<T>::get(
-				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				LP_ETH_USDC,
-			);
-
-			if !pre_data.frozen.is_zero() || !pre_data.reserved.is_zero() {
-				log::error!(
-					"{LOG_PREFIX} AccountData of Ethereum domain account has non free balances..."
-				);
-			}
-			let total_issuance = orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC);
-			assert_eq!(total_issuance, pre_data.free);
-
-			log::info!(
-				"{LOG_PREFIX} AccountData of Ethereum domain account has free balance of: {:?}",
-				pre_data.free
-			);
-
-			Ok(sp_std::vec::Vec::new())
-		}
-
 		fn on_runtime_upgrade() -> Weight {
-			let data = orml_tokens::Accounts::<T>::get(
-				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				LP_ETH_USDC,
-			);
-			if let Err(e) = orml_tokens::Pallet::<T>::burn_from(
-				LP_ETH_USDC,
-				&<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				data.free,
-				Precision::Exact,
-				Fortitude::Force,
-			) {
-				log::error!(
-					"{LOG_PREFIX} Burning from Ethereum domain account failed with: {:?}. Migration failed...",
-					e
-				);
-			} else {
-				log::info!(
-					"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
-					data.free
-				);
-			}
+			log::info!("{LOG_PREFIX}: STARTING Migrating Anemoy Price Ids.");
+			let active_loans = pallet_loans::ActiveLoans::<R>::get(ANEMOY_POOL_ID);
+			active_loans.clone().into_iter().for_each(|(_, loan)| {
+				if let ActivePricing::External(pricing) = loan.pricing() {
+					match pallet_oracle_collection::Pallet::<R>::register_id(
+						&pricing.price_id(),
+						&ANEMOY_POOL_ID,
+					) {
+						Ok(_) => {
+							log::info!("{LOG_PREFIX}: Registered PriceId: {:?}", pricing.price_id())
+						}
+						Err(e) => log::info!(
+							"{LOG_PREFIX}: Failed to register PriceId: {:?}, with error: {:?}.",
+							pricing.price_id(),
+							e
+						),
+					}
+				}
+			});
 
-			T::DbWeight::get().writes(2)
+			log::info!("{LOG_PREFIX}: FINISHED Migrating Anemoy Price Ids.");
+			<R as pallet_loans::Config>::WeightInfo::create()
+				.saturating_mul(active_loans.len() as u64)
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
-			use sp_runtime::traits::Zero;
+		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::DispatchError> {
+			Ok(sp_std::vec![])
+		}
 
-			assert!(orml_tokens::TotalIssuance::<T>::get(LP_ETH_USDC).is_zero());
-
-			let post_data = orml_tokens::Accounts::<T>::get(
-				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				LP_ETH_USDC,
-			);
-
-			if !post_data.free.is_zero()
-				|| !post_data.frozen.is_zero()
-				|| !post_data.reserved.is_zero()
-			{
-				log::error!(
-					"{LOG_PREFIX} AccountData of Ethereum domain account SHOULD be zero. Migration failed."
-				);
-			} else {
-				log::info!("{LOG_PREFIX} Migration successfully finished.")
-			}
-
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
 			Ok(())
 		}
 	}

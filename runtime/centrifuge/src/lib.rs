@@ -108,6 +108,7 @@ use runtime_common::{
 	},
 	origin::EnsureAccountOrRootOr,
 	permissions::PoolAdminCheck,
+	rewards::SingleCurrencyMovement,
 	transfer_filter::PreLpTransfer,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
@@ -153,7 +154,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1026,
+	spec_version: 1028,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -680,22 +681,26 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Borrow => matches!(
 				c,
 				RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
-                // Borrowers should be able to close and execute an epoch
-                // in order to get liquidity from repayments in previous epochs.
+				RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
+				RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
+				// Borrowers should be able to close and execute an epoch
+				// in order to get liquidity from repayments in previous epochs.
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
 				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Utility(pallet_utility::Call::batch{..}) |
+				// Borrowers should be able to swap back and forth between local currencies and their variants
+				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
+				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
 			),
 			ProxyType::Invest => matches!(
 				c,
@@ -1216,9 +1221,6 @@ impl pallet_xcm_transactor::Config for Runtime {
 // Block Rewards
 
 parameter_types! {
-	// BlockRewards have exactly one group and currency
-	#[derive(scale_info::TypeInfo)]
-	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 	pub const BlockRewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
@@ -1673,6 +1675,7 @@ impl pallet_investments::Config for Runtime {
 
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
+	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
 	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
@@ -1680,7 +1683,7 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 100;
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
-	pub const MaxFeedersPerKey: u32 = 10;
+	pub const MaxFeedersPerKey: u32 = 5;
 }
 
 impl pallet_oracle_feed::Config for Runtime {
@@ -1699,7 +1702,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
-	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollectionSize = MaxRegisteredPricesPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider =
@@ -1800,8 +1803,8 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const OrderPairVecSize: u32 = 1_000u32;
 	pub MinFulfillmentAmountNative: Balance = 10 * CFG;
+	pub NativeDecimals: u32 = cfg_primitives::currency_decimals::NATIVE;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1811,13 +1814,11 @@ impl pallet_order_book::Config for Runtime {
 	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DecimalConverter =
-		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
 	type FulfilledOrderHook = Swaps;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
+	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
-	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = Ratio;
 	type RatioProvider = OracleRatioProviderLocalAssetExtension<
 		RuntimeOrigin,
@@ -2061,7 +2062,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1026,
+	migrations::UpgradeCentrifuge1028,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata

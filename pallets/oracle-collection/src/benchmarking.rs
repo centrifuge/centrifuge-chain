@@ -61,7 +61,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn propose_update_collection_info(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
+	fn propose_update_collection_info(n: Linear<1, 5>) -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -85,7 +85,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn apply_update_collection_info(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
+	fn apply_update_collection_info(n: Linear<1, 5>) -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -109,7 +109,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn update_collection(n: Linear<1, 10>, m: Linear<1, 10>) -> Result<(), BenchmarkError> {
+	fn update_collection(n: Linear<1, 5>, m: Linear<1, 100>) -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 

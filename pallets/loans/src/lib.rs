@@ -65,8 +65,6 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod migrations;
-
 pub use pallet::*;
 pub use weights::WeightInfo;
 
@@ -249,7 +247,7 @@ pub mod pallet {
 	/// `ClosedLoan` because here we try to minimize the iteration speed over
 	/// all active loans in a pool.
 	#[pallet::storage]
-	pub(crate) type ActiveLoans<T: Config> = StorageMap<
+	pub type ActiveLoans<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -435,13 +433,6 @@ pub mod pallet {
 	impl<T> From<MutationError> for Error<T> {
 		fn from(error: MutationError) -> Self {
 			Error::<T>::MutationError(error)
-		}
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
-			migrations::migrate_from_v2_to_v3::<T>()
 		}
 	}
 
