@@ -14,29 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::io::Write;
-
-use cfg_primitives::Block;
-use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use log::{info, warn};
-use parity_scale_codec::Encode;
+use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+	NetworkParams, Result, SharedParams, SubstrateCli,
 };
-use sc_client_api::ExecutorProvider;
 use sc_service::config::{BasePath, PrometheusConfig};
-use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
+use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{
-		self, evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
-	},
+	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
 };
 
 enum ChainIdentity {
@@ -203,7 +194,7 @@ macro_rules! construct_async_run {
                 let task_manager = $components.task_manager;
                 { $( $code )* }.map(|v| (v, task_manager))
             }),
-                ChainIdentity::Centrifuge => runner.async_run(|$config| {
+            ChainIdentity::Centrifuge => runner.async_run(|$config| {
                 let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
                     &$config,
                     first_evm_block,
@@ -283,14 +274,8 @@ pub fn run() -> Result<()> {
 			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))
 		}),
 		Some(Subcommand::ExportGenesisState(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			runner.sync_run(|config| {
-                /*
-				let partials = service::new_partial(&config)?;
-
-				cmd.run(&*config.chain_spec, &*partials.client)
-                */
-                todo!()
+            construct_async_run!(|components, cli, cmd, config| {
+				Ok(async move { cmd.run(&*config.chain_spec, &*components.client) })
 			})
 		}
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {

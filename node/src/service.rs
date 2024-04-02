@@ -18,10 +18,10 @@ use std::sync::Arc;
 
 use cfg_primitives::{Block, BlockNumber};
 use cumulus_client_cli::CollatorOptions;
-use cumulus_client_collator::service::CollatorService;
+// use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
-use cumulus_client_consensus_proposer::Proposer;
+// use cumulus_client_consensus_proposer::Proposer;
 use cumulus_primitives_core::ParaId;
 use fc_db::Backend as FrontierBackend;
 use sc_executor::NativeElseWasmExecutor;
@@ -759,100 +759,3 @@ pub async fn start_development_node(
 	)
 	.await
 }
-
-/* //TODO
-/// Starts a `ServiceBuilder` for a full service.
-///
-/// Use this macro if you don't actually need the full service, but just the
-/// builder in order to be able to perform chain operations.
-pub fn new_partial(
-	config: &Configuration,
-) -> Result<
-	PartialComponents<
-		ParachainClient,
-		ParachainBackend,
-		(),
-		sc_consensus::DefaultImportQueue<Block>,
-		sc_transaction_pool::FullPool<Block, ParachainClient>,
-		(
-			ParachainBlockImport,
-			Option<Telemetry>,
-			Option<TelemetryWorkerHandle>,
-		),
-	>,
-	sc_service::Error,
-> {
-	let telemetry = config
-		.telemetry_endpoints
-		.clone()
-		.filter(|x| !x.is_empty())
-		.map(|endpoints| -> Result<_, sc_telemetry::Error> {
-			let worker = TelemetryWorker::new(16)?;
-			let telemetry = worker.handle().new_telemetry(endpoints);
-			Ok((worker, telemetry))
-		})
-		.transpose()?;
-
-	let heap_pages = config
-		.default_heap_pages
-		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
-			extra_pages: h as _,
-		});
-
-	let wasm = WasmExecutor::builder()
-		.with_execution_method(config.wasm_method)
-		.with_onchain_heap_alloc_strategy(heap_pages)
-		.with_offchain_heap_alloc_strategy(heap_pages)
-		.with_max_runtime_instances(config.max_runtime_instances)
-		.with_runtime_cache_size(config.runtime_cache_size)
-		.build();
-
-	let executor = ParachainExecutor::new_with_wasm_executor(wasm);
-
-	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			config,
-			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
-			executor,
-		)?;
-	let client = Arc::new(client);
-
-	let telemetry_worker_handle = telemetry.as_ref().map(|(worker, _)| worker.handle());
-
-	let telemetry = telemetry.map(|(worker, telemetry)| {
-		task_manager
-			.spawn_handle()
-			.spawn("telemetry", None, worker.run());
-		telemetry
-	});
-
-	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
-		config.transaction_pool.clone(),
-		config.role.is_authority().into(),
-		config.prometheus_registry(),
-		task_manager.spawn_essential_handle(),
-		client.clone(),
-	);
-
-	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
-
-	let import_queue = build_import_queue(
-		client.clone(),
-		block_import.clone(),
-		config,
-		telemetry.as_ref().map(|telemetry| telemetry.handle()),
-		&task_manager,
-	)?;
-
-	Ok(PartialComponents {
-		backend,
-		client,
-		import_queue,
-		keystore_container,
-		task_manager,
-		transaction_pool,
-		select_chain: (),
-		other: (block_import, telemetry, telemetry_worker_handle),
-	})
-}
-*/
