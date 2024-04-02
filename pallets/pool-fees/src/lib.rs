@@ -35,7 +35,8 @@ pub mod pallet {
 	use cfg_traits::{
 		changes::ChangeGuard,
 		fee::{FeeAmountProration, PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
-		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
+		Accuracy, EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds,
+		TimeAsSecs,
 	};
 	use cfg_types::{
 		pools::{
@@ -896,7 +897,9 @@ pub mod pallet {
 			Some((portfolio.value(), portfolio.last_updated()))
 		}
 
-		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		fn update_nav(pool_id: T::PoolId, _: Accuracy) -> Result<T::Balance, DispatchError> {
+			// TODO: @wischli maybe we can fetch the reserve here IF we are in the
+			//       runtime-api? Does this makes sense?
 			Ok(Self::update_portfolio_valuation_for_pool(pool_id, &mut T::Balance::zero())?.0)
 		}
 

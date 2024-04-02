@@ -75,8 +75,8 @@ pub mod pallet {
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
 		interest::InterestAccrual,
-		IntoSeconds, Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
-		Seconds, TimeAsSecs,
+		Accuracy, IntoSeconds, Permissions, PoolInspect, PoolNAV, PoolReserve,
+		PoolWriteOffPolicyMutate, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -1226,9 +1226,12 @@ pub mod pallet {
 			Some((portfolio.value(), portfolio.last_updated()))
 		}
 
-		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-			Self::update_portfolio_valuation_for_pool(pool_id, PriceCollectionInput::FromRegistry)
-				.map(|portfolio| portfolio.0)
+		fn update_nav(pool_id: T::PoolId, accuracy: Accuracy) -> Result<T::Balance, DispatchError> {
+			let input = match accuracy {
+				Accuracy::Exact => PriceCollectionInput::FromRegistry,
+				Accuracy::RuntimeApi => PriceCollectionInput::Empty,
+			};
+			Self::update_portfolio_valuation_for_pool(pool_id, input).map(|portfolio| portfolio.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
