@@ -14,17 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+// TODO: Please fix deprecated issues before/during polkadot-v1.3.0 upgrade
+#![allow(deprecated)]
+
 use std::sync::Arc;
 
 use cfg_primitives::{Block, BlockNumber};
 use cumulus_client_cli::CollatorOptions;
+// use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
+// use cumulus_client_consensus_proposer::Proposer;
 use cumulus_primitives_core::ParaId;
 use fc_db::Backend as FrontierBackend;
 use sc_executor::NativeElseWasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
+use sp_core::U256;
 
 use crate::rpc::{
 	self,
@@ -48,13 +54,7 @@ type ParachainBlockImport<RuntimeApi, Executor> =
 pub struct AltairRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		altair_runtime::api::dispatch(method, data)
@@ -69,13 +69,7 @@ impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
 pub struct CentrifugeRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		centrifuge_runtime::api::dispatch(method, data)
@@ -90,13 +84,7 @@ impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
 pub struct DevelopmentRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		development_runtime::api::dispatch(method, data)
@@ -117,13 +105,7 @@ pub fn build_altair_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -174,6 +156,7 @@ pub async fn start_altair_node(
 	Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
+
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -193,6 +176,22 @@ pub async fn start_altair_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -216,12 +215,13 @@ pub async fn start_altair_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,
@@ -251,6 +251,17 @@ pub async fn start_altair_node(
 				prometheus_registry,
 				telemetry.clone(),
 			);
+
+            /* // TODO
+            let proposer = Proposer::new(proposer_factory);
+
+            let collator_service = CollatorService::new(
+                client.clone(),
+                Arc::new(task_manager.spawn_handle()),
+                announce_block,
+                client.clone()
+            );
+            */
 
 			Ok(AuraConsensus::build::<
 				sp_consensus_aura::sr25519::AuthorityPair,
@@ -317,13 +328,7 @@ pub fn build_centrifuge_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -374,6 +379,7 @@ pub async fn start_centrifuge_node(
 	Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
+
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -393,6 +399,22 @@ pub async fn start_centrifuge_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -416,12 +438,13 @@ pub async fn start_centrifuge_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,
@@ -517,13 +540,7 @@ pub fn build_development_import_queue(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<
-	sc_consensus::DefaultImportQueue<
-		Block,
-		FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
-	>,
-	sc_service::Error,
-> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -594,6 +611,22 @@ pub async fn start_development_node(
 		      fee_history_cache,
 		      overrides,
 		      block_data_cache| {
+
+            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+            let target_gas_price = eth_config.target_gas_price;
+            let pending_create_inherent_data_providers = move |_, ()| async move {
+                let current = sp_timestamp::InherentDataProvider::from_system_time();
+                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
+                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
+                let slot =
+                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                        *timestamp,
+                        slot_duration,
+                    );
+                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
+                Ok((slot, timestamp, dynamic_fee))
+            };
+
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -620,12 +653,13 @@ pub async fn start_development_node(
 				},
 				overrides,
 				block_data_cache,
-				filter_pool,
+				filter_pool: Some(filter_pool),
 				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
+				pending_create_inherent_data_providers,
 			};
 			let module = rpc::evm::create(
 				module,

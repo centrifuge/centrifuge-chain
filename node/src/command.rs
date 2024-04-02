@@ -14,29 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::io::Write;
-
-use cfg_primitives::Block;
-use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use log::{info, warn};
-use parity_scale_codec::Encode;
+use log::info;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+	NetworkParams, Result, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
-use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
+use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{
-		evm::new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor,
-		DevelopmentRuntimeExecutor,
-	},
+	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
 };
 
 enum ChainIdentity {
@@ -70,13 +61,6 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 		<dyn sc_service::ChainSpec>::identify(self)
 	}
 }
-
-#[cfg(feature = "try-runtime")]
-use try_runtime_cli::block_building_info::substrate_info;
-#[cfg(feature = "try-runtime")]
-/// The time internavel for block production on our chain in milliseconds (12
-/// seconds to millis)
-const BLOCK_TIME_MILLIS: u64 = 12 * 1_000;
 
 fn load_spec(
 	id: &str,
@@ -151,14 +135,6 @@ impl SubstrateCli for Cli {
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		load_spec(id, self.parachain_id.unwrap_or(10001).into())
 	}
-
-	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		match spec.identify() {
-			ChainIdentity::Altair => &altair_runtime::VERSION,
-			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
-			ChainIdentity::Development => &development_runtime::VERSION,
-		}
-	}
 }
 
 impl SubstrateCli for RelayChainCli {
@@ -193,39 +169,6 @@ impl SubstrateCli for RelayChainCli {
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
 	}
-
-	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		polkadot_cli::Cli::native_runtime_version(chain_spec)
-	}
-}
-
-fn extract_genesis_wasm(chain_spec: &dyn sc_service::ChainSpec) -> Result<Vec<u8>> {
-	let mut storage = chain_spec.build_storage()?;
-
-	storage
-		.top
-		.remove(sp_core::storage::well_known_keys::CODE)
-		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
-}
-
-#[cfg(feature = "try-runtime")]
-macro_rules! with_runtime {
-	($chain_spec:expr, { $( $code:tt )* }) => {
-		match $chain_spec.identify() {
-			ChainIdentity::Altair => {
-				use AltairRuntimeExecutor as Executor;
-				$( $code )*
-			}
-			ChainIdentity::Centrifuge => {
-				use CentrifugeRuntimeExecutor as Executor;
-				$( $code )*
-			}
-			ChainIdentity::Development => {
-				use DevelopmentRuntimeExecutor as Executor;
-				$( $code )*
-			}
-		}
-	}
 }
 
 macro_rules! construct_async_run {
@@ -233,41 +176,36 @@ macro_rules! construct_async_run {
 	    let runner = $cli.create_runner($cmd)?;
 	    let first_evm_block = chain_spec::Extensions::try_get(&*runner.config().chain_spec)
 	        .map(|e| e.first_evm_block).unwrap_or(1);
-            match runner.config().chain_spec.identify() {
-                ChainIdentity::Altair => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_altair_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Centrifuge => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_centrifuge_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Development => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
-					&$config,
-					first_evm_block,
-					crate::service::build_development_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-            }
+
+        match runner.config().chain_spec.identify() {
+            ChainIdentity::Altair => runner.async_run(|$config| {
+                let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_altair_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            }),
+            ChainIdentity::Centrifuge => runner.async_run(|$config| {
+                let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_centrifuge_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            }),
+            ChainIdentity::Development => runner.async_run(|$config| {
+                let $components = evm::new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
+                    &$config,
+                    first_evm_block,
+                    crate::service::build_development_import_queue,
+                )?;
+                let task_manager = $components.task_manager;
+                { $( $code )* }.map(|v| (v, task_manager))
+            })
+        }
 	}}
 }
 
@@ -328,84 +266,18 @@ pub fn run() -> Result<()> {
 			});
 			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))
 		}),
-		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
-
-			let chain_spec = &load_spec(
-				&params.chain.clone().unwrap_or_default(),
-				params.parachain_id.unwrap_or(10001).into(),
-			)?;
-
-			let state_version = Cli::native_runtime_version(chain_spec).state_version();
-			let block: Block = generate_genesis_block(&**chain_spec, state_version)?;
-
-			let raw_header = block.header().encode();
-			let output_buf = if params.raw {
-				raw_header
-			} else {
-				format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
-			};
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
-
-			Ok(())
-		}
-		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::LoggerBuilder::new("");
-			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
-			let _ = builder.init();
-
-			let raw_wasm_blob = extract_genesis_wasm(
-				cli.load_spec(&params.chain.clone().unwrap_or_default())?
-					.as_ref(),
-			)?;
-			let output_buf = if params.raw {
-				raw_wasm_blob
-			} else {
-				format!("0x{:?}", HexDisplay::from(&raw_wasm_blob)).into_bytes()
-			};
-
-			if let Some(output) = &params.output {
-				std::fs::write(output, output_buf)?;
-			} else {
-				std::io::stdout().write_all(&output_buf)?;
-			}
-
-			Ok(())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime(cmd)) => {
-			use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
-
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			with_runtime!(chain_spec, {
-				runner.async_run(|config| {
-					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-					let task_manager =
-						sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
-							.map_err(|e| {
-								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
-							})?;
-					Ok((
-						cmd.run::<Block, ExtendedHostFunctions<
-							sp_io::SubstrateHostFunctions,
-							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-						>, _>(Some(substrate_info(BLOCK_TIME_MILLIS))),
-						task_manager,
-					))
-				})
+		Some(Subcommand::ExportGenesisState(cmd)) => {
+			construct_async_run!(|components, cli, cmd, config| {
+				Ok(async move { cmd.run(&*config.chain_spec, &*components.client) })
 			})
 		}
-
+		Some(Subcommand::ExportGenesisWasm(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|_config| {
+				let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+				cmd.run(&*spec)
+			})
+		}
 		Some(Subcommand::Benchmark(cmd)) => {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
@@ -413,17 +285,13 @@ pub fn run() -> Result<()> {
 				// Handle the exact benchmark sub-command accordingly
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) => match runner.config().chain_spec.identify() {
-						ChainIdentity::Altair => runner.sync_run(|config| {
-							cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
-						}),
-						ChainIdentity::Centrifuge => runner.sync_run(|config| {
-							cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
-						}),
-						ChainIdentity::Development => runner.sync_run(|config| {
-							cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(
-								config,
-							)
-						}),
+						ChainIdentity::Altair => {
+							runner.sync_run(|config| cmd.run::<altair_runtime::Block, ()>(config))
+						}
+						ChainIdentity::Centrifuge => runner
+							.sync_run(|config| cmd.run::<centrifuge_runtime::Block, ()>(config)),
+						ChainIdentity::Development => runner
+							.sync_run(|config| cmd.run::<development_runtime::Block, ()>(config)),
 					},
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
@@ -443,11 +311,12 @@ pub fn run() -> Result<()> {
 			let collator_options = cli.run.collator_options();
 
 			runner.run_node_until_exit(|config| async move {
-				let hwbench = (!cli.no_hardware_benchmarks).then_some(
-					config.database.path().map(|database_path| {
+				let hwbench = (!cli.no_hardware_benchmarks)
+					.then_some(config.database.path().map(|database_path| {
 						let _ = std::fs::create_dir_all(database_path);
 						sc_sysinfo::gather_hwbench(Some(database_path))
-					})).flatten();
+					}))
+					.flatten();
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name()]
@@ -456,19 +325,21 @@ pub fn run() -> Result<()> {
 				);
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in chain spec or CLI."));
+					.map(|e| e.para_id)
+					.unwrap_or_else(|| {
+						cli.parachain_id
+							.expect("Could not find parachain ID in chain spec or CLI.")
+					});
 				let first_evm_block = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.first_evm_block).unwrap_or(1);
+					.map(|e| e.first_evm_block)
+					.unwrap_or(1);
 
 				let id = ParaId::from(para_id);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(&id);
-
-				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
-				let block: Block = generate_genesis_block(&*config.chain_spec, state_version)
-					.map_err(|e| format!("{e:?}"))?;
-				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
+					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(
+						&id,
+					);
 
 				let task_executor = config.tokio_handle.clone();
 				let polkadot_config =
@@ -484,7 +355,6 @@ pub fn run() -> Result<()> {
 				info!("Parachain spec: {:?}", cli.run.base.shared_params.chain);
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
-				info!("Parachain genesis state: {}", genesis_state);
 				info!(
 					"Is collating: {}",
 					if config.role.is_authority() {
@@ -494,15 +364,11 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				if !collator_options.relay_chain_rpc_urls.is_empty() && !cli.relaychain_args.is_empty() {
-					warn!("Detected relay chain node arguments together with --relay-chain-rpc-urls. This command starts a minimal Polkadot node that only uses a network-related subset of all relay chain CLI options.");
-				}
-
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => crate::service::start_altair_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,
@@ -514,7 +380,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,
@@ -526,7 +392,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,
