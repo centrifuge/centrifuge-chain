@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-  #"node",
+  "node",
   "libs/mocks",
   "libs/primitives",
   "libs/proofs",
@@ -100,6 +100,8 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/polka
 cumulus-client-cli = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 cumulus-client-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 cumulus-client-consensus-common = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
+cumulus-client-consensus-proposer = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
+cumulus-client-collator = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 cumulus-client-network = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 cumulus-client-service = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
@@ -134,6 +136,7 @@ sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", defa
 sc-chain-spec = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 sc-cli = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 sc-consensus = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
+sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 sc-consensus-grandpa = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 sc-network = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
 sc-network-sync = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
@@ -303,6 +306,7 @@ fc-rpc-core = { git = "https://github.com/lemunozm/frontier", default-features =
 fp-consensus = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
 fp-evm = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
 fp-storage = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
+fp-dynamic-fee = { git = "https://github.com/lemunozm/frontier", default-features = false, branch = "moonbeam-polkadot-v1.1.0" }
 
 # Moonbeam (tag v0.34.1 => version using a moonbeam fork related to polkadot v1.1.0)
 # WARN: Moonbeam dependencies use forks of polkadot, orml and frontier repos.
@@ -357,10 +361,32 @@ cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk", 
 staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 staging-xcm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 staging-xcm-executor = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-consensus = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-consensus = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-client-db = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-client-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-network = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-database = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-network-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-network-sync = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-service = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 
 [patch."https://github.com/moonbeam-foundation/open-runtime-module-library"]
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
 
+# TODO: This patches can be removed when we get rid off `lemunozm` fork.
+# We need to do this to avoid lemunozm/frontier dependencies to point to the original fork moonbeam-foundation/frontier which will fetch `evm-private` that we do not have git access.
 [patch."https://github.com/moonbeam-foundation/frontier"]
 fp-rpc = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
 fp-self-contained = { git = "https://github.com/lemunozm/frontier", branch = "moonbeam-polkadot-v1.1.0" }
