@@ -3,7 +3,7 @@ use cfg_types::{tokens::CrossChainTransferability, xcm::XcmMetadata};
 use frame_support::{assert_err, assert_ok, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
-use xcm::{
+use staging_xcm::{
 	prelude::Parachain,
 	v3::{Junction, Junctions::*, MultiLocation, WeightLimit},
 	VersionedMultiLocation,
@@ -36,9 +36,11 @@ const TRANSFER_AMOUNT: Balance = usd6(100);
 
 fn configure_proxy_and_transfer<T: Runtime>(proxy_type: T::ProxyType) -> DispatchResult {
 	let env = RuntimeEnv::<T>::from_parachain_storage(
-		Genesis::<T>::default()
-			.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-			.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
+		Genesis::default()
+			.add(genesis::balances::<T>(
+				T::ExistentialDeposit::get() + FOR_FEES,
+			))
+			.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 			.storage(),
 	);
 
@@ -60,7 +62,7 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 			.add(genesis::balances::<T>(
 				T::ExistentialDeposit::get() + FOR_FEES,
 			))
-			.add(genesis::tokens(vec![(Usd6.id(), Usd6.ed())]))
+			.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 			.storage(),
 	);
 
