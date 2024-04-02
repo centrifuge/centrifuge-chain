@@ -1340,7 +1340,6 @@ dependencies = [
  "fp-storage",
  "frame-benchmarking",
  "frame-benchmarking-cli",
- "frame-system-benchmarking",
  "futures",
  "hex-literal 0.3.4",
  "jsonrpsee",

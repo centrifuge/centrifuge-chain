@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+// TODO: Please fix deprecated issues before/during polkadot-v1.3.0 upgrade
+#![allow(deprecated)]
+
 use std::sync::Arc;
 
 use cfg_primitives::{Block, BlockNumber};
@@ -51,13 +54,7 @@ type ParachainBlockImport<RuntimeApi, Executor> =
 pub struct AltairRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		altair_runtime::api::dispatch(method, data)
@@ -72,13 +69,7 @@ impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
 pub struct CentrifugeRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		centrifuge_runtime::api::dispatch(method, data)
@@ -93,13 +84,7 @@ impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
 pub struct DevelopmentRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		development_runtime::api::dispatch(method, data)

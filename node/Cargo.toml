@@ -72,6 +72,7 @@ substrate-prometheus-endpoint = { workspace = true, default-features = true }
 
 # Cli specific
 frame-benchmarking-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
+frame-benchmarking = { workspace = true, default-features = true}
 
 # Cumulus
 cumulus-client-cli = { workspace = true, default-features = true }
@@ -104,10 +105,6 @@ pallet-anchors = { workspace = true, default-features = true }
 pallet-pool-system = { workspace = true, default-features = true }
 runtime-common = { workspace = true, default-features = true }
 
-# benchmarking
-frame-benchmarking = { workspace = true, default-features = true, optional = true }
-frame-system-benchmarking = { workspace = true, default-features = true, optional = true }
-
 # frontier
 fc-consensus = { workspace = true, default-features = true }
 fc-db = { workspace = true, default-features = true, features = ["rocksdb"] }
@@ -138,7 +135,6 @@ runtime-benchmarks = [
   "development-runtime/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
-  "frame-system-benchmarking/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
