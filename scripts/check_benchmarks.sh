@@ -12,7 +12,6 @@ run_benchmark() {
     --repeat=1 \
     --pallet="${pallet}" \
     --extrinsic=* \
-    --execution=wasm \
     --wasm-execution=compiled \
     --heap-pages=4096"
 
