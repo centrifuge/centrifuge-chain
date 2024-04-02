@@ -12,7 +12,7 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use fc_rpc::{pending::AuraConsensusDataProvider, EthConfig};
+use fc_rpc::pending::AuraConsensusDataProvider;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,

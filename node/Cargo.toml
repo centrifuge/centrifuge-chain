@@ -78,6 +78,8 @@ try-runtime-cli = { workspace = true, default-features = true, optional = true }
 cumulus-client-cli = { workspace = true, default-features = true }
 cumulus-client-consensus-aura = { workspace = true, default-features = true }
 cumulus-client-consensus-common = { workspace = true, default-features = true }
+cumulus-client-consensus-proposer = { workspace = true, default-features = true }
+cumulus-client-collator = { workspace = true, default-features = true }
 cumulus-client-network = { workspace = true, default-features = true }
 cumulus-client-service = { workspace = true, default-features = true }
 cumulus-pallet-session-benchmarking = { workspace = true, default-features = true }

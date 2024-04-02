@@ -57,11 +57,12 @@ use staging_xcm::{
 };
 
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig, Extensions>;
+pub type AltairChainSpec =
+	sc_service::GenericChainSpec<altair_runtime::RuntimeGenesisConfig, Extensions>;
 pub type CentrifugeChainSpec =
-	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
+	sc_service::GenericChainSpec<centrifuge_runtime::RuntimeGenesisConfig, Extensions>;
 pub type DevelopmentChainSpec =
-	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
+	sc_service::GenericChainSpec<development_runtime::RuntimeGenesisConfig, Extensions>;
 
 use altair_runtime::AltairPrecompiles;
 use centrifuge_runtime::CentrifugePrecompiles;
@@ -555,7 +556,7 @@ fn centrifuge_genesis(
 	total_issuance: Option<Balance>,
 	id: ParaId,
 	council_members: Vec<AccountId>,
-) -> centrifuge_runtime::GenesisConfig {
+) -> centrifuge_runtime::RuntimeGenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
@@ -578,7 +579,7 @@ fn centrifuge_genesis(
 		None => vec![],
 	};
 
-	centrifuge_runtime::GenesisConfig {
+	centrifuge_runtime::RuntimeGenesisConfig {
 		system: centrifuge_runtime::SystemConfig {
 			code: centrifuge_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
@@ -698,7 +699,7 @@ fn altair_genesis(
 	total_issuance: Option<Balance>,
 	id: ParaId,
 	council_members: Vec<AccountId>,
-) -> altair_runtime::GenesisConfig {
+) -> altair_runtime::RuntimeGenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
@@ -721,7 +722,7 @@ fn altair_genesis(
 		None => vec![],
 	};
 
-	altair_runtime::GenesisConfig {
+	altair_runtime::RuntimeGenesisConfig {
 		system: altair_runtime::SystemConfig {
 			code: altair_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
@@ -827,7 +828,7 @@ fn development_genesis(
 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
 	total_issuance: Option<Balance>,
 	id: ParaId,
-) -> development_runtime::GenesisConfig {
+) -> development_runtime::RuntimeGenesisConfig {
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
@@ -870,7 +871,7 @@ fn development_genesis(
 	};
 	let chain_id: u32 = id.into();
 
-	development_runtime::GenesisConfig {
+	development_runtime::RuntimeGenesisConfig {
 		system: development_runtime::SystemConfig {
 			code: development_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")

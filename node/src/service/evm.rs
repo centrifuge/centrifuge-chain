@@ -376,7 +376,13 @@ where
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
 		Arc<SyncingService<Block>>,
 		KeystorePtr,
-		bool,
+		bool, /* TODO
+			  Duration,
+			  ParaId,
+			  CollatorPair,
+			  OverseerHandle,
+			  Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
+			  */
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	let parachain_config = prepare_node_config(parachain_config);
@@ -523,11 +529,11 @@ where
 		Arc::new(move |hash, data| sync_service.announce_block(hash, data))
 	};
 	let relay_chain_slot_duration = Duration::from_secs(6);
-	let _overseer_handle = relay_chain_interface
+	let overseer_handle = relay_chain_interface
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
 
-	let recovery_handle = Box::new(_overseer_handle);
+	let recovery_handle = Box::new(overseer_handle);
 
 	if validator {
 		let parachain_consensus = build_consensus(
@@ -541,6 +547,13 @@ where
 			sync_service.clone(),
 			params.keystore_container.keystore(),
 			force_authoring,
+			/*
+			relay_chain_slot_duration,
+			para_id,
+			collator_key.expect("Command line arguments do not allow this. qed"),
+			overseer_handle,
+			announce_block,
+			*/
 		)?;
 
 		let spawner = task_manager.spawn_handle();

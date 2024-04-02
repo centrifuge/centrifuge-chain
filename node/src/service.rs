@@ -18,8 +18,10 @@ use std::sync::Arc;
 
 use cfg_primitives::{Block, BlockNumber};
 use cumulus_client_cli::CollatorOptions;
+use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
+use cumulus_client_consensus_proposer::Proposer;
 use cumulus_primitives_core::ParaId;
 use fc_db::Backend as FrontierBackend;
 use sc_executor::NativeElseWasmExecutor;
@@ -264,6 +266,17 @@ pub async fn start_altair_node(
 				prometheus_registry,
 				telemetry.clone(),
 			);
+
+            /* // TODO
+            let proposer = Proposer::new(proposer_factory);
+
+            let collator_service = CollatorService::new(
+                client.clone(),
+                Arc::new(task_manager.spawn_handle()),
+                announce_block,
+                client.clone()
+            );
+            */
 
 			Ok(AuraConsensus::build::<
 				sp_consensus_aura::sr25519::AuthorityPair,
