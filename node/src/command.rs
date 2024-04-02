@@ -62,13 +62,6 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 	}
 }
 
-#[cfg(feature = "try-runtime")]
-use try_runtime_cli::block_building_info::substrate_info;
-#[cfg(feature = "try-runtime")]
-/// The time internavel for block production on our chain in milliseconds (12
-/// seconds to millis)
-const BLOCK_TIME_MILLIS: u64 = 12 * 1_000;
-
 fn load_spec(
 	id: &str,
 	para_id: ParaId,
@@ -274,7 +267,7 @@ pub fn run() -> Result<()> {
 			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))
 		}),
 		Some(Subcommand::ExportGenesisState(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
+			construct_async_run!(|components, cli, cmd, config| {
 				Ok(async move { cmd.run(&*config.chain_spec, &*components.client) })
 			})
 		}
@@ -285,7 +278,6 @@ pub fn run() -> Result<()> {
 				cmd.run(&*spec)
 			})
 		}
-   		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer being maintained here and will be removed entirely some time after January 2024. Please remove this subcommand from your runtime and use the standalone CLI.".into()),
 		Some(Subcommand::Benchmark(cmd)) => {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
@@ -293,17 +285,13 @@ pub fn run() -> Result<()> {
 				// Handle the exact benchmark sub-command accordingly
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) => match runner.config().chain_spec.identify() {
-						ChainIdentity::Altair => runner.sync_run(|config| {
-							cmd.run::<altair_runtime::Block, ()>(config)
-						}),
-						ChainIdentity::Centrifuge => runner.sync_run(|config| {
-							cmd.run::<centrifuge_runtime::Block, ()>(config)
-						}),
-						ChainIdentity::Development => runner.sync_run(|config| {
-							cmd.run::<development_runtime::Block, ()>(
-								config,
-							)
-						}),
+						ChainIdentity::Altair => {
+							runner.sync_run(|config| cmd.run::<altair_runtime::Block, ()>(config))
+						}
+						ChainIdentity::Centrifuge => runner
+							.sync_run(|config| cmd.run::<centrifuge_runtime::Block, ()>(config)),
+						ChainIdentity::Development => runner
+							.sync_run(|config| cmd.run::<development_runtime::Block, ()>(config)),
 					},
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
@@ -323,11 +311,12 @@ pub fn run() -> Result<()> {
 			let collator_options = cli.run.collator_options();
 
 			runner.run_node_until_exit(|config| async move {
-				let hwbench = (!cli.no_hardware_benchmarks).then_some(
-					config.database.path().map(|database_path| {
+				let hwbench = (!cli.no_hardware_benchmarks)
+					.then_some(config.database.path().map(|database_path| {
 						let _ = std::fs::create_dir_all(database_path);
 						sc_sysinfo::gather_hwbench(Some(database_path))
-					})).flatten();
+					}))
+					.flatten();
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name()]
@@ -336,14 +325,21 @@ pub fn run() -> Result<()> {
 				);
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in chain spec or CLI."));
+					.map(|e| e.para_id)
+					.unwrap_or_else(|| {
+						cli.parachain_id
+							.expect("Could not find parachain ID in chain spec or CLI.")
+					});
 				let first_evm_block = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.first_evm_block).unwrap_or(1);
+					.map(|e| e.first_evm_block)
+					.unwrap_or(1);
 
 				let id = ParaId::from(para_id);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(&id);
+					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(
+						&id,
+					);
 
 				let task_executor = config.tokio_handle.clone();
 				let polkadot_config =
@@ -372,7 +368,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Altair => crate::service::start_altair_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,
@@ -384,7 +380,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,
@@ -396,7 +392,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
-                        cli.eth,
+						cli.eth,
 						collator_options,
 						id,
 						hwbench,

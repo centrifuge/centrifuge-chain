@@ -376,7 +376,7 @@ where
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
 		Arc<SyncingService<Block>>,
 		KeystorePtr,
-		bool, /* TODO
+		bool, /* TODO for 1.3.0: required to fix the deprecated warnings
 			  Duration,
 			  ParaId,
 			  CollatorPair,
@@ -547,7 +547,7 @@ where
 			sync_service.clone(),
 			params.keystore_container.keystore(),
 			force_authoring,
-			/*
+			/* // TODO for 1.3.0
 			relay_chain_slot_duration,
 			para_id,
 			collator_key.expect("Command line arguments do not allow this. qed"),
@@ -576,6 +576,7 @@ where
 			sync_service,
 		};
 
+		#[allow(deprecated)]
 		start_collator(params).await?;
 	} else {
 		let params = StartFullNodeParams {
@@ -590,6 +591,7 @@ where
 			sync_service,
 		};
 
+		#[allow(deprecated)]
 		start_full_node(params)?;
 	}
 

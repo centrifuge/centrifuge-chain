@@ -72,7 +72,6 @@ substrate-prometheus-endpoint = { workspace = true, default-features = true }
 
 # Cli specific
 frame-benchmarking-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
-try-runtime-cli = { workspace = true, default-features = true, optional = true }
 
 # Cumulus
 cumulus-client-cli = { workspace = true, default-features = true }
@@ -128,7 +127,7 @@ substrate-build-script-utils = { workspace = true, default-features = true }
 vergen = { workspace = true, default-features = true }
 
 [features]
-default = ["cli"]
+default = []
 runtime-benchmarks = [
   "altair-runtime/runtime-benchmarks",
   "centrifuge-runtime/runtime-benchmarks",
@@ -166,10 +165,6 @@ try-runtime = [
   "polkadot-service/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
-  "try-runtime-cli",
-]
-cli = [
-  "try-runtime-cli",
 ]
 fast-runtime = [
   "altair-runtime/fast-runtime",
