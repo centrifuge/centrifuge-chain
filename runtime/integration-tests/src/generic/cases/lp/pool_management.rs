@@ -23,7 +23,7 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
 use runtime_common::account_conversion::AccountConverter;
-use sp_runtime::{traits::Zero, DispatchError};
+use sp_runtime::{traits::Zero, DispatchError, FixedPointNumber};
 
 use crate::{
 	generic::{
@@ -43,7 +43,7 @@ use crate::{
 
 #[test]
 fn _test() {
-	update_tranche_token_metadata::<development_runtime::Runtime>()
+	update_tranche_token_price::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -541,13 +541,71 @@ fn update_tranche_token_metadata<T: Runtime>() {
 }
 
 fn update_tranche_token_price<T: Runtime>() {
-	let _env = super::setup::<T, _>(|evm| {
+	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
 	});
 
-	todo!("update_tranche_token_price")
+	// Neither price nor computed exists yet
+	env.state(|evm| {
+		let (price_evm, computed_evm) = Decoder::<(u128, u64)>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheTokenPrice",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		);
+
+		assert_eq!(price_evm, 0);
+		assert_eq!(computed_evm, 0);
+	});
+
+	let pre_price_cfg = env.state_mut(|_evm| {
+		let price = <pallet_pool_system::Pallet<T> as TrancheTokenPrice<
+			<T as frame_system::Config>::AccountId,
+			CurrencyId,
+		>>::get(POOL_A, pool_a_tranche_id::<T>())
+		.unwrap();
+
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			USDC.id(),
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+		price
+	});
+
+	env.state(|evm| {
+		let (price_evm, computed_at_evm) = Decoder::<(u128, u64)>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheTokenPrice",
+				Some(&[
+					Token::Uint(Uint::from(POOL_A)),
+					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::Address(evm.deployed("usdc").address()),
+				]),
+			)
+			.unwrap()
+			.value,
+		);
+
+		assert_eq!(pre_price_cfg.last_updated, computed_at_evm);
+		assert_eq!(price_evm, pre_price_cfg.price.into_inner());
+	});
 }
 
 // FIXME: Fails with Revert

@@ -57,10 +57,11 @@ pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::{Balance, TrancheId};
-	use ethabi::ethereum_types::{H160, H256, U256};
+	use ethabi::ethereum_types::{H160, H256, U256, U64};
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
+	use sp_runtime::traits::EnsureAdd;
 	use xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -237,6 +238,68 @@ pub mod utils {
 			} else {
 				panic!("Invalid slice length.")
 			}
+		}
+	}
+
+	impl<T: Input> Decoder<(U256, U64)> for T {
+		fn decode(&self) -> (U256, U64) {
+			assert!(self.input().len() >= 32);
+
+			let left = self.input()[..32].to_vec();
+			let right = &self.input()[32..];
+
+			let unsigned64 = match right.len() {
+				1 => U64::from(u8::from_be_bytes(to_fixed_array(&right))),
+				2 => U64::from(u16::from_be_bytes(to_fixed_array(&right))),
+				4 => U64::from(u32::from_be_bytes(to_fixed_array(&right))),
+				8 => U64::from_big_endian(to_fixed_array::<8>(&right).as_slice()),
+				_ => {
+					panic!("Invalid slice length for u64 derivation");
+				}
+			};
+
+			(left.decode(), unsigned64)
+		}
+	}
+
+	impl<T: Input> Decoder<(u128, u64)> for T {
+		fn decode(&self) -> (u128, u64) {
+			assert!(self.input().len() >= 32);
+
+			let left = &self.input()[..32];
+			let right = &self.input()[32..];
+
+			let unsigned128 = match left.len() {
+				1 => u128::from(u8::from_be_bytes(to_fixed_array(&left))),
+				2 => u128::from(u16::from_be_bytes(to_fixed_array(&left))),
+				4 => u128::from(u32::from_be_bytes(to_fixed_array(&left))),
+				8 => u128::from(u64::from_be_bytes(to_fixed_array(&left))),
+				16 => u128::from(u128::from_be_bytes(to_fixed_array(&left))),
+				32 => {
+					let x = u128::from_be_bytes(to_fixed_array::<16>(&left[..16]));
+					let y = u128::from_be_bytes(to_fixed_array::<16>(&left[16..]));
+					x.ensure_add(y)
+						.expect("Price is initialized as u128 on EVM side")
+				}
+				_ => {
+					panic!("Invalid slice length for u128 derivation");
+				}
+			};
+
+			let unsigned64 = match right.len() {
+				1 => u64::from(u8::from_be_bytes(to_fixed_array(&right))),
+				2 => u64::from(u16::from_be_bytes(to_fixed_array(&right))),
+				4 => u64::from(u32::from_be_bytes(to_fixed_array(&right))),
+				8 => u64::from_be_bytes(to_fixed_array(&right)),
+				// EVM stores in 32 byte slots with left-padding
+				16 => u64::from_be_bytes(to_fixed_array::<8>(&right[28..])),
+				32 => u64::from_be_bytes(to_fixed_array::<8>(&right[24..])),
+				_ => {
+					panic!("Invalid slice length for u64 derivation");
+				}
+			};
+
+			(unsigned128, unsigned64)
 		}
 	}
 
