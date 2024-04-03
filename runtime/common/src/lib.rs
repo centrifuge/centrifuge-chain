@@ -27,11 +27,14 @@ pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
 
-use cfg_primitives::Balance;
-use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
+use cfg_primitives::{Balance, PoolId};
+use cfg_traits::{data::DataRegistry, PoolNAV};
+use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use pallet_loans::entities::input::PriceCollectionInput;
+use pallet_pool_system::Nav;
 use sp_core::parameter_types;
-use sp_runtime::traits::Get;
+use sp_runtime::{traits::Get, BoundedBTreeMap, DispatchError};
 use sp_std::marker::PhantomData;
 
 parameter_types! {
@@ -81,6 +84,57 @@ where
 				.unwrap_or_default(),
 		}
 	}
+}
+
+pub fn update_nav<T>(pool_id: T::PoolId) -> Result<PoolNav<T::Balance>, DispatchError>
+where
+	T: pallet_loans::Config + pallet_pool_system::Config + pallet_pool_fees::Config,
+{
+	let input_prices =
+		if let Ok(prices) = <T as pallet_loans::Config>::PriceRegistry::collection(pool_id) {
+			PriceCollectionInput::Custom(prices)
+		} else {
+			PriceCollectionInput::Empty
+		};
+
+	update_nav_with_input::<T>(pool_id, input_prices)
+}
+
+/// ## Updates the nav for a pool.
+///
+/// NOTE: Should NEVER be used in consensus relevant state changes!
+///
+/// ### Execution infos
+/// * For external assets it is either using the latest
+/// oracle prices if they are not outdated or it is using no prices and allows
+/// the chain to use the estimates based on the linear accrual of the last
+/// settlement prices.
+/// * IF `nav_fees > nav_loans` then the `nav_total` will saturate at 0
+pub fn update_nav_with_input<T>(
+	pool_id: T::PoolId,
+	price_input: PriceCollectionInput<T>,
+) -> Result<PoolNav<T::Balance>, DispatchError>
+where
+	T: pallet_loans::Config + pallet_pool_system::Config + pallet_pool_fees::Config,
+{
+	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)?;
+	let nav_loans =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)
+			.map(|(nav, _)| nav)?;
+	let nav_fees = pallet_pool_fees::Pallet::update_portfolio_valuation_for_pool(
+		pool_id,
+		&mut pool.reserve.total,
+	)
+	.ok()?;
+	let nav = Nav::new(nav_loans, nav_fees);
+	let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
+
+	Ok(PoolNav {
+		nav_aum: nav.nav_aum,
+		nav_fees: nav.nav_fees,
+		reserve: pool.reserve.total,
+		total,
+	})
 }
 
 pub mod xcm_fees {

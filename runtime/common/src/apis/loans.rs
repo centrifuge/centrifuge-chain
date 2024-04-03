@@ -11,8 +11,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::data::DataRegistry;
-use pallet_loans::entities::input::PriceCollectionInput;
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_runtime::DispatchError;
@@ -33,18 +31,4 @@ decl_runtime_apis! {
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
 		fn portfolio_valuation(pool_id: PoolId, input_prices: PriceCollectionInput) -> Result<Balance, DispatchError>;
 	}
-}
-
-pub fn update_nav_api_call<T: pallet_loans::Config>(
-	pool: T::PoolId,
-) -> Result<T::Balance, DispatchError> {
-	let price_input =
-		if let Ok(prices) = <T as pallet_loans::Config>::PriceRegistry::collection(pool) {
-			PriceCollectionInput::Custom(prices)
-		} else {
-			PriceCollectionInput::Empty
-		};
-
-	pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool, price_input)
-		.map(|(nav, _)| nav)
 }
