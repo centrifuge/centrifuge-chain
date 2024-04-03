@@ -31,8 +31,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
-	TryConvert,
+	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds, TryConvert,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
@@ -2343,7 +2342,8 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Quantity>{
-			Self::tranche_token_prices()?.get(index).cloned()
+			let index: usize = PoolSystem::pool(pool_id)?.tranches.tranche_index(&tranche)?.try_into().ok()?;
+			Self::tranche_token_prices(pool_id)?.get(index).cloned()
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
@@ -2351,7 +2351,7 @@ impl_runtime_apis! {
 			let mut pool = PoolSystem::pool(pool_id)?;
 			pool
 				.tranches
-				.calculate_prices::<_, Tokens, AccountId>(runtime_common::update_nav(pool_id).ok()?.total, now)
+				.calculate_prices::<_, Tokens, AccountId>(runtime_common::update_nav::<Runtime>(pool_id).ok()?.total, now)
 				.ok()
 		}
 
@@ -2372,7 +2372,7 @@ impl_runtime_apis! {
 		}
 
 		fn nav(pool_id: PoolId) -> Option<PoolNav<Balance>> {
-			runtime_common::update_nav(pool_id).ok()
+			runtime_common::update_nav::<Runtime>(pool_id).ok()
 		}
 	}
 
@@ -2406,7 +2406,6 @@ impl_runtime_apis! {
 		fn portfolio(
 			pool_id: PoolId
 		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
-			runtime_common::update_nav(pool_id).ok();
 			Loans::get_active_loans_info(pool_id).unwrap_or_default()
 		}
 
@@ -2414,7 +2413,6 @@ impl_runtime_apis! {
 			pool_id: PoolId,
 			loan_id: LoanId
 		) -> Option<ActiveLoanInfo<Runtime>> {
-			runtime_common::update_nav(pool_id).ok();
 			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
 		}
 
@@ -2422,7 +2420,7 @@ impl_runtime_apis! {
 			pool_id: PoolId,
 			input_prices: PriceCollectionInput<Runtime>
 		) -> Result<Balance, DispatchError> {
-			runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum
+			Ok(runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum)
 		}
 	}
 
@@ -2450,7 +2448,7 @@ impl_runtime_apis! {
 	// PoolFeesApi
 	impl runtime_common::apis::PoolFeesApi<Block, PoolId, PoolFeeId, AccountId, Balance, Rate> for Runtime {
 		fn list_fees(pool_id: PoolId) -> Option<cfg_types::pools::PoolFeesList<PoolFeeId, AccountId, Balance, Rate>> {
-			runtime_common::update_nav(pool_id).ok()?;
+			runtime_common::update_nav::<Runtime>(pool_id).ok()?;
 			Some(PoolFees::get_pool_fees(pool_id))
 		}
 	}

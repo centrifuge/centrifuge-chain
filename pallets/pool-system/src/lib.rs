@@ -474,7 +474,7 @@ pub mod pallet {
 		ReleasedChange {
 			pool_id: T::PoolId,
 			change_id: T::Hash,
-			change: T::RuntimeCange,
+			change: T::RuntimeChange,
 		},
 		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
 		/// the pool

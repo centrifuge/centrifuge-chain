@@ -27,14 +27,16 @@ pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
 
-use cfg_primitives::{Balance, PoolId};
-use cfg_traits::{data::DataRegistry, PoolNAV};
+use cfg_primitives::Balance;
 use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
 use orml_traits::GetByKey;
 use pallet_loans::entities::input::PriceCollectionInput;
 use pallet_pool_system::Nav;
 use sp_core::parameter_types;
-use sp_runtime::{traits::Get, BoundedBTreeMap, DispatchError};
+use sp_runtime::{
+	traits::{Get, Zero},
+	DispatchError,
+};
 use sp_std::marker::PhantomData;
 
 parameter_types! {
@@ -86,13 +88,24 @@ where
 	}
 }
 
-pub fn update_nav<T>(pool_id: T::PoolId) -> Result<PoolNav<T::Balance>, DispatchError>
+pub fn update_nav<T>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
 where
-	T: pallet_loans::Config + pallet_pool_system::Config + pallet_pool_fees::Config,
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
 {
-	let input_prices =
-		if let Ok(prices) = <T as pallet_loans::Config>::PriceRegistry::collection(pool_id) {
-			PriceCollectionInput::Custom(prices)
+	let input_prices: PriceCollectionInput<T> =
+		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
+				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
+			})?)
 		} else {
 			PriceCollectionInput::Empty
 		};
@@ -111,23 +124,31 @@ where
 /// settlement prices.
 /// * IF `nav_fees > nav_loans` then the `nav_total` will saturate at 0
 pub fn update_nav_with_input<T>(
-	pool_id: T::PoolId,
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
 	price_input: PriceCollectionInput<T>,
-) -> Result<PoolNav<T::Balance>, DispatchError>
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
 where
-	T: pallet_loans::Config + pallet_pool_system::Config + pallet_pool_fees::Config,
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
 {
-	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)?;
-	let nav_loans =
-		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)
-			.map(|(nav, _)| nav)?;
-	let nav_fees = pallet_pool_fees::Pallet::update_portfolio_valuation_for_pool(
+	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)
+		.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
+	let (nav_loans, _) =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)?;
+	let (nav_fees, _) = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
 		pool_id,
 		&mut pool.reserve.total,
-	)
-	.ok()?;
+	)?;
 	let nav = Nav::new(nav_loans, nav_fees);
-	let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
+	let total = nav
+		.total(pool.reserve.total)
+		.unwrap_or(<T as pallet_pool_system::Config>::Balance::zero());
 
 	Ok(PoolNav {
 		nav_aum: nav.nav_aum,

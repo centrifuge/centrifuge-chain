@@ -459,7 +459,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 				NotedChange::<T>::remove(pool_id, change_id);
 				change
 			})
-			.ok_or(Error::<T>::ChangeNotReady.into())?;
+			.ok_or(Error::<T>::ChangeNotReady)?;
 
 		Self::deposit_event(Event::ReleasedChange {
 			pool_id,
