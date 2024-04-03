@@ -40,6 +40,7 @@ sc-chain-spec = { workspace = true, default-features = true }
 sc-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
 sc-client-api = { workspace = true, default-features = true }
 sc-consensus = { workspace = true, default-features = true }
+sc-consensus-aura = { workspace = true, default-features = true }
 sc-consensus-grandpa = { workspace = true, default-features = true }
 sc-executor = { workspace = true, default-features = true }
 sc-network = { workspace = true, default-features = true }
@@ -52,13 +53,13 @@ sc-telemetry = { workspace = true, default-features = true }
 sc-tracing = { workspace = true, default-features = true }
 sc-transaction-pool = { workspace = true, default-features = true }
 sc-transaction-pool-api = { workspace = true, default-features = true }
-sc-consensus-aura = { workspace = true, default-features = true }
 sp-api = { workspace = true, default-features = true }
 sp-block-builder = { workspace = true, default-features = true }
 sp-blockchain = { workspace = true, default-features = true }
 sp-consensus = { workspace = true, default-features = true }
 sp-consensus-aura = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
+sp-inherents = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 sp-keystore = { workspace = true, default-features = true }
 sp-offchain = { workspace = true, default-features = true }
@@ -66,20 +67,19 @@ sp-runtime = { workspace = true, default-features = true }
 sp-session = { workspace = true, default-features = true }
 sp-timestamp = { workspace = true, default-features = true }
 sp-transaction-pool = { workspace = true, default-features = true }
-sp-inherents = { workspace = true, default-features = true }
 substrate-frame-rpc-system = { workspace = true, default-features = true }
 substrate-prometheus-endpoint = { workspace = true, default-features = true }
 
 # Cli specific
+frame-benchmarking = { workspace = true, default-features = true }
 frame-benchmarking-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
-frame-benchmarking = { workspace = true, default-features = true}
 
 # Cumulus
 cumulus-client-cli = { workspace = true, default-features = true }
+cumulus-client-collator = { workspace = true, default-features = true }
 cumulus-client-consensus-aura = { workspace = true, default-features = true }
 cumulus-client-consensus-common = { workspace = true, default-features = true }
 cumulus-client-consensus-proposer = { workspace = true, default-features = true }
-cumulus-client-collator = { workspace = true, default-features = true }
 cumulus-client-network = { workspace = true, default-features = true }
 cumulus-client-service = { workspace = true, default-features = true }
 cumulus-pallet-session-benchmarking = { workspace = true, default-features = true }
@@ -112,10 +112,10 @@ fc-mapping-sync = { workspace = true, default-features = true }
 fc-rpc = { workspace = true, default-features = true }
 fc-rpc-core = { workspace = true, default-features = true }
 fp-consensus = { workspace = true, default-features = true }
+fp-dynamic-fee = { workspace = true, default-features = true }
 fp-evm = { workspace = true, default-features = true }
 fp-rpc = { workspace = true, default-features = true }
 fp-storage = { workspace = true, default-features = true }
-fp-dynamic-fee = { workspace = true, default-features = true }
 pallet-ethereum = { workspace = true, default-features = true }
 pallet-evm = { workspace = true, default-features = true }
 

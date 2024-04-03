@@ -257,7 +257,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks", # Optional enabled
+  "frame-benchmarking/runtime-benchmarks",            # Optional enabled
   "staging-xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "staging-xcm-builder/runtime-benchmarks",

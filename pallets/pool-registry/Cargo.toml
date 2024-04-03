@@ -42,8 +42,8 @@ cfg-test-utils = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-permissions = { workspace = true, default-features = true }
-pallet-pool-system = { workspace = true, default-features = true }
 pallet-pool-fees = { workspace = true, default-features = true }
+pallet-pool-system = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 parachain-info = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }

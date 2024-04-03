@@ -16,17 +16,17 @@ targets = ["x86_64-unknown-linux-gnu"]
 cfg-primitives = { workspace = true }
 frame-support = { workspace = true }
 impl-trait-for-tuples = { workspace = true }
+orml-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-arithmetic = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 strum = { workspace = true }
-orml-traits = { workspace = true }
 
 [dev-dependencies]
-frame-system = { workspace = true, default_features = true }
 cfg-mocks = { workspace = true, default_features = true }
+frame-system = { workspace = true, default_features = true }
 mock-builder = { workspace = true, default_features = true }
 
 [features]
