@@ -470,6 +470,12 @@ pub mod pallet {
 			change_id: T::Hash,
 			change: T::RuntimeChange,
 		},
+		/// A change was released
+		ReleasedChange {
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+			change: T::RuntimeChange,
+		},
 		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
 		/// the pool
 		NegativeBalanceSheet {

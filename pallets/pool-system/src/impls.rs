@@ -454,12 +454,20 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			}
 		}
 
-		allowed
+		let change = allowed
 			.then(|| {
 				NotedChange::<T>::remove(pool_id, change_id);
 				change
 			})
-			.ok_or(Error::<T>::ChangeNotReady.into())
+			.ok_or(Error::<T>::ChangeNotReady)?;
+
+		Self::deposit_event(Event::ReleasedChange {
+			pool_id,
+			change_id,
+			change: change.clone(),
+		});
+
+		Ok(change)
 	}
 }
 
