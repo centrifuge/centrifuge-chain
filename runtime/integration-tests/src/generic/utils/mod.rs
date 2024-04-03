@@ -26,7 +26,10 @@ use pallet_oracle_collection::types::CollectionInfo;
 use runtime_common::oracle::Feeder;
 use sp_runtime::traits::StaticLookup;
 
-use crate::generic::config::Runtime;
+use crate::{
+	generic::{config::Runtime, utils::pool::close_epoch},
+	utils::accounts::Keyring,
+};
 
 pub const ESSENTIAL: &str =
 	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
@@ -149,6 +152,18 @@ pub fn collect_redemptions<T: Runtime>(
 		TrancheCurrency::generate(pool_id, tranche_id),
 	)
 	.unwrap();
+}
+
+pub fn invest_and_collect<T: Runtime>(
+	investor: AccountId,
+	admin: Keyring,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+	amount: Balance,
+) {
+	invest::<T>(investor.clone(), pool_id, tranche_id, amount);
+	close_epoch::<T>(admin.into(), pool_id);
+	collect_investments::<T>(investor, pool_id, tranche_id);
 }
 
 pub fn last_change_id<T: Runtime>() -> T::Hash {

@@ -222,43 +222,17 @@ pub mod utils {
 
 	impl<T: Input> Decoder<U256> for T {
 		fn decode(&self) -> U256 {
-			let len = self.input().len();
-			if len == 1 {
-				U256::from(u8::from_be_bytes(to_fixed_array(&self.input())))
-			} else if len == 2 {
-				U256::from(u16::from_be_bytes(to_fixed_array(&self.input())))
-			} else if len == 4 {
-				U256::from(u32::from_be_bytes(to_fixed_array(&self.input())))
-			} else if len == 8 {
-				U256::from(u64::from_be_bytes(to_fixed_array(&self.input())))
-			} else if len == 16 {
-				U256::from(u128::from_be_bytes(to_fixed_array(&self.input())))
-			} else if len == 32 {
-				U256::from_big_endian(to_fixed_array::<32>(&self.input()).as_slice())
-			} else {
-				panic!("Invalid slice length.")
-			}
-		}
-	}
-
-	impl<T: Input> Decoder<(U256, U64)> for T {
-		fn decode(&self) -> (U256, U64) {
-			assert!(self.input().len() >= 32);
-
-			let left = self.input()[..32].to_vec();
-			let right = &self.input()[32..];
-
-			let unsigned64 = match right.len() {
-				1 => U64::from(u8::from_be_bytes(to_fixed_array(&right))),
-				2 => U64::from(u16::from_be_bytes(to_fixed_array(&right))),
-				4 => U64::from(u32::from_be_bytes(to_fixed_array(&right))),
-				8 => U64::from_big_endian(to_fixed_array::<8>(&right).as_slice()),
+			match self.input().len() {
+				1 => U256::from(u8::from_be_bytes(to_fixed_array(&self.input()))),
+				2 => U256::from(u16::from_be_bytes(to_fixed_array(&self.input()))),
+				4 => U256::from(u32::from_be_bytes(to_fixed_array(&self.input()))),
+				8 => U256::from(u64::from_be_bytes(to_fixed_array(&self.input()))),
+				16 => U256::from(u128::from_be_bytes(to_fixed_array(&self.input()))),
+				32 => U256::from_big_endian(to_fixed_array::<32>(&self.input()).as_slice()),
 				_ => {
-					panic!("Invalid slice length for u64 derivation");
+					panic!("Invalid slice length for u256 derivation")
 				}
-			};
-
-			(left.decode(), unsigned64)
+			}
 		}
 	}
 

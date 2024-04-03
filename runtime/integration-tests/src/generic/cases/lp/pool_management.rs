@@ -18,7 +18,10 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
-use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{fungibles::Mutate, OriginTrait},
+};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use pallet_pool_system::Config;
@@ -27,23 +30,29 @@ use sp_runtime::{traits::Zero, DispatchError, FixedPointNumber};
 
 use crate::{
 	generic::{
-		cases::lp::{
-			names,
-			names::POOL_A_T_1_USDC,
-			utils,
-			utils::{pool_a_tranche_id, Decoder},
-			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+		cases::{
+			liquidity_pools_transfers::utils::decimals,
+			lp::{
+				names,
+				names::POOL_A_T_1_USDC,
+				utils,
+				utils::{pool_a_tranche_id, Decoder},
+				LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+			},
 		},
 		config::Runtime,
-		env::{EnvEvmExtension, EvmEnv},
-		utils::currency::{register_currency, CurrencyInfo},
+		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
+		utils::{
+			currency::{register_currency, CurrencyInfo},
+			invest_and_collect,
+		},
 	},
 	utils::{accounts::Keyring, time::secs::SECONDS_PER_YEAR},
 };
 
 #[test]
 fn _test() {
-	update_tranche_token_price::<development_runtime::Runtime>()
+	transfer_tranche_tokens::<development_runtime::Runtime>()
 }
 
 fn add_currency<T: Runtime>() {
@@ -605,6 +614,93 @@ fn update_tranche_token_price<T: Runtime>() {
 
 		assert_eq!(pre_price_cfg.last_updated, computed_at_evm);
 		assert_eq!(price_evm, pre_price_cfg.price.into_inner());
+	});
+}
+
+fn transfer_tranche_tokens<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+		super::setup_investors(evm);
+	});
+
+	env.state(|evm| {
+		assert_eq!(
+			Decoder::<Balance>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::POOL_A_T_1,
+					"balanceOf",
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+				)
+				.unwrap()
+				.value,
+			),
+			0
+		);
+	});
+
+	// Invest, close epoch and collect tranche tokens with 1-to-1 conversion
+	env.pass(Blocks::ByNumber(2));
+	let amount = 1000 * decimals(6);
+	env.state_mut(|_evm| {
+		crate::generic::utils::pool::give_role::<T>(
+			Keyring::TrancheInvestor(1).into(),
+			POOL_A,
+			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), cfg_primitives::SECONDS_PER_YEAR),
+		);
+		assert_ok!(orml_tokens::Pallet::<T>::mint_into(
+			LocalUSDC.id(),
+			&Keyring::TrancheInvestor(1).into(),
+			amount
+		));
+
+		invest_and_collect::<T>(
+			Keyring::TrancheInvestor(1).into(),
+			Keyring::Admin,
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			amount,
+		);
+		assert_eq!(
+			orml_tokens::Accounts::<T>::get(
+				Keyring::TrancheInvestor(1).id(),
+				CurrencyId::Tranche(POOL_A, pool_a_tranche_id::<T>()),
+			)
+			.free,
+			amount
+		);
+	});
+
+	env.state_mut(|_evm| {
+		pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+			OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
+			POOL_A,
+			pool_a_tranche_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).into()),
+			amount,
+		)
+		.unwrap();
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert_eq!(
+			Decoder::<Balance>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::POOL_A_T_1,
+					"balanceOf",
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+				)
+				.unwrap()
+				.value,
+			),
+			amount
+		);
 	});
 }
 
