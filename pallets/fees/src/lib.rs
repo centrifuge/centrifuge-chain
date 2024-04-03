@@ -189,8 +189,8 @@ impl<T: Config> fees::Fees for Pallet<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn add_fee_requirements(from: &Self::AccountId, fee: Fee<Self::Balance, Self::FeeKey>) {
-		T::Currency::deposit_creating(from, T::Currency::minimum_balance());
-		T::Currency::deposit_creating(from, fee.value::<Self>());
+		let _ = T::Currency::deposit_creating(from, T::Currency::minimum_balance());
+		let _ = T::Currency::deposit_creating(from, fee.value::<Self>());
 	}
 }
 

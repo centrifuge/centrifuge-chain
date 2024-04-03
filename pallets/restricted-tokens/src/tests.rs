@@ -1015,7 +1015,7 @@ fn currency_deposit_creating() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			let issuance = <pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance();
-			{let _imb = <pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::deposit_creating(&80, 100);}
+            {let _imb = <pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::deposit_creating(&80, 100);}
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::free_balance(&80), 100);
 			assert_eq!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance(), issuance + 100);
 		})

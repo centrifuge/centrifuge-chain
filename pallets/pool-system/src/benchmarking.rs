@@ -268,7 +268,7 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
-	T::Currency::deposit_creating(&investor.clone(), ED);
+	let _ = T::Currency::deposit_creating(&investor.clone(), ED);
 	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone(), MINT_AMOUNT)?;
 	if let Some(amount) = with_tranche_tokens {
 		T::Tokens::mint_into(
@@ -287,7 +287,7 @@ where
 {
 	let admin: T::AccountId = account("admin", id, 0);
 	let mint_amount = T::PoolDeposit::get() * 2 + ED;
-	T::Currency::deposit_creating(&admin.clone(), mint_amount);
+	let _ = T::Currency::deposit_creating(&admin.clone(), mint_amount);
 	admin
 }
 
