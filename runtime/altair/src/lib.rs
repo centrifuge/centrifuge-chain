@@ -1820,7 +1820,7 @@ impl pallet_token_mux::Config for Runtime {
 	type OrderId = OrderId;
 	type PalletId = TokenMuxPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type Tokens = OrmlTokens;
+	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_token_mux::WeightInfo<Runtime>;
 }
 
@@ -2302,7 +2302,7 @@ impl_runtime_apis! {
 			let mut pool = PoolSystem::pool(pool_id)?;
 			pool
 				.tranches
-				.calculate_prices::<_, OrmlTokens, AccountId>(runtime_common::update_nav(pool_id).ok()?.total, now)
+				.calculate_prices::<_, Tokens, AccountId>(runtime_common::update_nav(pool_id).ok()?.total, now)
 				.ok()
 		}
 
