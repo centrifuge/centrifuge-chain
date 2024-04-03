@@ -222,7 +222,7 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 # Centrifuge organization
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
 fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.1.0" }
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.1.0-latest-deps" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.1.0" }
 
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.1.0" }

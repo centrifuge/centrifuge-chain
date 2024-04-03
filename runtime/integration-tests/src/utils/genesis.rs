@@ -10,6 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+// TODO: this file must be removed after
+// https://github.com/centrifuge/centrifuge-chain/issues/1790
+#![allow(deprecated)]
+
 //! Utilities around populating a genesis storage
 use cfg_types::{
 	fixed_point::Rate,

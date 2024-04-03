@@ -1693,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v1.1.0-latest-deps#442ea02b0e3c2a1b8e7ac6e0014ba38b18e61faa"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v1.1.0#da6e4f8255e292d32660902e545f16e1824ac5e2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

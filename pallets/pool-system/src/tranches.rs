@@ -2531,7 +2531,7 @@ pub mod test {
 
 			/// Implements only `total_issuance` required for
 			/// `calculate_prices`.
-			struct TTokens(u64);
+			struct TTokens;
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
 				type Balance = u128;
@@ -2656,7 +2656,7 @@ pub mod test {
 
 			#[test]
 			fn no_issuance_works() {
-				struct TTokensEmpty(u64);
+				struct TTokensEmpty;
 				impl Inspect<TrancheCurrency> for TTokensEmpty {
 					type AssetId = TrancheCurrency;
 					type Balance = u128;
