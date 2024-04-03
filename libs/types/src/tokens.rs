@@ -14,7 +14,7 @@ use core::marker::PhantomData;
 
 use cfg_primitives::{
 	types::{PoolId, TrancheId},
-	Balance, PalletIndex,
+	Balance,
 };
 use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
 use orml_traits::asset_registry;
@@ -22,11 +22,6 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
-use staging_xcm::{
-	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
-	v3::{MultiLocation, NetworkId},
-	VersionedMultiLocation,
-};
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
@@ -493,8 +488,6 @@ pub mod before {
 }
 
 pub mod usdc {
-	use sp_std::vec::Vec;
-
 	use super::*;
 
 	pub const MIN_SWAP_ORDER_AMOUNT: Balance = 10_000_000;
@@ -530,47 +523,6 @@ pub mod usdc {
 		hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
 	pub const CONTRACT_CELO: [u8; 20] =
 		hex_literal::hex!("37f750B7cC259A2f741AF45294f6a16572CF5cAd");
-
-	/// The metadata generator for the LP wrapped USDC currencies
-	// TODO(future): If no further LP wrapped USDC variants are expected, move this
-	// to `chain_spec.rs`.
-	pub fn lp_wrapped_usdc_metadata(
-		name: Vec<u8>,
-		symbol: Vec<u8>,
-		pallet_index: PalletIndex,
-		chain_id: EVMChainId,
-		contract_address_usdc: [u8; 20],
-		pool_currency: bool,
-	) -> Result<AssetMetadata, DispatchError> {
-		Ok(AssetMetadata {
-			decimals: DECIMALS,
-			name: name
-				.try_into()
-				.map_err(|_| DispatchError::Other("asset name exceeds limit"))?,
-			symbol: symbol
-				.try_into()
-				.map_err(|_| DispatchError::Other("asset symbol exceeds limit"))?,
-			existential_deposit: EXISTENTIAL_DEPOSIT,
-			location: Some(VersionedMultiLocation::V3(MultiLocation {
-				parents: 0,
-				interior: staging_xcm::v3::Junctions::X3(
-					PalletInstance(pallet_index),
-					GlobalConsensus(NetworkId::Ethereum { chain_id }),
-					AccountKey20 {
-						network: None,
-						key: contract_address_usdc,
-					},
-				),
-			})),
-			additional: CustomMetadata {
-				transferability: CrossChainTransferability::LiquidityPools,
-				mintable: false,
-				permissioned: false,
-				pool_currency,
-				local_representation: Some(LOCAL_ASSET_ID),
-			},
-		})
-	}
 }
 
 #[cfg(test)]

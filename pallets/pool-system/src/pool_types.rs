@@ -273,18 +273,16 @@ impl<
 		let mut tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency.into()).ok_or(
-				DispatchError::Other("Always exists a currency for an existing pool"),
-			)?;
+			let metadata = AssetRegistry::metadata(&self.currency).ok_or(DispatchError::Other(
+				"Always exists a currency for an existing pool",
+			))?;
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency,
 				ty: tranche.tranche_type,
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::try_from(metadata.name)
-						.unwrap_or(BoundedVec::default()),
-					token_symbol: BoundedVec::try_from(metadata.symbol)
-						.unwrap_or(BoundedVec::default()),
+					token_name: metadata.name,
+					token_symbol: metadata.symbol,
 				},
 			});
 		}

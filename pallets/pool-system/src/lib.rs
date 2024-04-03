@@ -1147,7 +1147,7 @@ pub mod pallet {
 
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
-			new_tranches: &Vec<TrancheUpdate<T::Rate>>,
+			new_tranches: &[TrancheUpdate<T::Rate>],
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
 			ensure!(

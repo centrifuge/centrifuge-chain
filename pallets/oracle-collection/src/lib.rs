@@ -612,7 +612,7 @@ pub mod util {
 
 	/// Computes fastly the median of a list of values
 	/// Extracted from orml
-	pub fn median<T: Ord>(items: &mut Vec<T>) -> Option<&T> {
+	pub fn median<T: Ord>(items: &mut [T]) -> Option<&T> {
 		if items.is_empty() {
 			return None;
 		}

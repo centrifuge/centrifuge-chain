@@ -34,6 +34,9 @@ impl<O: OriginTrait<AccountId = AccountId>> Feeder<O> {
 	}
 }
 
+// There is an issue with clippy that detect this as an error:
+// https://github.com/rust-lang/rust-clippy/issues/12245
+#[allow(clippy::unconditional_recursion)]
 impl<O: OriginTrait> PartialEq for Feeder<O> {
 	fn eq(&self, other: &Self) -> bool {
 		self.0.eq(&other.0)

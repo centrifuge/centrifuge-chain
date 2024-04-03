@@ -31,13 +31,7 @@ use cfg_primitives::{
 };
 use cfg_types::{
 	fee_keys::FeeKey,
-	tokens::{
-		usdc::{
-			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI,
-			CURRENCY_ID_LOCAL, CURRENCY_ID_LP_ETH_GOERLI,
-		},
-		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
-	},
+	tokens::{usdc, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
@@ -52,8 +46,10 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use staging_xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
+	latest::{MultiLocation, NetworkId},
+	prelude::{
+		AccountKey20, GeneralIndex, GeneralKey, GlobalConsensus, PalletInstance, Parachain, X2, X3,
+	},
 };
 
 /// Specialized `ChainSpec` instances for our runtimes.
@@ -1053,7 +1049,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			CURRENCY_ID_LOCAL,
+			usdc::CURRENCY_ID_LOCAL,
 			AssetMetadata {
 				decimals: 6,
 				name: b"Local USDC"
@@ -1077,21 +1073,39 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			CURRENCY_ID_LP_ETH_GOERLI,
-			lp_wrapped_usdc_metadata(
-				b"LP Ethereum Wrapped USDC"
+			usdc::CURRENCY_ID_LP_ETH_GOERLI,
+			AssetMetadata {
+				decimals: usdc::DECIMALS,
+				name: b"LP Ethereum Wrapped USDC"
 					.to_vec()
 					.try_into()
 					.expect("fit in the BoundedVec"),
-				b"LpEthUSDC"
+				symbol: b"LpEthUSDC"
 					.to_vec()
 					.try_into()
 					.expect("fit in the BoundedVec"),
-				development_runtime::LiquidityPoolsPalletIndex::get(),
-				CHAIN_ID_ETH_GOERLI_TESTNET,
-				CONTRACT_ETH_GOERLI,
-				true,
-			)
+				existential_deposit: usdc::EXISTENTIAL_DEPOSIT,
+				location: Some(staging_xcm::VersionedMultiLocation::V3(MultiLocation {
+					parents: 0,
+					interior: staging_xcm::v3::Junctions::X3(
+						PalletInstance(development_runtime::LiquidityPoolsPalletIndex::get()),
+						GlobalConsensus(NetworkId::Ethereum {
+							chain_id: usdc::CHAIN_ID_ETH_GOERLI_TESTNET,
+						}),
+						AccountKey20 {
+							network: None,
+							key: usdc::CONTRACT_ETH_GOERLI,
+						},
+					),
+				})),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					mintable: false,
+					permissioned: false,
+					pool_currency: true,
+					local_representation: Some(usdc::LOCAL_ASSET_ID),
+				},
+			}
 			.encode(),
 		),
 	]

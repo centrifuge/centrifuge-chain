@@ -137,7 +137,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 					tranche_type: t.tranche_type,
 					seniority: t.seniority,
 				})
-				.collect(),
+				.collect::<Vec<_>>(),
 		)?;
 
 		Self::take_deposit(depositor.clone(), pool_id)?;
