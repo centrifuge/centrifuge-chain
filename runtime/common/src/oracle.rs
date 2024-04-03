@@ -55,7 +55,7 @@ impl<O: OriginTrait> Ord for Feeder<O> {
 	fn cmp(&self, other: &Self) -> sp_std::cmp::Ordering {
 		// Since the inner object could not be Ord,
 		// we compare their encoded representations
-		self.0.encode().cmp(&other.encode())
+		self.0.encode().cmp(&other.0.encode())
 	}
 }
 
