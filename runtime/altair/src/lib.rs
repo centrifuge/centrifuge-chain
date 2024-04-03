@@ -2295,7 +2295,7 @@ impl_runtime_apis! {
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Quantity>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
-			let nav = Loans::update_nav(pool_id, Accuracy::RuntimeApi).ok()?;
+			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
 			let prices = pool
@@ -2308,7 +2308,7 @@ impl_runtime_apis! {
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
-			let nav = Loans::update_nav(pool_id, Accuracy::RuntimeApi).ok()?;
+			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
@@ -2334,8 +2334,8 @@ impl_runtime_apis! {
 
 		fn nav(pool_id: PoolId) -> Option<PoolNav<Balance>> {
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
-			let nav_loans = Loans::update_nav(pool_id, Accuracy::RuntimeApi).ok()?;
-			let nav_fees = PoolFees::update_nav(pool_id, Accuracy::RuntimeApi).ok()?;
+			let nav_loans = Loans::update_nav(pool_id).ok()?;
+			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
 			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
 			let total = nav.total(pool.reserve.total).unwrap_or(Balance::default());
 
