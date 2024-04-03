@@ -57,7 +57,7 @@ pub mod utils {
 	use std::cmp::min;
 
 	use cfg_primitives::{Balance, TrancheId};
-	use ethabi::ethereum_types::{H160, H256, U256, U64};
+	use ethabi::ethereum_types::{H160, H256, U256};
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
