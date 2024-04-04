@@ -77,7 +77,8 @@ where
 	}
 }
 
-/// Simply bumps the storage version of a pallet
+/// Simply bumps the storage version of a pallet.
+/// Similar to the above but it does not check the current version is TO_VERSION
 ///
 /// NOTE: Use with extreme caution! Must ensure beforehand that a migration is
 /// not necessary
