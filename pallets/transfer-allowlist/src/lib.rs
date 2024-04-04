@@ -68,10 +68,10 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
-	/// AllowanceDetails where `BlockNumber` is of type BlockNumberFor<T>
+	/// AllowanceDetails where `BlockNumber` is of type `BlockNumberFor<T>`
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberFor<T>>;
 
-	/// Resons for holding as defined by the fungible::hold::Inspect trait
+	/// Resons for holding as defined by the `fungible::hold::Inspect` trait
 	pub type ReasonOf<T> = <<T as Config>::ReserveCurrency as fungible::hold::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Reason;
