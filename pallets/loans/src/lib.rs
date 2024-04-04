@@ -1048,7 +1048,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
 		}
 
-		fn registered_prices(
+		pub fn registered_prices(
 			pool_id: T::PoolId,
 		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
 			let collection = T::PriceRegistry::collection(&pool_id)?;

@@ -28,10 +28,15 @@ pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
+use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use pallet_loans::entities::input::PriceCollectionInput;
+use pallet_pool_system::Nav;
 use sp_core::parameter_types;
-use sp_runtime::traits::Get;
+use sp_runtime::{
+	traits::{Get, Zero},
+	DispatchError,
+};
 use sp_std::marker::PhantomData;
 
 parameter_types! {
@@ -81,6 +86,76 @@ where
 				.unwrap_or_default(),
 		}
 	}
+}
+
+pub fn update_nav<T>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
+where
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
+{
+	let input_prices: PriceCollectionInput<T> =
+		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
+				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
+			})?)
+		} else {
+			PriceCollectionInput::Empty
+		};
+
+	update_nav_with_input::<T>(pool_id, input_prices)
+}
+
+/// ## Updates the nav for a pool.
+///
+/// NOTE: Should NEVER be used in consensus relevant state changes!
+///
+/// ### Execution infos
+/// * For external assets it is either using the latest
+/// oracle prices if they are not outdated or it is using no prices and allows
+/// the chain to use the estimates based on the linear accrual of the last
+/// settlement prices.
+/// * IF `nav_fees > nav_loans` then the `nav_total` will saturate at 0
+pub fn update_nav_with_input<T>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
+	price_input: PriceCollectionInput<T>,
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
+where
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
+{
+	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)
+		.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
+	let (nav_loans, _) =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)?;
+	let (nav_fees, _) = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
+		pool_id,
+		&mut pool.reserve.total,
+	)?;
+	let nav = Nav::new(nav_loans, nav_fees);
+	let total = nav
+		.total(pool.reserve.total)
+		.unwrap_or(<T as pallet_pool_system::Config>::Balance::zero());
+
+	Ok(PoolNav {
+		nav_aum: nav.nav_aum,
+		nav_fees: nav.nav_fees,
+		reserve: pool.reserve.total,
+		total,
+	})
 }
 
 pub mod xcm_fees {
