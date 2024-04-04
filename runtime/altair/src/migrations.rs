@@ -10,11 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{OraclePriceCollection, OraclePriceFeed};
+use crate::{ForeignInvestments, OraclePriceCollection, OraclePriceFeed, OrderBook};
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeAltair1035 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
+	runtime_common::migrations::increase_storage_version::Migration<OrderBook, 0, 1>,
+	runtime_common::migrations::increase_storage_version::Migration<ForeignInvestments, 0, 1>,
 );
