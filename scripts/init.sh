@@ -57,7 +57,6 @@ start-parachain)
     --parachain-id="${para_id}" \
     --base-path=$parachain_dir/data \
     --wasm-execution=compiled \
-    --execution=wasm \
     --port $((30355 + $para_id)) \
     --rpc-port $((9936 + $para_id)) \
     --rpc-external \

@@ -20,7 +20,6 @@ services:
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
-      --execution=wasm
       --port=30333
       --rpc-port=9933
       --rpc-external
@@ -30,7 +29,6 @@ services:
       --database=rocksdb
       --
       --wasm-execution=compiled
-      --execution=wasm
       --chain=/chainspec.json
       --bootnodes="/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWDLpRT9KFo6pKdkmdQQt599tmqVYpoeiHemY32Gf4RUpp"
       --bootnodes="/ip4/127.0.0.1/tcp/30344/p2p/12D3KooWKpaJZbNymrZmKG6BNNDC58z8p9YKDXfZtyhEjktgtph4"
@@ -54,7 +52,6 @@ services:
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
-      --execution=wasm
       --rpc-external
       --rpc-cors all
       --ws-external
@@ -63,7 +60,6 @@ services:
       --log="main,info,xcm=trace,xcm-executor=trace"
       --
       --wasm-execution=compiled
-      --execution=wasm
       --chain=/chainspec.json
       --bootnodes="/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWDLpRT9KFo6pKdkmdQQt599tmqVYpoeiHemY32Gf4RUpp"
       --bootnodes="/ip4/127.0.0.1/tcp/30344/p2p/12D3KooWKpaJZbNymrZmKG6BNNDC58z8p9YKDXfZtyhEjktgtph4"
