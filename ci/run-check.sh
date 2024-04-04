@@ -26,7 +26,7 @@ case $TARGET in
     ;;
 
   lint-taplo)
-    cargo install taplo-cli --locked
+    cargo install taplo-cli
     taplo fmt --check
     ;;
 
