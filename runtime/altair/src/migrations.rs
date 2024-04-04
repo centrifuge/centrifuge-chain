@@ -19,4 +19,5 @@ pub type UpgradeAltair1035 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OrderBook, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<ForeignInvestments, 0, 1>,
+	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
 );
