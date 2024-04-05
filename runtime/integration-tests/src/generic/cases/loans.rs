@@ -21,8 +21,9 @@ use pallet_loans::{
 		},
 	},
 	types::{
-		valuation::ValuationMethod, BorrowLoanError, BorrowRestrictions, InterestPayments,
-		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
+		valuation::ValuationMethod,
+		BorrowLoanError, BorrowRestrictions, LoanRestrictions, RepayRestrictions,
 	},
 };
 use runtime_common::{

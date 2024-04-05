@@ -1724,6 +1724,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chronoutil"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa531c9c2b0e6168a6e4c5023cd38e8d5ab009d3a10459cd3e7baecd68fc3715"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "cid"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8093,6 +8102,8 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "chrono",
+ "chronoutil",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

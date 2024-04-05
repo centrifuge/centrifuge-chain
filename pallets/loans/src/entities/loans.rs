@@ -27,9 +27,10 @@ use crate::{
 	},
 	pallet::{AssetOf, Config, Error},
 	types::{
+		cashflow::RepaymentSchedule,
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
-		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
 	},
 };
 
@@ -237,6 +238,12 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
+	pub fn principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.total_borrowed
+			.ensure_sub(self.total_repaid.principal)?)
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
@@ -345,6 +352,20 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
+		// TODO
+		// If the loan has an interest or pay down schedule other than None,
+		// then we should only allow borrowing more if no interest or principal
+		// payments are overdue.
+		//
+		// This is required because after borrowing more, it is not possible
+		// to validate anymore whether previous cashflows matched the repayment
+		// schedule, as we don't store historic data of the principal.
+		//
+		// Therefore, in `borrow()` we set repayments_on_schedule_until to now.
+		//
+		// TODO: check total_repaid_interest >= total_expected_interest
+		// and total_repaid_principal >= total_expected_principal
+
 		Ok(())
 	}
 
@@ -378,11 +399,8 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<RepaidInput<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				amount.principal.internal()?;
-
-				let principal = self
-					.total_borrowed
-					.ensure_sub(self.total_repaid.principal)?;
+				let _ = amount.principal.internal()?;
+				let principal = self.principal()?;
 
 				(principal, inner.outstanding_interest(principal)?)
 			}
@@ -519,7 +537,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Seconds) {
-		self.schedule.maturity = crate::types::Maturity::fixed(duration);
+		self.schedule.maturity = crate::types::cashflow::Maturity::fixed(duration);
 	}
 }
 
@@ -555,9 +573,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 		Ok(match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
-				let principal = active_loan
-					.total_borrowed
-					.ensure_sub(active_loan.total_repaid.principal)?;
+				let principal = active_loan.principal()?;
 
 				Self {
 					present_value,
