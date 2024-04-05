@@ -576,7 +576,7 @@ where
 			sync_service,
 		};
 
-		#[allow(deprecated)]
+		#[allow(deprecated)] // TODO fix before v1.3.0
 		start_collator(params).await?;
 	} else {
 		let params = StartFullNodeParams {
@@ -591,7 +591,7 @@ where
 			sync_service,
 		};
 
-		#[allow(deprecated)]
+		#[allow(deprecated)] // TODO fix before v1.3.0
 		start_full_node(params)?;
 	}
 

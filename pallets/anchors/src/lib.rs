@@ -431,6 +431,7 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+
 	impl<T: Config> Pallet<T> {
 		/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a
 		/// pre-commit with `expiration_block` < `current_block_number`.

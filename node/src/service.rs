@@ -252,7 +252,7 @@ pub async fn start_altair_node(
 				telemetry.clone(),
 			);
 
-            /* // TODO
+            /* // TODO in v1.3.0
             let proposer = Proposer::new(proposer_factory);
 
             let collator_service = CollatorService::new(
