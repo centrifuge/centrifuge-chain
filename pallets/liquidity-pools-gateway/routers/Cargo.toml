@@ -34,7 +34,6 @@ pallet-evm = { workspace = true }
 
 # Custom crates
 cfg-traits = { workspace = true }
-cfg-types = { workspace = true }
 
 # Local pallets
 pallet-ethereum-transaction = { workspace = true }
@@ -42,6 +41,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 
 [dev-dependencies]
 lazy_static = { workspace = true }
+cfg-types = { workspace = true, default-features = true }
 
 cumulus-primitives-core = { workspace = true, default-features = true }
 
@@ -65,7 +65,6 @@ pallet-balances = { workspace = true, default-features = true }
 default = ["std"]
 std = [
   "parity-scale-codec/std",
-  "cfg-types/std",
   "cfg-traits/std",
   "cfg-mocks/std",
   "hex/std",

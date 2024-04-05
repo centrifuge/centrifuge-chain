@@ -53,10 +53,7 @@ use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
-use staging_xcm::{
-	latest::{MultiLocation, OriginKind},
-	VersionedMultiLocation,
-};
+use staging_xcm::{latest::OriginKind, VersionedMultiLocation};
 
 #[cfg(test)]
 mod mock;
@@ -303,7 +300,7 @@ where
 
 /// XcmDomain gathers all the required fields to build and send remote
 /// calls to a specific XCM-based Domain.
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct XcmDomain<CurrencyId> {
 	/// The XCM multilocation of the domain.
 	pub location: Box<VersionedMultiLocation>,
@@ -345,33 +342,4 @@ pub struct XcmTransactInfo {
 	pub transact_extra_weight: Weight,
 	pub max_weight: Weight,
 	pub transact_extra_weight_signed: Option<Weight>,
-}
-
-/// NOTE: Remove this custom implementation once the following underlying data
-/// implements MaxEncodedLen:
-/// * Polkadot Repo: xcm::VersionedMultiLocation
-/// * PureStake Repo: pallet_xcm_transactor::Config<Self = T>::CurrencyId
-impl<CurrencyId> MaxEncodedLen for XcmDomain<CurrencyId>
-where
-	XcmDomain<CurrencyId>: Encode,
-{
-	fn max_encoded_len() -> usize {
-		// The domain's `VersionedMultiLocation` (custom bound)
-		MultiLocation::max_encoded_len()
-			// From the enum wrapping of `VersionedMultiLocation` for the XCM domain location.
-			.saturating_add(1)
-			// From the enum wrapping of `VersionedMultiLocation` for the asset fee location.
-			.saturating_add(1)
-			// The ethereum xcm call index (default bound)
-			.saturating_add(BoundedVec::<
-				u8,
-				ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
-			>::max_encoded_len())
-			// The contract address (default bound)
-			.saturating_add(H160::max_encoded_len())
-			// The fee currency (custom bound)
-			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
-			// The XcmTransactInfo
-			.saturating_add(XcmTransactInfo::max_encoded_len())
-	}
 }
