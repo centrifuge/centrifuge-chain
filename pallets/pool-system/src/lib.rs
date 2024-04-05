@@ -530,7 +530,7 @@ pub mod pallet {
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
-		/// No metada for the given currency found
+		/// No metadata for the given currency found
 		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit
 		TrancheTokenNameTooLong,

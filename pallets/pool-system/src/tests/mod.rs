@@ -2439,6 +2439,69 @@ fn create_tranche_token_metadata() {
 	});
 }
 
+#[test]
+fn essence() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = 1_u64;
+		let tranche_input = vec![
+			TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::try_from("ResName".as_bytes().to_owned())
+						.expect("String not out of bounds"),
+					token_symbol: BoundedVec::try_from("ResSym".as_bytes().to_owned())
+						.expect("String not out of bounds"),
+				},
+			},
+			TrancheInput {
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: Rate::one(),
+					min_risk_buffer: Perquintill::from_percent(10),
+				},
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::try_from("NonResName".as_bytes().to_owned())
+						.expect("String not out of bounds"),
+					token_symbol: BoundedVec::try_from("NRSym".as_bytes().to_owned())
+						.expect("String not out of bounds"),
+				},
+			},
+		];
+
+		assert_ok!(PoolSystem::create(
+			pool_owner.clone(),
+			pool_owner.clone(),
+			DEFAULT_POOL_ID,
+			tranche_input.clone(),
+			AUSD_CURRENCY_ID,
+			10_000 * CURRENCY,
+			vec![],
+		));
+
+		let pool_details = Pool::<Runtime>::get(DEFAULT_POOL_ID).expect("Pool is registered; qed");
+		let essence = pool_details
+			.essence::<<Runtime as Config>::AssetRegistry, Balance, MaxTokenNameLength, MaxTokenSymbolLength>(
+			)
+			.expect("Tranche token metadata is registered; qed");
+
+		assert_eq!(essence.currency, AUSD_CURRENCY_ID);
+		assert_eq!(essence.max_reserve, 10_000 * CURRENCY);
+		assert_eq!(essence.max_nav_age, pool_details.parameters.max_nav_age);
+		assert_eq!(
+			essence.min_epoch_time,
+			pool_details.parameters.min_epoch_time
+		);
+
+		tranche_input.iter().zip(essence.tranches.iter()).for_each(
+			|(tranche_input, tranche_essence)| {
+				assert_eq!(tranche_input.metadata, tranche_essence.metadata);
+				assert_eq!(tranche_input.tranche_type, tranche_essence.ty);
+			},
+		);
+	})
+}
+
 mod changes {
 	use cfg_traits::changes::ChangeGuard;
 	use sp_std::collections::btree_set::BTreeSet;

@@ -17,7 +17,7 @@ use frame_support::{
 	traits::Get,
 	BoundedVec, RuntimeDebug,
 };
-use orml_traits::{asset_registry::AssetMetadata, Change};
+use orml_traits::Change;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
@@ -119,6 +119,7 @@ pub struct PoolDetails<
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
 	MaxTranches: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -208,6 +209,7 @@ pub struct PoolEssence<
 	MaxTokenSymbolLength,
 > where
 	CurrencyId: Copy,
+	TrancheCurrency: Into<CurrencyId>,
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
 {
@@ -249,6 +251,7 @@ impl<
 	Balance:
 		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
+	TrancheCurrency: Into<CurrencyId>,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -300,16 +303,12 @@ impl<
 		> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency.into())
-				.ok_or(AssetMetadata {
-					decimals: 0,
-					name: Vec::new(),
-					symbol: Vec::new(),
-					existential_deposit: (),
-					location: None,
-					additional: (),
-				})
-				.unwrap();
+			let metadata = AssetRegistry::metadata(
+				&<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId::from(
+					tranche.currency.into(),
+				),
+			)
+			.ok_or(DispatchError::CannotLookup)?;
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency,
