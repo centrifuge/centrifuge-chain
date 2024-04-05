@@ -16,7 +16,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use staging_xcm::{v2, v3::MultiLocation, VersionedMultiLocation};
+use staging_xcm::VersionedMultiLocation;
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
@@ -39,22 +39,6 @@ impl From<AccountId32> for Location {
 	}
 }
 
-impl From<MultiLocation> for Location {
-	fn from(ml: MultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum
-		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&ml.encode()))
-	}
-}
-
-impl From<v2::MultiLocation> for Location {
-	fn from(ml: v2::MultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum
-		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&ml.encode()))
-	}
-}
-
 impl From<VersionedMultiLocation> for Location {
 	fn from(vml: VersionedMultiLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
@@ -73,23 +57,9 @@ impl From<DomainAddress> for Location {
 mod test {
 
 	use hex::FromHex;
+	use staging_xcm::v3::MultiLocation;
 
 	use super::*;
-
-	#[test]
-	fn from_xcm_v1_address_works() {
-		let xa = MultiLocation::default();
-		let l = Location::from(xa.clone());
-		assert_eq!(
-			l,
-			Location::XCM(sp_core::H256(
-				<[u8; 32]>::from_hex(
-					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
-				)
-				.unwrap()
-			))
-		);
-	}
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
@@ -104,15 +74,6 @@ mod test {
 				.unwrap()
 			))
 		);
-	}
-
-	#[test]
-	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
-		let xa = staging_xcm::v2::MultiLocation::default();
-		let xb = staging_xcm::v3::MultiLocation::default();
-		let l0 = Location::from(xa.clone());
-		let l1 = Location::from(xb.clone());
-		assert_eq!(l0, l1);
 	}
 
 	#[test]
