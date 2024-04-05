@@ -13,7 +13,8 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{alloc::string::ToString, CompactAs, Decode, Encode, MaxEncodedLen};
+use scale_info::prelude::string::String;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
 	helpers_128bit::multiply_by_rational_with_rounding,
@@ -769,14 +770,12 @@ impl<const DIV: u128> sp_std::fmt::Debug for FixedU128<DIV> {
 	}
 }
 
-#[cfg(feature = "std")]
 impl<const DIV: u128> sp_std::fmt::Display for FixedU128<DIV> {
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "{}", self.0)
 	}
 }
 
-#[cfg(feature = "std")]
 impl<const DIV: u128> sp_std::str::FromStr for FixedU128<DIV> {
 	type Err = &'static str;
 
@@ -788,8 +787,7 @@ impl<const DIV: u128> sp_std::str::FromStr for FixedU128<DIV> {
 	}
 }
 
-// Manual impl `Serialize` as serde_json does not support i128.
-// TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
+// See: https://github.com/paritytech/substrate/pull/9708
 impl<const DIV: u128> Serialize for FixedU128<DIV> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
@@ -799,8 +797,7 @@ impl<const DIV: u128> Serialize for FixedU128<DIV> {
 	}
 }
 
-// Manual impl `Deserialize` as serde_json does not support i128.
-// TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
+// See: https://github.com/paritytech/substrate/pull/9708
 impl<'de, const DIV: u128> Deserialize<'de> for FixedU128<DIV> {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
