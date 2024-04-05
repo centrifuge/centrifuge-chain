@@ -33,7 +33,10 @@ use runtime_common::{
 	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
-use staging_xcm::{latest::Weight as XcmWeight, prelude::*, v3::MultiLocation};
+use staging_xcm::{
+	prelude::*,
+	v3::{MultiLocation, Weight as XcmWeight},
+};
 use staging_xcm_builder::{
 	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter,
 	NoChecking, RelayChainAsNative, SiblingParachainAsNative, SignedAccountId32AsNative,

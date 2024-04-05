@@ -12,7 +12,7 @@
 
 pub mod reexport {
 	pub use staging_xcm::{
-		latest::prelude::MultiLocation as __private_MultiLocation,
+		v3::prelude::MultiLocation as __private_MultiLocation,
 		VersionedMultiLocation as __private_VersionedMultiLocation,
 	};
 }
