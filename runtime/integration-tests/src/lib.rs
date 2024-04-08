@@ -14,7 +14,6 @@
 #![cfg(test)]
 #![allow(unused)]
 
-mod evm;
 mod generic;
 mod rewards;
 mod utils;

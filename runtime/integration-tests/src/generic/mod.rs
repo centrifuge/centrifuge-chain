@@ -15,6 +15,7 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod account_derivation;
+	mod ethereum_transaction;
 	mod example;
 	mod investments;
 	mod liquidity_pools;

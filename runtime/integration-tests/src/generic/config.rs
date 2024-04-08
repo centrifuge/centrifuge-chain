@@ -212,6 +212,7 @@ pub trait Runtime:
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
+		+ TryInto<pallet_ethereum::Event>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
@@ -227,7 +228,8 @@ pub trait Runtime:
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
 		+ From<pallet_proxy::Event<Self>>
-		+ From<pallet_democracy::Event<Self>>;
+		+ From<pallet_democracy::Event<Self>>
+		+ From<pallet_ethereum::Event>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>
