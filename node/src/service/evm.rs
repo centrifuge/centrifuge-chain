@@ -376,13 +376,7 @@ where
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
 		Arc<SyncingService<Block>>,
 		KeystorePtr,
-		bool, /* TODO for 1.3.0: required to fix the deprecated warnings
-			  Duration,
-			  ParaId,
-			  CollatorPair,
-			  OverseerHandle,
-			  Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
-			  */
+		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	let parachain_config = prepare_node_config(parachain_config);
@@ -547,13 +541,6 @@ where
 			sync_service.clone(),
 			params.keystore_container.keystore(),
 			force_authoring,
-			/* // TODO for 1.3.0
-			relay_chain_slot_duration,
-			para_id,
-			collator_key.expect("Command line arguments do not allow this. qed"),
-			overseer_handle,
-			announce_block,
-			*/
 		)?;
 
 		let spawner = task_manager.spawn_handle();
