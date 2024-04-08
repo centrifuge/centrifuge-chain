@@ -21,13 +21,14 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_support::BoundedVec;
+use frame_support::{traits::fungible::Mutate, BoundedVec};
 use frame_system::RawOrigin;
 use pallet_oracle_collection::types::CollectionInfo;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use runtime_common::oracle::Feeder;
+use runtime_common::{account_conversion::convert_evm_address, oracle::Feeder};
+use sp_core::H160;
 use sp_runtime::{
-	traits::{One, StaticLookup},
+	traits::{Get, One, StaticLookup},
 	Perquintill,
 };
 
@@ -250,5 +251,19 @@ pub mod oracle {
 			pool_id,
 		)
 		.unwrap();
+	}
+}
+
+pub mod evm {
+	use super::*;
+
+	pub fn mint_balance_into_derived_account<T: Runtime>(
+		address: H160,
+		balance: Balance,
+	) -> Balance {
+		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
+		let derived_account = convert_evm_address(chain_id, address.to_fixed_bytes());
+
+		pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance).unwrap()
 	}
 }

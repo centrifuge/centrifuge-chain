@@ -20,6 +20,7 @@ mod cases {
 	mod liquidity_pools;
 	mod loans;
 	mod oracles;
+	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
 	mod rewards;

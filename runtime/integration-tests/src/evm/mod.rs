@@ -11,4 +11,3 @@
 // GNU General Public License for more details.
 
 mod ethereum_transaction;
-mod precompile;

@@ -150,6 +150,7 @@ pub trait Runtime:
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_evm_chain_id::Config
+	+ pallet_evm::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_rewards::Config<
@@ -162,7 +163,7 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
-	>
+	> + axelar_gateway_precompile::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
