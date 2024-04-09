@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::generic::{cases::lp::setup_full, config::Runtime, env::EnvEvmExtension};
+use crate::generic::{cases::lp::setup_full, config::Runtime};
 
 #[test]
 fn _test() {

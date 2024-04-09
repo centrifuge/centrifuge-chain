@@ -47,8 +47,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 
 		pallet_ethereum::Pending::<T>::get()
 			.into_iter()
-			.map(|(_, status, _)| status.logs)
-			.flatten()
+			.flat_map(|(_, status, _)| status.logs)
 			.collect::<Vec<_>>()
 			.into_iter()
 			.filter_map(|log| {
@@ -105,7 +104,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			.as_ref()
 			.expect("Need to load_contracts first")
 			.get(&name.into())
-			.expect("Not loaded")
+			.expect("Unknown contract")
 			.clone()
 	}
 
@@ -116,13 +115,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 		who: Keyring,
 		args: Option<&[Token]>,
 	) -> &mut Self {
-		let info = self
-			.sol_contracts
-			.as_ref()
-			.expect("Need to load_contracts first")
-			.get(&what.clone().into())
-			.expect("Unknown contract")
-			.clone();
+		let info = Self::contract(&self, what.clone());
 
 		let init = match (info.contract.constructor(), args) {
 			(None, None) => info.bytecode.to_vec(),
@@ -180,8 +173,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 			.expect(ESSENTIAL)
 			.iter()
 			.filter_map(|f| f.encode_input(args.unwrap_or_default()).ok())
-			.collect::<Vec<_>>()
-			.pop()
+			.last()
 			.expect("No matching function Signature found.");
 
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();

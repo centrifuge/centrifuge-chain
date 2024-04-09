@@ -163,8 +163,7 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
-	>
-	+ pallet_evm::Config<
+	> + pallet_evm::Config<
 		Runner = pallet_evm::runner::stack::Runner<Self>,
 		Currency = pallet_balances::Pallet<Self>,
 	> + axelar_gateway_precompile::Config

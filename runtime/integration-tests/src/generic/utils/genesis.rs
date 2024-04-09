@@ -56,30 +56,20 @@ pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 
 pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBuild<T> {
 	let mut accounts = Vec::new();
-	accounts.extend(
-		default_accounts()
+	accounts.extend(default_accounts().into_iter().flat_map(|keyring| {
+		values
+			.clone()
 			.into_iter()
-			.map(|keyring| {
-				values
-					.clone()
-					.into_iter()
-					.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
-					.collect::<Vec<_>>()
-			})
-			.flatten(),
-	);
-	accounts.extend(
-		default_accounts()
+			.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
+			.collect::<Vec<_>>()
+	}));
+	accounts.extend(default_accounts().into_iter().flat_map(|keyring| {
+		values
+			.clone()
 			.into_iter()
-			.map(|keyring| {
-				values
-					.clone()
-					.into_iter()
-					.map(|(curency_id, balance)| (keyring.id_ed25519(), curency_id, balance))
-					.collect::<Vec<_>>()
-			})
-			.flatten(),
-	);
+			.map(|(curency_id, balance)| (keyring.id_ed25519(), curency_id, balance))
+			.collect::<Vec<_>>()
+	}));
 
 	orml_tokens::GenesisConfig::<T> { balances: accounts }
 }
