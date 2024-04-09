@@ -1247,7 +1247,7 @@ type CollatorSelectionUpdateOrigin = EitherOfDiverse<
 
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
-	type Currency = Tokens;
+	type Currency = Balances;
 	// should be a multiple of session or things will get inconsistent
 	type KickThreshold = Period;
 	type MaxCandidates = MaxCandidates;
@@ -1738,7 +1738,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type AuthorityId = AuraId;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type MaxCollators = MaxAuthorities;
 	type Rate = Rate;
 	type Rewards = BlockRewardsBase;
