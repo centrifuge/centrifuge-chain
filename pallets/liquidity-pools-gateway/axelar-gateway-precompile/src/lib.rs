@@ -9,6 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Axelar Gateway Precompile
+//!
+//! Pallet that serves as an EVM precompile for incoming Liquidity Pools
+//! messages from the Axelar network.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -117,7 +122,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin that is allowed to set the gateway address we accept
-		/// messageas from
+		/// messages from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		type WeightInfo: WeightInfo;

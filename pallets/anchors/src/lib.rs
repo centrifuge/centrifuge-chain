@@ -10,10 +10,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-//! # Anchors pallet for runtime
+//
+//! # Anchors Pallet
 //!
-//! This pallet provides functionality of Storing anchors on Chain
+//! This pallet provides functionality of Storing anchors on Chain.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 // This pallet is getting a big refactor soon, so no sense doing clippy cleanups
 #![allow(clippy::all)]

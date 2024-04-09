@@ -9,6 +9,16 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Ethereum Transaction Pallet
+//!
+//! The Ethereum Transaction pallet is a wrapper around the Ethereum pallet,
+//! and it allows other pallets to execute EVM calls. It keeps track
+//! of the nonce used for each call and builds a fake signature for executing
+//! the provided call.
+//!
+//! The execution fees are charged by the Ethereum pallet, the only other extra
+//! fee is be the one from the nonce read operation.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::TRANSACTION_RECOVERY_ID;
@@ -91,12 +101,6 @@ pub mod pallet {
 		OriginFor<T>:
 			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 	{
-		/// This implementation serves as a wrapper around the Ethereum pallet
-		/// execute functionality. It keeps track of the nonce used for each
-		/// call and builds a fake signature for executing the provided call.
-		///
-		/// NOTE - The execution fees are charged by the Ethereum pallet,
-		/// we only have to charge for the nonce read operation.
 		fn call(
 			from: H160,
 			to: H160,
@@ -158,7 +162,7 @@ pub mod pallet {
 			//       querying the `Pending` storage of the pallet-ethereum.
 			let pending = pallet_ethereum::Pending::<T>::get();
 			let (_, _, receipt) = pending.last().ok_or(DispatchError::Other(
-				"Ethereuem not adding pending storage. Unexpected.",
+				"Ethereum not adding pending storage. Unexpected.",
 			))?;
 
 			if Pallet::<T>::valid_code(receipt) {

@@ -10,7 +10,7 @@ Initialize your Wasm Build environment:
 
 Build Wasm and native code:
 
-- Prerequisites : cmake,  libclang-dev
+- Prerequisites : `cmake`, `libclang-dev`
 
 ```bash
 cargo build --release
@@ -28,7 +28,7 @@ and another one to verify how it works in a more real environment as a parachain
 The following command will run the unit and integration tests:
 
 ```bash
-cargo +nightly test --workspace --release --features runtime-benchmarks,try-runtime
+cargo test --workspace --release --features runtime-benchmarks,try-runtime
 ```
 
 ### Environment tests
@@ -58,7 +58,7 @@ It runs a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     *Note: the command above will show logs and block until the parachain is stopped.
     If you had a previous state, you can reset the node using `purge` after the command.*
 
-    Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
+    Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11936)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11936#/explorer) client.
     You will see the block production frozen until you connect it to the relay chain.
 
     By default, the initialized parachain will have the id `2000`.
@@ -84,7 +84,7 @@ You can play with it from the parachain client, make transfers, inspect events, 
 ## Linting
 
 ### Source code
-Lint the source code with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
+Lint the source code with `cargo fmt --all`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
 
 ### Cargo.toml files
 1. Install [taplo](https://github.com/tamasfe/taplo) with `cargo install taplo-cli`.
@@ -92,25 +92,20 @@ Lint the source code with `cargo +nightly fmt`. This excludes certain paths (def
 
 ## Verifying Runtime
 1. Check out the commit at which the runtime was built.
-2. Run `TARGET=build-runtime RUST_TOOLCHAIN=nightly ./ci/script.sh`
-3. A similar output is generated
+2. Build the WASM via `cargo build --release`
+3. Ensure the output from [subwasm](https://github.com/chevdor/subwasm) matches the release one. Run `subwasm info ./target/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.compressed.wasm`, which creates an output like the following one:
 ```
-✨ Your Substrate WASM Runtime is ready! ✨
-Summary:
-  Generator  : srtool v0.9.5
-  GIT commit : 27326e69481f08313d6048da1500befe209bdf71
-  GIT tag    : v0.0.3
-  GIT branch : master
-  Time       : 2020-03-20T11:00:24Z
-  Rustc      : rustc 1.43.0-nightly (5e7af4669 2020-02-16)
-  Size       : 928 KB (950464 bytes)
-  Content    : 0x0061736d0100000001c2022f60037f7f...3436363920323032302d30322d313629
-  Package    : centrifuge-runtime
-  Proposal   : 0x5c3d2cd41d70c514566c9b512743ad229fa96518061fe21c8178ba43cfcf16dc
-  SHA256     : 3f0d2e98e2351144027826f26277bda90e5fabc13f0945fc8fec13d116602e2a
-  Wasm       : ./target/srtool/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm
+🏋️  Runtime size:             1.819 MB (1,906,886 bytes)
+🗜  Compressed:               Yes, 78.50%
+✨  Reserved meta:            OK - [6D, 65, 74, 61]
+🎁  Metadata version:         V14
+🔥  Core version:             centrifuge-1025 (centrifuge-1.tx2.au1)
+🗳️  system.setCode hash:      0x210cdf71ee5c5fbea3dc5090c596a992b148030474121b481a856433eb5720f3
+🗳️  authorizeUpgrade hash:    0x319e30838e1acc9dd071261673060af687704430c45b14cdb5fc97ec561e2a12
+🗳️  Blake2-256 hash:          0xb7f74401c52ee8634ad28fe91e8a6b1debb802d4d2058fdda184a6f2746477f6
+📦  IPFS:                     https://www.ipfs.io/ipfs/QmS3GDmbGKvcmSd7ca1AN9B34BW3DuDEDQ1iSLXgkjktpG
 ```
-4. `Proposal` hash should match the runtime upgrade proposal
+4. The `Blake2-256` hash should match the hex of the `authorizeUpgrade` call.
     See more [here](docs/runtime-upgrade.md).
 
 ## Generate new Spec and Parachain files
@@ -143,13 +138,13 @@ the collator node the parachain will be running on.
 # Updating to a newer version of Polkadot
 
 When a new version of Polkadot is released, companion releases happen for the other
-parity projects such as Substrate and Cumulus, as well as for other third-party projects
-such as the `orml` pallets, `xcm-simulator`, etc.
+parity projects such as the Polkadot SDK, as well as for other third-party projects
+such as the `ORML` pallets, `xcm-simulator`, etc.
 
 Therefore, updating this repository to a new version of Polkadot means updating all of these dependencies
 (internal and external to Centrifuge ) and have them all aligned on the same version of Polkadot.
 
-_Note: When we say "new version of Polkadot", we implicitly mean "Polkadot, Substrate, Cumulus"._
+_Note: When we say "new version of Polkadot", we implicitly mean "Polkadot SDK, Frontier, ORML"._
 
 The high level flow to upgrade to a newer version of Polkadot is:
 
@@ -172,9 +167,7 @@ The high level flow to upgrade to a newer version of Polkadot is:
     ```shell
     export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.32
 
-    diener update --polkadot --branch release-v$POLKADOT_NEW_VERSION;
-    diener update --substrate --branch polkadot-v$POLKADOT_NEW_VERSION;
-    diener update --cumulus --branch polkadot-v$POLKADOT_NEW_VERSION;
+    diener update --polkadot-sdk --branch release-v$POLKADOT_NEW_VERSION;
     ```
 
     **Note**: This step only updates the versions of those dependencies across the repository. Any breaking changes introduced
@@ -216,26 +209,5 @@ by the new versions will have to be dealt with manually afterwards.
 If you face compilation errors like "type X doesn't implement trait Y", and the compiler
 doesn't suggest you import any particular trait, experience is that there are different versions
 of Polkadot|Substrate|Cumulus being pulled; The `cargo patch` rules in `Cargo.toml` should be handling that so if this
-still happens it's likely because some new crate of Polkadot|Substrate|Cumulus is being pulled directly or indirectly
+still happens it's likely because some new crate of Polkadot SDK or Frontier is being pulled directly or indirectly
 and we need to include that crate in the appropriate `cargo patch` rule.
-Running `nix --extra-experimental-features "nix-command flakes" build` should fail if multiple versions of a crate is
-being pulled and, therefore, not yet being handled by any `cargo patch` rules, making it very easy to spot the crate
-causing the trouble.
-
-## NIX
-
-The CI runs a `nix-build` job that executes `nix build` on the entire repository. This job fails if the output
-`cargoSha256` for the revision being built does not match the expected value defined in `flake.nix`.
-
-Whenever a dependency is added, removed, or updated, said `cargoSha256` value defined in `flake.nix` needs to be updated.
-To do that, you need:
-
-1. [Install Nix](https://nixos.org/download.html)
-
-2. On your feature branch, run:
-    ```shell
-    nix --extra-experimental-features "nix-command flakes" build
-    ```
-
-3. Use the new `cargoSha256` output provided on step 2. and update it in `flake.nix`
-4. Commit and push

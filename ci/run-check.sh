@@ -41,7 +41,26 @@ case $TARGET in
   docs-build)
     RUSTDOCFLAGS="-D warnings" cargo doc --all --no-deps
     ;;
-
+  
+  try-runtime)
+  if [ "$1" == "altair" ]; then
+    echo "Running try-runtime for altair"
+      RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
+      cargo run --release --features try-runtime try-runtime \
+      --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
+      --chain altair on-runtime-upgrade live \
+      --uri wss://fullnode.altair.centrifuge.io:443
+  elif [ "$1" == "centrifuge" ]; then
+    echo "Running try-runtime for centrifuge"
+      RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
+      cargo run --release --features try-runtime try-runtime \
+      --runtime target/release/wbuild/centrifuge-runtime/centrifuge_runtime.wasm \
+      --chain centrifuge on-runtime-upgrade live --uri wss://fullnode.centrifuge.io:443
+  else
+    echo "Invalid argument. Please specify 'altair' or 'centrifuge'."
+    exit 1
+  fi
+  ;;
   subalfred)
     # Find all child directories containing Cargo.toml files
     # TODO: Filter by crates found in the workspace

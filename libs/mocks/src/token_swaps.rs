@@ -70,6 +70,12 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
+		pub fn mock_market_ratio(
+			f: impl Fn(T::CurrencyId, T::CurrencyId) -> Result<T::Ratio, DispatchError> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
 		pub fn mock_fill_order(
 			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
 		) {
@@ -118,6 +124,13 @@ pub mod pallet {
 			c: Self::BalanceOut,
 		) -> Result<Self::BalanceIn, DispatchError> {
 			execute_call!((a, b, c))
+		}
+
+		fn market_ratio(
+			a: Self::CurrencyId,
+			b: Self::CurrencyId,
+		) -> Result<Self::Ratio, DispatchError> {
+			execute_call!((a, b))
 		}
 
 		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {

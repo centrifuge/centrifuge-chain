@@ -10,9 +10,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-//! # Swaps pallet: Enables applying swaps independently of previous swaps in the same or opposite
-//! directions.
+//
+//! # Swaps Pallet
+//!
+//! The Swaps pallet enables applying swaps independently of previous swaps in
+//! the same or opposite directions.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -27,7 +29,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		swaps::{OrderRatio, Swap, SwapState, SwapStatus, Swaps, TokenSwaps},
+		swaps::{OrderRatio, Swap, SwapInfo, SwapStatus, Swaps, TokenSwaps},
 		StatusNotificationHook,
 	};
 	use frame_support::pallet_prelude::*;
@@ -35,6 +37,9 @@ pub mod pallet {
 	use sp_std::cmp::Ordering;
 
 	use super::*;
+
+	pub type RatioOf<T> =
+		<<T as Config>::OrderBook as TokenSwaps<<T as frame_system::Config>::AccountId>>::Ratio;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -67,7 +72,7 @@ pub mod pallet {
 		/// The hook which acts upon a (partially) fulfilled the swap
 		type FulfilledSwap: StatusNotificationHook<
 			Id = (Self::AccountId, Self::SwapId),
-			Status = SwapState<Self::Balance, Self::Balance, Self::CurrencyId>,
+			Status = SwapInfo<Self::Balance, Self::Balance, Self::CurrencyId, RatioOf<Self>>,
 			Error = DispatchError,
 		>;
 	}
@@ -338,18 +343,15 @@ pub mod pallet {
 	impl<T: Config> StatusNotificationHook for Pallet<T> {
 		type Error = DispatchError;
 		type Id = T::OrderId;
-		type Status = SwapState<T::Balance, T::Balance, T::CurrencyId>;
+		type Status = SwapInfo<T::Balance, T::Balance, T::CurrencyId, RatioOf<T>>;
 
-		fn notify_status_change(
-			order_id: T::OrderId,
-			swap_state: SwapState<T::Balance, T::Balance, T::CurrencyId>,
-		) -> DispatchResult {
+		fn notify_status_change(order_id: T::OrderId, swap_info: Self::Status) -> DispatchResult {
 			if let Ok((who, swap_id)) = Self::swap_id(order_id) {
-				if swap_state.remaining.amount_out.is_zero() {
+				if swap_info.remaining.amount_out.is_zero() {
 					Self::update_id(&who, swap_id, None)?;
 				}
 
-				T::FulfilledSwap::notify_status_change((who, swap_id), swap_state)?;
+				T::FulfilledSwap::notify_status_change((who, swap_id), swap_info)?;
 			}
 
 			Ok(())

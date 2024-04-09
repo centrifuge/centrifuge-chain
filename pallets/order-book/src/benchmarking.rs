@@ -12,19 +12,19 @@
 
 use cfg_traits::{
 	swaps::{OrderRatio, TokenSwaps},
-	ConversionToAssetBalance, ValueProvider,
+	ValueProvider,
 };
 use cfg_types::tokens::{AssetMetadata, CustomMetadata};
 use frame_benchmarking::{account, v2::*};
-use frame_support::traits::{fungibles::Mutate as _, Get};
+use frame_support::traits::fungibles::Mutate as _;
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect as _, Mutate};
 use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
-const CURRENCY_IN: u32 = 1;
-const CURRENCY_OUT: u32 = 2;
+const CURRENCY_IN: u32 = 1001;
+const CURRENCY_OUT: u32 = 1002;
 const RATIO: u32 = 2; // x2
 const FEEDER: u32 = 23;
 
@@ -98,11 +98,7 @@ where
 	}
 
 	pub fn amount_out() -> T::BalanceOut {
-		let min_fulfillment = T::DecimalConverter::to_asset_balance(
-			T::MinFulfillmentAmountNative::get(),
-			CURRENCY_OUT.into(),
-		)
-		.unwrap();
+		let min_fulfillment = Pallet::<T>::min_fulfillment_amount(CURRENCY_OUT.into()).unwrap();
 
 		let decimals_out = T::AssetRegistry::metadata(&CURRENCY_OUT.into())
 			.unwrap()

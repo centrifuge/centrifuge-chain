@@ -148,7 +148,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = InvestmentId;
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
+	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
+	type SwapRatio = Ratio;
 	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
@@ -158,5 +160,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Runtime>()
 		.unwrap();
 
-	sp_io::TestExternalities::new(storage)
+	let mut ext = sp_io::TestExternalities::new(storage);
+	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
+	ext
 }

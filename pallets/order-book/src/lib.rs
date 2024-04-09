@@ -9,15 +9,18 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-// This pallet was made using the ZeitGeist Orderbook pallet as a reference;
-// with much of the code being copied or adapted from that pallet.
-// The ZeitGeist Orderbook pallet can be found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1
+//
+//! # Orderbook Pallet
+//!
+//! The Orderbook pallet allows orders for currency swaps to be placed and
+//! fulfilled.
+//!
+//! This pallet was made using the ZeitGeist Orderbook pallet as a reference;
+//! with much of the code being copied or adapted from that pallet.
+//! The ZeitGeist Orderbook pallet can be found here:
+//! <https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1>
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
-//! This module adds an orderbook pallet, allowing orders for currency swaps to
-//! be placed and fulfilled for currencies in an asset registry.
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -37,8 +40,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{
-		swaps::{OrderInfo, OrderRatio, Swap, SwapState, TokenSwaps},
-		ConversionToAssetBalance, StatusNotificationHook, ValueProvider,
+		swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
+		StatusNotificationHook, ValueProvider,
 	};
 	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
@@ -145,10 +148,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Size of order id bounded vec in storage
-		#[pallet::constant]
-		type OrderPairVecSize: Get<u32>;
-
 		/// The default minimum fulfillment amount for orders.
 		///
 		/// NOTE: The amount is expected to be denominated in native currency.
@@ -157,20 +156,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinFulfillmentAmountNative: Get<Self::BalanceOut>;
 
-		/// Type which provides a decimal conversion from native to another
-		/// currency.
-		///
-		/// NOTE: Required for `MinFulfillmentAmountNative`.
-		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
-			Self::BalanceOut,
-			Self::CurrencyId,
-			Self::BalanceOut,
-		>;
+		#[pallet::constant]
+		type NativeDecimals: Get<u32>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
 			Id = Self::OrderIdNonce,
-			Status = SwapState<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId>,
+			Status = SwapInfo<Self::BalanceIn, Self::BalanceOut, Self::CurrencyId, Self::Ratio>,
 			Error = DispatchError,
 		>;
 
@@ -334,7 +326,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::place_order())]
 		pub fn place_order(
 			origin: OriginFor<T>,
 			currency_in: T::CurrencyId,
@@ -613,7 +605,7 @@ pub mod pallet {
 
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
-				SwapState {
+				SwapInfo {
 					remaining: Swap {
 						amount_out: remaining_amount_out,
 						currency_in: order.currency_in,
@@ -621,6 +613,7 @@ pub mod pallet {
 					},
 					swapped_in: amount_in,
 					swapped_out: amount_out,
+					ratio,
 				},
 			)?;
 
@@ -671,7 +664,16 @@ pub mod pallet {
 		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::BalanceOut, DispatchError> {
-			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
+			let to_decimals = T::AssetRegistry::metadata(&currency)
+				.ok_or(Error::<T>::InvalidCurrencyId)?
+				.decimals;
+
+			Ok(convert_balance_decimals(
+				T::NativeDecimals::get(),
+				to_decimals,
+				T::MinFulfillmentAmountNative::get().into(),
+			)?
+			.into())
 		}
 	}
 
@@ -767,6 +769,13 @@ pub mod pallet {
 
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
+		}
+
+		fn market_ratio(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+		) -> Result<Self::Ratio, DispatchError> {
+			Self::market_ratio(currency_out, currency_in)
 		}
 	}
 

@@ -14,7 +14,7 @@
 use cfg_traits::{
 	benchmarking::{PoolBenchmarkHelper, PoolFeesBenchmarkHelper},
 	changes::ChangeGuard,
-	fee::{PoolFeeBucket, PoolFees as _},
+	fee::{PoolFeeBucket, PoolFeesMutate as _},
 };
 use cfg_types::pools::PoolFeeEditor;
 use frame_benchmarking::v2::*;

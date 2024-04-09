@@ -24,6 +24,7 @@ mod cases {
 	mod oracles;
 	mod proxy;
 	mod restricted_transfers;
+	mod rewards;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.

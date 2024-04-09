@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.25"
+version = "0.10.29"
 build = "build.rs"
 authors.workspace = true
 edition.workspace = true
