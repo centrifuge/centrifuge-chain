@@ -23,8 +23,10 @@ case $TARGET in
     rm -rf target/debug/deps/runtime_integration_tests-*
     rm -rf target/debug/build/runtime-integration*
     
-    git submodule update
+    git submodule status
+    git submodule update --init --recursive --remote
     find runtime/integration-tests/submodules/ -name "liquidity-pools" -print0 | xargs -0 -r du -h
+    git submodule status
 
     cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
