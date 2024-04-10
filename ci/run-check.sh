@@ -19,11 +19,18 @@ case $TARGET in
 
   test-integration)
     # TODO: Remove before merging PR
-    du -h target/debug/build/runtime-integration-tests-*
+    files=$(ls target/debug/build/runtime-integration-tests-* 2> /dev/null)
+    if [ -n "$files" ]; then
+      du -h $files
+    fi
     rm -rf target/debug/deps/runtime_integration_tests-*
     rm -rf target/debug/build/runtime-integration*
-    git submodule update
-    du -h runtime/integration-tests/submodules/liquidity-pools
+    
+    files=$(ls runtime/integration-tests/submodules/liquidity-pools 2> /dev/null)
+    if [ -n "$files" ]; then
+      du -h $files
+    fi
+
     cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
