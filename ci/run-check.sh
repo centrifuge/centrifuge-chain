@@ -19,9 +19,9 @@ case $TARGET in
 
   test-integration)
     # TODO: Remove before merging PR
-    find . -type d -name "target" -maxdepth 10
+    find "." -type d -name "target" -maxdepth 10
 
-    exit 0
+    exit 1
 
     find target/debug/build/ -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
     rm -rf target/debug/deps/runtime_integration_tests-*
