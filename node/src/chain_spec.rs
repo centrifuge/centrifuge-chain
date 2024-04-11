@@ -36,7 +36,7 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::{account_conversion::convert_evm_address, evm::precompile::H160Addresses};
+use runtime_common::{account_conversion::AccountConverter, evm::precompile::H160Addresses};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -557,7 +557,7 @@ fn centrifuge_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		convert_evm_address(chain_id, addr)
+		AccountConverter::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -700,7 +700,7 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		convert_evm_address(chain_id, addr)
+		AccountConverter::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -829,7 +829,7 @@ fn development_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		convert_evm_address(chain_id, addr)
+		AccountConverter::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
