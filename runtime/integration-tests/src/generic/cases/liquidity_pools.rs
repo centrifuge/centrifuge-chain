@@ -1,6 +1,5 @@
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, CouncilCollective, OrderId, PoolId,
-	TrancheId,
+	currency_decimals, parachains, AccountId, Balance, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency},
@@ -4769,9 +4768,7 @@ mod development {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
 						.add(genesis::balances::<T>(cfg(1_000)))
-						.add(genesis::council_members::<T, CouncilCollective>(
-							get_council_members(),
-						))
+						.add(genesis::council_members::<T>(get_council_members()))
 						.storage(),
 				);
 
@@ -5094,9 +5091,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 
@@ -5165,9 +5160,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 
@@ -5223,9 +5216,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 

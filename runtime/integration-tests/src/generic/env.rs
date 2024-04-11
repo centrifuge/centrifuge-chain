@@ -31,6 +31,13 @@ pub enum Blocks<Event> {
 	/// computationally very fast.
 	/// (i.e. years)
 	JumpBySeconds(Seconds),
+
+	/// Jumps to a block in the future.
+	/// Only one real block is created in the process.
+	/// This can be used to emulate passing time during long periods
+	/// computationally very fast.
+	/// (i.e. years)
+	JumpByNumber(BlockNumber),
 }
 
 impl<Event> Blocks<Event> {
@@ -53,6 +60,7 @@ impl<Event> Blocks<Event> {
 				};
 				(next + blocks.saturating_sub(1), next + blocks)
 			}
+			Blocks::JumpByNumber(n) => (next + (*n - 1), next + *n),
 		};
 		from..to
 	}

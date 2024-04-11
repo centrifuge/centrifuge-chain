@@ -917,6 +917,7 @@ fn get_parachain_builder(
 		.build_storage()
 		.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
 	);
+	/*
 	state.insert_storage(
 		pallet_aura::GenesisConfig::<Runtime> {
 			authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
@@ -924,6 +925,7 @@ fn get_parachain_builder(
 		.build_storage()
 		.expect("ESSENTIAL: Pallet Aura GenesisBuild must not fail at this stage."),
 	);
+	*/
 	state.insert_storage(
 		parachain_info::GenesisConfig::<Runtime> {
 			_config: Default::default(),

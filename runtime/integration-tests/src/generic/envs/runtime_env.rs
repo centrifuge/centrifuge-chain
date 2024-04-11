@@ -19,7 +19,7 @@ use sp_core::{sr25519::Public, Get, H256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
-	BuildStorage, Digest, DigestItem, DispatchError, Storage,
+	Digest, DigestItem, DispatchError, Storage,
 };
 use sp_timestamp::Timestamp;
 
@@ -53,43 +53,13 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	}
 
 	fn from_storage(
-		mut _relay_storage: Storage,
-		mut parachain_storage: Storage,
-		mut sibling_storage: Storage,
+		_relay_storage: Storage,
+		parachain_storage: Storage,
+		sibling_storage: Storage,
 	) -> Self {
-		// Needed for the aura usage
-		pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Public([0; 32]))],
-		}
-		.assimilate_storage(&mut parachain_storage)
-		.unwrap();
-
-		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
-
-		// NOTE: Setting the current on-chain runtime version to the latest one, to
-		//       prevent running migrations
-		parachain_ext.execute_with(|| {
-			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
-				<T as frame_system::Config>::Version::get(),
-			))
-		});
-
-		parachain_ext.execute_with(|| Self::prepare_block(1));
-
-		// Needed for the aura usage
-		pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Public([0; 32]))],
-		}
-		.assimilate_storage(&mut sibling_storage)
-		.unwrap();
-
-		let mut sibling_ext = sp_io::TestExternalities::new(sibling_storage);
-
-		sibling_ext.execute_with(|| Self::prepare_block(1));
-
 		Self {
-			parachain_ext: Rc::new(RefCell::new(parachain_ext)),
-			sibling_ext: Rc::new(RefCell::new(sibling_ext)),
+			parachain_ext: Self::build_externality(parachain_storage),
+			sibling_ext: Self::build_externality(sibling_storage),
 			pending_extrinsics: Vec::default(),
 			pending_xcm: Vec::default(),
 			_config: PhantomData,
@@ -200,6 +170,27 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 }
 
 impl<T: Runtime> RuntimeEnv<T> {
+	fn build_externality(storage: Storage) -> Rc<RefCell<sp_io::TestExternalities>> {
+		let mut ext = sp_io::TestExternalities::new(storage);
+
+		ext.execute_with(|| {
+			// NOTE: Setting the current on-chain runtime version to the latest one, to
+			//       prevent running migrations
+			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
+				<T as frame_system::Config>::Version::get(),
+			));
+
+			// If no authorities we set a default authority
+			if pallet_aura::Pallet::<T>::authorities().is_empty() {
+				pallet_aura::Pallet::<T>::initialize_authorities(&[AuraId::from(Public([0; 32]))]);
+			}
+
+			Self::prepare_block(1);
+		});
+
+		Rc::new(RefCell::new(ext))
+	}
+
 	fn process_pending_extrinsics(&mut self) {
 		let pending_extrinsics = mem::replace(&mut self.pending_extrinsics, Vec::default());
 

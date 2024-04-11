@@ -15,6 +15,7 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod account_derivation;
+	mod block_rewards;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
@@ -24,7 +25,6 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
-	mod rewards;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.

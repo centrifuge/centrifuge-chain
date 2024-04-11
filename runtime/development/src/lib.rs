@@ -103,7 +103,7 @@ use runtime_common::{
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	gateway,
+	gateway, instances,
 	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
@@ -1710,7 +1710,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
+impl pallet_rewards::Config<instances::BlockRewards> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
@@ -2406,14 +2406,14 @@ impl_runtime_apis! {
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
 		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, instances::BlockRewards>::list_currencies(&account_id),
 				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
 			}
 		}
 
 		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, instances::BlockRewards> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 			}
 		}
