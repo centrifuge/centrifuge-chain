@@ -77,8 +77,16 @@ use crate::{
 			genesis::Genesis,
 		},
 	},
-	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
+	utils::accounts::Keyring,
 };
+
+/// The AUSD asset id
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
+/// The USDT asset id
+pub const USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
+pub const AUSD_ED: Balance = 1_000_000_000;
+pub const USDT_ED: Balance = 10_000;
 
 pub mod utils {
 	use super::*;
@@ -280,7 +288,7 @@ mod development {
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
 	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
-		DomainAddress::EVM(crate::utils::MOONBEAM_EVM_CHAIN_ID, [0; 20]);
+		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
 	pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
@@ -1002,7 +1010,7 @@ mod development {
 
 				// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
 				// successfully when given a valid pool + tranche id pair.
-				let new_member = DomainAddress::EVM(crate::utils::MOONBEAM_EVM_CHAIN_ID, [3; 20]);
+				let new_member = DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [3; 20]);
 
 				// Make ALICE the MembersListAdmin of this Pool
 				assert_ok!(pallet_permissions::Pallet::<T>::add(
@@ -4952,7 +4960,7 @@ mod development {
 								interior: X1(Parachain(T::FudgeHandle::SIBLING_ID)),
 							}
 							.into(),
-							crate::utils::GLMR_CURRENCY_ID,
+							GLMR_CURRENCY_ID,
 						);
 
 						assert_ok!(
@@ -6810,11 +6818,6 @@ mod centrifuge {
 			);
 		}
 
-		#[test]
-		fn _test() {
-			restrict_cfg_extrinsic::<crate::chain::centrifuge::Runtime>()
-		}
-
 		fn restrict_cfg_extrinsic<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7562,6 +7565,7 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
+		crate::test_for_runtimes!([centrifuge], restrict_cfg_extrinsic);
 		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 

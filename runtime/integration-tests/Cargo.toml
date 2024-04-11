@@ -152,8 +152,8 @@ pallet-xcm-transactor = { workspace = true, features = ["std"] }
 parachain-info = { workspace = true, features = ["std"] }
 
 [features]
+# There is no need for integration test to add new features.
+# Just add the required ones to default:
 default = [
   "development-runtime/instant-voting",
 ]
-
-fast-runtime = ["development-runtime/fast-runtime"]

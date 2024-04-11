@@ -22,18 +22,10 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-const STAKER: Keyring = Keyring::Alice;
-const DEFAULT_COLLATORS: [Keyring; 6] = [
-	Keyring::Alice,
-	Keyring::Bob,
-	Keyring::Charlie,
-	Keyring::Dave,
-	Keyring::Eve,
-	Keyring::Ferdie,
-];
-
 crate::test_for_runtimes!(all, block_rewards_api);
 fn block_rewards_api<T: Runtime>() {
+	const STAKER: Keyring = Keyring::Alice;
+
 	RuntimeEnv::<T>::default().parachain_state_mut(|| {
 		let group_id = 1u32;
 		let amount = 100 * CFG;
@@ -130,26 +122,35 @@ fn apply_and_check_session<T: Runtime>(
 
 	pallet_session::Pallet::<T>::rotate_session();
 
-	/* TODO: pending to fix. Why try_into() fails getting the reward_event?
+	/* TODO: pending to fix. Why try_into() fails getting the reward_event::GroupRewarded?
+
+	// The event exists in this list:
+	dbg!(frame_system::Pallet::<T>::events())
+
+	// But not in in this list (that is the implementation of find_event()),
+	// so try_into returns an Err for it.
 	dbg!(frame_system::Pallet::<T>::events()
 		.into_iter()
 		.rev()
 		.find_map(|record| record.event.try_into().ok())
 		.flatten());
 
+	// But later, if manually I create the event as follows:
+	let e = T::RuntimeEventExt::from(pallet_rewards::Event::<T, BlockRewards>::GroupRewarded {
+		group_id: 1,
+		amount: 2,
+	});
+
+	// And I call try_into(), it works.
+	let re: pallet_rewards::Event<T, BlockRewards> = e.try_into().ok().unwrap();
+	*/
+
+	/* // Uncomment once fix the above issue
 	utils::find_event::<T, _, _>(|e| match e {
 		pallet_rewards::Event::<_, BlockRewards>::GroupRewarded { .. } => Some(true),
 		_ => None,
 	})
 	.unwrap();
-
-	// But this works:
-	let e = T::RuntimeEventExt::from(pallet_rewards::Event::<T, BlockRewards>::GroupRewarded {
-		group_id: 1,
-		amount: 2,
-	});
-	let re: pallet_rewards::Event<T, BlockRewards> = e.try_into().ok().unwrap();
-	dbg!(re);
 	*/
 
 	utils::find_event::<T, _, _>(|e| match e {

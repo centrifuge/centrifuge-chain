@@ -1,7 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
-use cfg_types::ParaId;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
@@ -37,7 +36,6 @@ pub struct RuntimeEnv<T: Runtime> {
 	parachain_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
-	pending_xcm: Vec<(ParaId, Vec<u8>)>,
 	_config: PhantomData<T>,
 }
 
@@ -61,7 +59,6 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			parachain_ext: Self::build_externality(parachain_storage),
 			sibling_ext: Self::build_externality(sibling_storage),
 			pending_extrinsics: Vec::default(),
-			pending_xcm: Vec::default(),
 			_config: PhantomData,
 		}
 	}

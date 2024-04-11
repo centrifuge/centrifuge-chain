@@ -201,7 +201,6 @@ pub mod utils {
 
 mod tests {
 	use super::*;
-	struct MockEnv;
 
 	const SLOT_DURATION: Seconds = 12;
 	const EMPTY: [BlockNumber; 0] = [];
