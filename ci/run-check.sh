@@ -20,8 +20,7 @@ case $TARGET in
   test-integration)
     # TODO: Remove before merging PR
     find "." -type d -name "target"
-
-    # locate --directory "target"
+    # locate --directory "target" 
 
     exit 1
 
