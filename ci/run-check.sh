@@ -31,8 +31,6 @@ case $TARGET in
     find runtime/integration-tests/submodules/ -name "liquidity-pools" -print0 | xargs -0 -r du -h
     # git submodule status
 
-    exit 1
-
     cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
