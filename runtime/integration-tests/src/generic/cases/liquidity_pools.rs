@@ -45,7 +45,7 @@ use polkadot_runtime_parachains::{
 	paras::{ParaGenesisArgs, ParaKind},
 };
 use runtime_common::{
-	account_conversion::{convert_evm_address, AccountConverter},
+	account_conversion::AccountConverter,
 	foreign_investments::IdentityPoolCurrencyConverter,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
@@ -4773,7 +4773,8 @@ mod development {
 				) {
 					let chain_id = env.parachain_state(|| pallet_evm_chain_id::Pallet::<T>::get());
 
-					let derived_account = convert_evm_address(chain_id, address.to_fixed_bytes());
+					let derived_account =
+						AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
 
 					env.parachain_state_mut(|| {
 						pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)

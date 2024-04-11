@@ -18,42 +18,61 @@ use sp_runtime::traits::Convert;
 use staging_xcm::v3;
 use staging_xcm_executor::traits::ConvertLocation;
 
-/// Converts an EVM address from a given chain into a local AccountId
-pub fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
-	// We use a custom encoding here rather than relying on
-	// `AccountIdConversion` for a couple of reasons:
-	// 1. We have very few bytes to spare, so choosing our own fields is nice
-	// 2. AccountIdConversion puts the tag first, which can unbalance the storage
-	//    trees if users create many H160-derived accounts. We put the tag last
-	//    here.
-	let tag = b"EVM";
-	let mut bytes = [0; 32];
-	bytes[0..20].copy_from_slice(&address);
-	bytes[20..28].copy_from_slice(&chain_id.to_be_bytes());
-	bytes[28..31].copy_from_slice(tag);
-	AccountId::new(bytes)
-}
-
-/// Common converter code for translating from eth accounts
-pub struct AccountMapping<R>(sp_std::marker::PhantomData<R>);
-
-// Implement EVM account conversion using our shared conversion code
-impl<R: pallet_evm_chain_id::Config> AddressMapping<AccountId> for AccountMapping<R> {
-	fn into_account_id(address: H160) -> AccountId {
-		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
-		convert_evm_address(chain_id, address.0)
-	}
-}
-
 /// Common converter code for translating accounts across different
 /// domains and chains.
 pub struct AccountConverter;
+
+impl AccountConverter {
+	/// Converts an EVM address from a given chain into a local AccountId
+	pub fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
+		// We use a custom encoding here rather than relying on
+		// `AccountIdConversion` for a couple of reasons:
+		// 1. We have very few bytes to spare, so choosing our own fields is nice
+		// 2. AccountIdConversion puts the tag first, which can unbalance the storage
+		//    trees if users create many H160-derived accounts. We put the tag last
+		//    here.
+		let tag = b"EVM";
+		let mut bytes = [0; 32];
+		bytes[0..20].copy_from_slice(&address);
+		bytes[20..28].copy_from_slice(&chain_id.to_be_bytes());
+		bytes[28..31].copy_from_slice(tag);
+		AccountId::new(bytes)
+	}
+
+	pub fn location_to_account<XcmConverter: ConvertLocation<AccountId>>(
+		location: v3::MultiLocation,
+	) -> Option<AccountId> {
+		// Try xcm logic first
+		match XcmConverter::convert_location(&location) {
+			Some(acc) => Some(acc),
+			None => {
+				// match EVM logic
+				match location {
+					v3::MultiLocation {
+						parents: 0,
+						interior:
+							v3::Junctions::X1(v3::Junction::AccountKey20 {
+								network: Some(v3::NetworkId::Ethereum { chain_id }),
+								key,
+							}),
+					} => Some(Self::convert_evm_address(chain_id, key)),
+					_ => None,
+				}
+			}
+		}
+	}
+
+	pub fn into_account_id<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
+		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
+		Self::convert_evm_address(chain_id, address.0)
+	}
+}
 
 impl Convert<DomainAddress, AccountId> for AccountConverter {
 	fn convert(domain_address: DomainAddress) -> AccountId {
 		match domain_address {
 			DomainAddress::Centrifuge(addr) => AccountId::new(addr),
-			DomainAddress::EVM(chain_id, addr) => convert_evm_address(chain_id, addr),
+			DomainAddress::EVM(chain_id, addr) => Self::convert_evm_address(chain_id, addr),
 		}
 	}
 }
@@ -66,32 +85,20 @@ impl Convert<(Domain, [u8; 32]), AccountId> for AccountConverter {
 			Domain::EVM(chain_id) => {
 				let mut bytes20 = [0; 20];
 				bytes20.copy_from_slice(&account[..20]);
-				convert_evm_address(chain_id, bytes20)
+				Self::convert_evm_address(chain_id, bytes20)
 			}
 		}
 	}
 }
 
-pub fn location_to_account<XcmConverter: ConvertLocation<AccountId>>(
-	location: v3::MultiLocation,
-) -> Option<AccountId> {
-	// Try xcm logic first
-	match XcmConverter::convert_location(&location) {
-		Some(acc) => Some(acc),
-		None => {
-			// match EVM logic
-			match location {
-				v3::MultiLocation {
-					parents: 0,
-					interior:
-						v3::Junctions::X1(v3::Junction::AccountKey20 {
-							network: Some(v3::NetworkId::Ethereum { chain_id }),
-							key,
-						}),
-				} => Some(convert_evm_address(chain_id, key)),
-				_ => None,
-			}
-		}
+// A type that use AccountConverter to carry along with it the Runtime type and
+// offer an `AddressMapping` implementation.
+// Required by `pallet_evm`
+pub struct RuntimeAccountConverter<R>(sp_std::marker::PhantomData<R>);
+
+impl<R: pallet_evm_chain_id::Config> AddressMapping<AccountId> for RuntimeAccountConverter<R> {
+	fn into_account_id(address: H160) -> AccountId {
+		AccountConverter::into_account_id::<R>(address)
 	}
 }
 

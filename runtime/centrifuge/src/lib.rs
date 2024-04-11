@@ -91,7 +91,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
-	account_conversion::{self, AccountConverter, AccountMapping},
+	account_conversion::{self, AccountConverter, RuntimeAccountConverter},
 	asset_registry,
 	evm::{
 		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
@@ -1963,7 +1963,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for Runtime {
-	type AddressMapping = AccountMapping<Runtime>;
+	type AddressMapping = RuntimeAccountConverter<Runtime>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<AccountId>;
@@ -2421,7 +2421,7 @@ impl_runtime_apis! {
 	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
 		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
-			account_conversion::location_to_account::<LocationToAccountId>(location)
+			AccountConverter::location_to_account::<LocationToAccountId>(location)
 		}
 	}
 
