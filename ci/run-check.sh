@@ -21,13 +21,13 @@ case $TARGET in
     # TODO: Remove before merging PR
     find "." -type d -name "target"
 
-    locate --directory "target"
+    # locate --directory "target"
 
     exit 1
 
     find target/debug/build/ -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
-    rm -rf target/debug/deps/runtime_integration_tests-*
-    rm -rf target/debug/build/runtime-integration*
+    # rm -rf target/debug/deps/runtime_integration_tests-*
+    # rm -rf target/debug/build/runtime-integration*
     
     # git submodule status
     # git submodule update --init --recursive --remote
