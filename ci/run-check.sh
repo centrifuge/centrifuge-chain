@@ -8,10 +8,10 @@ rustc --version
 rustup --version
 cargo --version
 
-# case $TARGET in
- cargo-build)
-   cargo build -p centrifuge-chain --release "$@"
-   ;;
+case $TARGET in
+#  cargo-build)
+#    cargo build -p centrifuge-chain --release "$@"
+#    ;;
 #
 #  test-general)
 #    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
@@ -88,4 +88,4 @@ cargo --version
 #      fi
 #      subalfred check features $dir
 #    done
-# esac
+esac
