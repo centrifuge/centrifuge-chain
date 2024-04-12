@@ -30,7 +30,7 @@ use crate::{
 	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
 };
 
-const LOCAL_PARA_ID: ParaId = ParaId(2000);
+pub const LOCAL_PARA_ID: ParaId = ParaId::new(2000u32);
 
 enum ChainIdentity {
 	Altair,
