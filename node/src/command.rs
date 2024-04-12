@@ -30,6 +30,8 @@ use crate::{
 	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
 };
 
+const LOCAL_PARA_ID: ParaId = ParaId(2000);
+
 enum ChainIdentity {
 	Altair,
 	Centrifuge,
@@ -62,26 +64,23 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 	}
 }
 
-fn load_spec(
-	id: &str,
-	para_id: ParaId,
-) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
 		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
-		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(para_id))),
-		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(para_id))),
+		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(LOCAL_PARA_ID))),
+		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(LOCAL_PARA_ID))),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
-		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
-		"altair-local" => Ok(Box::new(chain_spec::altair_local(para_id))),
+		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(LOCAL_PARA_ID))),
+		"altair-local" => Ok(Box::new(chain_spec::altair_local(LOCAL_PARA_ID))),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
-		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(para_id))),
+		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(LOCAL_PARA_ID))),
 		"antares" => Ok(Box::new(chain_spec::antares_config())),
-		"antares-local" => Ok(Box::new(chain_spec::antares_local(para_id))),
+		"antares-local" => Ok(Box::new(chain_spec::antares_local(LOCAL_PARA_ID))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(para_id))),
-		"demo" => Ok(Box::new(chain_spec::demo(para_id))),
-		"development" => Ok(Box::new(chain_spec::development(para_id))),
-		"development-local" => Ok(Box::new(chain_spec::development_local(para_id))),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(LOCAL_PARA_ID))),
+		"demo" => Ok(Box::new(chain_spec::demo(LOCAL_PARA_ID))),
+		"development" => Ok(Box::new(chain_spec::development(LOCAL_PARA_ID))),
+		"development-local" => Ok(Box::new(chain_spec::development_local(LOCAL_PARA_ID))),
 		"" => Err(String::from("No Chain-id provided")),
 
 		path => {
@@ -133,7 +132,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		load_spec(id, self.parachain_id.unwrap_or(10001).into())
+		load_spec(id)
 	}
 }
 
