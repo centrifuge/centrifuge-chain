@@ -46,11 +46,7 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identify(&self) -> ChainIdentity {
 		if self.id().starts_with("centrifuge") || self.id().starts_with("catalyst") {
 			ChainIdentity::Centrifuge
-		} else if self.id().starts_with("altair")
-			|| self.id().starts_with("charcoal")
-			|| self.id().starts_with("antares")
-			|| self.id().starts_with("algol")
-		{
+		} else if self.id().starts_with("altair") {
 			ChainIdentity::Altair
 		} else {
 			ChainIdentity::Development
@@ -67,20 +63,12 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
 		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
-		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(LOCAL_PARA_ID))),
 		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(LOCAL_PARA_ID))),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
-		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(LOCAL_PARA_ID))),
 		"altair-local" => Ok(Box::new(chain_spec::altair_local(LOCAL_PARA_ID))),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
-		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(LOCAL_PARA_ID))),
-		"antares" => Ok(Box::new(chain_spec::antares_config())),
-		"antares-local" => Ok(Box::new(chain_spec::antares_local(LOCAL_PARA_ID))),
-		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(LOCAL_PARA_ID))),
 		"demo" => Ok(Box::new(chain_spec::demo(LOCAL_PARA_ID))),
 		"development" => Ok(Box::new(chain_spec::development(LOCAL_PARA_ID))),
-		"development-local" => Ok(Box::new(chain_spec::development_local(LOCAL_PARA_ID))),
 		"" => Err(String::from("No Chain-id provided")),
 
 		path => {

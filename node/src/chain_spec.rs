@@ -141,47 +141,6 @@ pub fn centrifuge_config() -> CentrifugeChainSpec {
 	.unwrap()
 }
 
-pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	CentrifugeChainSpec::from_genesis(
-		"Centrifuge Dev",
-		"centrifuge_dev",
-		ChainType::Live,
-		move || {
-			centrifuge_genesis(
-				vec![
-					(
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<AuraId>("Alice"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<AuraId>("Bob"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Charlie"),
-						get_from_seed::<AuraId>("Charlie"),
-					),
-				],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(100000000 * CFG),
-				para_id,
-				council_members_bootstrap(),
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
-}
-
 pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
@@ -218,83 +177,11 @@ pub fn catalyst_config() -> CentrifugeChainSpec {
 		.unwrap()
 }
 
-pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	CentrifugeChainSpec::from_genesis(
-		"Catalyst Local",
-		"catalyst_local",
-		ChainType::Local,
-		move || {
-			centrifuge_genesis(
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * CFG),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
-}
-
 pub fn altair_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(
 		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
 	)
 	.unwrap()
-}
-
-pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Altair Dev",
-		"altair_dev",
-		ChainType::Live,
-		move || {
-			altair_genesis(
-				vec![
-					(
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<AuraId>("Alice"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<AuraId>("Bob"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Charlie"),
-						get_from_seed::<AuraId>("Charlie"),
-					),
-				],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(100000000 * AIR),
-				para_id,
-				council_members_bootstrap(),
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
 }
 
 pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
@@ -317,76 +204,6 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 				Some(100000000 * AIR),
 				para_id,
 				council_members_bootstrap(),
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
-}
-
-pub fn antares_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
-}
-
-pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Antares Local",
-		"antares_local",
-		ChainType::Local,
-		move || {
-			altair_genesis(
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * AIR),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
-}
-
-pub fn charcoal_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
-}
-
-pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Charcoal Local",
-		"charcoal_local",
-		ChainType::Local,
-		move || {
-			altair_genesis(
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * AIR),
-				para_id,
-				Default::default(),
 			)
 		},
 		vec![],
@@ -442,37 +259,6 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		"Dev Live",
 		"devel_live",
 		ChainType::Live,
-		move || {
-			development_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * CFG),
-				para_id,
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(properties),
-		development_extensions(para_id.into()),
-	)
-}
-
-pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DEVEL".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	DevelopmentChainSpec::from_genesis(
-		"Dev Local",
-		"devel_local",
-		ChainType::Local,
 		move || {
 			development_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
