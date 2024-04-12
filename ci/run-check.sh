@@ -22,7 +22,7 @@ case $TARGET in
     find "." -type d -name "target"
     # locate --directory "target" 
 
-    find target/debug/build/ -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
+    find . -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
     # rm -rf target/debug/deps/runtime_integration_tests-*
     # rm -rf target/debug/build/runtime-integration*
     
