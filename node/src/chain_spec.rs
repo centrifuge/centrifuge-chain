@@ -664,10 +664,7 @@ fn centrifuge_genesis(
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
 			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
-			last_update: std::time::SystemTime::now()
-				.duration_since(std::time::UNIX_EPOCH)
-				.expect("SystemTime before UNIX EPOCH!")
-				.as_secs(),
+			last_update: Default::default(),
 		},
 		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
@@ -770,10 +767,7 @@ fn altair_genesis(
 				.collect(),
 			collator_reward: 98_630 * MILLI_AIR,
 			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
-			last_update: std::time::SystemTime::now()
-				.duration_since(std::time::UNIX_EPOCH)
-				.expect("SystemTime before UNIX EPOCH!")
-				.as_secs(),
+			last_update: Default::default(),
 		},
 		block_rewards_base: Default::default(),
 		collator_allowlist: Default::default(),
@@ -964,10 +958,7 @@ fn development_genesis(
 				.collect(),
 			collator_reward: 8_325 * MILLI_CFG,
 			treasury_inflation_rate: Rate::saturating_from_rational(3, 100),
-			last_update: std::time::SystemTime::now()
-				.duration_since(std::time::UNIX_EPOCH)
-				.expect("SystemTime before UNIX EPOCH!")
-				.as_secs(),
+			last_update: Default::default(),
 		},
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
