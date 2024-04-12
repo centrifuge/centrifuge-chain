@@ -183,10 +183,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
 
-		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
-			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
-		}
-
 		let pool_details = PoolDetails {
 			currency,
 			tranches,
@@ -217,6 +213,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
 				)?,
 		});
+
+		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
+			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
+		}
 
 		T::Permission::add(
 			PermissionScope::Pool(pool_id),
