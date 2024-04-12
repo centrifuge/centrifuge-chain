@@ -8,7 +8,7 @@ rustc --version
 rustup --version
 cargo --version
 
-case $TARGET in
+# case $TARGET in
 #  cargo-build)
 #    cargo build -p centrifuge-chain --release "$@"
 #    ;;
@@ -88,4 +88,4 @@ case $TARGET in
 #      fi
 #      subalfred check features $dir
 #    done
-esac
+# esac
