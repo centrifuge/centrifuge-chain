@@ -24,7 +24,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          cache: disabled
+          cache: enabled
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
