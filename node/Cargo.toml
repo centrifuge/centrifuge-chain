@@ -40,6 +40,7 @@ sc-chain-spec = { workspace = true, default-features = true }
 sc-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
 sc-client-api = { workspace = true, default-features = true }
 sc-consensus = { workspace = true, default-features = true }
+sc-consensus-aura = { workspace = true, default-features = true }
 sc-consensus-grandpa = { workspace = true, default-features = true }
 sc-executor = { workspace = true, default-features = true }
 sc-network = { workspace = true, default-features = true }
@@ -58,6 +59,7 @@ sp-blockchain = { workspace = true, default-features = true }
 sp-consensus = { workspace = true, default-features = true }
 sp-consensus-aura = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
+sp-inherents = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 sp-keystore = { workspace = true, default-features = true }
 sp-offchain = { workspace = true, default-features = true }
@@ -69,13 +71,15 @@ substrate-frame-rpc-system = { workspace = true, default-features = true }
 substrate-prometheus-endpoint = { workspace = true, default-features = true }
 
 # Cli specific
+frame-benchmarking = { workspace = true, default-features = true }
 frame-benchmarking-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
-try-runtime-cli = { workspace = true, default-features = true, optional = true }
 
 # Cumulus
 cumulus-client-cli = { workspace = true, default-features = true }
+cumulus-client-collator = { workspace = true, default-features = true }
 cumulus-client-consensus-aura = { workspace = true, default-features = true }
 cumulus-client-consensus-common = { workspace = true, default-features = true }
+cumulus-client-consensus-proposer = { workspace = true, default-features = true }
 cumulus-client-network = { workspace = true, default-features = true }
 cumulus-client-service = { workspace = true, default-features = true }
 cumulus-pallet-session-benchmarking = { workspace = true, default-features = true }
@@ -88,7 +92,7 @@ cumulus-relay-chain-interface = { workspace = true, default-features = true }
 polkadot-cli = { workspace = true, default-features = true }
 polkadot-primitives = { workspace = true, default-features = true }
 polkadot-service = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = true }
+staging-xcm = { workspace = true, default-features = true }
 
 # Local
 altair-runtime = { workspace = true, default-features = true }
@@ -101,10 +105,6 @@ pallet-anchors = { workspace = true, default-features = true }
 pallet-pool-system = { workspace = true, default-features = true }
 runtime-common = { workspace = true, default-features = true }
 
-# benchmarking
-frame-benchmarking = { workspace = true, default-features = true, optional = true }
-frame-system-benchmarking = { workspace = true, default-features = true, optional = true }
-
 # frontier
 fc-consensus = { workspace = true, default-features = true }
 fc-db = { workspace = true, default-features = true, features = ["rocksdb"] }
@@ -112,6 +112,7 @@ fc-mapping-sync = { workspace = true, default-features = true }
 fc-rpc = { workspace = true, default-features = true }
 fc-rpc-core = { workspace = true, default-features = true }
 fp-consensus = { workspace = true, default-features = true }
+fp-dynamic-fee = { workspace = true, default-features = true }
 fp-evm = { workspace = true, default-features = true }
 fp-rpc = { workspace = true, default-features = true }
 fp-storage = { workspace = true, default-features = true }
@@ -123,7 +124,7 @@ substrate-build-script-utils = { workspace = true, default-features = true }
 vergen = { workspace = true, default-features = true }
 
 [features]
-default = ["cli"]
+default = []
 runtime-benchmarks = [
   "altair-runtime/runtime-benchmarks",
   "centrifuge-runtime/runtime-benchmarks",
@@ -134,7 +135,6 @@ runtime-benchmarks = [
   "development-runtime/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
-  "frame-system-benchmarking/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
@@ -161,10 +161,6 @@ try-runtime = [
   "polkadot-service/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
-  "try-runtime-cli",
-]
-cli = [
-  "try-runtime-cli",
 ]
 fast-runtime = [
   "altair-runtime/fast-runtime",

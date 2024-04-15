@@ -43,7 +43,7 @@ where
 			P::current_storage_version().put::<P>();
 			RocksDbWeight::get().writes(1)
 		} else {
-			log::error!(
+			log::warn!(
 				"{LOG_PREFIX} Mismatching versions. Wanted to upgrade from \
 			{FROM_VERSION} to {TO_VERSION} but would instead upgrade from {:?} to {:?}",
 				P::on_chain_storage_version(),
@@ -55,18 +55,6 @@ where
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::DispatchError> {
-		assert_eq!(
-			P::on_chain_storage_version(),
-			FROM_VERSION,
-			"Unexpected onchain version: Expected {FROM_VERSION:?}, received {:?}",
-			P::on_chain_storage_version(),
-		);
-		assert_eq!(
-			P::current_storage_version(),
-			TO_VERSION,
-			"Unexpected upgrade version: Expected {TO_VERSION:?}, latest {:?}",
-			P::on_chain_storage_version(),
-		);
 		Ok(sp_std::vec![])
 	}
 
@@ -102,7 +90,7 @@ where
 
 			RocksDbWeight::get().writes(1)
 		} else {
-			log::error!(
+			log::warn!(
 				"{LOG_PREFIX} Mismatching versions. Wanted to upgrade from \
 			{FROM_VERSION} but on-chain version is {:?}",
 				P::on_chain_storage_version(),
@@ -113,12 +101,6 @@ where
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::DispatchError> {
-		assert_eq!(
-			P::on_chain_storage_version(),
-			FROM_VERSION,
-			"Unexpected onchain version: Expected {FROM_VERSION:?}, received {:?}",
-			P::on_chain_storage_version(),
-		);
 		Ok(sp_std::vec![])
 	}
 

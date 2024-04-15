@@ -9,7 +9,6 @@ use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
 	storage::{transactional, TransactionOutcome},
-	traits::GenesisBuild,
 };
 use frame_system::LastRuntimeUpgradeInfo;
 use parity_scale_codec::Encode;
@@ -20,7 +19,7 @@ use sp_core::{sr25519::Public, Get, H256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
-	Digest, DigestItem, DispatchError, Storage,
+	BuildStorage, Digest, DigestItem, DispatchError, Storage,
 };
 use sp_timestamp::Timestamp;
 
@@ -287,6 +286,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 	}
 }
 
+#[cfg(test)]
 mod tests {
 	use cfg_primitives::CFG;
 

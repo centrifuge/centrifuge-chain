@@ -1,6 +1,6 @@
 use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
-use frame_support::RuntimeDebug;
+use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};

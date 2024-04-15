@@ -3,6 +3,7 @@ use cfg_traits::{
 };
 use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_system::RawOrigin;
+use sp_std::vec; // required for #[benchmarks]
 
 use crate::{
 	pallet::{Call, Collection, Config, Pallet},

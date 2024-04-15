@@ -12,6 +12,7 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
+use fc_rpc::pending::AuraConsensusDataProvider;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,
@@ -23,6 +24,7 @@ use jsonrpsee::RpcModule;
 use sc_client_api::{
 	backend::{AuxStore, Backend, StateBackend, StorageProvider},
 	client::BlockchainEvents,
+	UsageProvider,
 };
 use sc_network::NetworkService;
 use sc_network_sync::SyncingService;
@@ -32,11 +34,13 @@ use sc_transaction_pool_api::TransactionPool;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use sp_consensus_aura::{sr25519::AuthorityId as AuraId, AuraApi};
 use sp_core::H256;
+use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
 /// Extra dependencies for Ethereum compatibility.
-pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
+pub struct Deps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
 	/// The client instance to use.
 	pub client: Arc<C>,
 	/// Transaction pool instance.
@@ -60,7 +64,7 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	/// Cache for Ethereum block data.
 	pub block_data_cache: Arc<EthBlockDataCacheTask<B>>,
 	/// EthFilterApi pool.
-	pub filter_pool: FilterPool,
+	pub filter_pool: Option<FilterPool>,
 	/// Maximum number of logs in a query.
 	pub max_past_logs: u32,
 	/// Fee history cache.
@@ -72,30 +76,8 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	pub execute_gas_limit_multiplier: u64,
 	/// Mandated parent hashes for a given block hash.
 	pub forced_parent_hashes: Option<BTreeMap<H256, H256>>,
-}
-
-impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
-	fn clone(&self) -> Self {
-		Self {
-			client: self.client.clone(),
-			pool: self.pool.clone(),
-			graph: self.graph.clone(),
-			converter: self.converter.clone(),
-			is_authority: self.is_authority,
-			enable_dev_signer: self.enable_dev_signer,
-			network: self.network.clone(),
-			sync: self.sync.clone(),
-			frontier_backend: self.frontier_backend.clone(),
-			overrides: self.overrides.clone(),
-			block_data_cache: self.block_data_cache.clone(),
-			filter_pool: self.filter_pool.clone(),
-			max_past_logs: self.max_past_logs,
-			fee_history_cache: self.fee_history_cache.clone(),
-			fee_history_cache_limit: self.fee_history_cache_limit,
-			execute_gas_limit_multiplier: self.execute_gas_limit_multiplier,
-			forced_parent_hashes: self.forced_parent_hashes.clone(),
-		}
-	}
+	/// Something that can create the inherent data providers for pending state
+	pub pending_create_inherent_data_providers: CIDP,
 }
 
 pub fn overrides_handle<B: BlockT<Hash = H256>, C, BE>(client: Arc<C>) -> Arc<OverrideHandle<B>>
@@ -129,9 +111,9 @@ where
 	})
 }
 
-pub fn create<C, BE, P, A, CT, B>(
+pub fn create<C, BE, P, A, CT, B, CIDP>(
 	mut io: RpcModule<()>,
-	deps: Deps<C, P, A, CT, B>,
+	deps: Deps<C, P, A, CT, B, CIDP>,
 	subscription_task_executor: SubscriptionTaskExecutor,
 	pubsub_notification_sinks: Arc<
 		fc_mapping_sync::EthereumBlockNotificationSinks<
@@ -141,16 +123,26 @@ pub fn create<C, BE, P, A, CT, B>(
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
 	B: BlockT<Hash = H256>,
-	C: ProvideRuntimeApi<B>,
-	C::Api: BlockBuilderApi<B> + EthereumRuntimeRPCApi<B> + ConvertTransactionRuntimeApi<B>,
-	C: BlockchainEvents<B> + 'static,
-	C: HeaderBackend<B> + HeaderMetadata<B, Error = BlockChainError> + StorageProvider<B, BE>,
-	C: CallApiAt<B>,
+	C: ProvideRuntimeApi<B>
+		+ BlockchainEvents<B>
+		+ 'static
+		+ HeaderBackend<B>
+		+ HeaderMetadata<B, Error = BlockChainError>
+		+ StorageProvider<B, BE>
+		+ CallApiAt<B>
+		+ AuxStore
+		+ UsageProvider<B>
+		+ StorageProvider<B, BE>,
+	C::Api: BlockBuilderApi<B>
+		+ EthereumRuntimeRPCApi<B>
+		+ ConvertTransactionRuntimeApi<B>
+		+ AuraApi<B, AuraId>,
 	BE: Backend<B> + 'static,
 	BE::State: StateBackend<BlakeTwo256>,
 	P: TransactionPool<Block = B> + 'static,
 	A: ChainApi<Block = B> + 'static,
 	CT: ConvertTransaction<<B as BlockT>::Extrinsic> + Send + Sync + 'static,
+	CIDP: CreateInherentDataProviders<B, ()> + Send + 'static,
 {
 	use fc_rpc::{
 		Eth, EthApiServer, EthDevSigner, EthFilter, EthFilterApiServer, EthPubSub,
@@ -175,6 +167,7 @@ where
 		fee_history_cache_limit,
 		execute_gas_limit_multiplier,
 		forced_parent_hashes,
+		pending_create_inherent_data_providers,
 	} = deps;
 
 	let mut signers = Vec::new();
@@ -209,31 +202,35 @@ where
 			fee_history_cache_limit,
 			execute_gas_limit_multiplier,
 			forced_parent_hashes,
+			pending_create_inherent_data_providers,
+			Some(Box::new(AuraConsensusDataProvider::new(client.clone()))),
 		)
 		.into_rpc(),
 	)?;
 
-	io.merge(
-		EthFilter::new(
-			client.clone(),
-			frontier_backend.clone(),
-			fc_rpc::TxPool::new(client.clone(), graph.clone()),
-			filter_pool,
-			500_usize,
-			max_past_logs,
-			block_data_cache,
-		)
-		.into_rpc(),
-	)?;
+	if let Some(filter_pool) = filter_pool {
+		io.merge(
+			EthFilter::new(
+				client.clone(),
+				frontier_backend.clone(),
+				graph.clone(),
+				filter_pool,
+				500_usize,
+				max_past_logs,
+				block_data_cache,
+			)
+			.into_rpc(),
+		)?;
+	}
 
 	io.merge(
 		EthPubSub::new(
 			pool,
-			Arc::clone(&client),
-			Arc::clone(&sync),
+			client.clone(),
+			sync,
 			subscription_task_executor,
 			overrides,
-			pubsub_notification_sinks.clone(),
+			pubsub_notification_sinks,
 		)
 		.into_rpc(),
 	)?;

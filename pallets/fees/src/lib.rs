@@ -8,14 +8,13 @@
 //! burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::fees::{self, Fee, FeeKey};
+use cfg_traits::fees::{self, Fee};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	pallet_prelude::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
+	DefaultNoBound,
 };
 pub use pallet::*;
-use parity_scale_codec::EncodeLike;
-use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -53,7 +52,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// Key type used for storing and identifying fees.
-		type FeeKey: FeeKey + EncodeLike + MaxEncodedLen;
+		type FeeKey: Parameter + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		/// The currency mechanism.
 		type Currency: Currency<Self::AccountId>;
@@ -82,23 +81,14 @@ pub mod pallet {
 
 	// The genesis config type.
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_fees: Vec<(T::FeeKey, BalanceOf<T>)>,
-	}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				initial_fees: Default::default(),
-			}
-		}
+		pub initial_fees: sp_std::vec::Vec<(T::FeeKey, BalanceOf<T>)>,
 	}
 
 	// The build of genesis for the pallet.
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			for (key, fee) in self.initial_fees.iter() {
 				<FeeBalances<T>>::insert(key, fee);
@@ -199,8 +189,8 @@ impl<T: Config> fees::Fees for Pallet<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn add_fee_requirements(from: &Self::AccountId, fee: Fee<Self::Balance, Self::FeeKey>) {
-		T::Currency::deposit_creating(from, T::Currency::minimum_balance());
-		T::Currency::deposit_creating(from, fee.value::<Self>());
+		let _ = T::Currency::deposit_creating(from, T::Currency::minimum_balance());
+		let _ = T::Currency::deposit_creating(from, fee.value::<Self>());
 	}
 }
 
