@@ -9,9 +9,9 @@ rustup --version
 cargo --version
 
 case $TARGET in
-#  cargo-build)
-#    cargo build -p centrifuge-chain --release "$@"
-#    ;;
+ cargo-build)
+   SCCACHE_RECACHE=true cargo build -p centrifuge-chain --release "$@"
+   ;;
 #
 #  test-general)
 #    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
@@ -22,7 +22,7 @@ case $TARGET in
     find "." -type d -name "target"
     # locate --directory "target" 
 
-    find . -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
+   find . -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
     # rm -rf target/debug/deps/runtime_integration_tests-*
     # rm -rf target/debug/build/runtime-integration*
     
@@ -31,7 +31,7 @@ case $TARGET in
     find runtime/integration-tests/submodules/ -name "liquidity-pools" -print0 | xargs -0 -r du -h
     # git submodule status
 
-    cargo test --release --package runtime-integration-tests --features fast-runtime
+    SCCACHE_RECACHE=true cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
 #  lint-fmt)
