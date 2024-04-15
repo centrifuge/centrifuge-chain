@@ -45,11 +45,11 @@ then
 elif [[ $runtime == "centrifuge" ]];
 then
   runtime_path="runtime/centrifuge"
-  chain="centrifuge-dev"
+  chain="centrifuge-local"
 elif [[ $runtime == "altair" ]];
 then
   runtime_path="runtime/altair"
-  chain="altair-dev"
+  chain="altair-local"
 else
   echo "Unknown runtime. Aborting!"
   exit 1;
