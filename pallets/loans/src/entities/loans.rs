@@ -31,6 +31,7 @@ use crate::{
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
 		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
+	PriceOf,
 };
 
 /// Loan information.
@@ -290,7 +291,7 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn present_value_by<Rates>(
 		&self,
 		rates: &Rates,
-		prices: &BTreeMap<T::PriceId, T::Balance>,
+		prices: &BTreeMap<T::PriceId, PriceOf<T>>,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,

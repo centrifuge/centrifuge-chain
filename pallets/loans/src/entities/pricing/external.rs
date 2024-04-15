@@ -14,6 +14,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use crate::{
 	entities::interest::ActiveInterestRate,
 	pallet::{Config, Error},
+	PriceOf,
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
@@ -150,9 +151,14 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	fn linear_accrual_price(&self, maturity: Seconds) -> Result<T::Balance, DispatchError> {
+	fn linear_accrual_price(
+		&self,
+		maturity: Seconds,
+		price: T::Balance,
+		price_last_updated: Seconds,
+	) -> Result<T::Balance, DispatchError> {
 		Ok(cfg_utils::math::y_coord_in_rect(
-			(self.settlement_price_updated, self.latest_settlement_price),
+			(price_last_updated, price),
 			(maturity, self.info.notional),
 			T::Time::now(),
 		)?)
@@ -163,10 +169,26 @@ impl<T: Config> ExternalActivePricing<T> {
 		pool_id: T::PoolId,
 		maturity: Seconds,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
-			Ok(data) => data.0,
-			Err(_) => self.linear_accrual_price(maturity)?,
-		})
+		self.current_price_inner(
+			maturity,
+			T::PriceRegistry::get(&self.info.price_id, &pool_id).ok(),
+		)
+	}
+
+	fn current_price_inner(
+		&self,
+		maturity: Seconds,
+		oracle: Option<PriceOf<T>>,
+	) -> Result<T::Balance, DispatchError> {
+		if let Some((oracle_price, oracle_provided_at)) = oracle {
+			self.linear_accrual_price(maturity, oracle_price, oracle_provided_at.into_seconds())
+		} else {
+			self.linear_accrual_price(
+				maturity,
+				self.latest_settlement_price,
+				self.settlement_price_updated,
+			)
+		}
 	}
 
 	pub fn outstanding_principal(
@@ -197,13 +219,10 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn present_value_cached(
 		&self,
-		cache: &BTreeMap<T::PriceId, T::Balance>,
+		cache: &BTreeMap<T::PriceId, PriceOf<T>>,
 		maturity: Seconds,
 	) -> Result<T::Balance, DispatchError> {
-		let price = match cache.get(&self.info.price_id) {
-			Some(data) => *data,
-			None => self.linear_accrual_price(maturity)?,
-		};
+		let price = self.current_price_inner(maturity, cache.get(&self.info.price_id).copied())?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 

@@ -116,7 +116,7 @@ pub mod pallet {
 
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
+	pub type PriceOf<T> = (<T as Config>::Balance, Seconds);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
@@ -1050,7 +1050,7 @@ pub mod pallet {
 
 		pub fn registered_prices(
 			pool_id: T::PoolId,
-		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
+		) -> Result<BTreeMap<T::PriceId, PriceOf<T>>, DispatchError> {
 			let collection = T::PriceRegistry::collection(&pool_id)?;
 			Ok(ActiveLoans::<T>::get(pool_id)
 				.iter()
@@ -1058,7 +1058,7 @@ pub mod pallet {
 				.filter_map(|price_id| {
 					collection
 						.get(&price_id)
-						.map(|price| (price_id, price.0))
+						.map(|price| (price_id, (price.0, price.1.into_seconds())))
 						.ok()
 				})
 				.collect::<BTreeMap<_, _>>())
@@ -1071,7 +1071,10 @@ pub mod pallet {
 			let rates = T::InterestAccrual::rates();
 			let prices = match input_prices {
 				PriceCollectionInput::Empty => BTreeMap::default(),
-				PriceCollectionInput::Custom(prices) => prices.into(),
+				PriceCollectionInput::Custom(prices) => {
+					let now = T::Time::now();
+					prices.map(|(_, price)| (price, now)).into()
+				}
 				PriceCollectionInput::FromRegistry => Self::registered_prices(pool_id)?,
 			};
 

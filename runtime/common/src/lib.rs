@@ -29,6 +29,7 @@ pub mod xcm;
 
 use cfg_primitives::Balance;
 use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
+use frame_support::BoundedBTreeMap;
 use orml_traits::GetByKey;
 use pallet_loans::entities::input::PriceCollectionInput;
 use pallet_pool_system::Nav;
@@ -37,7 +38,7 @@ use sp_runtime::{
 	traits::{Get, Zero},
 	DispatchError,
 };
-use sp_std::marker::PhantomData;
+use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData};
 
 parameter_types! {
 	/// The native currency identifier of our currency id enum
@@ -103,9 +104,23 @@ where
 {
 	let input_prices: PriceCollectionInput<T> =
 		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
-			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
-				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
-			})?)
+			PriceCollectionInput::Custom(
+				BoundedBTreeMap::<
+					T::PriceId,
+					<T as pallet_pool_system::Config>::Balance,
+					T::MaxActiveLoansPerPool,
+				>::try_from(
+					prices
+						.into_iter()
+						.map(|(price_id, (price, _))| (price_id, price))
+						.collect::<BTreeMap<_, _>>(),
+				)
+				.map_err(|_| {
+					DispatchError::Other(
+						"Collection is overwheight. Should be at most MaxActiveLoansPerPool large.",
+					)
+				})?,
+			)
 		} else {
 			PriceCollectionInput::Empty
 		};
