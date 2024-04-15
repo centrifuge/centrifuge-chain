@@ -4,20 +4,14 @@ use cfg_mocks::{
 };
 use cfg_primitives::OutboundMessageNonce;
 use cfg_types::domain_address::DomainAddress;
+use frame_support::derive_impl;
 use frame_system::EnsureRoot;
-use sp_core::{crypto::AccountId32, ConstU128, ConstU16, ConstU32, ConstU64, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError,
-};
+use sp_core::{crypto::AccountId32, ConstU128, H256};
+use sp_runtime::{traits::IdentityLookup, BuildStorage, DispatchError};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
 
 pub type Balance = u128;
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const LENGTH_SOURCE_CHAIN: usize = 10;
 pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";
@@ -27,11 +21,7 @@ pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Runtime {
 		System: frame_system,
 		Balances: pallet_balances,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
@@ -41,51 +31,21 @@ frame_support::construct_runtime!(
 	}
 );
 
-frame_support::parameter_types! {
-	pub const MaxIncomingMessageSize: u32 = 1024;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId32;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_mock_liquidity_pools::Config for Runtime {
@@ -103,6 +63,7 @@ impl pallet_mock_try_convert::Config for Runtime {
 
 frame_support::parameter_types! {
 	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
+	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -121,8 +82,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let storage = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);

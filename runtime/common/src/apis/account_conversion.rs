@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
-use xcm::v3::MultiLocation;
+use staging_xcm::v3::MultiLocation;
 
 decl_runtime_apis! {
 	/// Runtime Api for the pallet-anchors, to be implemented

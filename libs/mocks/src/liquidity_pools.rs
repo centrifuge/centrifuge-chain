@@ -33,10 +33,9 @@ impl Codec for MessageMock {
 	}
 }
 
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::liquidity_pools::InboundQueue;
-	use cfg_types::domain_address::DomainAddress;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -52,15 +51,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_submit(f: impl Fn(DomainAddress, MessageMock) -> DispatchResult + 'static) {
+		pub fn mock_submit(f: impl Fn(T::DomainAddress, MessageMock) -> DispatchResult + 'static) {
 			register_call!(move |(sender, msg)| f(sender, msg));
 		}
 	}

@@ -11,7 +11,10 @@
 // GNU General Public License for more details.
 use cfg_traits::liquidity_pools::Codec;
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo};
+use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	pallet_prelude::DispatchError,
+};
 use frame_system::pallet_prelude::OriginFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::{

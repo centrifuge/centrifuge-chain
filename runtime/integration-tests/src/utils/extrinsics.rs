@@ -14,11 +14,12 @@
 #![allow(unused)]
 
 use cfg_primitives::{
-	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Index as CentrifugeIndex,
+	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Nonce as CentrifugeNonce,
 };
-use node_primitives::Index as RelayIndex;
 use parity_scale_codec::Encode;
-use polkadot_core_primitives::{AccountId as RelayAccountId, BlockId as RelayBlockId};
+use polkadot_core_primitives::{
+	AccountId as RelayAccountId, BlockId as RelayBlockId, Nonce as RelayNonce,
+};
 use sc_client_api::client::BlockBackend;
 use sp_core::H256;
 use sp_runtime::{
@@ -49,7 +50,7 @@ use crate::{
 pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
-	nonce: cfg_primitives::Index,
+	nonce: cfg_primitives::Nonce,
 	call: centrifuge::RuntimeCall,
 ) -> Result<centrifuge::UncheckedExtrinsic, Box<dyn std::error::Error>> {
 	let client = env.centrifuge.client();
@@ -77,7 +78,7 @@ pub fn xt_centrifuge(
 pub fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
-	nonce: RelayIndex,
+	nonce: RelayNonce,
 	call: relay::RuntimeCall,
 ) -> Result<relay::UncheckedExtrinsic, Box<dyn std::error::Error>> {
 	let client = env.relay.client();
@@ -98,7 +99,7 @@ pub fn xt_relay(
 		.map_err(|e| e.into())
 }
 
-fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtra {
+fn signed_extra_centrifuge(nonce: cfg_primitives::Nonce) -> CentrifugeSignedExtra {
 	(
 		frame_system::CheckNonZeroSender::<CentrifugeRuntime>::new(),
 		frame_system::CheckSpecVersion::<CentrifugeRuntime>::new(),
@@ -114,7 +115,7 @@ fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtr
 
 fn sign_centrifuge(
 	who: Keyring,
-	nonce: cfg_primitives::Index,
+	nonce: cfg_primitives::Nonce,
 	call: CentrifugeCall,
 	spec_version: u32,
 	tx_version: u32,
@@ -143,7 +144,7 @@ fn sign_centrifuge(
 	)
 }
 
-fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
+fn signed_extra_relay(nonce: RelayNonce) -> RelaySignedExtra {
 	(
 		frame_system::CheckNonZeroSender::<RelayRuntime>::new(),
 		frame_system::CheckSpecVersion::<RelayRuntime>::new(),
@@ -158,7 +159,7 @@ fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
 
 fn sign_relay(
 	who: Keyring,
-	nonce: RelayIndex,
+	nonce: RelayNonce,
 	call: RelayCall,
 	spec_version: u32,
 	tx_version: u32,
@@ -190,10 +191,10 @@ fn sign_relay(
 ///
 /// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
 /// also used with         the same `who` as the sender**
-pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
+pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Nonce {
 	env.centrifuge
 		.with_state(|| {
-			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeNonce>(
 				who.clone().to_account_id().into(),
 			)
 		})
@@ -204,19 +205,19 @@ pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 ///
 /// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
 /// also used with         the same `who` as the sender**
-pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
+pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayNonce {
 	env.relay
 		.with_state(|| {
-			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
+			nonce::<RelayRuntime, RelayAccountId, RelayNonce>(who.clone().to_account_id().into())
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
 
-fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
+fn nonce<Runtime, AccountId, Nonce>(who: AccountId) -> Nonce
 where
 	Runtime: frame_system::Config,
 	AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
-	Index: From<<Runtime as frame_system::Config>::Index>,
+	Nonce: From<<Runtime as frame_system::Config>::Nonce>,
 {
 	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }

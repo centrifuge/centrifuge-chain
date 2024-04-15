@@ -24,19 +24,13 @@
 // ----------------------------------------------------------------------------
 
 use frame_support::{
-	parameter_types,
-	traits::{Everything, GenesisBuild, SortedMembers, WithdrawReasons},
-	weights::Weight,
+	derive_impl, parameter_types,
+	traits::{SortedMembers, WithdrawReasons},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use sp_core::H256;
 use sp_io::TestExternalities;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32,
-};
+use sp_runtime::{traits::ConstU64, AccountId32, BuildStorage};
 
 use crate::{self as pallet_crowdloan_claim, Config};
 
@@ -46,82 +40,28 @@ use crate::{self as pallet_crowdloan_claim, Config};
 
 type Balance = u64;
 
-// ----------------------------------------------------------------------------
-// Mock runtime
-// ----------------------------------------------------------------------------
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-pub type Block = frame_system::mocking::MockBlock<Runtime>;
-
-// Build mock runtime
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
-		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>},
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Balances: pallet_balances,
+		Vesting: pallet_vesting,
+		CrowdloanReward: pallet_crowdloan_reward,
+		CrowdloanClaim: pallet_crowdloan_claim,
 	}
 );
 
-// Parameterize frame system pallet
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	  pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_parts(1024, 0).set_proof_size(u64::MAX).into());
-}
-
-// Implement frame system configuration for the mock runtime
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = u64;
-	type BaseCallFilter = Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = BlockWeights;
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ();
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-// Parameterize balances pallet
-parameter_types! {
-	pub const MaxLocks: u32 = 10;
-	pub const ExistentialDeposit: u64 = 1;
-}
-
-// Implement balances pallet configuration for mock runtime
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type RuntimeHoldReason = ();
 }
 
 parameter_types! {
@@ -204,8 +144,8 @@ impl Default for TestExternalitiesBuilder {
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self, optional: Option<impl FnOnce()>) -> TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+		let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {

@@ -18,8 +18,6 @@ use sp_runtime::traits::AccountIdConversion;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
-#[cfg(feature = "try-runtime")]
-use {frame_support::inherent::Vec, sp_std::vec};
 
 use crate::{BalanceOf, Config};
 
@@ -47,11 +45,11 @@ where
 	ED: Get<BalanceOf<T, I>>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, DispatchError> {
 		assert!(!pallet_is_funded::<T, I, Currency, ED>());
 
 		log::info!("💶 Rewards: Pre funding ED checks successful");
-		Ok(vec![])
+		Ok(sp_std::vec![])
 	}
 
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
@@ -75,7 +73,7 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_pre_state: Vec<u8>) -> Result<(), DispatchError> {
+	fn post_upgrade(_pre_state: sp_std::vec::Vec<u8>) -> Result<(), DispatchError> {
 		assert!(pallet_is_funded::<T, I, Currency, ED>());
 
 		log::info!("💶 Rewards: Post funding ED checks successful");

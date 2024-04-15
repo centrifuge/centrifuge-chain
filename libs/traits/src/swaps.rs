@@ -1,4 +1,4 @@
-use frame_support::{scale_info::TypeInfo, RuntimeDebug};
+use frame_support::pallet_prelude::{RuntimeDebug, TypeInfo};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::fmt::Debug;
