@@ -142,36 +142,24 @@ mod test {
 	use cfg_primitives::{AccountId, TREASURY_FEE_RATIO};
 	use cfg_types::ids::TREASURY_PALLET_ID;
 	use frame_support::{
-		parameter_types,
+		derive_impl, parameter_types,
 		traits::{Currency, FindAuthor},
 		PalletId,
 	};
-	use sp_core::{ConstU64, H256};
-	use sp_io::TestExternalities;
-	use sp_runtime::{
-		testing::Header,
-		traits::{BlakeTwo256, IdentityLookup},
-		Perbill,
-	};
+	use sp_core::ConstU64;
+	use sp_runtime::{traits::IdentityLookup, Perbill};
 	use sp_std::convert::{TryFrom, TryInto};
 
 	use super::*;
 
-	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-	type Block = frame_system::mocking::MockBlock<Runtime>;
-
 	const TEST_ACCOUNT: AccountId = AccountId::new([1; 32]);
 
 	frame_support::construct_runtime!(
-		pub enum Runtime where
-			Block = Block,
-			NodeBlock = Block,
-			UncheckedExtrinsic = UncheckedExtrinsic,
-		{
-			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-			Authorship: pallet_authorship::{Pallet, Storage},
-			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-			Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>},
+		pub enum Runtime {
+			System: frame_system,
+			Authorship: pallet_authorship,
+			Balances: pallet_balances,
+			Treasury: pallet_treasury,
 		}
 	);
 
@@ -179,47 +167,20 @@ mod test {
 		pub const BlockHashCount: u64 = 250;
 	}
 
+	#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 	impl frame_system::Config for Runtime {
 		type AccountData = pallet_balances::AccountData<u64>;
 		type AccountId = AccountId;
-		type BaseCallFilter = frame_support::traits::Everything;
-		type BlockHashCount = BlockHashCount;
-		type BlockLength = ();
-		type BlockNumber = u64;
-		type BlockWeights = ();
-		type DbWeight = ();
-		type Hash = H256;
-		type Hashing = BlakeTwo256;
-		type Header = Header;
-		type Index = u64;
+		type Block = frame_system::mocking::MockBlock<Runtime>;
 		type Lookup = IdentityLookup<Self::AccountId>;
-		type MaxConsumers = frame_support::traits::ConstU32<16>;
-		type OnKilledAccount = ();
-		type OnNewAccount = ();
-		type OnSetCode = ();
-		type PalletInfo = PalletInfo;
-		type RuntimeCall = RuntimeCall;
-		type RuntimeEvent = RuntimeEvent;
-		type RuntimeOrigin = RuntimeOrigin;
-		type SS58Prefix = ();
-		type SystemWeightInfo = ();
-		type Version = ();
 	}
 
+	#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 	impl pallet_balances::Config for Runtime {
 		type AccountStore = System;
-		type Balance = u64;
 		type DustRemoval = ();
 		type ExistentialDeposit = ConstU64<1>;
-		type FreezeIdentifier = ();
-		type HoldIdentifier = ();
-		type MaxFreezes = ();
-		type MaxHolds = frame_support::traits::ConstU32<1>;
-		type MaxLocks = ();
-		type MaxReserves = ();
-		type ReserveIdentifier = [u8; 8];
-		type RuntimeEvent = RuntimeEvent;
-		type WeightInfo = ();
+		type RuntimeHoldReason = ();
 	}
 
 	parameter_types! {
@@ -260,21 +221,9 @@ mod test {
 		type FindAuthor = OneAuthor;
 	}
 
-	fn new_test_ext() -> TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-
-		pallet_balances::GenesisConfig::<Runtime>::default()
-			.assimilate_storage(&mut t)
-			.unwrap();
-
-		TestExternalities::new(t)
-	}
-
 	#[test]
 	fn test_fees_and_tip_split() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			const FEE: u64 = 10;
 			const TIP: u64 = 20;
 

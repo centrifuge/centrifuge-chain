@@ -474,8 +474,7 @@ pub mod pallet {
 pub mod types {
 	use cfg_traits::data::DataCollection;
 	use frame_support::{
-		dispatch::DispatchError,
-		pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
+		pallet_prelude::{Decode, DispatchError, Encode, MaxEncodedLen, TypeInfo},
 		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
 		traits::Time,
 		RuntimeDebugNoBound,
@@ -613,7 +612,7 @@ pub mod util {
 
 	/// Computes fastly the median of a list of values
 	/// Extracted from orml
-	pub fn median<T: Ord>(items: &mut Vec<T>) -> Option<&T> {
+	pub fn median<T: Ord>(items: &mut [T]) -> Option<&T> {
 		if items.is_empty() {
 			return None;
 		}

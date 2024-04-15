@@ -29,24 +29,14 @@ cfg-types = { workspace = true }
 orml-traits = { workspace = true }
 
 # Benchmark dependencies
-## Local
-pallet-order-book = { workspace = true, optional = true }
-## ORML
-orml-asset-registry = { workspace = true, optional = true }
-## Polkadot SDK
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
 cfg-test-utils = { workspace = true, default-features = true }
-pallet-restricted-tokens = { workspace = true, default-features = false }
-# ORML
-orml-asset-registry = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
-# Polkadot SDK
-pallet-balances = { workspace = true, default-features = true }
+pallet-restricted-tokens = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = false }
 
 [features]
 default = ["std"]
@@ -59,7 +49,6 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "orml-traits/std",
-  "pallet-order-book/std",
   "scale-info/std",
   "serde/std",
   "sp-arithmetic/std",
@@ -76,8 +65,6 @@ runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "pallet-order-book/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
@@ -86,6 +73,5 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
-  "pallet-order-book/try-runtime",
   "sp-runtime/try-runtime",
 ]

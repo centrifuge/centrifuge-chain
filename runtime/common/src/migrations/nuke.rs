@@ -14,7 +14,7 @@
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
-	dispatch::GetStorageVersion,
+	pallet_prelude::GetStorageVersion,
 	storage::unhashed,
 	traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
 	weights::{RuntimeDbWeight, Weight},

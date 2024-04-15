@@ -12,17 +12,14 @@
 
 use cfg_types::tokens::FilterCurrency;
 use frame_support::{
-	parameter_types,
+	derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64},
 	Deserialize, Serialize,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, CheckedAdd, IdentityLookup},
-};
+use sp_runtime::{traits::CheckedAdd, BuildStorage};
 
 use crate as transfer_allowlist;
 
@@ -32,52 +29,19 @@ pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
 pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
 
 type Balance = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-pub type MockAccountId = u64;
 
 frame_support::construct_runtime!(
-	  pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	  {
+	  pub enum Runtime {
 		  Balances: pallet_balances,
 		  System: frame_system,
 		  TransferAllowList: transfer_allowlist,
 	  }
 );
 
-parameter_types! {
-	  pub const BlockHashCount: u64 = 250;
-	  pub const SS58Prefix: u8 = 42;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = MockAccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 #[derive(
@@ -103,22 +67,14 @@ impl From<u64> for Location {
 		Self::TestLocal(a)
 	}
 }
-// Used to handle reserve/unreserve for allowance creation.
-// Loosely coupled with transfer_allowlist
+
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = u64;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU64<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type MaxHolds = ConstU32<1>;
+	type RuntimeHoldReason = ();
 }
 
 parameter_types! {
@@ -136,8 +92,8 @@ impl transfer_allowlist::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
@@ -155,7 +111,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	e
 }
 
-pub fn advance_n_blocks<T: frame_system::Config>(n: <T as frame_system::Config>::BlockNumber) {
+pub fn advance_n_blocks<T: frame_system::Config>(n: BlockNumberFor<T>) {
 	let b = frame_system::Pallet::<T>::block_number()
 		.checked_add(&n)
 		.expect("Mock block advancement failed.");

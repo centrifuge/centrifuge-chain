@@ -43,21 +43,21 @@ fn distributed_reward_change() {
 			RuntimeOrigin::root(),
 			REWARD
 		));
-		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
-		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
+		assert_eq!(NextEpochChanges::<Runtime>::get().reward, Some(REWARD));
+		assert_eq!(ActiveEpochData::<Runtime>::get().reward, 0);
 
 		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
-		assert_eq!(NextEpochChanges::<Test>::get().reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
+		assert_eq!(NextEpochChanges::<Runtime>::get().reward, None);
+		assert_eq!(ActiveEpochData::<Runtime>::get().reward, REWARD);
 
 		MockTime::mock_now(|| INITIAL_EPOCH_DURATION + INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 2
-		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
+		assert_eq!(ActiveEpochData::<Runtime>::get().reward, REWARD);
 	});
 }
 
@@ -67,13 +67,13 @@ fn epoch_change() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_eq!(EndOfEpoch::<Test>::get(), 0);
+		assert_eq!(EndOfEpoch::<Runtime>::get(), 0);
 		assert_ok!(Liquidity::set_epoch_duration(
 			RuntimeOrigin::root(),
 			EPOCH_DURATION
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get().duration,
+			NextEpochChanges::<Runtime>::get().duration,
 			Some(EPOCH_DURATION)
 		);
 
@@ -82,16 +82,16 @@ fn epoch_change() {
 
 		// EPOCH 1
 		assert_eq!(
-			EndOfEpoch::<Test>::get(),
+			EndOfEpoch::<Runtime>::get(),
 			INITIAL_EPOCH_DURATION + EPOCH_DURATION
 		);
-		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
+		assert_eq!(NextEpochChanges::<Runtime>::get().duration, None);
 
 		MockTime::mock_now(|| INITIAL_EPOCH_DURATION + EPOCH_DURATION / 2);
 		Liquidity::on_initialize(0);
 
 		assert_eq!(
-			EndOfEpoch::<Test>::get(),
+			EndOfEpoch::<Runtime>::get(),
 			INITIAL_EPOCH_DURATION + EPOCH_DURATION
 		);
 
@@ -100,7 +100,7 @@ fn epoch_change() {
 
 		// EPOCH 2
 		assert_eq!(
-			EndOfEpoch::<Test>::get(),
+			EndOfEpoch::<Runtime>::get(),
 			INITIAL_EPOCH_DURATION + EPOCH_DURATION + EPOCH_DURATION
 		);
 	});
@@ -122,13 +122,13 @@ fn epoch_change_from_advanced_state() {
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
-		assert_eq!(EndOfEpoch::<Test>::get(), INITIAL_TIME + EPOCH_DURATION);
-		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
+		assert_eq!(EndOfEpoch::<Runtime>::get(), INITIAL_TIME + EPOCH_DURATION);
+		assert_eq!(NextEpochChanges::<Runtime>::get().duration, None);
 
 		MockTime::mock_now(|| INITIAL_TIME);
 		Liquidity::on_initialize(0);
 
-		assert_eq!(EndOfEpoch::<Test>::get(), INITIAL_TIME + EPOCH_DURATION);
+		assert_eq!(EndOfEpoch::<Runtime>::get(), INITIAL_TIME + EPOCH_DURATION);
 	});
 }
 
@@ -142,7 +142,7 @@ fn currency_changes() {
 			GROUP_A
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get()
+			NextEpochChanges::<Runtime>::get()
 				.currencies
 				.get(&CURRENCY_ID_A),
 			Some(&GROUP_A)
@@ -159,7 +159,7 @@ fn currency_changes() {
 
 		// EPOCH 1
 		assert_eq!(
-			NextEpochChanges::<Test>::get()
+			NextEpochChanges::<Runtime>::get()
 				.currencies
 				.get(&CURRENCY_ID_A),
 			None,
@@ -195,14 +195,14 @@ fn weight_changes() {
 			WEIGHT_2
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get().weights.get(&GROUP_A),
+			NextEpochChanges::<Runtime>::get().weights.get(&GROUP_A),
 			Some(&WEIGHT_1)
 		);
 		assert_eq!(
-			NextEpochChanges::<Test>::get().weights.get(&GROUP_B),
+			NextEpochChanges::<Runtime>::get().weights.get(&GROUP_B),
 			Some(&WEIGHT_2)
 		);
-		assert_eq!(ActiveEpochData::<Test>::get().weights.len(), 0);
+		assert_eq!(ActiveEpochData::<Runtime>::get().weights.len(), 0);
 
 		MockTime::mock_now(|| INITIAL_EPOCH_DURATION * 2);
 		Liquidity::on_initialize(0);
@@ -211,14 +211,20 @@ fn weight_changes() {
 		// We need one epoch more to apply those weights in the distribution.
 
 		// EPOCH 2
-		assert_eq!(NextEpochChanges::<Test>::get().weights.get(&GROUP_A), None);
-		assert_eq!(NextEpochChanges::<Test>::get().weights.get(&GROUP_B), None);
 		assert_eq!(
-			ActiveEpochData::<Test>::get().weights.get(&GROUP_A),
+			NextEpochChanges::<Runtime>::get().weights.get(&GROUP_A),
+			None
+		);
+		assert_eq!(
+			NextEpochChanges::<Runtime>::get().weights.get(&GROUP_B),
+			None
+		);
+		assert_eq!(
+			ActiveEpochData::<Runtime>::get().weights.get(&GROUP_A),
 			Some(&WEIGHT_1)
 		);
 		assert_eq!(
-			ActiveEpochData::<Test>::get().weights.get(&GROUP_B),
+			ActiveEpochData::<Runtime>::get().weights.get(&GROUP_B),
 			Some(&WEIGHT_2)
 		);
 
@@ -249,7 +255,7 @@ fn max_weight_changes() {
 
 		assert_noop!(
 			Liquidity::set_group_weight(RuntimeOrigin::root(), MaxChangesPerEpoch::get() + 1, 100),
-			Error::<Test>::MaxChangesPerEpochReached
+			Error::<Runtime>::MaxChangesPerEpochReached
 		);
 	});
 }
@@ -271,7 +277,7 @@ fn max_currency_changes() {
 				MaxChangesPerEpoch::get() + 1,
 				100
 			),
-			Error::<Test>::MaxChangesPerEpochReached
+			Error::<Runtime>::MaxChangesPerEpochReached
 		);
 	});
 }
@@ -294,12 +300,12 @@ fn discard_groups_exceed_max_grups() {
 
 		// EPOCH 1
 		assert_eq!(
-			ActiveEpochData::<Test>::get().weights.len() as u32,
+			ActiveEpochData::<Runtime>::get().weights.len() as u32,
 			MaxGroups::get()
 		);
 		for i in 0..MaxGroups::get() {
 			assert_eq!(
-				ActiveEpochData::<Test>::get().weights.get(&i),
+				ActiveEpochData::<Runtime>::get().weights.get(&i),
 				Some(&WEIGHT)
 			);
 		}

@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
-	IBalance, Index, ItemId, LoanId, OrderId, PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, CollectionId, CouncilCollective, Header, IBalance, ItemId,
+	LoanId, Nonce, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -12,7 +12,7 @@ use cfg_types::{
 	locations::Location,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
-	tokens::{CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
+	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
 };
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
@@ -50,13 +50,13 @@ pub trait Runtime:
 	Send
 	+ Sync
 	+ frame_system::Config<
-		Index = Index,
+		Nonce = Nonce,
 		AccountId = AccountId,
 		RuntimeCall = Self::RuntimeCallExt,
 		RuntimeEvent = Self::RuntimeEventExt,
-		BlockNumber = BlockNumber,
 		Lookup = AccountIdLookup<AccountId, ()>,
 		RuntimeOrigin = Self::RuntimeOriginExt,
+		Block = Self::BlockExt,
 		Hash = H256,
 	> + pallet_pool_system::Config<
 		CurrencyId = CurrencyId,
@@ -92,6 +92,7 @@ pub trait Runtime:
 		AssetId = CurrencyId,
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
+		StringLimit = AssetStringLimit,
 	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 	+ pallet_timestamp::Config<Moment = Millis>
 	+ pallet_aura::Config<Moment = Millis, AuthorityId = AuraId>
@@ -236,7 +237,7 @@ pub trait Runtime:
 		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;
 
 	/// Block used by the runtime
-	type Block: Block<
+	type BlockExt: Block<
 		Hash = H256,
 		Header = Header,
 		Extrinsic = UncheckedExtrinsic<
@@ -258,17 +259,17 @@ pub trait Runtime:
 	>;
 
 	/// You can extend this bounds to give extra API support
-	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::Block>
-		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::Block>
+	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::BlockExt>
+		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::BlockExt>
 		+ apis::runtime_decl_for_loans_api::LoansApiV2<
-			Self::Block,
+			Self::BlockExt,
 			PoolId,
 			LoanId,
 			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
 			Balance,
 			pallet_loans::entities::input::PriceCollectionInput<Self>,
 		> + apis::runtime_decl_for_pools_api::PoolsApiV1<
-			Self::Block,
+			Self::BlockExt,
 			PoolId,
 			TrancheId,
 			Balance,
@@ -276,12 +277,12 @@ pub trait Runtime:
 			Quantity,
 			Self::MaxTranchesExt,
 		> + apis::runtime_decl_for_investments_api::InvestmentsApiV1<
-			Self::Block,
+			Self::BlockExt,
 			AccountId,
 			TrancheCurrency,
 			InvestmentPortfolio<Balance, CurrencyId>,
 		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
-			Self::Block,
+			Self::BlockExt,
 			AccountId,
 		> + apis::runtime_decl_for_rewards_api::RewardsApiV1<
 			Self::Block,

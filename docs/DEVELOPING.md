@@ -61,13 +61,16 @@ It runs a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11936)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11936#/explorer) client.
     You will see the block production frozen until you connect it to the relay chain.
 
-    By default, the initialized parachain will have the id `2000`.
-    If you need more than one parachain or choose other chain specifications,
-    you can set `PARA_ID` or `PARA_CHAIN_SPEC`, example:
+   By default, the initialized parachain will have the id `2000`.
+   Please note that for ephemeral chains specs such as `development`, `centrifuge-local` or `altair-local`, the
+   parachain ID is currently hardcoded.
+   If you need to customize it, please open an issue and we will add such a feature.
+   If choose other chain specifications, you can set the `PARA_CHAIN_SPEC` env var, e.g.:
     ```bash
-    PARA_ID=2001 ./scripts/init.sh start-parachain
+    PARA_CHAIN_SPEC=development ./scripts/init.sh start-parachain
     ```
-    The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()` function.
+   The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()`
+   function.
 
 3. Onboard the parachain
     This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
@@ -109,9 +112,12 @@ Lint the source code with `cargo fmt --all`. This excludes certain paths (define
     See more [here](docs/runtime-upgrade.md).
 
 ## Generate new Spec and Parachain files
-This script will take a valid chain-spec chain_id, a parachain_id and a flag to build new spec or not, and will output genesis spec (raw and plain), wasm and state files.
+
+This script will take a valid chain-spec chain_id and a flag to build new spec or not, and will output genesis spec (raw
+and plain), wasm and state files.
+
 ```shell
-./scripts/export_parachain_files.sh charcoal-staging 10001 true
+./scripts/export_parachain_files.sh demo true
 ```
 Adapt parameters accordingly.
 

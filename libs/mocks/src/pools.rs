@@ -1,4 +1,4 @@
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::{
 		investments::InvestmentAccountant, PoolInspect, PoolReserve, PriceValue, Seconds,
@@ -33,12 +33,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {

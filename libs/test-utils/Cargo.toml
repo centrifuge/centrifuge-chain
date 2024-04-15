@@ -29,6 +29,9 @@ sp-std = { workspace = true }
 # Optional dependencies
 frame-benchmarking = { workspace = true, optional = true }
 
+# Used by impl_mock_registry macro internally
+staging-xcm = { workspace = true }
+
 [features]
 default = ["std"]
 std = [
@@ -43,6 +46,7 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "frame-benchmarking/std",
+  "staging-xcm/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

@@ -1,36 +1,24 @@
 //! PLEASE be as much generic as possible because no domain or use cases are
 //! considered at this level.
 
-use std::marker::PhantomData;
-
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
-use frame_support::traits::GenesisBuild;
 use parity_scale_codec::Encode;
 use sp_core::crypto::AccountId32;
-use sp_runtime::Storage;
+use sp_runtime::{BuildStorage, Storage};
 
 use crate::{
 	generic::{config::Runtime, utils::currency::CurrencyInfo},
 	utils::accounts::{default_accounts, Keyring},
 };
 
-pub struct Genesis<T> {
+#[derive(Default)]
+pub struct Genesis {
 	storage: Storage,
-	_config: PhantomData<T>,
 }
 
-impl<T> Default for Genesis<T> {
-	fn default() -> Self {
-		Self {
-			storage: Default::default(),
-			_config: Default::default(),
-		}
-	}
-}
-
-impl<T: Runtime> Genesis<T> {
-	pub fn add<I: 'static>(mut self, builder: impl GenesisBuild<T, I>) -> Self {
+impl Genesis {
+	pub fn add(mut self, builder: impl BuildStorage) -> Self {
 		builder.assimilate_storage(&mut self.storage).unwrap();
 		self
 	}
@@ -40,9 +28,9 @@ impl<T: Runtime> Genesis<T> {
 	}
 }
 
-// Add GenesisBuild functions for pallet initialization.
+// Add BuildStorage functions for pallet initialization.
 
-pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
+pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
 	pallet_balances::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
@@ -51,7 +39,7 @@ pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	}
 }
 
-pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBuild<T> {
+pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStorage {
 	orml_tokens::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
@@ -67,7 +55,7 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 	}
 }
 
-pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl GenesisBuild<T> {
+pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl BuildStorage {
 	orml_asset_registry::GenesisConfig::<T> {
 		assets: currency_ids
 			.into_iter()
@@ -77,7 +65,7 @@ pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl Gene
 	}
 }
 
-pub fn council_members<T, I>(members: Vec<Keyring>) -> impl GenesisBuild<T, I>
+pub fn council_members<T, I>(members: Vec<Keyring>) -> impl BuildStorage
 where
 	I: 'static,
 	T: pallet_collective::Config<I>,

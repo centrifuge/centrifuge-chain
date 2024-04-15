@@ -18,11 +18,10 @@ use frame_support::{
 	pallet_prelude::Get,
 	traits::{fungible::Unbalanced, tokens::Precision, Currency, ReservableCurrency},
 };
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use parity_scale_codec::EncodeLike;
-use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One},
+	traits::{CheckedAdd, One},
 	Saturating,
 };
 
@@ -37,7 +36,7 @@ benchmarks! {
 		<T as pallet::Config>::Location: From<<T as frame_system::Config>::AccountId> + EncodeLike<<T as pallet::Config>::Location>,
 			<T as pallet::Config>::ReserveCurrency: Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
 		T: pallet::Config<CurrencyId = FilterCurrency>,
-		<T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned + Bounded + TypeInfo,
+		BlockNumberFor<T>: One,
 		<<T as pallet::Config>::ReserveCurrency as frame_support::traits::fungible::Inspect<<T as frame_system::Config>::AccountId,>>::Balance: From<u64>
 	}
 
@@ -101,7 +100,7 @@ benchmarks! {
 
 	remove_transfer_allowance_delay_present {
 		let (sender, receiver) = set_up_users::<T>();
-		let delay = T::BlockNumber::one();
+		let delay = BlockNumberFor::<T>::one();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), BENCHMARK_CURRENCY_ID, delay.clone())?;
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), BENCHMARK_CURRENCY_ID, receiver.clone().into())?;
 
@@ -154,4 +153,4 @@ fn set_up_second_receiver<T: Config>() -> T::AccountId {
 	account::<T::AccountId>("Receiver_1", 3, 0)
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
