@@ -13,7 +13,6 @@
 
 //! Contains base types without Config references
 
-use cfg_traits::Seconds;
 use frame_support::{pallet_prelude::RuntimeDebug, PalletError};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

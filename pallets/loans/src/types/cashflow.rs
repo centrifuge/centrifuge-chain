@@ -11,15 +11,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::SECONDS_PER_YEAR;
+use cfg_primitives::{SECONDS_PER_MONTH, SECONDS_PER_YEAR};
 use cfg_traits::{interest::InterestRate, Seconds};
-use chrono::{Datelike, NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Datelike, Days, Months, NaiveDate, TimeDelta};
 use chronoutil::DateRule;
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
+	traits::{
+		EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+	},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -62,6 +64,32 @@ impl Maturity {
 	}
 }
 
+fn seconds_to_days(seconds: Seconds) -> Result<u32, DispatchError> {
+	Ok(TimeDelta::try_seconds(seconds.ensure_into()?)
+		.ok_or(DispatchError::Other("Precission error with seconds"))?
+		.num_days()
+		.ensure_into()?)
+}
+
+fn seconds_to_date(date_in_seconds: Seconds) -> Result<NaiveDate, DispatchError> {
+	Ok(DateTime::from_timestamp(date_in_seconds.ensure_into()?, 0)
+		.ok_or(DispatchError::Other("Invalid date in seconds"))?
+		.date_naive())
+}
+
+fn date_to_seconds(date: NaiveDate) -> Result<Seconds, DispatchError> {
+	Ok(date
+		.and_hms_opt(0, 0, 0)
+		.ok_or(DispatchError::Other("Invalid h/m/s"))?
+		.and_utc()
+		.timestamp()
+		.ensure_into()?)
+}
+
+fn seconds_in_month(date: NaiveDate) -> Result<Seconds, DispatchError> {
+	todo!()
+}
+
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum ReferenceDate {
 	/// Payments are expected every period relative to a specific date.
@@ -72,6 +100,49 @@ pub enum ReferenceDate {
 	/// At the end of the period, e.g. the last day of the month for a monthly
 	/// period
 	End,
+}
+
+impl ReferenceDate {
+	fn monthly_cashflow_dates(
+		&self,
+		start: Seconds,
+		end: Seconds,
+	) -> Result<Vec<(Seconds, Seconds)>, DispatchError> {
+		if start > end {
+			return Err(DispatchError::Other("cashflow must start before it ends"));
+		}
+
+		let start = seconds_to_date(start)?;
+		let end = seconds_to_date(end - 1)? + Months::new(1);
+
+		let rolling_days = match self {
+			Self::Date(reference) => seconds_to_days(*reference)?,
+			Self::End => 31,
+		};
+
+		let mut dates = DateRule::monthly(start)
+			.with_end(end)
+			.with_rolling_day(rolling_days)
+			.map_err(|_| DispatchError::Other("Month with more than 31 days"))?
+			.into_iter()
+			.collect::<Vec<_>>();
+
+		if let Some(first) = dates.first() {
+			if *first < start {
+				dates.remove(0);
+			}
+		}
+
+		dates
+			.into_iter()
+			.map(|date| {
+				//TODO
+				let date = date_to_seconds(date)?;
+				let interval = 0;
+				Ok((date, interval))
+			})
+			.collect::<Result<_, _>>()
+	}
 }
 
 /// Interest payment periods
@@ -88,6 +159,19 @@ pub enum InterestPayments {
 
 	/// Interest is expected to be paid once per year
 	Annually(ReferenceDate),
+}
+
+impl InterestPayments {
+	/// Inbetween cashflows: interest per year / number of periods per year
+	/// (e.g. divided by 12 for monthly interest payments)
+	fn periods_per_year(&self) -> u32 {
+		match self {
+			InterestPayments::None => 0,
+			InterestPayments::Monthly(_) => 12,
+			InterestPayments::SemiAnnually(_) => 2,
+			InterestPayments::Annually(_) => 1,
+		}
+	}
 }
 
 /// Specify the paydown schedules of the loan
@@ -117,85 +201,49 @@ impl RepaymentSchedule {
 		self.maturity.is_valid(now)
 	}
 
+	/*
 	pub fn generate_expected_cashflows<Balance, Rate>(
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
 		interest_rate: &InterestRate<Rate>,
-	) -> Result<Vec<(NaiveDate, Balance)>, DispatchError>
+	) -> Result<Vec<(Seconds, Balance)>, DispatchError>
 	where
 		Balance: FixedPointOperand,
 		Rate: FixedPointNumber,
 	{
-		let Maturity::Fixed { date, .. } = self.maturity;
+		let Maturity::Fixed {
+			date: maturity_date,
+			..
+		} = self.maturity;
 
-		let start = NaiveDateTime::from_timestamp_opt(origination_date as i64, 0)
-			.ok_or(DispatchError::Other("Invalid origination date"))?
-			.date();
-
-		let end = NaiveDateTime::from_timestamp_opt(date as i64, 0)
-			.ok_or(DispatchError::Other("Invalid maturity date"))?
-			.date();
+		let start = origination_date;
+		let end = maturity_date;
 
 		match &self.interest_payments {
 			InterestPayments::None => Ok(vec![]),
 			InterestPayments::Monthly(reference_date) => Self::add_interest_amounts(
-				Self::get_cashflow_list::<Balance, Rate>(start, end, reference_date.clone())?,
+				reference_date.monthly_cashflow_dates(start, end)?,
 				principal,
-				&self.interest_payments,
+				self.interest_payments.periods_per_year(),
 				interest_rate,
 				origination_date,
-				date,
+				maturity_date,
 			),
 			InterestPayments::SemiAnnually(reference_date) => Ok(vec![]),
 			InterestPayments::Annually(reference_date) => Ok(vec![]),
 		}
 	}
-
-	fn get_cashflow_list<Balance, Rate>(
-		start: NaiveDate,
-		end: NaiveDate,
-		reference_date: ReferenceDate,
-	) -> Result<Vec<NaiveDate>, DispatchError>
-	where
-		Balance: FixedPointOperand,
-		Rate: FixedPointNumber,
-	{
-		// TODO: once we implement a pay_down_schedule other than `None`,
-		// we will need to adjust the expected interest amounts based on the
-		// expected outstanding principal at the time of the interest payment
-		Ok(match reference_date {
-			ReferenceDate::Date(reference) => {
-				let reference_date = NaiveDateTime::from_timestamp_opt(reference as i64, 0)
-					.ok_or(DispatchError::Other("Invalid origination date"))?
-					.date();
-
-				DateRule::monthly(start)
-					.with_end(end)
-					.with_rolling_day(reference_date.day())
-					.unwrap()
-					.into_iter()
-					// There's no interest payment expected on the origination date
-					.skip(1)
-					.collect()
-			}
-			ReferenceDate::End => DateRule::monthly(start)
-				.with_end(end)
-				.with_rolling_day(31)
-				.unwrap()
-				.into_iter()
-				.collect(),
-		})
-	}
+	*/
 
 	fn add_interest_amounts<Balance, Rate>(
-		cashflows: Vec<NaiveDate>,
+		cashflows: Vec<Seconds>,
 		principal: Balance,
-		interest_payments: &InterestPayments,
+		periods_per_year: u32,
 		interest_rate: &InterestRate<Rate>,
 		origination_date: Seconds,
 		maturity_date: Seconds,
-	) -> Result<Vec<(NaiveDate, Balance)>, DispatchError>
+	) -> Result<Vec<(Seconds, Balance)>, DispatchError>
 	where
 		Balance: FixedPointOperand,
 		Rate: FixedPointNumber,
@@ -204,54 +252,64 @@ impl RepaymentSchedule {
 		cashflows
 			.into_iter()
 			.enumerate()
-			.map(|(i, d)| -> Result<(NaiveDate, Balance), DispatchError> {
-				let interest_rate_per_sec = interest_rate.per_sec()?;
-				let amount_per_sec = interest_rate_per_sec.ensure_mul_int(principal)?;
+			.map(|(i, date)| -> Result<(Seconds, Balance), DispatchError> {
+				/*
+				let interest_rate_per_period = interest_rate
+					.per_year()
+					.ensure_div(Rate::saturating_from_integer(periods_per_year))?;
+
+				let amount_per_period = interest_rate_per_period.ensure_mul_int(principal)?;
 
 				if i == 0 {
 					// First cashflow: cashflow date - origination date * interest per day
-					let dt = d.and_hms_opt(0, 0, 0).ok_or("")?.timestamp() as u64;
 					return Ok((
-						d,
+						date,
 						Rate::saturating_from_rational(
-							dt.ensure_sub(origination_date)?,
-							SECONDS_PER_YEAR,
+							date.ensure_sub(origination_date)?,
+							SECONDS_PER_MONTH,
 						)
 						.ensure_mul_int(amount_per_sec)?,
 					));
 				}
 
-				if i == cashflows_len {
+				if i == cashflows_len - 1 {
 					//  Last cashflow: maturity date - cashflow date * interest per day
-					let dt = d.and_hms_opt(0, 0, 0).ok_or("")?.timestamp() as u64;
 					return Ok((
-						d,
+						date,
 						Rate::saturating_from_rational(
-							maturity_date.ensure_sub(dt)?,
-							SECONDS_PER_YEAR,
+							maturity_date.ensure_sub(date)?,
+							SECONDS_PER_MONTH,
 						)
 						.ensure_mul_int(amount_per_sec)?,
 					));
 				}
-
-				// Inbetween cashflows: interest per year / number of periods per year (e.g.
-				// divided by 12 for monthly interest payments)
-				let periods_per_year = match interest_payments {
-					InterestPayments::None => 0,
-					InterestPayments::Monthly(_) => 12,
-					InterestPayments::SemiAnnually(_) => 2,
-					InterestPayments::Annually(_) => 1,
-				};
 
 				let interest_rate_per_period = interest_rate
 					.per_year()
 					.ensure_div(Rate::saturating_from_integer(periods_per_year))?;
 				let amount_per_period = interest_rate_per_period.ensure_mul_int(principal)?;
 
-				Ok((d, amount_per_period))
+				Ok((date, amount_per_period))
+				*/
+				todo!()
 			})
 			.collect()
 	}
+}
+
+fn compute_cashflow_interest<Balance, Rate>(
+	start: Seconds,
+	end: Seconds,
+	amount_per_sec: Balance,
+) -> Result<Balance, DispatchError>
+where
+	Balance: FixedPointOperand,
+	Rate: FixedPointNumber,
+{
+	Ok(
+		Rate::saturating_from_rational(end.ensure_sub(start)?, SECONDS_PER_YEAR)
+			.ensure_mul_int(amount_per_sec)?,
+	)
 }
 
 #[cfg(test)]
@@ -263,86 +321,154 @@ mod tests {
 
 	pub type Rate = sp_arithmetic::fixed_point::FixedU128;
 
-	fn from_ymd(year: i32, month: u32, day: u32) -> Seconds {
-		NaiveDate::from_ymd_opt(year, month, day)
-			.unwrap()
-			.and_hms_opt(0, 0, 0)
-			.unwrap()
-			.timestamp() as u64
+	fn days(days: u32) -> Seconds {
+		TimeDelta::days(days as i64).num_seconds() as Seconds
 	}
 
-	#[test]
-	fn cashflow_generation_works() {
-		assert_ok!(
-			RepaymentSchedule {
-				maturity: Maturity::fixed(from_ymd(2022, 12, 1)),
-				interest_payments: InterestPayments::Monthly(ReferenceDate::End),
-				pay_down_schedule: PayDownSchedule::None
-			}
-			.generate_expected_cashflows(
-				from_ymd(2022, 6, 1),
-				1000,
-				&InterestRate::Fixed {
-					rate_per_year: Rate::from_float(0.1),
-					compounding: CompoundingSchedule::Secondly
-				}
-			),
-			vec![
-				(NaiveDate::from_ymd_opt(2022, 6, 30).unwrap(), 8u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 7, 31).unwrap(), 8u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 8, 31).unwrap(), 8u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 9, 30).unwrap(), 8u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 10, 31).unwrap(), 8u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 11, 30).unwrap(), 8u128.into())
-			]
-		);
+	fn from_ymd(year: i32, month: u32, day: u32) -> Seconds {
+		from_ymdhms(year, month, day, 0, 0, 0)
+	}
 
-		assert_ok!(
-			RepaymentSchedule {
-				maturity: Maturity::fixed(from_ymd(2022, 12, 2)),
-				interest_payments: InterestPayments::Monthly(ReferenceDate::Date(from_ymd(
-					2022, 6, 2
-				))),
-				pay_down_schedule: PayDownSchedule::None
-			}
-			.generate_expected_cashflows(
-				from_ymd(2022, 6, 2),
-				1000,
-				&InterestRate::Fixed {
-					rate_per_year: Rate::from_float(0.25),
-					compounding: CompoundingSchedule::Secondly
-				}
-			),
-			vec![
-				(NaiveDate::from_ymd_opt(2022, 7, 2).unwrap(), 20u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 8, 2).unwrap(), 20u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 9, 2).unwrap(), 20u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 10, 2).unwrap(), 20u128.into()),
-				(NaiveDate::from_ymd_opt(2022, 11, 2).unwrap(), 20u128.into())
-			]
-		);
+	fn from_ymdhms(year: i32, month: u32, day: u32, hour: u32, min: u32, seconds: u32) -> Seconds {
+		NaiveDate::from_ymd_opt(year, month, day)
+			.unwrap()
+			.and_hms_opt(hour, min, seconds)
+			.unwrap()
+			.timestamp() as Seconds
+	}
 
-		assert_ok!(
-			RepaymentSchedule {
-				maturity: Maturity::fixed(from_ymd(2023, 6, 1)),
-				interest_payments: InterestPayments::SemiAnnually(ReferenceDate::End),
-				pay_down_schedule: PayDownSchedule::None
-			}
-			.generate_expected_cashflows(
-				from_ymd(2022, 6, 1),
-				1000,
-				&InterestRate::Fixed {
-					rate_per_year: Rate::from_float(0.1),
-					compounding: CompoundingSchedule::Secondly
-				}
-			),
-			vec![
-				(NaiveDate::from_ymd_opt(2022, 6, 30).unwrap(), 48u128.into()),
-				(
-					NaiveDate::from_ymd_opt(2022, 12, 31).unwrap(),
-					48u128.into()
+	fn rate_per_year(rate: f32) -> InterestRate<Rate> {
+		InterestRate::Fixed {
+			rate_per_year: Rate::from_float(0.1),
+			compounding: CompoundingSchedule::Secondly,
+		}
+	}
+
+	mod cashflow_dates {
+		use super::*;
+
+		#[test]
+		fn foo() {
+			let date = NaiveDate::from_ymd_opt(2022, 6, 30)
+				.unwrap()
+				.and_hms_opt(0, 0, 0)
+				.unwrap();
+		}
+
+		#[test]
+		fn basic_list() {
+			assert_ok!(
+				ReferenceDate::End
+					.monthly_cashflow_dates(from_ymd(2022, 6, 15), from_ymd(2022, 12, 15)),
+				vec![
+					(from_ymd(2022, 6, 30), 0),
+					(from_ymd(2022, 7, 31), 0),
+					(from_ymd(2022, 8, 31), 0),
+					(from_ymd(2022, 9, 30), 0),
+					(from_ymd(2022, 10, 31), 0),
+					(from_ymd(2022, 11, 30), 0),
+					(from_ymd(2022, 12, 31), 0),
+				]
+			);
+
+			assert_ok!(
+				ReferenceDate::Date(days(20))
+					.monthly_cashflow_dates(from_ymd(2022, 6, 15), from_ymd(2022, 12, 15)),
+				vec![
+					(from_ymd(2022, 6, 20), 0),
+					(from_ymd(2022, 7, 20), 0),
+					(from_ymd(2022, 8, 20), 0),
+					(from_ymd(2022, 9, 20), 0),
+					(from_ymd(2022, 10, 20), 0),
+					(from_ymd(2022, 11, 20), 0),
+					(from_ymd(2022, 12, 20), 0),
+				]
+			);
+		}
+
+		#[test]
+		fn same_date() {
+			assert_ok!(
+				ReferenceDate::End
+					.monthly_cashflow_dates(from_ymd(2022, 6, 15), from_ymd(2022, 6, 15)),
+				vec![(from_ymd(2022, 6, 30), 0)]
+			);
+
+			assert_ok!(
+				ReferenceDate::Date(days(20))
+					.monthly_cashflow_dates(from_ymd(2022, 6, 15), from_ymd(2022, 6, 15)),
+				vec![(from_ymd(2022, 6, 20), 0)]
+			);
+		}
+
+		#[test]
+		fn end_limit_exact() {
+			assert_ok!(
+				ReferenceDate::End.monthly_cashflow_dates(
+					from_ymdhms(2022, 6, 1, 0, 0, 0),
+					from_ymdhms(2022, 8, 1, 0, 0, 0)
 				),
-			]
-		);
+				vec![(from_ymd(2022, 6, 30), 0), (from_ymd(2022, 7, 31), 0)]
+			);
+			assert_ok!(
+				ReferenceDate::Date(days(20)).monthly_cashflow_dates(
+					from_ymdhms(2022, 6, 21, 0, 0, 0),
+					from_ymdhms(2022, 8, 21, 0, 0, 0)
+				),
+				vec![(from_ymd(2022, 7, 20), 0), (from_ymd(2022, 8, 20), 0)]
+			);
+		}
+
+		#[test]
+		fn end_limit_plus_a_second() {
+			assert_ok!(
+				ReferenceDate::End.monthly_cashflow_dates(
+					from_ymdhms(2022, 6, 1, 0, 0, 0),
+					from_ymdhms(2022, 8, 1, 0, 0, 1)
+				),
+				vec![
+					(from_ymd(2022, 6, 30), 0),
+					(from_ymd(2022, 7, 31), 0),
+					(from_ymd(2022, 8, 31), 0), // by 1 second
+				]
+			);
+			assert_ok!(
+				ReferenceDate::Date(days(20)).monthly_cashflow_dates(
+					from_ymdhms(2022, 6, 21, 0, 0, 0),
+					from_ymdhms(2022, 8, 21, 0, 0, 1)
+				),
+				vec![
+					(from_ymd(2022, 7, 20), 0),
+					(from_ymd(2022, 8, 20), 0),
+					(from_ymd(2022, 9, 20), 0), // by 1 second
+				]
+			);
+		}
+
+		#[test]
+		fn start_limit_less_a_second() {
+			assert_ok!(
+				ReferenceDate::End.monthly_cashflow_dates(
+					from_ymdhms(2022, 5, 31, 23, 59, 59),
+					from_ymdhms(2022, 7, 31, 23, 59, 59)
+				),
+				vec![
+					(from_ymd(2022, 5, 31), 0), // by 1 second
+					(from_ymd(2022, 6, 30), 0),
+					(from_ymd(2022, 7, 31), 0)
+				]
+			);
+			assert_ok!(
+				ReferenceDate::Date(days(20)).monthly_cashflow_dates(
+					from_ymdhms(2022, 6, 20, 23, 59, 59),
+					from_ymdhms(2022, 8, 20, 23, 59, 59)
+				),
+				vec![
+					(from_ymd(2022, 6, 20), 0), // by 1 second
+					(from_ymd(2022, 7, 20), 0),
+					(from_ymd(2022, 8, 20), 0),
+				]
+			);
+		}
 	}
 }
