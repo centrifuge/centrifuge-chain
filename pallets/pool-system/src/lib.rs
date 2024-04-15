@@ -613,7 +613,15 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::LiquidityAdmin)
+				),
+				BadOrigin
+			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -876,7 +884,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::LiquidityAdmin)
+				),
+				BadOrigin
+			);
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
 				let epoch = epoch_info
