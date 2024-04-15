@@ -40,8 +40,8 @@ pallet-ethereum-transaction = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
 
 [dev-dependencies]
-lazy_static = { workspace = true }
 cfg-types = { workspace = true, default-features = true }
+lazy_static = { workspace = true }
 
 cumulus-primitives-core = { workspace = true, default-features = true }
 
