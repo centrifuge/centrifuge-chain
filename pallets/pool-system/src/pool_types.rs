@@ -198,7 +198,7 @@ pub struct PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>
 where
 	CurrencyId: Copy,
 	StringLimit: Get<u32>,
-    TrancheCurrency: Into<CurrencyId>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
