@@ -139,12 +139,19 @@ where
 {
 	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)
 		.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
-	let (nav_loans, _) =
-		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)?;
+
+	let nav_loans =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)
+			.map(|(nav_loans, _)| nav_loans)
+			.unwrap_or_else(|| pallet_loans::Pallet::<T>::portfolio_valuation(pool_id).value());
+
 	let (nav_fees, _) = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
 		pool_id,
 		&mut pool.reserve.total,
-	)?;
+	)
+	.map(|(nav_fees, _)| nav_fees)
+	.unwrap_or_else(|| pallet_pool_fees::Pallet::<T>::portfolio_valuation(pool_id).value());
+
 	let nav = Nav::new(nav_loans, nav_fees);
 	let total = nav
 		.total(pool.reserve.total)
