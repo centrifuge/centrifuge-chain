@@ -119,6 +119,7 @@ pub struct PoolDetails<
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
 	MaxTranches: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -197,6 +198,7 @@ pub struct PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>
 where
 	CurrencyId: Copy,
 	StringLimit: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -235,6 +237,7 @@ impl<
 	Balance:
 		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
+	TrancheCurrency: Into<CurrencyId>,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -273,9 +276,12 @@ impl<
 		let mut tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency).ok_or(DispatchError::Other(
-				"Always exists a currency for an existing pool",
-			))?;
+			let metadata = AssetRegistry::metadata(
+				&<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId::from(
+					tranche.currency.into(),
+				),
+			)
+			.ok_or(DispatchError::CannotLookup)?;
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency,
