@@ -104,21 +104,13 @@ where
 {
 	let input_prices: PriceCollectionInput<T> =
 		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
-			PriceCollectionInput::Custom(
-				BoundedBTreeMap::<
-					T::PriceId,
-					(
-						<T as pallet_pool_system::Config>::Balance,
-						<T as pallet_loans::Config>::Moment,
-					),
-					T::MaxActiveLoansPerPool,
-				>::try_from(prices)
-				.map_err(|_| {
+			PriceCollectionInput::Custom(BoundedBTreeMap::<_, _, _>::try_from(prices).map_err(
+				|_| {
 					DispatchError::Other(
 						"Collection is overweight. Should be at most MaxActiveLoansPerPool large.",
 					)
-				})?,
-			)
+				},
+			)?)
 		} else {
 			PriceCollectionInput::Empty
 		};
