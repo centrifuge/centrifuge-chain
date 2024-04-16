@@ -37,7 +37,7 @@ use sp_runtime::{
 	traits::{Get, Zero},
 	DispatchError,
 };
-use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData};
+use sp_std::marker::PhantomData;
 
 parameter_types! {
 	/// The native currency identifier of our currency id enum
