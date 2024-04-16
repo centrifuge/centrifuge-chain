@@ -150,6 +150,7 @@ pub trait Runtime:
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_evm_chain_id::Config
+	+ pallet_evm::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_rewards::Config<
@@ -162,7 +163,7 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
-	>
+	> + axelar_gateway_precompile::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -211,6 +212,7 @@ pub trait Runtime:
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
+		+ TryInto<pallet_ethereum::Event>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
@@ -226,7 +228,8 @@ pub trait Runtime:
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
 		+ From<pallet_proxy::Event<Self>>
-		+ From<pallet_democracy::Event<Self>>;
+		+ From<pallet_democracy::Event<Self>>
+		+ From<pallet_ethereum::Event>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>

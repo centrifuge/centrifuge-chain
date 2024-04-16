@@ -23,7 +23,6 @@ use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::RawOrigin,
 	traits::{
-		fungible::Mutate as FungibleMutate,
 		fungibles::{Inspect, Mutate as FungiblesMutate},
 		OriginTrait, PalletInfo,
 	},
@@ -74,7 +73,10 @@ use crate::{
 		config::Runtime,
 		env::{Blocks, Env},
 		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
-		utils::{democracy::execute_via_democracy, genesis, genesis::Genesis},
+		utils::{
+			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
+			genesis::Genesis,
+		},
 	},
 	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
 };
@@ -4763,28 +4765,6 @@ mod development {
 
 			use super::*;
 
-			mod utils {
-				use super::*;
-
-				pub fn mint_balance_into_derived_account<T: Runtime>(
-					env: &mut impl Env<T>,
-					address: H160,
-					balance: u128,
-				) {
-					let chain_id = env.parachain_state(|| pallet_evm_chain_id::Pallet::<T>::get());
-
-					let derived_account =
-						AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
-
-					env.parachain_state_mut(|| {
-						pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
-							.unwrap()
-					});
-				}
-			}
-
-			use utils::*;
-
 			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4894,22 +4874,15 @@ mod development {
 
 				nonce.add_assign(T::OutboundMessageNonce::one());
 
-				// Success
-
-				// Note how both the target address and the gateway sender need to have some
-				// balance.
-				mint_balance_into_derived_account::<T>(
-					&mut env,
-					axelar_contract_address,
-					cfg(1_000_000_000),
-				);
-				mint_balance_into_derived_account::<T>(
-					&mut env,
-					gateway_sender_h160,
-					cfg(1_000_000),
-				);
-
 				assert_ok!(env.parachain_state_mut(|| {
+					// Note how both the target address and the gateway sender need to have some
+					// balance.
+					mint_balance_into_derived_account::<T>(
+						axelar_contract_address,
+						cfg(1_000_000_000),
+					);
+					mint_balance_into_derived_account::<T>(gateway_sender_h160, cfg(1_000_000));
+
 					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
 						sender.clone(),
 						test_domain.clone(),
