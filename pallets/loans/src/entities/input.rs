@@ -61,6 +61,6 @@ impl<T: Config> RepaidInput<T> {
 #[scale_info(skip_type_params(T))]
 pub enum PriceCollectionInput<T: Config> {
 	Empty,
-	Custom(BoundedBTreeMap<T::PriceId, T::Balance, T::MaxActiveLoansPerPool>),
+	Custom(BoundedBTreeMap<T::PriceId, (T::Balance, T::Moment), T::MaxActiveLoansPerPool>),
 	FromRegistry,
 }

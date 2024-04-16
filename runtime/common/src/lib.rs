@@ -107,17 +107,15 @@ where
 			PriceCollectionInput::Custom(
 				BoundedBTreeMap::<
 					T::PriceId,
-					<T as pallet_pool_system::Config>::Balance,
+					(
+						<T as pallet_pool_system::Config>::Balance,
+						<T as pallet_loans::Config>::Moment,
+					),
 					T::MaxActiveLoansPerPool,
-				>::try_from(
-					prices
-						.into_iter()
-						.map(|(price_id, (price, _))| (price_id, price))
-						.collect::<BTreeMap<_, _>>(),
-				)
+				>::try_from(prices)
 				.map_err(|_| {
 					DispatchError::Other(
-						"Collection is overwheight. Should be at most MaxActiveLoansPerPool large.",
+						"Collection is overweight. Should be at most MaxActiveLoansPerPool large.",
 					)
 				})?,
 			)
