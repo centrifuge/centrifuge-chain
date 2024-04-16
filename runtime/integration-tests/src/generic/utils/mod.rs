@@ -26,7 +26,7 @@ use frame_system::RawOrigin;
 use pallet_evm::FeeCalculator;
 use pallet_oracle_collection::types::CollectionInfo;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use runtime_common::{account_conversion::convert_evm_address, oracle::Feeder};
+use runtime_common::{account_conversion::AccountConverter, oracle::Feeder};
 use sp_core::{H160, U256};
 use sp_runtime::{
 	traits::{Get, One, StaticLookup},
@@ -263,14 +263,16 @@ pub mod evm {
 		balance: Balance,
 	) -> Balance {
 		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-		let derived_account = convert_evm_address(chain_id, address.to_fixed_bytes());
+		let derived_account =
+			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
 
 		pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance).unwrap()
 	}
 
 	pub fn deploy_contract<T: Runtime>(address: H160, code: Vec<u8>) -> H160 {
 		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-		let derived_address = convert_evm_address(chain_id, address.to_fixed_bytes());
+		let derived_address =
+			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
 
 		let transaction_create_cost = T::config().gas_transaction_create;
 		let (base_fee, _) = T::FeeCalculator::min_gas_price();
