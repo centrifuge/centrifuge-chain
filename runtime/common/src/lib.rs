@@ -29,7 +29,6 @@ pub mod xcm;
 
 use cfg_primitives::Balance;
 use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
-use frame_support::BoundedBTreeMap;
 use orml_traits::GetByKey;
 use pallet_loans::entities::input::PriceCollectionInput;
 use pallet_pool_system::Nav;
