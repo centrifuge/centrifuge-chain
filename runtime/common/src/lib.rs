@@ -103,10 +103,9 @@ where
 		>,
 {
 	let input_prices: PriceCollectionInput<T> =
-		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
-			PriceCollectionInput::FromRegistry
-		} else {
-			PriceCollectionInput::Empty
+		match pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			Ok(_) => PriceCollectionInput::FromRegistry,
+			Err(_) => PriceCollectionInput::Empty,
 		};
 
 	update_nav_with_input::<T>(pool_id, input_prices)
