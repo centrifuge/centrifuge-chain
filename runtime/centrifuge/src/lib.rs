@@ -2750,7 +2750,7 @@ mod benches {
 		[pallet_treasury, Treasury]
 		[pallet_preimage, Preimage]
 		[pallet_fees, Fees]
-		[pallet_anchors, Anchors]
+		[pallet_anchors, Anchor]
 		[pallet_block_rewards, BlockRewards]
 		[pallet_crowdloan_claim, CrowdloanClaim]
 		[pallet_crowdloan_reward, CrowdloanReward]
