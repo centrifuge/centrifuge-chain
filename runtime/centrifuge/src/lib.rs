@@ -1251,7 +1251,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type AuthorityId = AuraId;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type MaxCollators = MaxAuthorities;
 	type Rate = Rate;
 	type Rewards = BlockRewardsBase;

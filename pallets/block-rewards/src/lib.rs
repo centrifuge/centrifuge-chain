@@ -50,7 +50,7 @@ use frame_support::{
 	storage::transactional,
 	traits::{
 		fungible::{Inspect as FungibleInspect, Mutate as FungibleMutate},
-		fungibles::Mutate,
+		fungibles::{Inspect, Mutate},
 		tokens::{Balance, Fortitude, Precision},
 		OneSessionHandler,
 	},
@@ -132,9 +132,6 @@ pub mod pallet {
 		/// Type used to handle balances.
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand + MaybeSerializeDeserialize;
 
-		#[pallet::constant]
-		type ExistentialDeposit: Get<Self::Balance>;
-
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
@@ -147,8 +144,12 @@ pub mod pallet {
 			> + CurrencyGroupChange<GroupId = u32, CurrencyId = <Self as Config>::CurrencyId>;
 
 		/// The type used to handle currency minting and burning for collators.
-		type Tokens: Mutate<Self::AccountId, AssetId = <Self as Config>::CurrencyId, Balance = Self::Balance>
-			+ FungibleMutate<Self::AccountId>
+		type Tokens: Mutate<Self::AccountId>
+			+ Inspect<
+				Self::AccountId,
+				AssetId = <Self as Config>::CurrencyId,
+				Balance = Self::Balance,
+			> + FungibleMutate<Self::AccountId>
 			+ FungibleInspect<Self::AccountId, Balance = Self::Balance>;
 
 		/// The currency type of the artificial block rewards currency.
@@ -314,10 +315,13 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
+		let existential_deposit =
+			<T::Tokens as Inspect<T::AccountId>>::minimum_balance(T::StakeCurrencyId::get());
+
 		<T::Tokens as Mutate<T::AccountId>>::mint_into(
 			T::StakeCurrencyId::get(),
 			who,
-			T::StakeAmount::get().saturating_add(T::ExistentialDeposit::get()),
+			T::StakeAmount::get().saturating_add(existential_deposit),
 		)?;
 		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
