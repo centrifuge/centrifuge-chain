@@ -508,7 +508,7 @@ mod zero_amount_order {
 					Swap {
 						currency_in: CURRENCY_B,
 						currency_out: CURRENCY_A,
-						amount_out: AMOUNT,
+						amount_out: 0,
 					},
 				),
 				SwapStatus {
@@ -525,7 +525,6 @@ mod zero_amount_order {
 	#[test]
 	fn when_apply_over_smaller_inverse_swap_but_math_precission() {
 		const AMOUNT_A: Balance = 100;
-		const NEW_ORDER_ID: OrderId = ORDER_ID + 1;
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| match (from, to) {
