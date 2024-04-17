@@ -16,10 +16,4 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::PalletId;
-
 pub mod mocks;
-
-/// A pallet id for testing.
-/// Can be used for a single point of storage for tokens in testing for example
-pub const TEST_PALLET_ID: PalletId = PalletId(*b"TestTest");

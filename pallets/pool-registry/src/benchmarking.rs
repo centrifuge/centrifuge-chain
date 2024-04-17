@@ -68,8 +68,6 @@ benchmarks! {
 			  CurrencyId = CurrencyId,
 			  EpochId = PoolEpochId,
 			  Rate = <T as Config>::InterestRate,
-			  MaxTokenNameLength = <T as Config>::MaxTokenNameLength,
-			  MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength,
 			  MaxTranches = <T as Config>::MaxTranches>,
 		T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
 		<T as pallet_pool_system::Config>::PoolFees: PoolFeesBenchmarkHelper<
@@ -85,13 +83,13 @@ benchmarks! {
 			<T as pallet::Config>::PoolId,
 			TrancheInput = TrancheInput<
 				<T as pallet_pool_system::Config>::Rate,
-				<T as pallet_pool_system::Config>::MaxTokenNameLength,
-				<T as pallet_pool_system::Config>::MaxTokenSymbolLength>,
+				<T as pallet_pool_system::Config>::StringLimit
+			>,
 			PoolChanges = PoolChanges<
 				<T as pallet_pool_system::Config>::Rate,
-				<T as pallet_pool_system::Config>::MaxTokenNameLength,
-				<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
-				<T as pallet_pool_system::Config>::MaxTranches>,
+				<T as pallet_pool_system::Config>::StringLimit,
+				<T as pallet_pool_system::Config>::MaxTranches
+			>,
 			PoolFeeInput = (PoolFeeBucket, <<T as pallet_pool_system::Config>::PoolFees as PoolFeesBenchmarkHelper>::PoolFeeInfo),
 		>,
 		Vec<(PoolFeeBucket, PoolFeeInfo<<T as frame_system::Config>::AccountId, u128, <T as pallet::Config>::InterestRate>)>: FromIterator<(PoolFeeBucket, PoolFeeInfo<<T as frame_system::Config>::AccountId, u128, <T as pallet_pool_fees::Config>::Rate>)>
@@ -236,8 +234,8 @@ fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
 	Pallet::<T>::get_pool_metadata(POOL).unwrap()
 }
 
-fn build_update_tranche_token_metadata<T: Config>(
-) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
+fn build_update_tranche_token_metadata<T: pallet_pool_system::Config>(
+) -> BoundedVec<TrancheMetadata<T::StringLimit>, T::MaxTranches> {
 	vec![TrancheMetadata {
 		token_name: BoundedVec::default(),
 		token_symbol: BoundedVec::default(),

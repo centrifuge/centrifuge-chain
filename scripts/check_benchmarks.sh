@@ -12,7 +12,6 @@ run_benchmark() {
     --repeat=1 \
     --pallet="${pallet}" \
     --extrinsic=* \
-    --execution=wasm \
     --wasm-execution=compiled \
     --heap-pages=4096"
 
@@ -26,10 +25,10 @@ then
   chain="development-local"
 elif [[ $runtime == "centrifuge" ]];
 then
-  chain="centrifuge-dev"
+  chain="centrifuge-local"
 elif [[ $runtime == "altair" ]];
 then
-  chain="altair-dev"
+  chain="altair-local"
 else
   echo "Unknown runtime. Aborting!"
   exit 1;

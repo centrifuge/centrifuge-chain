@@ -113,7 +113,6 @@ pub mod pallet {
 		type Rate: Parameter
 			+ Member
 			+ cfg_types::fixed_point::FixedPointNumberExtension
-			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
 
@@ -212,6 +211,7 @@ pub mod pallet {
 	///
 	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
 	#[pallet::storage]
+	#[pallet::getter(fn portfolio_valuation)]
 	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,

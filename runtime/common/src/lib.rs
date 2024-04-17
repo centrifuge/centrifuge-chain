@@ -28,7 +28,11 @@ pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
+use cfg_types::{
+	fee_keys::FeeKey,
+	pools::PoolNav,
+	tokens::{CurrencyId, StakingCurrency},
+};
 use orml_traits::GetByKey;
 use pallet_loans::entities::input::PriceCollectionInput;
 use pallet_pool_system::Nav;
@@ -81,6 +85,7 @@ where
 	fn get(currency_id: &CurrencyId) -> Balance {
 		match currency_id {
 			CurrencyId::Native => T::ExistentialDeposit::get(),
+			CurrencyId::Staking(StakingCurrency::BlockRewards) => T::ExistentialDeposit::get(),
 			currency_id => orml_asset_registry::Pallet::<T>::metadata(currency_id)
 				.map(|metadata| metadata.existential_deposit)
 				.unwrap_or_default(),
@@ -139,12 +144,21 @@ where
 {
 	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)
 		.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
-	let (nav_loans, _) =
-		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)?;
-	let (nav_fees, _) = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
+
+	let prev_nav_loans = pallet_loans::Pallet::<T>::portfolio_valuation(pool_id).value();
+	let nav_loans =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)
+			.map(|(nav_loans, _)| nav_loans)
+			.unwrap_or(prev_nav_loans);
+
+	let prev_fees_loans = pallet_pool_fees::Pallet::<T>::portfolio_valuation(pool_id).value();
+	let nav_fees = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
 		pool_id,
 		&mut pool.reserve.total,
-	)?;
+	)
+	.map(|(nav_fees, _)| nav_fees)
+	.unwrap_or(prev_fees_loans);
+
 	let nav = Nav::new(nav_loans, nav_fees);
 	let total = nav
 		.total(pool.reserve.total)
@@ -192,28 +206,28 @@ pub mod xcm_fees {
 
 /// AssetRegistry's AssetProcessor
 pub mod asset_registry {
-	use cfg_primitives::types::{AccountId, Balance};
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_primitives::types::AccountId;
+	use cfg_types::tokens::{AssetMetadata, CurrencyId};
 	use frame_support::{
 		dispatch::RawOrigin,
-		sp_std::marker::PhantomData,
 		traits::{EnsureOrigin, EnsureOriginWithArg},
 	};
-	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use orml_traits::asset_registry::AssetProcessor;
 	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
+	use sp_std::marker::PhantomData;
 
 	#[derive(
 		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 	)]
 	pub struct CustomAssetProcessor;
 
-	impl AssetProcessor<CurrencyId, AssetMetadata<Balance, CustomMetadata>> for CustomAssetProcessor {
+	impl AssetProcessor<CurrencyId, AssetMetadata> for CustomAssetProcessor {
 		fn pre_register(
 			id: Option<CurrencyId>,
-			metadata: AssetMetadata<Balance, CustomMetadata>,
-		) -> Result<(CurrencyId, AssetMetadata<Balance, CustomMetadata>), DispatchError> {
+			metadata: AssetMetadata,
+		) -> Result<(CurrencyId, AssetMetadata), DispatchError> {
 			match id {
 				Some(id) => Ok((id, metadata)),
 				None => Err(DispatchError::Other("asset-registry: AssetId is required")),
@@ -222,7 +236,7 @@ pub mod asset_registry {
 
 		fn post_register(
 			_id: CurrencyId,
-			_asset_metadata: AssetMetadata<Balance, CustomMetadata>,
+			_asset_metadata: AssetMetadata,
 		) -> Result<(), DispatchError> {
 			Ok(())
 		}
@@ -455,7 +469,7 @@ pub mod xcm_transactor {
 	}
 
 	impl XcmTransact for NullTransactor {
-		fn destination(self) -> xcm::latest::MultiLocation {
+		fn destination(self) -> staging_xcm::latest::MultiLocation {
 			Default::default()
 		}
 	}

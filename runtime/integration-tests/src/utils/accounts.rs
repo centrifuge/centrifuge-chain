@@ -14,13 +14,17 @@
 
 use std::collections::HashMap;
 
-use cfg_primitives::Index;
+use cfg_primitives::Nonce;
 use ethabi::ethereum_types::{H160, H256};
 use frame_support::traits::OriginTrait;
 use fudge::primitives::Chain;
-use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
 use pallet_evm::AddressMapping;
-use sp_core::{ecdsa, ed25519, sr25519, Hasher, Pair as PairT};
+use polkadot_core_primitives::{AccountId as RelayAccountId, Nonce as RelayNonce};
+use sp_core::{
+	ecdsa, ed25519, sr25519,
+	sr25519::{Pair, Public, Signature},
+	Hasher, Pair as PairT,
+};
 use sp_runtime::{AccountId32, MultiSignature};
 
 use crate::{
@@ -30,7 +34,7 @@ use crate::{
 
 /// Struct that takes care of handling nonces for accounts
 pub struct NonceManager {
-	nonces: HashMap<Chain, HashMap<Keyring, Index>>,
+	nonces: HashMap<Chain, HashMap<Keyring, Nonce>>,
 }
 
 impl NonceManager {
@@ -46,7 +50,7 @@ impl NonceManager {
 	/// map.
 	///
 	/// MUST be executed in an externalites provided env.
-	pub fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+	pub fn nonce(&mut self, chain: Chain, who: Keyring) -> Nonce {
 		self.nonces
 			.entry(chain)
 			.or_insert(HashMap::new())
@@ -55,13 +59,13 @@ impl NonceManager {
 			.clone()
 	}
 
-	fn nonce_from_chain(chain: Chain, who: Keyring) -> Index {
+	fn nonce_from_chain(chain: Chain, who: Keyring) -> Nonce {
 		match chain {
-			Chain::Relay => nonce::<relay::Runtime, RelayAccountId, RelayIndex>(
+			Chain::Relay => nonce::<relay::Runtime, RelayAccountId, RelayNonce>(
 				who.clone().id().into(),
 			),
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
+				_ if id == PARA_ID => nonce::<centrifuge::Runtime, cfg_primitives::AccountId, Nonce>(
 					who.clone().id().into()
 				),
 				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
@@ -76,7 +80,7 @@ impl NonceManager {
 	/// map.
 	///
 	/// MUST be executed in an externalites provided env.
-	pub fn fetch_add(&mut self, chain: Chain, who: Keyring) -> Index {
+	pub fn fetch_add(&mut self, chain: Chain, who: Keyring) -> Nonce {
 		let curr = self
 			.nonces
 			.entry(chain)
@@ -104,12 +108,10 @@ impl NonceManager {
 /// Retrieves a nonce from the centrifuge state
 ///
 /// **NOTE: Usually one should use the TestEnv::nonce() api**
-fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
+fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> Nonce {
 	env.centrifuge
 		.with_state(|| {
-			nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
-				who.clone().id().into(),
-			)
+			nonce::<centrifuge::Runtime, cfg_primitives::AccountId, Nonce>(who.clone().id().into())
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
@@ -117,17 +119,17 @@ fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 /// Retrieves a nonce from the relay state
 ///
 /// **NOTE: Usually one should use the TestEnv::nonce() api**
-fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
+fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayNonce {
 	env.relay
-		.with_state(|| nonce::<relay::Runtime, RelayAccountId, RelayIndex>(who.clone().id().into()))
+		.with_state(|| nonce::<relay::Runtime, RelayAccountId, RelayNonce>(who.clone().id().into()))
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
 
-fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
+fn nonce<Runtime, AccountId, Nonce>(who: AccountId) -> Nonce
 where
 	Runtime: frame_system::Config,
 	AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
-	Index: From<<Runtime as frame_system::Config>::Index>,
+	Nonce: From<<Runtime as frame_system::Config>::Nonce>,
 {
 	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }
@@ -157,8 +159,9 @@ impl Keyring {
 		pair.public().into()
 	}
 
+	/// NOTE: Needs to be executed in an externalities environment
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		runtime_common::account_conversion::AccountConverter::<T, ()>::into_account_id(self.into())
+		runtime_common::account_conversion::AccountConverter::into_account_id::<T>(self.into())
 	}
 
 	pub fn as_multi(self) -> sp_runtime::MultiSigner {

@@ -463,7 +463,7 @@ mod tests {
 		pub const MaxTranches: u32 = 5;
 	}
 
-	struct Now(core::time::Duration);
+	struct Now;
 	impl Now {
 		fn pass(delta: u64) {
 			unsafe {

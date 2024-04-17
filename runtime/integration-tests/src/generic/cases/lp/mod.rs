@@ -62,7 +62,7 @@ pub mod utils {
 	use frame_system::pallet_prelude::OriginFor;
 	use sp_core::{ByteArray, Get};
 	use sp_runtime::traits::EnsureAdd;
-	use xcm::{
+	use staging_xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
 			Junctions::X3,
@@ -1744,7 +1744,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	default_investors().into_iter().for_each(|investor| {
 		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::generic::utils::pool::give_role::<T>(
-			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -1757,7 +1757,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		));
 
 		crate::generic::utils::pool::give_role::<T>(
-			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -1770,7 +1770,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		));
 
 		crate::generic::utils::pool::give_role::<T>(
-			AccountConverter::<T, ()>::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);

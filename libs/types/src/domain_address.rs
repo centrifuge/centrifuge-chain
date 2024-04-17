@@ -12,7 +12,7 @@
 
 use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
-use frame_support::RuntimeDebug;
+use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AccountIdConversion, Convert};

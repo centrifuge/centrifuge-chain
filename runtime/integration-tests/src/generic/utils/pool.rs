@@ -74,7 +74,7 @@ pub fn create<T: Runtime>(
 	currency_id: CurrencyId,
 	non_residual_tranches: impl IntoIterator<Item = (Rate, Perquintill)>,
 ) {
-	let mut tranches = vec![TrancheInput::<Rate, _, _> {
+	let mut tranches = vec![TrancheInput::<Rate, _> {
 		tranche_type: TrancheType::Residual,
 		seniority: None,
 		metadata: TrancheMetadata {

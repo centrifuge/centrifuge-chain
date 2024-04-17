@@ -10,21 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_mocks::pallet_mock_fees;
-use cfg_traits::swaps::SwapInfo;
-use cfg_types::tokens::{CurrencyId, CustomMetadata};
-use frame_support::{
-	parameter_types,
-	traits::{ConstU32, GenesisBuild},
-};
+use cfg_traits::{swaps::SwapInfo, AssetMetadataOf};
+use cfg_types::tokens::CurrencyId;
+use frame_support::{derive_impl, parameter_types};
 use frame_system::EnsureRoot;
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use sp_core::{ConstU128, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128,
-};
+use orml_traits::parameter_type_with_key;
+use sp_core::{ConstU128, ConstU32};
+use sp_runtime::{BuildStorage, FixedU128};
 
 use crate as order_book;
 
@@ -58,17 +50,9 @@ pub type AccountId = u64;
 pub type OrderId = u32;
 pub type Ratio = FixedU128;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
 frame_support::construct_runtime!(
-	  pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	  {
+	  pub enum Runtime {
 		  Balances: pallet_balances,
-		  Fees: pallet_mock_fees,
 		  System: frame_system,
 		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
@@ -78,43 +62,18 @@ frame_support::construct_runtime!(
 	  }
 );
 
-parameter_types! {
-	  pub const BlockHashCount: u64 = 250;
-	  pub const SS58Prefix: u8 = 42;
-}
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
 cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
-	CustomMetadata
+	(),
+	()
 }
 
 impl cfg_mocks::value_provider::pallet::Config for Runtime {
@@ -123,34 +82,19 @@ impl cfg_mocks::value_provider::pallet::Config for Runtime {
 	type Value = Ratio;
 }
 
-impl cfg_mocks::fees::pallet::Config for Runtime {
-	type Balance = Balance;
-	type FeeKey = u8;
-}
-
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
 	type Status = SwapInfo<Balance, Balance, CurrencyId, Ratio>;
 }
 
-parameter_types! {
-	  pub const DefaultFeeValue: Balance = 1;
-}
-
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type MaxHolds = ConstU32<1>;
+	type RuntimeHoldReason = ();
 }
 
 parameter_type_with_key! {
@@ -224,8 +168,8 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	// Add foreign currency balances of differing precisions
@@ -239,24 +183,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		metadata: vec![
 			(
 				CURRENCY_A,
-				AssetMetadata {
+				AssetMetadataOf::<RegistryMock> {
 					decimals: CURRENCY_A_DECIMALS,
-					name: "MOCK TOKEN_A".as_bytes().to_vec(),
-					symbol: "MOCK_A".as_bytes().to_vec(),
+					name: Default::default(),
+					symbol: Default::default(),
 					existential_deposit: 0,
 					location: None,
-					additional: CustomMetadata::default(),
+					additional: Default::default(),
 				},
 			),
 			(
 				CURRENCY_B,
-				AssetMetadata {
+				AssetMetadataOf::<RegistryMock> {
 					decimals: CURRENCY_B_DECIMALS,
-					name: "MOCK TOKEN_B".as_bytes().to_vec(),
-					symbol: "MOCK_B".as_bytes().to_vec(),
+					name: Default::default(),
+					symbol: Default::default(),
 					existential_deposit: 0,
 					location: None,
-					additional: CustomMetadata::default(),
+					additional: Default::default(),
 				},
 			),
 		],

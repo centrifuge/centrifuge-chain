@@ -4,21 +4,16 @@ use cfg_types::{
 	tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency},
 };
 use frame_support::{
-	parameter_types,
+	derive_impl, parameter_types,
 	traits::{
-		fungibles::Inspect, tokens::WithdrawConsequence, ConstU16, ConstU32, ConstU64,
-		GenesisBuild, OnFinalize, OnInitialize,
+		fungibles::Inspect, tokens::WithdrawConsequence, ConstU128, ConstU32, OnFinalize,
+		OnInitialize,
 	},
 	PalletId,
 };
 use frame_system::EnsureRoot;
 use num_traits::{One, Zero};
-use sp_core::H256;
-use sp_runtime::{
-	impl_opaque_keys,
-	testing::{Header, UintAuthorityId},
-	traits::{BlakeTwo256, ConvertInto, IdentityLookup},
-};
+use sp_runtime::{impl_opaque_keys, testing::UintAuthorityId, traits::ConvertInto, BuildStorage};
 
 use crate::{self as pallet_block_rewards, Config};
 
@@ -26,18 +21,12 @@ pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
 
 pub(crate) type AccountId = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
 type BlockNumber = u64;
 type SessionIndex = u32;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Test {
 		System: frame_system,
 		Balances: pallet_balances,
 		Tokens: pallet_restricted_tokens,
@@ -49,31 +38,10 @@ frame_support::construct_runtime!(
 	}
 );
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Test>;
 }
 
 impl_opaque_keys! {
@@ -116,37 +84,24 @@ impl pallet_session::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	// the minimum fee for an anchor is 500,000ths of a CFG.
-	// This is set to a value so you can still get some return without getting your account removed.
-	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
-	// For weight estimation, we assume that the most locks on an individual account will be 50.
-	pub const MaxHolds: u32 = 50;
-	pub const MaxLocks: u32 = 50;
-	pub const MaxReserves: u32 = 50;
-}
+pub const BALANCE_ED: Balance = 23;
+pub const REWARD_CURRENCY_ED: Balance = 42;
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = MaxHolds;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type ExistentialDeposit = ConstU128<BALANCE_ED>;
+	type RuntimeHoldReason = ();
 }
 
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
-			CurrencyId::Native => ExistentialDeposit::get(),
-			_ => 1,
+			CurrencyId::Native => BALANCE_ED,
+			CurrencyId::Staking(BlockRewardsCurrency) => REWARD_CURRENCY_ED,
+			_ => unreachable!()
 		}
 	};
 }
@@ -158,8 +113,8 @@ impl orml_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
+	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -234,7 +189,6 @@ impl pallet_block_rewards::Config for Test {
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type MaxCollators = MaxCollators;
 	type Rate = Rate;
 	type Rewards = Rewards;
@@ -253,13 +207,13 @@ pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
 		// NOTE: This is now the ED instead of 0, as we collators need ED now.
 		Tokens::balance(BlockRewardCurrency::get(), who),
-		ExistentialDeposit::get()
+		REWARD_CURRENCY_ED
 	);
 	assert_eq!(
 		<Test as Config>::Tokens::can_withdraw(
 			<Test as Config>::StakeCurrencyId::get(),
 			who,
-			ExistentialDeposit::get() * 2
+			REWARD_CURRENCY_ED * 2
 		),
 		WithdrawConsequence::BalanceLow
 	);
@@ -275,11 +229,7 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		// NOTE: IF a collator has been staked before the system already granted them ED
 		//       of `StakeCurrency`.
-		if was_before {
-			ExistentialDeposit::get()
-		} else {
-			0
-		}
+		if was_before { REWARD_CURRENCY_ED } else { 0 }
 	);
 }
 
@@ -355,8 +305,8 @@ impl ExtBuilder {
 	}
 
 	pub(crate) fn build(self) -> sp_io::TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
+		let mut storage = frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_block_rewards::GenesisConfig::<Test> {

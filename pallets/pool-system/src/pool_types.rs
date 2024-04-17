@@ -13,11 +13,12 @@
 use cfg_traits::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
+	pallet_prelude::{DispatchError, RuntimeDebug},
 	traits::Get,
-	BoundedVec, RuntimeDebug,
+	BoundedVec,
 };
-use orml_traits::{asset_registry::AssetMetadata, Change};
+use orml_traits::Change;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
@@ -87,13 +88,12 @@ where
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+pub struct ScheduledUpdateDetails<Rate, StringLimit, MaxTranches>
 where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
+	StringLimit: Get<u32>,
 	MaxTranches: Get<u32>,
 {
-	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
+	pub changes: PoolChanges<Rate, StringLimit, MaxTranches>,
 	pub submitted_at: Seconds,
 }
 
@@ -119,6 +119,7 @@ pub struct PoolDetails<
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
 	MaxTranches: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -147,47 +148,16 @@ pub struct PoolParameters {
 	pub max_nav_age: Seconds,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct PoolChanges<Rate, StringLimit, MaxTranches>
 where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
+	StringLimit: Get<u32>,
 	MaxTranches: Get<u32>,
 {
 	pub tranches: Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>,
-	pub tranche_metadata:
-		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
+	pub tranche_metadata: Change<BoundedVec<TrancheMetadata<StringLimit>, MaxTranches>>,
 	pub min_epoch_time: Change<Seconds>,
 	pub max_nav_age: Change<Seconds>,
-}
-
-// NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
-// https://github.com/open-web3-stack/open-runtime-module-library/pull/867
-impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches> MaxEncodedLen
-	for PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
-	PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>: Encode,
-	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
-	BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>:
-		MaxEncodedLen,
-	Seconds: MaxEncodedLen,
-{
-	fn max_encoded_len() -> usize {
-		// The tranches (default bound)
-		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
-			// The tranche metadata (default bound)
-			.saturating_add(BoundedVec::<
-				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
-				MaxTranches,
-			>::max_encoded_len())
-			// The min epoc time and max nav age (default bounds)
-			.saturating_add(Seconds::max_encoded_len().saturating_mul(2))
-			// From the `Change` enum which wraps all four fields of Self
-			.saturating_add(4)
-	}
 }
 
 /// Information about the deposit that has been taken to create a pool
@@ -199,17 +169,11 @@ pub struct PoolDepositInfo<AccountId, Balance> {
 
 /// The core metadata about the pool which we can attach to an event
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolEssence<
-	CurrencyId,
-	Balance,
-	TrancheCurrency,
-	Rate,
-	MaxTokenNameLength,
-	MaxTokenSymbolLength,
-> where
+pub struct PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>
+where
 	CurrencyId: Copy,
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
+	StringLimit: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -220,8 +184,7 @@ pub struct PoolEssence<
 	/// Minimum duration for an epoch.
 	pub min_epoch_time: Seconds,
 	/// Tranches on a pool
-	pub tranches:
-		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+	pub tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>>,
 }
 
 impl<
@@ -249,6 +212,7 @@ impl<
 	Balance:
 		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
+	TrancheCurrency: Into<CurrencyId>,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -276,49 +240,30 @@ impl<
 			.map_err(Into::into)
 	}
 
-	pub fn essence<AssetRegistry, AssetId, MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn essence<AssetRegistry, AssetId, StringLimit>(
 		&self,
-	) -> Result<
-		PoolEssence<
-			CurrencyId,
-			Balance,
-			TrancheCurrency,
-			Rate,
-			MaxTokenNameLength,
-			MaxTokenSymbolLength,
-		>,
-		DispatchError,
-	>
+	) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>, DispatchError>
 	where
-		AssetRegistry: orml_traits::asset_registry::Inspect,
-		<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId: From<CurrencyId>,
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+		AssetRegistry:
+			orml_traits::asset_registry::Inspect<StringLimit = StringLimit, AssetId = CurrencyId>,
+		StringLimit: Get<u32>,
 	{
-		let mut tranches: Vec<
-			TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
-		> = Vec::new();
+		let mut tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency.into())
-				.ok_or(AssetMetadata {
-					decimals: 0,
-					name: Vec::new(),
-					symbol: Vec::new(),
-					existential_deposit: (),
-					location: None,
-					additional: (),
-				})
-				.unwrap();
+			let metadata = AssetRegistry::metadata(
+				&<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId::from(
+					tranche.currency.into(),
+				),
+			)
+			.ok_or(DispatchError::CannotLookup)?;
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency,
 				ty: tranche.tranche_type,
 				metadata: TrancheMetadata {
-					token_name: BoundedVec::try_from(metadata.name)
-						.unwrap_or(BoundedVec::default()),
-					token_symbol: BoundedVec::try_from(metadata.symbol)
-						.unwrap_or(BoundedVec::default()),
+					token_name: metadata.name,
+					token_symbol: metadata.symbol,
 				},
 			});
 		}
@@ -334,7 +279,7 @@ impl<
 }
 
 pub mod changes {
-	use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
+	use frame_support::storage::bounded_btree_set::BoundedBTreeSet;
 	use sp_std::collections::btree_set::BTreeSet;
 	use strum::EnumCount;
 

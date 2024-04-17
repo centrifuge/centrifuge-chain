@@ -23,7 +23,7 @@ orml-traits = { workspace = true }
 orml-xtokens = { workspace = true }
 
 # polkadot
-xcm = { workspace = true }
+staging-xcm = { workspace = true }
 
 # local
 cfg-traits = { workspace = true }
@@ -39,7 +39,7 @@ std = [
   "scale-info/std",
   "orml-xtokens/std",
   "orml-traits/std",
-  "xcm/std",
+  "staging-xcm/std",
 ]
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",

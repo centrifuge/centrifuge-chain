@@ -46,12 +46,13 @@ orml-asset-registry = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-investments = { workspace = true, default-features = true }
+pallet-pool-fees = { workspace = true, default-features = true }
 pallet-restricted-tokens = { workspace = true, default-features = true }
 parachain-info = { workspace = true, default-features = true }
 rand = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
-xcm = { workspace = true, default-features = true }
+staging-xcm = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -60,12 +61,14 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "parity-scale-codec/std",
-  "frame-benchmarking/std",
+  "frame-benchmarking?/std",
   "frame-support/std",
   "frame-system/std",
   "orml-traits/std",
+  "orml-asset-registry?/std",
   "pallet-permissions/std",
-  "pallet-pool-fees/std",
+  "pallet-investments?/std",
+  "pallet-pool-fees?/std",
   "pallet-timestamp/std",
   "rev_slice/std",
   "scale-info/std",

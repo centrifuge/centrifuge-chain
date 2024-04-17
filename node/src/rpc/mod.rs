@@ -14,7 +14,7 @@
 
 use std::{fmt::Debug, sync::Arc};
 
-use cfg_primitives::{AccountId, Balance, Index};
+use cfg_primitives::{AccountId, Balance, Nonce};
 use jsonrpsee::{
 	core::Error as JsonRpseeError,
 	types::error::{CallError, ErrorCode, ErrorObject},
@@ -46,7 +46,7 @@ where
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
-	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
+	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,

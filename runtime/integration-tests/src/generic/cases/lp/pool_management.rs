@@ -30,9 +30,7 @@ use sp_runtime::{DispatchError, FixedPointNumber};
 use crate::{
 	generic::{
 		cases::lp::{
-			names,
-			names::POOL_A_T_1_USDC,
-			utils,
+			names, utils,
 			utils::{pool_a_tranche_id, Decoder},
 			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
@@ -390,10 +388,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::generic::utils::pool::give_role::<T>(
-			AccountConverter::<T, ()>::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::Bob.into(),
-			),
+			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
 		);

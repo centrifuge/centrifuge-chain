@@ -19,10 +19,10 @@ use sp_std::{cmp::min, vec::Vec};
 /// Build a fixed-size array using as many elements from `src` as possible
 /// without overflowing and ensuring that the array is 0 padded in the case
 /// where `src.len()` is smaller than S.
-pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
+pub fn vec_to_fixed_array<const S: usize>(src: impl AsRef<[u8]>) -> [u8; S] {
 	let mut dest = [0; S];
-	let len = min(src.len(), S);
-	dest[..len].copy_from_slice(&src.as_slice()[..len]);
+	let len = min(src.as_ref().len(), S);
+	dest[..len].copy_from_slice(&src.as_ref()[..len]);
 
 	dest
 }
@@ -58,8 +58,10 @@ pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, E
 /// Function that initializes the frame system & Aura, so a timestamp can be set
 /// and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
-where
+pub fn set_block_number_timestamp<T>(
+	block_number: frame_system::pallet_prelude::BlockNumberFor<T>,
+	timestamp: T::Moment,
+) where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
 {
 	use frame_support::traits::Hooks;
