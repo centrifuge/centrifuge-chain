@@ -10,13 +10,41 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::generic::{cases::lp::setup_full, config::Runtime};
+use cfg_primitives::Balance;
+use ethabi::Token;
+use sp_core::U256;
+
+use crate::{
+	generic::{
+		cases::lp::{names::POOL_A_T_1_USDC, setup_full, DECIMALS_6},
+		config::Runtime,
+		env::{EnvEvmExtension, EvmEnv},
+	},
+	utils::accounts::Keyring,
+};
+const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 #[test]
 fn _test() {
-	cancel::<centrifuge_runtime::Runtime>()
+	invest_collect::<centrifuge_runtime::Runtime>()
 }
 
-fn cancel<T: Runtime>() {
-	let _env = setup_full::<T>();
+fn invest_collect<T: Runtime>() {
+	let mut env = setup_full::<T>();
+
+	env.state_mut(|evm| {
+		evm.call(
+			Keyring::TrancheInvestor(1),
+			U256::zero(),
+			POOL_A_T_1_USDC,
+			"requestDeposit",
+			Some(&[
+				Token::Uint(DEFAULT_INVESTMENT_AMOUNT.into()),
+				Token::Address(Keyring::TrancheInvestor(1).into()),
+				Token::Address(Keyring::TrancheInvestor(1).into()),
+				Token::Bytes(Default::default()),
+			]),
+		)
+		.unwrap();
+	});
 }

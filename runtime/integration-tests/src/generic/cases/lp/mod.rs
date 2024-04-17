@@ -53,6 +53,8 @@ use crate::{
 
 pub mod investments;
 pub mod pool_management;
+pub mod transfers;
+
 pub mod utils {
 	use std::cmp::min;
 
