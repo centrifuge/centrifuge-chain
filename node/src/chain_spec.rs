@@ -43,7 +43,7 @@ use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
-	FixedPointNumber,
+	BoundedVec, FixedPointNumber,
 };
 use staging_xcm::{
 	latest::{MultiLocation, NetworkId},
@@ -373,7 +373,7 @@ fn centrifuge_genesis(
 		orml_tokens: centrifuge_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
 		council: centrifuge_runtime::CouncilConfig {
-			members: council_members,
+			members: council_members.clone(),
 			phantom: Default::default(),
 		},
 		fees: centrifuge_runtime::FeesConfig {
@@ -467,6 +467,14 @@ fn centrifuge_genesis(
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 			..Default::default()
+		},
+		technical_committee: centrifuge_runtime::TechnicalCommitteeConfig {
+			members: council_members.clone(),
+			phantom: Default::default(),
+		},
+		technical_committee_membership: centrifuge_runtime::TechnicalCommitteeMembershipConfig {
+			members: BoundedVec::truncate_from(council_members),
+			phantom: Default::default(),
 		},
 	}
 }

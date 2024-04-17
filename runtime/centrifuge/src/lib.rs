@@ -36,12 +36,17 @@ use cfg_types::{
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
+	locations::Location,
 	oracles::OracleKey,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
+	pools::PoolNav,
 	time::TimeProvider,
-	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, StakingCurrency, TrancheCurrency},
+	tokens::{
+		AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, LocalAssetId,
+		StakingCurrency, TrancheCurrency,
+	},
 };
 use cumulus_primitives_core::{MultiAsset, MultiLocation};
 use fp_rpc::TransactionStatus;
@@ -51,7 +56,7 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult, RuntimeDebug},
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOfDiverse,
+		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Get, InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess,
 		UnixTime, WithdrawReasons,
 	},
@@ -63,7 +68,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot, EnsureSigned,
+	EnsureRoot, EnsureSigned, EnsureWithSuccess,
 };
 use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
@@ -77,6 +82,7 @@ use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
+pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -98,18 +104,24 @@ use runtime_common::{
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
-	instances::CouncilCollective,
+	instances::{CouncilCollective, TechnicalCollective, TechnicalMembership},
 	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
 	origin::EnsureAccountOrRootOr,
-	origins::gov::types::{
-		AllOfCouncil, EnsureRootOr, HalfOfCouncil, ThreeFourthOfCouncil, TwoThirdOfCouncil,
+	origins::gov::{
+		pallet_custom_origins,
+		types::{
+			AllOfCouncil, DispatchWhitelistedOrigin, EnsureRootOr, HalfOfCouncil, PoolCreateOrigin,
+			RefCancelOrigin, RefKillerOrigin, ThreeFourthOfCouncil, TreasuryApproveOrigin,
+			TwoThirdOfCouncil, WhitelistOrigin,
+		},
+		PoolAdmin, Treasurer,
 	},
 	permissions::PoolAdminCheck,
 	rewards::SingleCurrencyMovement,
-	transfer_filter::PreLpTransfer,
+	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
@@ -132,9 +144,10 @@ use sp_version::RuntimeVersion;
 use staging_xcm_executor::XcmExecutor;
 use static_assertions::const_assert;
 
-use crate::xcm::*;
+use crate::{tracks::TracksInfo, xcm::*};
 
 mod migrations;
+mod tracks;
 mod weights;
 pub mod xcm;
 
@@ -623,6 +636,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Council(..) |
 					RuntimeCall::Elections(..) |
 					RuntimeCall::Democracy(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::TechnicalCommittee(..) |
+					RuntimeCall::TechnicalCommitteeMembership(..) |
+					RuntimeCall::Whitelist(..) |
 					RuntimeCall::Identity(..) |
 					RuntimeCall::Vesting(pallet_vesting::Call::vest {..}) |
 					RuntimeCall::Vesting(pallet_vesting::Call::vest_other {..}) |
@@ -668,6 +686,12 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Council(..)
 					| RuntimeCall::Elections(..)
 					| RuntimeCall::Utility(..)
+					// OpenGov calls
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::TechnicalCommittee(..)
+					| RuntimeCall::TechnicalCommitteeMembership(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
@@ -836,7 +860,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
+	type WeightInfo = weights::pallet_collective_council::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1027,7 +1051,7 @@ parameter_types! {
 
 impl pallet_treasury::Config for Runtime {
 	// either democracy or 50% of council votes
-	type ApproveOrigin = EnsureRootOr<HalfOfCouncil>;
+	type ApproveOrigin = TreasuryApproveOrigin;
 	type Burn = Burn;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
@@ -1040,10 +1064,10 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	// either democracy or more than 50% council votes
-	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RejectOrigin = TreasuryApproveOrigin;
 	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
-	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
+	type SpendOrigin = TreasurySpender;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
@@ -1420,7 +1444,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
@@ -1450,7 +1474,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolFees = PoolFees;
@@ -1551,7 +1575,8 @@ impl pallet_pool_fees::Config for Runtime {
 }
 
 impl pallet_permissions::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	// TODO: Ensure PoolAdmin can be included as track
+	type AdminOrigin = EnsureRootOr<EitherOf<HalfOfCouncil, PoolAdmin>>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
 	type Role = Role<TrancheId>;
@@ -1713,6 +1738,7 @@ parameter_types! {
 }
 
 impl pallet_keystore::pallet::Config for Runtime {
+	// TODO: Check whether PoolAdmin can be included
 	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
 	type Balance = Balance;
 	type Currency = Balances;
@@ -1987,6 +2013,91 @@ impl axelar_gateway_precompile::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_conviction_voting::Config for Runtime {
+	type Currency = Balances;
+	type MaxTurnout =
+		frame_support::traits::tokens::currency::ActiveIssuanceOf<Balances, Self::AccountId>;
+	type MaxVotes = ConstU32<512>;
+	type Polls = Referenda;
+	type RuntimeEvent = RuntimeEvent;
+	type VoteLockingPeriod = EnactmentPeriod;
+	type WeightInfo = weights::pallet_conviction_voting::WeightInfo<Self>;
+}
+
+parameter_types! {
+	pub const AlarmInterval: BlockNumber = 1;
+	pub const SubmissionDeposit: Balance = 10 * CFG;
+	pub const UndecidingTimeout: BlockNumber = 14 * DAYS;
+}
+
+parameter_types! {
+	pub const MaxBalance: Balance = Balance::max_value();
+}
+pub type TreasurySpender = EnsureWithSuccess<EnsureRootOr<Treasurer>, AccountId, MaxBalance>;
+
+impl pallet_custom_origins::Config for Runtime {}
+
+impl pallet_whitelist::Config for Runtime {
+	type DispatchWhitelistedOrigin = DispatchWhitelistedOrigin;
+	type Preimages = Preimage;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_whitelist::WeightInfo<Self>;
+	type WhitelistOrigin = WhitelistOrigin;
+}
+
+impl pallet_referenda::Config for Runtime {
+	type AlarmInterval = AlarmInterval;
+	type CancelOrigin = RefCancelOrigin;
+	type Currency = Balances;
+	type KillOrigin = RefKillerOrigin;
+	type MaxQueued = ConstU32<100>;
+	type Preimages = Preimage;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type Scheduler = Scheduler;
+	type Slash = Treasury;
+	type SubmissionDeposit = SubmissionDeposit;
+	type SubmitOrigin = frame_system::EnsureSigned<AccountId>;
+	type Tally = pallet_conviction_voting::TallyOf<Runtime>;
+	type Tracks = TracksInfo;
+	type UndecidingTimeout = UndecidingTimeout;
+	type Votes = pallet_conviction_voting::VotesOf<Runtime>;
+	type WeightInfo = weights::pallet_referenda::WeightInfo<Self>;
+}
+
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 3 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 20;
+	pub const TechnicalMaxMembers: u32 = 20;
+}
+
+impl pallet_collective::Config<TechnicalCollective> for Runtime {
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type MaxMembers = TechnicalMaxMembers;
+	type MaxProposalWeight = MaxProposalWeight;
+	type MaxProposals = TechnicalMaxProposals;
+	type MotionDuration = TechnicalMotionDuration;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_collective_technical_fellowship::WeightInfo<Runtime>;
+}
+
+impl pallet_membership::Config<TechnicalMembership> for Runtime {
+	type AddOrigin = EnsureRoot<AccountId>;
+	type MaxMembers = TechnicalMaxMembers;
+	type MembershipChanged = TechnicalCommittee;
+	type MembershipInitialized = TechnicalCommittee;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_membership::WeightInfo<Runtime>;
+}
+
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
@@ -2057,6 +2168,14 @@ construct_runtime!(
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 69,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config<T>, Event<T>} = 70,
+
+		// OpenGov
+		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>} = 72,
+		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>} = 73,
+		Origins: pallet_custom_origins::{Origin} = 74,
+		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>} = 75,
+		TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 76,
+		TechnicalCommitteeMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 77,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -2147,14 +2266,6 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 			.expect("Encoded extrinsic is always valid")
 	}
 }
-
-use cfg_types::{
-	locations::Location,
-	pools::PoolNav,
-	tokens::{FilterCurrency, LocalAssetId},
-};
-pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
-use runtime_common::transfer_filter::PreNativeTransfer;
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
@@ -2712,7 +2823,7 @@ mod benches {
 		[pallet_proxy, Proxy]
 		[pallet_utility, Utility]
 		[pallet_scheduler, Scheduler]
-		[pallet_collective, Council]
+		[pallet_collective_council, Council]
 		[pallet_democracy, Democracy]
 		[pallet_elections_phragmen, Elections]
 		[pallet_identity, Identity]
@@ -2745,6 +2856,11 @@ mod benches {
 		[pallet_remarks, Remarks]
 		[pallet_pool_fees, PoolFees]
 		[pallet_token_mux, TokenMux]
+		[pallet_conviction_voting, ConvictionVoting]
+		[pallet_collective_technical_fellowship, TechnicalCommittee]
+		[pallet_membership, TechnicalCommitteeMembership]
+		[pallet_whitelist, Whitelist]
+		[pallet_referenda, Referenda]
 	);
 }
 
