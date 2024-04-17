@@ -490,3 +490,87 @@ mod fulfill {
 		});
 	}
 }
+
+mod zero_amount_order {
+	use super::*;
+
+	#[test]
+	fn when_apply_over_no_swap() {
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_place_order(|_, _, _, _, _| {
+				panic!("this mock should not be called");
+			});
+
+			assert_ok!(
+				<Swaps as TSwaps<AccountId>>::apply_swap(
+					&USER,
+					SWAP_ID,
+					Swap {
+						currency_in: CURRENCY_B,
+						currency_out: CURRENCY_A,
+						amount_out: AMOUNT,
+					},
+				),
+				SwapStatus {
+					swapped: 0,
+					pending: 0,
+				}
+			);
+
+			assert_eq!(OrderIdToSwapId::<Runtime>::get(ORDER_ID), None);
+			assert_eq!(SwapIdToOrderId::<Runtime>::get((USER, SWAP_ID)), None);
+		});
+	}
+
+	#[test]
+	fn when_apply_over_smaller_inverse_swap_but_math_precission() {
+		const AMOUNT_A: Balance = 100;
+		const NEW_ORDER_ID: OrderId = ORDER_ID + 1;
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| match (from, to) {
+				(CURRENCY_B, CURRENCY_A) => Ok(amount_from * 3),
+				(CURRENCY_A, CURRENCY_B) => Ok(amount_from / 3 + 1),
+				_ => unreachable!(),
+			});
+			MockTokenSwaps::mock_get_order_details(|_| {
+				// Inverse swap
+				Some(OrderInfo {
+					swap: Swap {
+						currency_in: CURRENCY_A,
+						currency_out: CURRENCY_B,
+						amount_out: AMOUNT_A / 3,
+					},
+					ratio: OrderRatio::Market,
+				})
+			});
+			MockTokenSwaps::mock_cancel_order(|_| Ok(()));
+
+			MockTokenSwaps::mock_place_order(|_, _, _, amount, _| {
+				assert_eq!(amount, 0);
+				panic!("this mock should not be called");
+			});
+
+			Swaps::update_id(&USER, SWAP_ID, Some(ORDER_ID)).unwrap();
+
+			assert_ok!(
+				<Swaps as TSwaps<AccountId>>::apply_swap(
+					&USER,
+					SWAP_ID,
+					Swap {
+						currency_out: CURRENCY_A,
+						currency_in: CURRENCY_B,
+						amount_out: AMOUNT_A - 1,
+					},
+				),
+				SwapStatus {
+					swapped: AMOUNT_A / 3,
+					pending: 0,
+				}
+			);
+
+			assert_eq!(OrderIdToSwapId::<Runtime>::get(ORDER_ID), None);
+			assert_eq!(SwapIdToOrderId::<Runtime>::get((USER, SWAP_ID)), None);
+		});
+	}
+}
