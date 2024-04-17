@@ -506,3 +506,61 @@ pub(crate) mod swaps {
 		})
 	}
 }
+
+mod is_local_representation {
+	use cfg_traits::HasLocalAssetRepresentation;
+	use cfg_types::tokens::CurrencyId;
+	use sp_runtime::DispatchError;
+
+	use super::*;
+	use crate::mock::{new_test_ext_invalid_assets, MockRegistry, USDC_WRONG_DECIMALS};
+
+	#[test]
+	fn is_local_happy_paths() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_LOCAL, &USDC_1), Ok(true));
+			assert_eq!(
+				<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(
+					&USDC_1,
+					&USDC_LOCAL
+				),
+				Ok(false)
+			);
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_LOCAL, &USDC_2), Ok(true));
+			assert_eq!(
+				<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(
+					&USDC_2,
+					&USDC_LOCAL
+				),
+				Ok(false)
+			);
+
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_LOCAL, &NON_USDC), Ok(false));
+			assert_eq!(
+				<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(
+					&NON_USDC,
+					&USDC_LOCAL
+				),
+				Ok(false)
+			);
+		});
+	}
+
+	#[test]
+	fn is_local_missing_cannot_lookup() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&UNREGISTERED_ASSET, &USDC_1), Err(DispatchError::CannotLookup));
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_1, &UNREGISTERED_ASSET), Err(DispatchError::CannotLookup));
+
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_LOCAL, &UNREGISTERED_ASSET), Err(DispatchError::CannotLookup));
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&UNREGISTERED_ASSET, &USDC_LOCAL), Err(DispatchError::CannotLookup));
+		});
+	}
+	#[test]
+	fn is_local_mismatching_decimals() {
+		new_test_ext_invalid_assets().execute_with(|| {
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_LOCAL, &USDC_WRONG_DECIMALS), Err(DispatchError::Other("Mismatching decimals")));
+			assert_eq!(<CurrencyId as HasLocalAssetRepresentation<MockRegistry>>::is_local_representation_of(&USDC_WRONG_DECIMALS, &USDC_LOCAL), Ok(false));
+		});
+	}
+}
