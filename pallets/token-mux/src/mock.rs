@@ -197,6 +197,7 @@ pub fn new_test_ext_invalid_assets() -> sp_io::TestExternalities {
 				USDC_WRONG_DECIMALS,
 				asset_metadata(5, Some(USDC_LOCAL_ASSET_ID)),
 			),
+			(USDC_LOCAL, asset_metadata(6, None)),
 		],
 	}
 	.assimilate_storage(&mut storage)

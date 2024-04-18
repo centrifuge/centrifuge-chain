@@ -145,20 +145,24 @@ pub mod pallet {
 		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
 			match over_order_id {
 				None => {
-					let order_id = T::OrderBook::place_order(
-						who.clone(),
-						new_swap.currency_in,
-						new_swap.currency_out,
-						new_swap.amount_out,
-						OrderRatio::Market,
-					)?;
+					let order_id = if !new_swap.amount_out.is_zero() {
+						Some(T::OrderBook::place_order(
+							who.clone(),
+							new_swap.currency_in,
+							new_swap.currency_out,
+							new_swap.amount_out,
+							OrderRatio::Market,
+						)?)
+					} else {
+						None
+					};
 
 					Ok((
 						SwapStatus {
 							swapped: T::Balance::zero(),
 							pending: new_swap.amount_out,
 						},
-						Some(order_id),
+						order_id,
 					))
 				}
 				Some(order_id) => {
@@ -228,20 +232,24 @@ pub mod pallet {
 								let amount_to_swap =
 									new_swap.amount_out.ensure_sub(inverse_swap_amount_in)?;
 
-								let order_id = T::OrderBook::place_order(
-									who.clone(),
-									new_swap.currency_in,
-									new_swap.currency_out,
-									amount_to_swap,
-									OrderRatio::Market,
-								)?;
+								let order_id = if !amount_to_swap.is_zero() {
+									Some(T::OrderBook::place_order(
+										who.clone(),
+										new_swap.currency_in,
+										new_swap.currency_out,
+										amount_to_swap,
+										OrderRatio::Market,
+									)?)
+								} else {
+									None
+								};
 
 								Ok((
 									SwapStatus {
 										swapped: inverse_swap.amount_out,
 										pending: amount_to_swap,
 									},
-									Some(order_id),
+									order_id,
 								))
 							}
 						}

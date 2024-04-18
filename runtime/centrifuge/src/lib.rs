@@ -154,10 +154,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	authoring_version: 1,
 	spec_version: 1029,
 	impl_version: 1,
-	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
-	#[cfg(feature = "disable-runtime-api")]
-	apis: version::create_apis_vec![[]],
 	transaction_version: 2,
 	state_version: 0,
 };
@@ -2180,21 +2177,14 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 	}
 }
 
-#[cfg(not(feature = "disable-runtime-api"))]
-mod __runtime_api_use {
-	pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
-}
-
-#[cfg(not(feature = "disable-runtime-api"))]
-use __runtime_api_use::*;
 use cfg_types::{
 	locations::Location,
 	pools::PoolNav,
 	tokens::{FilterCurrency, LocalAssetId},
 };
+pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use runtime_common::transfer_filter::PreNativeTransfer;
 
-#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -2677,147 +2667,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
-	impl frame_benchmarking::Benchmark<Block> for Runtime {
-
-		fn benchmark_metadata(extra: bool) -> (
-			Vec<frame_benchmarking::BenchmarkList>,
-			Vec<frame_support::traits::StorageInfo>,
-		) {
-			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
-			use frame_system_benchmarking::Pallet as SystemBench;
-			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
-
-			let mut list = Vec::<BenchmarkList>::new();
-
-			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, pallet_multisig, Multisig);
-			list_benchmark!(list, extra, pallet_proxy, Proxy);
-			list_benchmark!(list, extra, pallet_utility, Utility);
-			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
-			list_benchmark!(list, extra, pallet_collective, Council);
-			list_benchmark!(list, extra, pallet_democracy, Democracy);
-			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
-			list_benchmark!(list, extra, pallet_identity, Identity);
-			list_benchmark!(list, extra, pallet_vesting, Vesting);
-			list_benchmark!(list, extra, pallet_treasury, Treasury);
-			list_benchmark!(list, extra, pallet_preimage, Preimage);
-			list_benchmark!(list, extra, pallet_fees, Fees);
-			list_benchmark!(list, extra, pallet_anchors, Anchor);
-			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
-			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
-			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
-			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
-			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
-			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_uniques, Uniques);
-			list_benchmark!(list, extra, pallet_keystore, Keystore);
-			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
-			list_benchmark!(list, extra, pallet_loans, Loans);
-			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
-			list_benchmark!(list, extra, pallet_order_book, OrderBook);
-			list_benchmark!(list, extra, pallet_investments, Investments);
-			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
-			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
-			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
-			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
-			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
-			list_benchmark!(list, extra, pallet_remarks, Remarks);
-			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
-			list_benchmark!(list, extra, pallet_token_mux, TokenMux);
-
-			let storage_info = AllPalletsWithSystem::storage_info();
-
-			(list, storage_info)
-		}
-
-		fn dispatch_benchmark(
-				config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark};
-			use frame_system_benchmarking::Pallet as SystemBench;
-			use frame_support::traits::TrackedStorageKey;
-			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
-
-			impl frame_system_benchmarking::Config for Runtime {}
-			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
-
-
-			// you can whitelist any storage keys you do not want to track here
-			let whitelist: Vec<TrackedStorageKey> = vec![
-				// Block Number
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
-				// Total Issuance
-				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
-				// Execution Phase
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
-				// Event Count
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
-				// System Events
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
-			];
-
-			let mut batches = Vec::<BenchmarkBatch>::new();
-			let params = (&config, &whitelist);
-
-			// It should be called Anchors to make the runtime_benchmarks.sh script works
-			type Anchors = Anchor;
-
-			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_balances, Balances);
-			add_benchmark!(params, batches, pallet_multisig, Multisig);
-			add_benchmark!(params, batches, pallet_proxy, Proxy);
-			add_benchmark!(params, batches, pallet_utility, Utility);
-			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
-			add_benchmark!(params, batches, pallet_collective, Council);
-			add_benchmark!(params, batches, pallet_democracy, Democracy);
-			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
-			add_benchmark!(params, batches, pallet_identity, Identity);
-			add_benchmark!(params, batches, pallet_vesting, Vesting);
-			add_benchmark!(params, batches, pallet_treasury, Treasury);
-			add_benchmark!(params, batches, pallet_preimage, Preimage);
-			add_benchmark!(params, batches, pallet_fees, Fees);
-			add_benchmark!(params, batches, pallet_anchors, Anchors);
-			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
-			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
-			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
-			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
-			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
-			add_benchmark!(params, batches, pallet_uniques, Uniques);
-			add_benchmark!(params, batches, pallet_keystore, Keystore);
-			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
-			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_loans, Loans);
-			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
-			add_benchmark!(params, batches,	pallet_order_book, OrderBook);
-			add_benchmark!(params, batches,	pallet_investments, Investments);
-			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
-			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
-			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
-			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
-			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
-			add_benchmark!(params, batches,	pallet_remarks, Remarks);
-			add_benchmark!(params, batches,	pallet_pool_fees, PoolFees);
-			add_benchmark!(params, batches,	pallet_token_mux, TokenMux);
-
-			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
-			Ok(batches)
-		}
-	}
 
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
@@ -2830,6 +2679,104 @@ impl_runtime_apis! {
 			Executive::try_execute_block(block, state_root_check, signature_check, select).expect("execute-block failed")
 		}
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+			list_benchmarks!(list, extra);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+			(list, storage_info)
+		}
+
+		fn dispatch_benchmark(
+			config: frame_benchmarking::BenchmarkConfig
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+			use frame_benchmarking::{BenchmarkError, Benchmarking, BenchmarkBatch};
+
+			use frame_system_benchmarking::Pallet as SystemBench;
+			impl frame_system_benchmarking::Config for Runtime {
+				fn setup_set_code_requirements(code: &sp_std::vec::Vec<u8>) -> Result<(), BenchmarkError> {
+					ParachainSystem::initialize_for_set_code_benchmark(code.len() as u32);
+					Ok(())
+				}
+
+				fn verify_set_code() {
+					System::assert_last_event(cumulus_pallet_parachain_system::Event::<Runtime>::ValidationFunctionStored.into());
+				}
+			}
+
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
+
+			use frame_support::traits::WhitelistedStorageKeys;
+			let whitelist = AllPalletsWithSystem::whitelisted_storage_keys();
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&config, &whitelist);
+			add_benchmarks!(params, batches);
+
+			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+			Ok(batches)
+		}
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benches {
+	frame_benchmarking::define_benchmarks!(
+		[frame_system, SystemBench::<Runtime>]
+		[pallet_timestamp, Timestamp]
+		[pallet_balances, Balances]
+		[pallet_multisig, Multisig]
+		[pallet_proxy, Proxy]
+		[pallet_utility, Utility]
+		[pallet_scheduler, Scheduler]
+		[pallet_collective, Council]
+		[pallet_democracy, Democracy]
+		[pallet_elections_phragmen, Elections]
+		[pallet_identity, Identity]
+		[pallet_vesting, Vesting]
+		[pallet_treasury, Treasury]
+		[pallet_preimage, Preimage]
+		[pallet_fees, Fees]
+		[pallet_anchors, Anchor]
+		[pallet_block_rewards, BlockRewards]
+		[pallet_crowdloan_claim, CrowdloanClaim]
+		[pallet_crowdloan_reward, CrowdloanReward]
+		[pallet_collator_allowlist, CollatorAllowlist]
+		[pallet_collator_selection, CollatorSelection]
+		[pallet_pool_registry, PoolRegistry]
+		[pallet_pool_system, PoolSystem]
+		[pallet_permissions, Permissions]
+		[pallet_interest_accrual, InterestAccrual]
+		[pallet_uniques, Uniques]
+		[pallet_keystore, Keystore]
+		[pallet_restricted_tokens, Tokens]
+		[pallet_session, SessionBench::<Runtime>]
+		[pallet_loans, Loans]
+		[pallet_collator_selection, CollatorSelection]
+		[cumulus_pallet_xcmp_queue, XcmpQueue]
+		[pallet_order_book, OrderBook]
+		[pallet_investments, Investments]
+		[pallet_xcm, PolkadotXcm]
+		[pallet_liquidity_rewards, LiquidityRewards]
+		[pallet_transfer_allowlist, TransferAllowList]
+		[pallet_oracle_feed, OraclePriceFeed]
+		[pallet_oracle_collection, OraclePriceCollection]
+		[pallet_remarks, Remarks]
+		[pallet_pool_fees, PoolFees]
+		[pallet_token_mux, TokenMux]
+	);
 }
 
 struct CheckInherents;
