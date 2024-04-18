@@ -275,7 +275,7 @@ pub(crate) mod try_local {
 		new_test_ext_invalid_assets().execute_with(|| {
 			assert_noop!(
 				TokenMux::try_local(&USDC_WRONG_DECIMALS),
-				Error::<Runtime>::MetadataNotFound
+				Error::<Runtime>::DecimalMismatch
 			);
 		})
 	}
