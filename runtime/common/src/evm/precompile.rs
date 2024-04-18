@@ -94,6 +94,9 @@ impl<R, P: PrecompileSetFragment> H160Addresses for PrecompileSetBuilder<R, P> {
 }
 
 pub mod utils {
+	use sp_core::H160;
+	use sp_std::collections::btree_map::BTreeMap;
+
 	use super::H160Addresses;
 
 	// From Moonbeam:
@@ -121,5 +124,22 @@ pub mod utils {
 			}
 		}
 		(reads, writes)
+	}
+
+	pub fn precompile_account_genesis<PrecompileSet: H160Addresses>(
+	) -> BTreeMap<H160, fp_evm::GenesisAccount> {
+		PrecompileSet::h160_addresses()
+			.map(|addr| {
+				(
+					addr,
+					fp_evm::GenesisAccount {
+						nonce: Default::default(),
+						balance: Default::default(),
+						storage: Default::default(),
+						code: REVERT_BYTECODE.to_vec(),
+					},
+				)
+			})
+			.collect()
 	}
 }

@@ -72,6 +72,7 @@ staging-xcm-executor = { workspace = true, features = ["std"] }
 orml-traits = { workspace = true, features = ["std"] }
 
 fp-self-contained = { workspace = true, features = ["std"] }
+fp-evm = { workspace = true, features = ["std"]}
 
 # Locals
 altair-runtime = { workspace = true, features = ["std"] }

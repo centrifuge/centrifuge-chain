@@ -460,7 +460,9 @@ fn centrifuge_genesis(
 		},
 		ethereum: Default::default(),
 		evm: centrifuge_runtime::EVMConfig {
-			accounts: precompile_account_genesis::<CentrifugePrecompiles>(),
+			accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+				CentrifugePrecompiles,
+			>(),
 			..Default::default()
 		},
 		liquidity_rewards_base: Default::default(),
@@ -582,7 +584,9 @@ fn altair_genesis(
 		},
 		ethereum: Default::default(),
 		evm: altair_runtime::EVMConfig {
-			accounts: precompile_account_genesis::<AltairPrecompiles>(),
+			accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+				AltairPrecompiles,
+			>(),
 			..Default::default()
 		},
 		liquidity_rewards_base: Default::default(),
@@ -753,7 +757,9 @@ fn development_genesis(
 		},
 		ethereum: Default::default(),
 		evm: development_runtime::EVMConfig {
-			accounts: precompile_account_genesis::<DevelopmentPrecompiles>(),
+			accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+				DevelopmentPrecompiles,
+			>(),
 			..Default::default()
 		},
 		block_rewards_base: Default::default(),
@@ -886,21 +892,4 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 	]
-}
-
-fn precompile_account_genesis<PrecompileSet: H160Addresses>(
-) -> BTreeMap<H160, fp_evm::GenesisAccount> {
-	PrecompileSet::h160_addresses()
-		.map(|addr| {
-			(
-				addr,
-				fp_evm::GenesisAccount {
-					nonce: Default::default(),
-					balance: Default::default(),
-					storage: Default::default(),
-					code: runtime_common::evm::precompile::utils::REVERT_BYTECODE.to_vec(),
-				},
-			)
-		})
-		.collect()
 }

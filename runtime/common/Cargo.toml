@@ -45,6 +45,8 @@ precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
 
+fp-evm = { workspace = true }
+
 # Local
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use cfg_types::ParaId;
@@ -12,10 +12,11 @@ use frame_support::{
 };
 use frame_system::LastRuntimeUpgradeInfo;
 use parity_scale_codec::Encode;
+use runtime_common::evm::precompile::H160Addresses;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, Get, H256};
+use sp_core::{sr25519::Public, Get, H256, U256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -82,6 +83,16 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		.assimilate_storage(&mut parachain_storage)
 		.unwrap();
 
+		// Precompiles need to have code-set
+		pallet_evm::GenesisConfig::<T> {
+			accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+				centrifuge_runtime::CentrifugePrecompiles,
+			>(),
+			_marker: PhantomData::default(),
+		}
+		.assimilate_storage(&mut parachain_storage)
+		.unwrap();
+
 		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
 
 		// NOTE: Setting the current on-chain runtime version to the latest one, to
@@ -89,7 +100,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		parachain_ext.execute_with(|| {
 			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
 				<T as frame_system::Config>::Version::get(),
-			))
+			));
 		});
 
 		parachain_ext.execute_with(|| Self::prepare_block(1));
