@@ -812,3 +812,78 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		);
 	});
 }
+
+#[test]
+fn with_more_than_required_external() {
+	new_test_ext().execute_with(|| {
+		let mut pricing = util::base_external_pricing();
+		pricing.max_price_variation = Rate::from_inner(99_990_000_000_000_000_000_000_000_000);
+		let mut info = util::base_external_loan();
+		info.pricing = Pricing::External(pricing);
+
+		let loan_id = util::create_loan(info);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
+
+		let amount = ExternalAmount::new(
+			QUANTITY.saturating_mul(Quantity::from_rational(2, 1)),
+			PRICE_VALUE * 2,
+		);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount.clone()),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		config_mocks_with_price(0, PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				}
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		MockPrices::mock_unregister_id(move |id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok(())
+		});
+
+		assert_ok!(Loans::close(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+		));
+	});
+}
