@@ -49,6 +49,7 @@ mod cases {
 #[macro_export]
 macro_rules! test_for_runtimes {
 	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+        #[cfg(test)]
 		mod $test_name {
 			use super::*;
 
@@ -72,4 +73,18 @@ macro_rules! test_for_runtimes {
 	( all , $test_name:ident ) => {
 		$crate::test_for_runtimes!([development, altair, centrifuge], $test_name);
     };
+}
+
+mod procedural_testing {
+	#[test_runtimes(all)]
+	fn macro_runtimes() {}
+
+	#[test_runtimes([development, altair, centrifuge])]
+	fn macro_runtimes_list() {}
+
+	#[test_runtimes_with_fudge(all)]
+	fn macro_runtimes_with_fudge() {}
+
+	#[test_runtimes_with_fudge([development, altair, centrifuge])]
+	fn macro_runtimes_with_fudge_list() {}
 }
