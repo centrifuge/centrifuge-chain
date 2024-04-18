@@ -42,6 +42,7 @@ use sp_runtime::{
 };
 
 /// Kind of runtime to check in runtime time
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RuntimeKind {
 	Development,
 	Altair,
@@ -153,6 +154,7 @@ pub trait Runtime:
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_collator_selection::Config<Currency = pallet_balances::Pallet<Self>>
+	+ pallet_collator_allowlist::Config<ValidatorId = AccountId>
 	+ pallet_session::Config<Keys = Self::SessionKeysExt, ValidatorId = AccountId>
 	+ pallet_evm_chain_id::Config
 	+ pallet_evm::Config

@@ -10,7 +10,7 @@ use sp_runtime::traits::{Get, Zero};
 
 use crate::{
 	generic::{
-		config::Runtime,
+		config::{Runtime, RuntimeKind},
 		env::Env,
 		envs::runtime_env::RuntimeEnv,
 		utils,
@@ -19,7 +19,7 @@ use crate::{
 			genesis::{self, Genesis},
 		},
 	},
-	utils::accounts::Keyring,
+	utils::accounts::{default_accounts, Keyring},
 };
 
 crate::test_for_runtimes!(all, block_rewards_api);
@@ -59,7 +59,10 @@ fn block_rewards_api<T: Runtime>() {
 	});
 }
 
-crate::test_for_runtimes!([development], collator_list_synchronized);
+crate::test_for_runtimes!(
+	[development, altair, centrifuge],
+	collator_list_synchronized
+);
 fn collator_list_synchronized<T: Runtime>() {
 	RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -79,6 +82,17 @@ fn collator_list_synchronized<T: Runtime>() {
 			Keyring::Eve.id(),
 			Keyring::Ferdie.id(),
 		];
+
+		// altair and centrifuge use collator_allowlist,
+		// so we need to add the accounts there for them.
+		if T::KIND == RuntimeKind::Altair || T::KIND == RuntimeKind::Centrifuge {
+			for account in default_accounts() {
+				assert_ok!(pallet_collator_allowlist::Pallet::<T>::add(
+					RawOrigin::Root.into(),
+					account.id()
+				));
+			}
+		}
 
 		// SESSION 0 -> 1;
 		apply_and_check_session::<T>(1, collators_1.clone(), vec![]);
