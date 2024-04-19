@@ -2,9 +2,14 @@ use polkadot_primitives::{AssignmentId, AuthorityDiscoveryId, ValidatorId};
 use sp_core::ByteArray;
 
 /// Implements the `Runtime` trait for a runtime
+///
+/// You could add new associated types if you need to use types different for
+/// each runtime
 macro_rules! impl_runtime {
 	($runtime_path:ident, $kind:ident) => {
 		const _: () = {
+			use sp_core::sr25519::Public;
+
 			use crate::generic::config::{Runtime, RuntimeKind};
 
 			impl Runtime for $runtime_path::Runtime {
@@ -14,8 +19,16 @@ macro_rules! impl_runtime {
 				type RuntimeCallExt = $runtime_path::RuntimeCall;
 				type RuntimeEventExt = $runtime_path::RuntimeEvent;
 				type RuntimeOriginExt = $runtime_path::RuntimeOrigin;
+				type SessionKeysExt = $runtime_path::SessionKeys;
 
 				const KIND: RuntimeKind = RuntimeKind::$kind;
+
+				fn initialize_session_keys(public_id: Public) -> Self::SessionKeysExt {
+					$runtime_path::SessionKeys {
+						aura: public_id.into(),
+						block_rewards: public_id.into(),
+					}
+				}
 			}
 		};
 	};

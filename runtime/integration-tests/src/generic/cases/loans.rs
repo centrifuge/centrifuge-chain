@@ -44,7 +44,7 @@ use crate::{
 			POOL_MIN_EPOCH_TIME,
 		},
 	},
-	utils::{accounts::Keyring, tokens::rate_from_percent},
+	utils::accounts::Keyring,
 };
 
 const POOL_ADMIN: Keyring = Keyring::Admin;
@@ -170,6 +170,10 @@ mod common {
 
 	pub fn price_to_usd6(price: Quantity) -> Balance {
 		currency::price_to_currency(price, Usd6)
+	}
+
+	pub fn rate_from_percent(perc: u64) -> Rate {
+		Rate::saturating_from_rational(perc, 100)
 	}
 }
 
