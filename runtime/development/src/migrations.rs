@@ -24,9 +24,12 @@ mod cleanup_foreign_investments {
 		traits::{Get, OnRuntimeUpgrade},
 		weights::Weight,
 	};
-	use runtime_common::migrations::utils::{count_storage_keys, remove_undecodable_storage_keys};
+	#[cfg(feature = "try-runtime")]
+	use runtime_common::migrations::utils::count_storage_keys;
+	use runtime_common::migrations::utils::remove_undecodable_storage_keys;
 	#[cfg(feature = "try-runtime")]
 	use sp_runtime::DispatchError;
+	#[cfg(feature = "try-runtime")]
 	use sp_runtime::SaturatedConversion;
 
 	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
