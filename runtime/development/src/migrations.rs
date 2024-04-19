@@ -18,7 +18,7 @@ parameter_types! {
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1047 = (
+pub type UpgradeDevelopment1046 = (
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
 	// v0 -> v1
 	pallet_multisig::migrations::v1::MigrateToV1<crate::Runtime>,
