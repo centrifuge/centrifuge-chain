@@ -4,28 +4,31 @@
 set namespaceSeparator ::
 hide methods
 
-enum Maturity {
-    Fixed::date: Seconds
-    Fixed::extension: Seconds
-}
+package cashflow {
+    enum Maturity {
+        Fixed::date: Seconds
+        Fixed::extension: Seconds
+    }
 
-enum InterestPayments {
-    None
-}
+    enum InterestPayments {
+        None
+        Monthly::reference_day: u8
+    }
 
-enum PayDownSchedule {
-    None
-}
+    enum PayDownSchedule {
+        None
+    }
 
-class RepaymentSchedule {
-    maturity: Maturity
-    interest_payments: InterestPayments
-    pay_down_schedule: PayDownSchedule
-}
+    class RepaymentSchedule {
+        maturity: Maturity
+        interest_payments: InterestPayments
+        pay_down_schedule: PayDownSchedule
+    }
 
-RepaymentSchedule *--> Maturity
-RepaymentSchedule *---> PayDownSchedule
-RepaymentSchedule *----> InterestPayments
+    RepaymentSchedule *--> Maturity
+    RepaymentSchedule *--> PayDownSchedule
+    RepaymentSchedule *--> InterestPayments
+}
 
 enum BorrowRestrictions {
     NoWrittenOff
