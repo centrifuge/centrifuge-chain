@@ -27,7 +27,11 @@ use sp_runtime::{traits::AccountIdLookup, BuildStorage, Storage};
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
-use crate::{generic::config::Runtime, utils::time::START_DATE};
+use crate::generic::config::Runtime;
+
+/// Start date used for timestamps in test-enviornments
+/// Sat Jan 01 2022 00:00:00 GMT+0000
+pub const START_DATE: u64 = 1640995200u64;
 
 type InherentCreator<Block, InherentParachain, InherentDataProvider> = Box<
 	dyn CreateInherentDataProviders<

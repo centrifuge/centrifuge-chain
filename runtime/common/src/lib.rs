@@ -43,6 +43,11 @@ use sp_runtime::{
 };
 use sp_std::marker::PhantomData;
 
+pub mod instances {
+	/// The rewards associated to block rewards
+	pub type BlockRewards = pallet_rewards::Instance1;
+}
+
 parameter_types! {
 	/// The native currency identifier of our currency id enum
 	/// to be used for Get<CurrencyId> types.

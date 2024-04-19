@@ -2,10 +2,10 @@
 //! considered at this level.
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
 use parity_scale_codec::Encode;
-use sp_core::crypto::AccountId32;
-use sp_runtime::{BuildStorage, Storage};
+use sp_core::Get;
+use sp_runtime::{BuildStorage, FixedPointNumber, Storage};
 
 use crate::{
 	generic::{config::Runtime, utils::currency::CurrencyInfo},
@@ -27,8 +27,6 @@ impl Genesis {
 		self.storage
 	}
 }
-
-// Add BuildStorage functions for pallet initialization.
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
 	pallet_balances::GenesisConfig::<T> {
@@ -65,17 +63,35 @@ pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl Buil
 	}
 }
 
-pub fn council_members<T, I>(members: Vec<Keyring>) -> impl BuildStorage
-where
-	I: 'static,
-	T: pallet_collective::Config<I>,
-	T::AccountId: From<AccountId32>,
-{
-	pallet_collective::GenesisConfig::<T, I> {
+pub fn council_members<T: Runtime>(members: Vec<Keyring>) -> impl BuildStorage {
+	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
 		phantom: Default::default(),
-		members: members
+		members: members.into_iter().map(|acc| acc.id()).collect(),
+	}
+}
+
+pub fn invulnerables<T: Runtime>(invulnerables: Vec<Keyring>) -> impl BuildStorage {
+	pallet_collator_selection::GenesisConfig::<T> {
+		invulnerables: invulnerables.into_iter().map(|acc| acc.id()).collect(),
+		candidacy_bond: cfg_primitives::MILLI_CFG,
+		desired_candidates: T::MaxCandidates::get(),
+	}
+}
+
+pub fn session_keys<T: Runtime>() -> impl BuildStorage {
+	pallet_session::GenesisConfig::<T> {
+		keys: default_accounts()
 			.into_iter()
-			.map(|acc| acc.to_account_id().into())
+			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.public())))
 			.collect(),
+	}
+}
+
+pub fn block_rewards<T: Runtime>(collators: Vec<Keyring>) -> impl BuildStorage {
+	pallet_block_rewards::GenesisConfig::<T> {
+		collators: collators.into_iter().map(|acc| acc.id()).collect(),
+		collator_reward: (1000 * cfg_primitives::CFG).into(),
+		treasury_inflation_rate: Rate::saturating_from_rational(3, 100).into(),
+		last_update: Default::default(),
 	}
 }
