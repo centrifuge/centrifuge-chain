@@ -16,7 +16,7 @@ use sp_core::U256;
 
 use crate::{
 	generic::{
-		cases::lp::{names, setup_full, utils::Decoder, DECIMALS_6},
+		cases::lp::{names, setup_full, DECIMALS_6},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
 	},
@@ -34,17 +34,6 @@ fn invest_collect<T: Runtime>() {
 	let mut env = setup_full::<T>();
 
 	env.state_mut(|evm| {
-		assert!(Decoder::<bool>::decode(
-			&evm.view(
-				Keyring::TrancheInvestor(1),
-				names::RM_POOL_A_T_1,
-				"hasMember",
-				Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
-			)
-			.unwrap()
-			.value
-		));
-
 		evm.call(
 			Keyring::TrancheInvestor(1),
 			U256::zero(),

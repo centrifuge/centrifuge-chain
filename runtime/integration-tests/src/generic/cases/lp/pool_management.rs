@@ -28,7 +28,7 @@ use crate::{
 	generic::{
 		cases::lp::{
 			names, utils,
-			utils::{pool_a_tranche_id, Decoder},
+			utils::{pool_a_tranche_1_id, Decoder},
 			LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
@@ -189,7 +189,7 @@ fn add_tranche<T: Runtime>() {
 				"deployTranche",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 				]),
 			),
 			DispatchError::Other("EVM call failed: Revert")
@@ -200,7 +200,7 @@ fn add_tranche<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
@@ -217,7 +217,7 @@ fn add_tranche<T: Runtime>() {
 					"getTrancheToken",
 					Some(&[
 						Token::Uint(Uint::from(POOL_A)),
-						Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+						Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 					]),
 				)
 				.unwrap()
@@ -233,7 +233,7 @@ fn add_tranche<T: Runtime>() {
 			"deployTranche",
 			Some(&[
 				Token::Uint(Uint::from(POOL_A)),
-				Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+				Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 			]),
 		));
 		assert_ne!(
@@ -244,7 +244,7 @@ fn add_tranche<T: Runtime>() {
 					"getTrancheToken",
 					Some(&[
 						Token::Uint(Uint::from(POOL_A)),
-						Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+						Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 					]),
 				)
 				.unwrap()
@@ -384,7 +384,7 @@ fn update_member<T: Runtime>() {
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
 			POOL_A,
-			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
+			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 
 		// Address given MUST match derived allowlisted address for that domain
@@ -392,7 +392,7 @@ fn update_member<T: Runtime>() {
 			pallet_liquidity_pools::Pallet::<T>::update_member(
 				Keyring::Bob.as_origin(),
 				POOL_A,
-				pool_a_tranche_id::<T>(),
+				pool_a_tranche_1_id::<T>(),
 				DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Alice.into()),
 				SECONDS_PER_YEAR,
 			),
@@ -402,7 +402,7 @@ fn update_member<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
 			Keyring::Bob.as_origin(),
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
 			SECONDS_PER_YEAR,
 		));
@@ -449,7 +449,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	let (decimals_old, name_evm, symbol_evm) = env.state(|evm| {
 		let meta = orml_asset_registry::Metadata::<T>::get(CurrencyId::Tranche(
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 		))
 		.unwrap();
 		assert!(meta.name.is_empty());
@@ -479,7 +479,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 		assert_ok!(
 			pallet_pool_registry::Pallet::<T>::update_tranche_token_metadata(
 				POOL_A,
-				pool_a_tranche_id::<T>().into(),
+				pool_a_tranche_1_id::<T>().into(),
 				Some(decimals_new.clone()),
 				Some(name_new.clone()),
 				Some(symbol_new.clone()),
@@ -493,7 +493,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 			pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
 				OriginFor::<T>::signed(Keyring::Alice.into()),
 				POOL_A,
-				pool_a_tranche_id::<T>(),
+				pool_a_tranche_1_id::<T>(),
 				Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 			)
 		);
@@ -545,7 +545,7 @@ fn update_tranche_token_price<T: Runtime>() {
 				"getTrancheTokenPrice",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 					Token::Address(evm.deployed("usdc").address()),
 				]),
 			)
@@ -561,13 +561,13 @@ fn update_tranche_token_price<T: Runtime>() {
 		let price = <pallet_pool_system::Pallet<T> as TrancheTokenPrice<
 			<T as frame_system::Config>::AccountId,
 			CurrencyId,
-		>>::get(POOL_A, pool_a_tranche_id::<T>())
+		>>::get(POOL_A, pool_a_tranche_1_id::<T>())
 		.unwrap();
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			USDC.id(),
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
@@ -584,7 +584,7 @@ fn update_tranche_token_price<T: Runtime>() {
 				"getTrancheTokenPrice",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 					Token::Address(evm.deployed("usdc").address()),
 				]),
 			)

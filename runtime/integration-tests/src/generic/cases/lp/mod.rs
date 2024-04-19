@@ -34,7 +34,9 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	generic::{
-		cases::lp::utils::{pool_a_tranche_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},
+		cases::lp::utils::{
+			pool_a_tranche_1_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder,
+		},
 		config::Runtime,
 		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		envs::runtime_env::RuntimeEnv,
@@ -75,7 +77,7 @@ pub mod utils {
 
 	use crate::{
 		generic::{
-			cases::lp::{EVM_DOMAIN_CHAIN_ID, POOL_A, POOL_B},
+			cases::lp::{EVM_DOMAIN_CHAIN_ID, POOL_A, POOL_B, POOL_C},
 			config::Runtime,
 			utils::{evm::receipt_ok, last_event, pool::get_tranche_ids},
 		},
@@ -101,7 +103,7 @@ pub mod utils {
 			.into()
 	}
 
-	pub fn pool_a_tranche_id<T: Runtime>() -> TrancheId {
+	pub fn pool_a_tranche_1_id<T: Runtime>() -> TrancheId {
 		*get_tranche_ids::<T>(POOL_A)
 			.get(0)
 			.expect("Pool A has one non-residuary tranche")
@@ -114,6 +116,12 @@ pub mod utils {
 	pub fn pool_b_tranche_2_id<T: Runtime>() -> TrancheId {
 		*get_tranche_ids::<T>(POOL_B)
 			.get(1)
+			.expect("Pool B has two non-residuary tranches")
+	}
+
+	pub fn pool_c_tranche_1_id<T: Runtime>() -> TrancheId {
+		*get_tranche_ids::<T>(POOL_C)
+			.get(0)
 			.expect("Pool B has two non-residuary tranches")
 	}
 
@@ -288,15 +296,23 @@ pub mod utils {
 	}
 }
 
+/// A single tranched pool.
+/// Pool currency: LocalUsdc
 pub const POOL_A: PoolId = 1;
+
+/// A two tranched pool.
+/// Pool currency: LocalUsdc
 pub const POOL_B: PoolId = 2;
+
+/// A single tranched pool.
+/// Pool currency: Usdc from other domain
+pub const POOL_C: PoolId = 3;
 
 pub const DEFAULT_BALANCE: Balance = 1_000_000;
 const DECIMALS_6: Balance = 1_000_000;
 const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
-const INVESTOR: Keyring = Keyring::Bob;
 
 pub mod names {
 	pub const POOL_A_T_1: &str = "lp_pool_a_tranche_1";
@@ -316,6 +332,11 @@ pub mod names {
 	pub const POOL_B_T_2_DAI: &str = "lp_pool_b_tranche_2_dai";
 	pub const POOL_B_T_2_FRAX: &str = "lp_pool_b_tranche_2_frax";
 	pub const POOL_B_T_2_USDC: &str = "lp_pool_b_tranche_2_usdc";
+	pub const POOL_C_T_1: &str = "lp_pool_c_tranche_1";
+	pub const RM_POOL_C_T_1: &str = "rm_lp_pool_c_tranche_1";
+	pub const POOL_C_T_1_USDC: &str = "lp_pool_b_tranche_1_usdc";
+	pub const POOL_C_T_1_FRAX: &str = "lp_pool_b_tranche_1_frax";
+	pub const POOL_C_T_1_DAI: &str = "lp_pool_b_tranche_1_dai";
 }
 
 #[allow(non_camel_case_types)]
@@ -1017,7 +1038,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 /// Enables USDC, DAI and FRAX as investment currencies for both pools A nand B.
 pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	for currency in [DAI.id(), FRAX.id(), USDC.id()] {
-		for pool in [POOL_A, POOL_B] {
+		for pool in [POOL_A, POOL_B, POOL_C] {
 			assert_ok!(
 				pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
 					OriginFor::<T>::signed(Keyring::Admin.into()),
@@ -1025,9 +1046,9 @@ pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 					currency,
 				),
 			);
-			utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
 		}
 	}
+	utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
 }
 
 /// Deploys both Liquidity Pools for USDC, DAI and FRAX by calling
@@ -1036,302 +1057,93 @@ pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 ///
 /// NOTE: EVM Side
 pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
-	let (tranche_id_a, tranche_id_b_1, tranche_id_b_2) = (
-		utils::pool_a_tranche_id::<T>(),
-		utils::pool_b_tranche_1_id::<T>(),
-		utils::pool_b_tranche_2_id::<T>(),
-	);
+	let lp_name = |pool, tranche, currency| -> &str {
+		match (pool, tranche, currency) {
+			(POOL_A, tranche, "usdc") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+				names::POOL_A_T_1_USDC
+			}
+			(POOL_B, tranche, "usdc") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+				names::POOL_B_T_1_USDC
+			}
+			(POOL_B, tranche, "usdc") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+				names::POOL_B_T_2_USDC
+			}
+			(POOL_C, tranche, "usdc") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+				names::POOL_C_T_1_USDC
+			}
 
-	// POOL_A - TRANCHE 1
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(evm.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
+			(POOL_A, tranche, "frax") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+				names::POOL_A_T_1_FRAX
+			}
+			(POOL_B, tranche, "frax") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+				names::POOL_B_T_1_FRAX
+			}
+			(POOL_B, tranche, "frax") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+				names::POOL_B_T_2_FRAX
+			}
+			(POOL_C, tranche, "frax") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+				names::POOL_C_T_1_FRAX
+			}
 
-	evm.register(
-		names::POOL_A_T_1_USDC,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
+			(POOL_A, tranche, "dai") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+				names::POOL_A_T_1_DAI
+			}
+			(POOL_B, tranche, "dai") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+				names::POOL_B_T_1_DAI
+			}
+			(POOL_B, tranche, "dai") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+				names::POOL_B_T_2_DAI
+			}
+			(POOL_C, tranche, "dai") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+				names::POOL_C_T_1_DAI
+			}
+
+			(_, _, _) => {
+				unimplemented!("pool, tranche, currency combination does not have a name.")
+			}
+		}
+	};
+
+	for (pool, tranche_id) in [
+		(POOL_A, utils::pool_a_tranche_1_id::<T>()),
+		(POOL_B, utils::pool_b_tranche_1_id::<T>()),
+		(POOL_B, utils::pool_b_tranche_2_id::<T>()),
+		(POOL_C, utils::pool_c_tranche_1_id::<T>()),
+	] {
+		for currency in ["usdc", "frax", "dai"] {
+			evm.call(
 				Keyring::Alice,
+				Default::default(),
 				"pool_manager",
-				"getLiquidityPool",
+				"deployLiquidityPool",
 				Some(&[
-					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Uint(Uint::from(pool)),
+					Token::FixedBytes(FixedBytes::from(tranche_id)),
+					Token::Address(evm.deployed(currency).address()),
 				]),
 			)
-			.unwrap()
-			.value,
-		),
-	);
+			.unwrap();
 
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(evm.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_A_T_1_FRAX,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-					Token::Address(evm.deployed("frax").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_A)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-			Token::Address(evm.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_A_T_1_DAI,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_a)),
-					Token::Address(evm.deployed("dai").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	// POOL_B - TRANCHE 1
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(evm.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_1_USDC,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-					Token::Address(evm.deployed("usdc").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(evm.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_1_FRAX,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-					Token::Address(evm.deployed("frax").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-			Token::Address(evm.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_1_DAI,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_1)),
-					Token::Address(evm.deployed("dai").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	// POOL_B - TRANCHE 2
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(evm.deployed("usdc").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_2_USDC,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-					Token::Address(evm.deployed("usdc").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(evm.deployed("frax").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_2_FRAX,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-					Token::Address(evm.deployed("frax").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		"pool_manager",
-		"deployLiquidityPool",
-		Some(&[
-			Token::Uint(Uint::from(POOL_B)),
-			Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-			Token::Address(evm.deployed("dai").address()),
-		]),
-	)
-	.unwrap();
-
-	evm.register(
-		names::POOL_B_T_2_DAI,
-		"LiquidityPool",
-		Decoder::<sp_core::H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				"pool_manager",
-				"getLiquidityPool",
-				Some(&[
-					Token::Uint(Uint::from(POOL_B)),
-					Token::FixedBytes(FixedBytes::from(tranche_id_b_2)),
-					Token::Address(evm.deployed("dai").address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
+			evm.register(
+				lp_name(pool, tranche_id, currency),
+				"LiquidityPool",
+				Decoder::<sp_core::H160>::decode(
+					&evm.view(
+						Keyring::Alice,
+						"pool_manager",
+						"getLiquidityPool",
+						Some(&[
+							Token::Uint(Uint::from(pool)),
+							Token::FixedBytes(FixedBytes::from(tranche_id)),
+							Token::Address(evm.deployed(currency).address()),
+						]),
+					)
+					.unwrap()
+					.value,
+				),
+			);
+		}
+	}
 }
 
 /// Initiates tranches on EVM via `DeployTranche` contract and then sends
@@ -1340,7 +1152,7 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// AddTranche 1 of A
 	let tranche_id = {
-		let tranche_id = utils::pool_a_tranche_id::<T>();
+		let tranche_id = utils::pool_a_tranche_1_id::<T>();
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
@@ -1363,7 +1175,6 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		]),
 	)
 	.unwrap();
-
 	evm.register(
 		names::POOL_A_T_1,
 		"TrancheToken",
@@ -1374,7 +1185,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				"getTrancheToken",
 				Some(&[
 					Token::Uint(POOL_A.into()),
-					Token::FixedBytes(pool_a_tranche_id::<T>().to_vec()),
+					Token::FixedBytes(tranche_id.to_vec()),
 				]),
 			)
 			.unwrap()
@@ -1422,7 +1233,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 	evm.register(
-		"lp_pool_b_tranche_1",
+		names::POOL_B_T_1,
 		"TrancheToken",
 		Decoder::<sp_core::H160>::decode(
 			&evm.view(
@@ -1431,8 +1242,22 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				"getTrancheToken",
 				Some(&[
 					Token::Uint(POOL_B.into()),
-					Token::FixedBytes(pool_b_tranche_1_id::<T>().to_vec()),
+					Token::FixedBytes(tranche_id.to_vec()),
 				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+	evm.register(
+		names::RM_POOL_B_T_1,
+		"RestrictionManager",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::POOL_B_T_1,
+				"restrictionManager",
+				None,
 			)
 			.unwrap()
 			.value,
@@ -1465,7 +1290,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 	evm.register(
-		"lp_pool_b_tranche_2",
+		names::POOL_B_T_2,
 		"TrancheToken",
 		Decoder::<sp_core::H160>::decode(
 			&evm.view(
@@ -1474,8 +1299,79 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				"getTrancheToken",
 				Some(&[
 					Token::Uint(POOL_B.into()),
-					Token::FixedBytes(pool_b_tranche_2_id::<T>().to_vec()),
+					Token::FixedBytes(tranche_id.to_vec()),
 				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+	evm.register(
+		names::RM_POOL_B_T_2,
+		"RestrictionManager",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::POOL_B_T_2,
+				"restrictionManager",
+				None,
+			)
+			.unwrap()
+			.value,
+		),
+	);
+
+	// AddTranche 1 of C
+	let tranche_id = {
+		let tranche_id = utils::pool_c_tranche_1_id::<T>();
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
+			OriginFor::<T>::signed(Keyring::Admin.into()),
+			POOL_C,
+			tranche_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+
+		tranche_id
+	};
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		"pool_manager",
+		"deployTranche",
+		Some(&[
+			Token::Uint(Uint::from(POOL_C)),
+			Token::FixedBytes(FixedBytes::from(tranche_id)),
+		]),
+	)
+	.unwrap();
+	evm.register(
+		names::POOL_C_T_1,
+		"TrancheToken",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				"pool_manager",
+				"getTrancheToken",
+				Some(&[
+					Token::Uint(POOL_C.into()),
+					Token::FixedBytes(tranche_id.to_vec()),
+				]),
+			)
+			.unwrap()
+			.value,
+		),
+	);
+	evm.register(
+		names::RM_POOL_C_T_1,
+		"RestrictionManager",
+		Decoder::<sp_core::H160>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::POOL_C_T_1,
+				"restrictionManager",
+				None,
 			)
 			.unwrap()
 			.value,
@@ -1510,6 +1406,14 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_B,
+		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+	));
+
+	crate::generic::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL_C, USDC.id());
+
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
+		OriginFor::<T>::signed(Keyring::Admin.into()),
+		POOL_C,
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
@@ -1748,12 +1652,12 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_A,
-			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), SECONDS_PER_YEAR),
+			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
 			investor.as_origin(),
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			SECONDS_PER_YEAR,
 		));

@@ -20,7 +20,7 @@ use crate::{
 	generic::{
 		cases::lp::{
 			names, utils,
-			utils::{pool_a_tranche_id, Decoder},
+			utils::{pool_a_tranche_1_id, Decoder},
 			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
@@ -134,20 +134,20 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 		crate::generic::utils::pool::give_role::<T>(
 			Keyring::TrancheInvestor(1).into(),
 			POOL_A,
-			PoolRole::TrancheInvestor(pool_a_tranche_id::<T>(), cfg_primitives::SECONDS_PER_YEAR),
+			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), cfg_primitives::SECONDS_PER_YEAR),
 		);
 		give_tokens::<T>(Keyring::TrancheInvestor(1).id(), LocalUSDC.id(), AMOUNT);
 		invest_and_collect::<T>(
 			Keyring::TrancheInvestor(1).into(),
 			Keyring::Admin,
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			AMOUNT,
 		);
 		assert_eq!(
 			orml_tokens::Accounts::<T>::get(
 				Keyring::TrancheInvestor(1).id(),
-				CurrencyId::Tranche(POOL_A, pool_a_tranche_id::<T>()),
+				CurrencyId::Tranche(POOL_A, pool_a_tranche_1_id::<T>()),
 			)
 			.free,
 			AMOUNT
@@ -158,7 +158,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 		pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
 			OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
 			POOL_A,
-			pool_a_tranche_id::<T>(),
+			pool_a_tranche_1_id::<T>(),
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).into()),
 			AMOUNT,
 		)
