@@ -12,7 +12,7 @@
 
 use cfg_traits::TimeAsSecs;
 use frame_support::{
-	pallet_prelude::{StorageVersion, Weight},
+	pallet_prelude::Weight,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade},
 };
 #[cfg(feature = "try-runtime")]
@@ -31,9 +31,8 @@ fn inflation_rate<T: Config>(percent: u32) -> T::Rate {
 }
 
 pub mod init {
-	#[cfg(feature = "try-runtime")]
-	use cfg_traits::rewards::AccountRewards;
-	use cfg_traits::rewards::CurrencyGroupChange;
+	use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
+	use num_traits::Zero;
 	use sp_runtime::{BoundedVec, SaturatedConversion};
 
 	use super::*;
@@ -60,17 +59,12 @@ pub mod init {
 		for InitBlockRewards<T, CollatorReward, AnnualTreasuryInflationPercent>
 	where
 		T: frame_system::Config + Config<Balance = u128> + pallet_collator_selection::Config,
-		<T as Config>::Balance: From<u128>,
-		CollatorReward: Get<<T as Config>::Balance>,
+		T::Balance: From<u128>,
+		CollatorReward: Get<T::Balance>,
 		AnnualTreasuryInflationPercent: Get<u32>,
 	{
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-			assert_eq!(
-				Pallet::<T>::on_chain_storage_version(),
-				StorageVersion::new(0),
-				"On-chain storage version should be 0 (default)"
-			);
 			let collators = get_collators::<T>();
 			assert!(!collators.is_empty());
 
@@ -83,19 +77,46 @@ pub mod init {
 
 		// Weight: 2 + collator_count reads and writes
 		fn on_runtime_upgrade() -> Weight {
-			if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0) {
-				log::info!("{LOG_PREFIX} Initiating migration");
-				let mut weight: Weight = Weight::zero();
+			log::info!("{LOG_PREFIX} Initiating migration");
 
-				let collators = get_collators::<T>();
-				weight.saturating_accrue(T::DbWeight::get().reads(2));
+			log::info!("{LOG_PREFIX} Checking whether group is ready");
+			let group_is_ready = T::Rewards::is_ready(T::StakeGroupId::get());
 
-				<T as Config>::Rewards::attach_currency(
-					<T as Config>::StakeCurrencyId::get(),
-					<T as Config>::StakeGroupId::get(),
-				)
-				.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
-				.ok();
+			log::info!("{LOG_PREFIX} Checking whether session data is set");
+			let session_data_already_set =
+				pallet::ActiveSessionData::<T>::get() != Default::default();
+
+			log::info!("{LOG_PREFIX} Getting list of collators");
+			let collators = get_collators::<T>();
+
+			let collators_are_staked = collators.clone().into_iter().all(|c| {
+				log::info!("{LOG_PREFIX} Checking stake of collator {c:?}");
+				!T::Rewards::account_stake(T::StakeCurrencyId::get(), &c).is_zero()
+			});
+			let mut weight =
+				T::DbWeight::get().reads(2u64.saturating_add(collators.len().saturated_into()));
+
+			if group_is_ready && session_data_already_set && collators_are_staked {
+				log::info!(
+					"{LOG_PREFIX} Migration not necessary because all data is already initialized"
+				);
+				return weight;
+			}
+
+			if !group_is_ready {
+				log::info!("{LOG_PREFIX} Attaching currency to collator group");
+
+				T::Rewards::attach_currency(T::StakeCurrencyId::get(), T::StakeGroupId::get())
+					.map_err(|e| {
+						log::error!("Failed to attach currency to collator group: {:?}", e)
+					})
+					.ok();
+
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
+			}
+
+			if !session_data_already_set {
+				log::info!("{LOG_PREFIX} Setting session data");
 
 				pallet::ActiveSessionData::<T>::set(SessionData::<T> {
 					collator_count: collators.len().saturated_into(),
@@ -106,25 +127,30 @@ pub mod init {
 					last_update: T::Time::now(),
 				});
 				weight.saturating_accrue(T::DbWeight::get().writes(1));
-
-				for collator in collators.iter() {
-					// NOTE: Benching not required as num of collators <= 10.
-					Pallet::<T>::do_init_collator(collator)
-						.map_err(|e| {
-							log::error!("Failed to init genesis collators for rewards: {:?}", e);
-						})
-						.ok();
-					weight.saturating_accrue(T::DbWeight::get().reads_writes(6, 6));
-				}
-				Pallet::<T>::current_storage_version().put::<Pallet<T>>();
-				weight.saturating_add(T::DbWeight::get().writes(1))
-			} else {
-				// wrong storage version
-				log::info!(
-					"{LOG_PREFIX} Migration did not execute. This probably should be removed"
-				);
-				T::DbWeight::get().reads_writes(1, 0)
 			}
+
+			if !collators_are_staked {
+				for collator in collators.iter() {
+					if T::Rewards::account_stake(T::StakeCurrencyId::get(), collator).is_zero() {
+						log::info!("{LOG_PREFIX} Adding stake for collator {collator:?}");
+						// NOTE: Benching not required as num of collators <= 10.
+						Pallet::<T>::do_init_collator(collator)
+							.map_err(|e| {
+								log::error!(
+									"Failed to init genesis collators for rewards: {:?}",
+									e
+								);
+							})
+							.ok();
+						weight.saturating_accrue(T::DbWeight::get().reads_writes(6, 6));
+					}
+				}
+			}
+
+			log::info!("{LOG_PREFIX} Migration complete");
+
+			Pallet::<T>::current_storage_version().put::<Pallet<T>>();
+			weight.saturating_add(T::DbWeight::get().writes(1))
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -137,24 +163,10 @@ pub mod init {
 			let collators: Vec<T::AccountId> = Decode::decode(&mut pre_state.as_slice())
 				.expect("pre_upgrade provides a valid state; qed");
 
-			assert_eq!(
-				Pallet::<T>::active_session_data(),
-				SessionData::<T> {
-					collator_count: collators.len().saturated_into(),
-					collator_reward: CollatorReward::get(),
-					treasury_inflation_rate: inflation_rate::<T>(
-						AnnualTreasuryInflationPercent::get()
-					),
-					last_update: T::Time::now(),
-				}
-			);
+			assert_ne!(Pallet::<T>::active_session_data(), Default::default());
 
 			for collator in collators.iter() {
-				assert!(!<T as Config>::Rewards::account_stake(
-					<T as Config>::StakeCurrencyId::get(),
-					collator,
-				)
-				.is_zero())
+				assert!(!T::Rewards::account_stake(T::StakeCurrencyId::get(), collator,).is_zero())
 			}
 
 			log::info!("{LOG_PREFIX} Post migration checks successful");
