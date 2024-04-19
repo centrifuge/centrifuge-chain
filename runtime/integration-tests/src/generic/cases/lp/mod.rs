@@ -1688,6 +1688,19 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
+		crate::generic::utils::pool::give_role::<T>(
+			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			POOL_C,
+			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+			investor.as_origin(),
+			POOL_C,
+			utils::pool_c_tranche_1_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			SECONDS_PER_YEAR,
+		));
+
 		// Fund investor on EVM side
 		evm.call(
 			Keyring::Admin,
@@ -1724,6 +1737,8 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		.unwrap();
 
 		// Approve stable transfers on EVM side
+
+		// Pool A - Tranche 1
 		evm.call(
 			investor,
 			Default::default(),
@@ -1757,6 +1772,8 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			]),
 		)
 		.unwrap();
+
+		// Pool B - Tranche 1
 		evm.call(
 			investor,
 			Default::default(),
@@ -1790,6 +1807,8 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			]),
 		)
 		.unwrap();
+
+		// Pool B - Tranche 2
 		evm.call(
 			investor,
 			Default::default(),
@@ -1819,6 +1838,41 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_2_FRAX).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+
+		// Pool C - Tranche 1
+		evm.call(
+			investor,
+			Default::default(),
+			"usdc",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_C_T_1_USDC).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"dai",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_C_T_1_DAI).address()),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			investor,
+			Default::default(),
+			"frax",
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_C_T_1_FRAX).address()),
 				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 			]),
 		)

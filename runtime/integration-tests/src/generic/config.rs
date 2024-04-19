@@ -66,6 +66,7 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
+		TrancheCurrency = TrancheCurrency,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
@@ -77,7 +78,7 @@ pub trait Runtime:
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
 	+ pallet_investments::Config<
-		InvestmentId = TrancheCurrency,
+		InvestmentId = <Self as pallet_pool_system::Config>::TrancheCurrency,
 		Amount = Balance,
 		BalanceRatio = Ratio,
 	> + pallet_loans::Config<
