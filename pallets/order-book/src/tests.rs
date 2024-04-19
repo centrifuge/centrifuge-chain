@@ -463,6 +463,47 @@ fn correct_order_details() {
 	});
 }
 
+#[test]
+fn fulfill_zero_amount_order() {
+	new_test_ext().execute_with(|| {
+		let order_id = <OrderBook as TokenSwaps<AccountId>>::place_order(
+			FROM,
+			CURRENCY_B,
+			CURRENCY_A,
+			0,
+			OrderRatio::Custom(DEFAULT_RATIO),
+		)
+		.unwrap();
+
+		util::expect_notification(order_id, 0, 0, 0);
+
+		assert_ok!(OrderBook::fill_order(
+			RuntimeOrigin::signed(FROM),
+			order_id,
+			0
+		));
+	});
+}
+
+#[test]
+fn close_zero_amount_order() {
+	new_test_ext().execute_with(|| {
+		let order_id = <OrderBook as TokenSwaps<AccountId>>::place_order(
+			FROM,
+			CURRENCY_B,
+			CURRENCY_A,
+			0,
+			OrderRatio::Custom(DEFAULT_RATIO),
+		)
+		.unwrap();
+
+		assert_ok!(OrderBook::cancel_order(
+			RuntimeOrigin::signed(FROM),
+			order_id
+		));
+	});
+}
+
 mod market {
 	use super::*;
 

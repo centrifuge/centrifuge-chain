@@ -431,18 +431,16 @@ where
 		let meta_variant =
 			AssetInspect::metadata(variant_currency).ok_or(DispatchError::CannotLookup)?;
 
-		let local: Self = meta_variant
-			.additional
-			.local_representation
-			.ok_or(DispatchError::Other("Missing local representation"))?
-			.into();
+		if let Some(local) = meta_variant.additional.local_representation {
+			frame_support::ensure!(
+				meta_local.decimals == meta_variant.decimals,
+				DispatchError::Other("Mismatching decimals")
+			);
 
-		frame_support::ensure!(
-			meta_local.decimals == meta_variant.decimals,
-			DispatchError::Other("Mismatching decimals")
-		);
-
-		Ok(self == &local)
+			Ok(self == &local.into())
+		} else {
+			Ok(false)
+		}
 	}
 }
 
