@@ -58,12 +58,13 @@ pub mod pool_management;
 pub mod transfers;
 
 pub mod utils {
-	use std::cmp::min;
+	use std::{cmp::min, fmt::Debug};
 
 	use cfg_primitives::{Balance, TrancheId};
 	use ethabi::ethereum_types::{H160, H256, U256};
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
+	use pallet_evm::ExecutionInfo;
 	use sp_core::{ByteArray, Get};
 	use sp_runtime::traits::EnsureAdd;
 	use staging_xcm::{
@@ -182,6 +183,24 @@ pub mod utils {
 	impl Input for Vec<u8> {
 		fn input(&self) -> &[u8] {
 			self.as_slice()
+		}
+	}
+
+	impl<E: Debug> Input for Result<Vec<u8>, E> {
+		fn input(&self) -> &[u8] {
+			match self {
+				Ok(arr) => arr.as_slice(),
+				Err(e) => panic!("Input received error: {:?}", e),
+			}
+		}
+	}
+
+	impl<E: Debug> Input for Result<ExecutionInfo<Vec<u8>>, E> {
+		fn input(&self) -> &[u8] {
+			match self {
+				Ok(arr) => arr.value.as_slice(),
+				Err(e) => panic!("Input received error: {:?}", e),
+			}
 		}
 	}
 
@@ -315,6 +334,9 @@ const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
 
 pub mod names {
+	pub const USDC: &str = "usdc";
+	pub const FRAX: &str = "frax";
+	pub const DAI: &str = "dai";
 	pub const POOL_A_T_1: &str = "lp_pool_a_tranche_1";
 	pub const RM_POOL_A_T_1: &str = "rm_lp_pool_a_tranche_1";
 	pub const POOL_A_T_1_DAI: &str = "lp_pool_a_tranche_1_dai";
@@ -1427,14 +1449,14 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
 	evm.deploy(
 		"ERC20",
-		"usdc",
+		names::USDC,
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(6))]),
 	);
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"usdc",
+		names::USDC,
 		"file",
 		Some(&[
 			Token::FixedBytes("name".as_bytes().to_vec()),
@@ -1445,7 +1467,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"usdc",
+		names::USDC,
 		"file",
 		Some(&[
 			Token::FixedBytes("symbol".as_bytes().to_vec()),
@@ -1456,7 +1478,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"usdc",
+		names::USDC,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Alice.into()),
@@ -1467,7 +1489,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"usdc",
+		names::USDC,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Bob.into()),
@@ -1478,7 +1500,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"usdc",
+		names::USDC,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Charlie.into()),
