@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::Seconds;
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_runtime::DispatchError;
@@ -18,7 +19,7 @@ use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	#[api_version(2)]
+	#[api_version(3)]
 	pub trait LoansApi<PoolId, LoanId, Loan, Balance, PriceCollectionInput>
 	where
 		PoolId: Codec,
@@ -30,5 +31,6 @@ decl_runtime_apis! {
 		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, Loan)>;
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
 		fn portfolio_valuation(pool_id: PoolId, input_prices: PriceCollectionInput) -> Result<Balance, DispatchError>;
+		fn cashflow(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<(Seconds, Balance)>, DispatchError>;
 	}
 }

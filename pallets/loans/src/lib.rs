@@ -1210,8 +1210,19 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| (pool_id, loan).try_into())
+				.map(|(_, loan)| ActiveLoanInfo::try_from((pool_id, loan)))
 				.transpose()
+		}
+
+		pub fn cashflow(
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> Result<Vec<(Seconds, T::Balance)>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.map(|(_, loan)| loan.cashflow())
+				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?
 		}
 	}
 
