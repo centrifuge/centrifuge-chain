@@ -1,4 +1,4 @@
-use cfg_primitives::{CFG, SECONDS_PER_YEAR};
+use cfg_primitives::SECONDS_PER_YEAR;
 use cfg_types::{
 	fixed_point::Rate,
 	tokens::{CurrencyId, StakingCurrency},
@@ -13,7 +13,7 @@ use crate::mock::*;
 // The Reward amount
 // NOTE: This value needs to be > ExistentialDeposit, otherwise the tests will
 // fail as it's not allowed to transfer a value below the ED threshold.
-const REWARD: u128 = 100 * CFG + ExistentialDeposit::get();
+const REWARD: u128 = 100 * BALANCE_ED;
 
 #[test]
 fn check_special_privileges() {
@@ -105,7 +105,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
+			<Test as Config>::StakeAmount::get() as u128 + REWARD_CURRENCY_ED
 		);
 
 		advance_session();
@@ -126,7 +126,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
+			<Test as Config>::StakeAmount::get() as u128 + REWARD_CURRENCY_ED
 		);
 
 		advance_session();
@@ -149,7 +149,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			2 * <Test as Config>::StakeAmount::get() as u128 + 3 * ExistentialDeposit::get()
+			2 * <Test as Config>::StakeAmount::get() as u128 + 3 * REWARD_CURRENCY_ED
 		);
 
 		advance_session();
@@ -173,7 +173,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			3 * <Test as Config>::StakeAmount::get() as u128 + 5 * ExistentialDeposit::get()
+			3 * <Test as Config>::StakeAmount::get() as u128 + 5 * REWARD_CURRENCY_ED
 		);
 	});
 }
@@ -223,10 +223,7 @@ fn single_claim_reward() {
 				Balances::total_balance(&TreasuryPalletId::get().into_account_truncating()),
 				0
 			);
-			assert_eq!(
-				Balances::total_issuance(),
-				REWARD + ExistentialDeposit::get()
-			);
+			assert_eq!(Balances::total_issuance(), REWARD + BALANCE_ED);
 			assert_eq!(Balances::free_balance(&1), REWARD);
 		});
 }
@@ -244,7 +241,7 @@ fn collator_rewards_greater_than_remainder() {
 				Balances::free_balance(&TreasuryPalletId::get().into_account_truncating());
 
 			// EPOCH 0 -> EPOCH
-			let total_issuance = ExistentialDeposit::get();
+			let total_issuance = BALANCE_ED;
 			assert_eq!(Balances::total_issuance(), total_issuance);
 			MockTime::mock_now(|| SECONDS_PER_YEAR * 1000);
 			advance_session();

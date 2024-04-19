@@ -119,6 +119,7 @@ pub struct PoolDetails<
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
 	MaxTranches: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -147,7 +148,7 @@ pub struct PoolParameters {
 	pub max_nav_age: Seconds,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolChanges<Rate, StringLimit, MaxTranches>
 where
 	StringLimit: Get<u32>,
@@ -157,31 +158,6 @@ where
 	pub tranche_metadata: Change<BoundedVec<TrancheMetadata<StringLimit>, MaxTranches>>,
 	pub min_epoch_time: Change<Seconds>,
 	pub max_nav_age: Change<Seconds>,
-}
-
-// NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
-// https://github.com/open-web3-stack/open-runtime-module-library/pull/867
-impl<Rate, StringLimit, MaxTranches> MaxEncodedLen for PoolChanges<Rate, StringLimit, MaxTranches>
-where
-	StringLimit: Get<u32>,
-	MaxTranches: Get<u32>,
-	PoolChanges<Rate, StringLimit, MaxTranches>: Encode,
-	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
-	BoundedVec<TrancheMetadata<StringLimit>, MaxTranches>: MaxEncodedLen,
-	Seconds: MaxEncodedLen,
-{
-	fn max_encoded_len() -> usize {
-		// The tranches (default bound)
-		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
-			// The tranche metadata (default bound)
-			.saturating_add(
-				BoundedVec::<TrancheMetadata<StringLimit>, MaxTranches>::max_encoded_len(),
-			)
-			// The min epoc time and max nav age (default bounds)
-			.saturating_add(Seconds::max_encoded_len().saturating_mul(2))
-			// From the `Change` enum which wraps all four fields of Self
-			.saturating_add(4)
-	}
 }
 
 /// Information about the deposit that has been taken to create a pool
@@ -197,6 +173,7 @@ pub struct PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>
 where
 	CurrencyId: Copy,
 	StringLimit: Get<u32>,
+	TrancheCurrency: Into<CurrencyId>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
@@ -235,6 +212,7 @@ impl<
 	Balance:
 		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
+	TrancheCurrency: Into<CurrencyId>,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -273,9 +251,12 @@ impl<
 		let mut tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency).ok_or(DispatchError::Other(
-				"Always exists a currency for an existing pool",
-			))?;
+			let metadata = AssetRegistry::metadata(
+				&<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId::from(
+					tranche.currency.into(),
+				),
+			)
+			.ok_or(DispatchError::CannotLookup)?;
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency,
