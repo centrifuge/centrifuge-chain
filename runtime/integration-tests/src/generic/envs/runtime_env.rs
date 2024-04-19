@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap, marker::PhantomData, mem, rc::Rc};
+use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use cfg_types::ParaId;
@@ -12,11 +12,10 @@ use frame_support::{
 };
 use frame_system::LastRuntimeUpgradeInfo;
 use parity_scale_codec::Encode;
-use runtime_common::evm::precompile::H160Addresses;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, Get, H256, U256};
+use sp_core::{sr25519::Public, Get, H256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -26,7 +25,7 @@ use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		config::Runtime,
+		config::{Runtime, RuntimeKind},
 		env::{utils, Env, EnvEvmExtension},
 		envs::evm_env::EvmEnv,
 	},
@@ -83,11 +82,27 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		.assimilate_storage(&mut parachain_storage)
 		.unwrap();
 
+		let accounts = match T::KIND {
+			RuntimeKind::Centrifuge => {
+				runtime_common::evm::precompile::utils::precompile_account_genesis::<
+					centrifuge_runtime::CentrifugePrecompiles,
+				>()
+			}
+			RuntimeKind::Altair => {
+				runtime_common::evm::precompile::utils::precompile_account_genesis::<
+					altair_runtime::AltairPrecompiles,
+				>()
+			}
+			RuntimeKind::Development => {
+				runtime_common::evm::precompile::utils::precompile_account_genesis::<
+					development_runtime::DevelopmentPrecompiles,
+				>()
+			}
+		};
+
 		// Precompiles need to have code-set
 		pallet_evm::GenesisConfig::<T> {
-			accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
-				centrifuge_runtime::CentrifugePrecompiles,
-			>(),
+			accounts,
 			_marker: PhantomData::default(),
 		}
 		.assimilate_storage(&mut parachain_storage)
