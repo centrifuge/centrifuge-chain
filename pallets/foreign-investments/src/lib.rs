@@ -228,7 +228,7 @@ pub mod pallet {
 	/// NOTE: The storage is killed once the investment is fully collected, or
 	/// decreased.
 	#[pallet::storage]
-	pub(super) type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
+	pub type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
