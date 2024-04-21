@@ -247,7 +247,7 @@ impl<
 	/// required to be registered in the registry which happens after the pool
 	/// creation for Subquery convenience.
 	///
-	/// NOTE: Uses [essence_from_tranche_input] under the hood.
+	/// NOTE: Uses `essence_from_tranche_input` under the hood.
 	pub fn essence_from_registry<AssetRegistry, AssetId, StringLimit>(
 		&self,
 	) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>, DispatchError>
