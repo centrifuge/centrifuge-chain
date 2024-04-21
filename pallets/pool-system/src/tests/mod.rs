@@ -2478,7 +2478,7 @@ fn essence() {
 
 		let pool_details = Pool::<Runtime>::get(DEFAULT_POOL_ID).expect("Pool is registered; qed");
 		let essence = pool_details
-			.essence::<<Runtime as Config>::AssetRegistry, Balance, StringLimit>()
+			.essence_from_registry::<<Runtime as Config>::AssetRegistry, Balance, StringLimit>()
 			.expect("Tranche token metadata is registered; qed");
 
 		assert_eq!(essence.currency, AUSD_CURRENCY_ID);

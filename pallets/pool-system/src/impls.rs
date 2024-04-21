@@ -154,24 +154,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::MaxTranches,
 		>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone(), now)?;
 
-		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
-			let token_name = tranche_input.metadata.token_name.clone();
-			let token_symbol = tranche_input.metadata.token_symbol.clone();
-
-			// The decimals of the tranche token need to match the decimals of the pool
-			// currency. Otherwise, we'd always need to convert investments to the decimals
-			// of tranche tokens and vice versa
-			let decimals = match T::AssetRegistry::metadata(&currency) {
-				Some(metadata) => metadata.decimals,
-				None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
-			};
-
-			let metadata = tranche.create_asset_metadata(decimals, token_name, token_symbol);
-
-			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
-				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
-		}
-
 		let pool_details = PoolDetails {
 			currency,
 			tranches: tranches.clone(),
@@ -195,11 +177,18 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		Pool::<T>::insert(pool_id, pool_details.clone());
 
 		// For SubQuery, pool creation event should be dispatched before related events
+		let ids: Vec<T::TrancheCurrency> = tranches
+			.tranches
+			.clone()
+			.into_iter()
+			.map(|tranche| tranche.currency)
+			.collect();
 		Self::deposit_event(Event::Created {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
+			essence: pool_details
+				.essence_from_tranche_input::<T::StringLimit>(ids, tranche_inputs.clone())?,
 		});
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
