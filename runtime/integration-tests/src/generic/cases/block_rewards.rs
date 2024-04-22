@@ -22,7 +22,7 @@ use crate::{
 	utils::accounts::{default_accounts, Keyring},
 };
 
-crate::test_for_runtimes!(all, block_rewards_api);
+#[test_runtimes(all)]
 fn block_rewards_api<T: Runtime>() {
 	const STAKER: Keyring = Keyring::Alice;
 
@@ -59,10 +59,7 @@ fn block_rewards_api<T: Runtime>() {
 	});
 }
 
-crate::test_for_runtimes!(
-	[development, altair, centrifuge],
-	collator_list_synchronized
-);
+#[test_runtimes(all)]
 fn collator_list_synchronized<T: Runtime>() {
 	RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
