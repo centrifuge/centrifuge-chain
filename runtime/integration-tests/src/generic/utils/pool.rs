@@ -29,6 +29,12 @@ use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 
+pub fn currency<T: pallet_pool_system::Config>(pool_id: T::PoolId) -> T::CurrencyId {
+	pallet_pool_system::Pool::<T>::get(pool_id)
+		.expect("Pool does not exist")
+		.currency
+}
+
 pub fn give_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
 	pallet_permissions::Pallet::<T>::add(
 		RawOrigin::Root.into(),

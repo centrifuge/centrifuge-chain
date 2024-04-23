@@ -11738,6 +11738,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transfer-allowlist",
  "pallet-treasury",

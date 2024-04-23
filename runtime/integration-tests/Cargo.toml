@@ -147,6 +147,7 @@ pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 pallet-transfer-allowlist = { workspace = true, features = ["std"] }
 pallet-treasury = { workspace = true, features = ["std"] }
+pallet-token-mux = { workspace = true, features = ["std"] }
 pallet-uniques = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
 pallet-vesting = { workspace = true, features = ["std"] }

@@ -175,7 +175,17 @@ pub fn last_change_id<T: Runtime>() -> T::Hash {
 }
 
 pub mod oracle {
+	use frame_support::traits::OriginTrait;
+
 	use super::*;
+
+	pub fn set_order_book_feeder<T: Runtime>(origin: T::RuntimeOriginExt) {
+		pallet_order_book::Pallet::<T>::set_market_feeder(
+			T::RuntimeOriginExt::root(),
+			Feeder(origin.into_caller()),
+		)
+		.unwrap()
+	}
 
 	pub fn feed_from_root<T: Runtime>(key: OracleKey, value: Ratio) {
 		pallet_oracle_feed::Pallet::<T>::feed(RawOrigin::Root.into(), key, value).unwrap();

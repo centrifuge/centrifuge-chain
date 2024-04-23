@@ -120,7 +120,7 @@ fn add_currency<T: Runtime>() {
 			TestCurrency.id()
 		));
 
-		utils::process_outbound::<T>(|| {
+		utils::process_outbound::<T>(|_| {
 			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
 		});
 	});
@@ -168,7 +168,7 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(|| {
+		utils::process_outbound::<T>(|_| {
 			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
 		});
 	});

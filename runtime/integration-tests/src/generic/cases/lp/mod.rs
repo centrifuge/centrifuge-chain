@@ -45,6 +45,7 @@ use crate::{
 			genesis,
 			genesis::Genesis,
 			give_balance,
+			oracle::set_order_book_feeder,
 		},
 	},
 	utils::{
@@ -145,27 +146,34 @@ pub mod utils {
 		));
 	}
 
-	pub fn verify_outbound_success<T: Runtime>() {
+	pub fn verify_outbound_success<T: Runtime>(
+		_: <T as pallet_liquidity_pools_gateway::Config>::Message,
+	) {
 		assert!(matches!(
 			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
 			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
 		));
 	}
 
-	pub fn process_outbound<T: Runtime>(verifier: impl Fn()) {
-		pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
-			.map(|(nonce, _)| nonce)
-			.collect::<Vec<_>>()
-			.into_iter()
-			.for_each(|nonce| {
-				pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
-					OriginFor::<T>::signed(Keyring::Alice.into()),
-					nonce,
-				)
-				.unwrap();
+	pub fn process_outbound<T: Runtime>(
+		mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::Message),
+	) {
+		let msgs = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
+			.map(|(nonce, (_, _, msg))| (nonce, msg))
+			.collect::<Vec<_>>();
 
-				verifier();
-			});
+		// The function should panic if there is nothing to be processed.
+		assert!(msgs.len() > 0);
+
+		msgs.into_iter().for_each(|(nonce, msg)| {
+			pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
+				OriginFor::<T>::signed(Keyring::Alice.into()),
+				nonce,
+			)
+			.unwrap();
+
+			verifier(msg);
+		});
 	}
 
 	pub fn to_fixed_array<const S: usize>(src: &[u8]) -> [u8; S] {
@@ -333,7 +341,12 @@ const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
 
+pub mod contracts {
+	pub const POOL_MANAGER: &str = "PoolManager";
+}
+
 pub mod names {
+	pub const POOL_MANAGER: &str = "pool_manager";
 	pub const USDC: &str = "usdc";
 	pub const FRAX: &str = "frax";
 	pub const DAI: &str = "dai";
@@ -519,6 +532,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 	);
 	env.state_mut(|evm| {
 		evm_balances::<T>(DEFAULT_BALANCE * CFG);
+		set_order_book_feeder::<T>(T::RuntimeOriginExt::root());
 
 		evm.load_contracts();
 
@@ -592,8 +606,8 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			]),
 		);
 		evm.deploy(
-			"PoolManager",
-			"pool_manager",
+			contracts::POOL_MANAGER,
+			names::POOL_MANAGER,
 			Keyring::Alice,
 			Some(&[
 				Token::Address(evm.deployed("escrow").address()),

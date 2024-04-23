@@ -33,16 +33,20 @@ const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
 	use cfg_primitives::{AccountId, Balance};
-	use cfg_traits::investments::TrancheCurrency;
+	use cfg_traits::{investments::TrancheCurrency, HasLocalAssetRepresentation};
 	use cfg_types::domain_address::DomainAddress;
 	use ethabi::Token;
+	use pallet_foreign_investments::Action;
+	use pallet_liquidity_pools::{GeneralCurrencyIndexOf, GeneralCurrencyIndexType};
 	use runtime_common::account_conversion::AccountConverter;
 	use sp_core::U256;
 	use sp_runtime::traits::Convert;
 
 	use crate::{
 		generic::{
-			cases::lp::{investments::DEFAULT_INVESTMENT_AMOUNT, EVM_DOMAIN_CHAIN_ID},
+			cases::lp::{
+				investments::DEFAULT_INVESTMENT_AMOUNT, names, utils::Decoder, EVM_DOMAIN_CHAIN_ID,
+			},
 			config::Runtime,
 			env::EvmEnv,
 			utils::{collect_investments, pool::close_epoch},
@@ -50,8 +54,25 @@ mod utils {
 		utils::accounts::Keyring,
 	};
 
+	pub fn index_lp<T: Runtime>(evm: &mut impl EvmEnv<T>, name: &str) -> GeneralCurrencyIndexType {
+		Decoder::<GeneralCurrencyIndexType>::decode(&evm.view(
+			Keyring::Alice,
+			names::POOL_MANAGER,
+			"currencyAddressToId",
+			Some(&[Token::Address(evm.deployed(name).address)]),
+		))
+	}
+
 	pub fn remote_account_of(keyring: Keyring) -> AccountId {
 		AccountConverter::convert(DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, keyring.into()))
+	}
+
+	pub fn currency_index<T: Runtime>(
+		currency_id: <T as pallet_liquidity_pools::Config>::CurrencyId,
+	) -> GeneralCurrencyIndexType {
+		GeneralCurrencyIndexOf::<T>::try_from(currency_id)
+			.unwrap()
+			.index
 	}
 
 	pub fn investment_id<T: pallet_pool_system::Config>(
@@ -61,6 +82,8 @@ mod utils {
 		<T as pallet_pool_system::Config>::TrancheCurrency::generate(pool, tranche)
 	}
 
+	// TODO: CHANGE EVM TO BE ENVIRONMENTAL AND MAKE TRAIT NON SELF BUT RATHER GET
+	//       THAT ENVIRONMENTAL!
 	pub fn invest<T: Runtime>(evm: &mut impl EvmEnv<T>, who: Keyring, lp_pool: &str) {
 		evm.call(
 			who,
@@ -107,18 +130,56 @@ mod utils {
 		// NOTE: We are collecting for the remote accounts only here.
 		collect_investments::<T>(investor, pool, tranche);
 	}
+
+	pub fn fulfill_swap<T: Runtime>(
+		investor: AccountId,
+		pool: <T as pallet_pool_system::Config>::PoolId,
+		tranche: <T as pallet_pool_system::Config>::TrancheId,
+		action: Action,
+		amount: Option<<T as pallet_order_book::Config>::BalanceOut>,
+	) {
+		let order = pallet_order_book::Orders::<T>::get(
+			pallet_swaps::SwapIdToOrderId::<T>::get((
+				investor,
+				(investment_id::<T>(pool, tranche), action),
+			))
+			.expect("Nothing to match"),
+		)
+		.unwrap();
+
+		let from = &order.currency_out;
+		let to = &order.currency_in;
+		let needs_token_mux = match (
+			HasLocalAssetRepresentation::<orml_asset_registry::Pallet<T>>::is_local_representation_of(to, from).unwrap(),
+			HasLocalAssetRepresentation::<orml_asset_registry::Pallet<T>>::is_local_representation_of(from, to).unwrap(),
+		) {
+			(true, true) => unreachable!("Currencies should never be local of locals."),
+			(false, false) => false,
+			(true, false) => true,
+			(false, true) => true,
+		};
+
+		if needs_token_mux {
+			pallet_token_mux::Pallet::<T>::match_swap(
+				Keyring::Alice.as_origin::<T::RuntimeOriginExt>(),
+				order.order_id,
+				amount.unwrap_or(order.amount_out),
+			)
+			.unwrap();
+		} else {
+			// TODO: Need to move tokens to Centrifuge first IIRC
+			//       (i.e. FRAX, DAI, USDC) and then match. Best would be
+			//       to move them during start-up, swap some USDC against
+			//       LocalUSDC so that Alice holds it all.
+		}
+	}
 }
 
 mod with_pool_currency {
 	use super::{utils, *};
 	use crate::generic::cases::lp::utils as lp_utils;
 
-	#[test]
-	fn _test() {
-		with_pool_currency_invest_cancel_full::<centrifuge_runtime::Runtime>()
-	}
-
-	fn with_pool_currency_invest<T: Runtime>() {
+	fn currency_invest<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
@@ -151,10 +212,7 @@ mod with_pool_currency {
 		});
 	}
 
-	// TODO: CHANGE EVM TO BE ENVIRONMENTAL AND MAKE TRAIT NON SELF BUT RATHER GET
-	//       THAT ENVIRONMENTAL!
-
-	fn with_pool_currency_collect<T: Runtime>() {
+	fn currency_collect<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
@@ -220,7 +278,7 @@ mod with_pool_currency {
 		});
 	}
 
-	fn with_pool_currency_invest_cancel_full<T: Runtime>() {
+	fn invest_cancel_full<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
@@ -269,6 +327,299 @@ mod with_pool_currency {
 				Decoder::<Balance>::decode(&evm.view(
 					Keyring::TrancheInvestor(1),
 					names::POOL_C_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				0
+			);
+		});
+	}
+}
+
+mod with_foreign_currency {
+	use cfg_types::fixed_point::Quantity;
+	use cfg_utils::vec_to_fixed_array;
+	use pallet_foreign_investments::Action;
+	use pallet_liquidity_pools::MessageOf;
+	use sp_runtime::{
+		traits::{EnsureFixedPointNumber, EnsureSub, One},
+		FixedPointNumber,
+	};
+
+	use super::{utils, *};
+	use crate::generic::{
+		cases::lp::{utils as lp_utils, utils::pool_a_tranche_1_id, POOL_A},
+		utils::pool::close_epoch,
+	};
+
+	#[test]
+	fn _test() {
+		invest_cancel_full_after_swap_partially::<centrifuge_runtime::Runtime>()
+	}
+
+	fn invest_cancel_full_before_swap<T: Runtime>() {
+		let mut env = setup_full::<T>();
+		env.state_mut(|evm| {
+			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
+
+		env.state(|evm| {
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+				),
+				None,
+			);
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				DEFAULT_INVESTMENT_AMOUNT
+			);
+		});
+
+		env.state_mut(|evm| {
+			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+				),
+				None
+			);
+
+			lp_utils::process_outbound::<T>(lp_utils::verify_outbound_success::<T>);
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				0
+			);
+		});
+	}
+
+	fn invest_cancel_full_after_swap<T: Runtime>() {
+		let mut env = setup_full::<T>();
+		env.state_mut(|evm| {
+			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+			utils::fulfill_swap::<T>(
+				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				POOL_A,
+				pool_a_tranche_1_id::<T>(),
+				Action::Investment,
+				None,
+			);
+		});
+
+		env.state(|evm| {
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
+				),
+				Some(OrderOf::<T>::new(
+					DEFAULT_INVESTMENT_AMOUNT,
+					OrderId::zero()
+				))
+			);
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				DEFAULT_INVESTMENT_AMOUNT
+			);
+		});
+
+		env.state_mut(|evm| {
+			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
+				),
+				None
+			);
+
+			utils::fulfill_swap::<T>(
+				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				POOL_A,
+				pool_a_tranche_1_id::<T>(),
+				Action::Investment,
+				None,
+			);
+
+			lp_utils::process_outbound::<T>(|msg| {
+				assert_eq!(
+					msg,
+					MessageOf::<T>::ExecutedDecreaseInvestOrder {
+						pool_id: POOL_A,
+						tranche_id: pool_a_tranche_1_id::<T>(),
+						investor: vec_to_fixed_array(utils::remote_account_of(
+							Keyring::TrancheInvestor(1)
+						)),
+						currency: utils::index_lp(evm, names::USDC),
+						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
+						remaining_invest_amount: 0,
+					}
+				)
+			});
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				0
+			);
+		});
+	}
+
+	fn invest_cancel_full_after_swap_partially<T: Runtime>() {
+		let mut env = setup_full::<T>();
+		let part = Quantity::checked_from_rational(1, 2).unwrap();
+		let other_part = Quantity::one().ensure_sub(part).unwrap();
+		let partial_amount = part.ensure_mul_int(DEFAULT_INVESTMENT_AMOUNT).unwrap();
+
+		env.state_mut(|evm| {
+			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+			utils::fulfill_swap::<T>(
+				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				POOL_A,
+				pool_a_tranche_1_id::<T>(),
+				Action::Investment,
+				Some(partial_amount),
+			);
+		});
+
+		env.state(|evm| {
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
+				),
+				Some(OrderOf::<T>::new(partial_amount, OrderId::zero()))
+			);
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				DEFAULT_INVESTMENT_AMOUNT
+			);
+		});
+
+		env.state_mut(|evm| {
+			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+
+			assert_eq!(
+				pallet_investments::InvestOrders::<T>::get(
+					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
+				),
+				None
+			);
+
+			let remaining_amount = other_part
+				.ensure_mul_int(DEFAULT_INVESTMENT_AMOUNT)
+				.unwrap();
+
+			close_epoch(Keyring::Admin.id(), POOL_A);
+
+			lp_utils::process_outbound::<T>(|msg| {
+				assert_eq!(
+					msg,
+					MessageOf::<T>::ExecutedDecreaseInvestOrder {
+						pool_id: POOL_A,
+						tranche_id: pool_a_tranche_1_id::<T>(),
+						investor: vec_to_fixed_array(utils::remote_account_of(
+							Keyring::TrancheInvestor(1)
+						)),
+						currency: utils::index_lp(evm, names::USDC),
+						currency_payout: part.ensure_mul_int(DEFAULT_INVESTMENT_AMOUNT).unwrap(),
+						remaining_invest_amount: remaining_amount
+					}
+				)
+			});
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
+					"pendingDepositRequest",
+					Some(&[
+						Token::Uint(Uint::zero()),
+						Token::Address(Keyring::TrancheInvestor(1).into()),
+					]),
+				)),
+				remaining_amount
+			);
+
+			utils::fulfill_swap::<T>(
+				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				POOL_A,
+				pool_a_tranche_1_id::<T>(),
+				Action::Investment,
+				None,
+			);
+
+			lp_utils::process_outbound::<T>(|msg| {
+				assert_eq!(
+					msg,
+					MessageOf::<T>::ExecutedDecreaseInvestOrder {
+						pool_id: POOL_A,
+						tranche_id: pool_a_tranche_1_id::<T>(),
+						investor: vec_to_fixed_array(utils::remote_account_of(
+							Keyring::TrancheInvestor(1)
+						)),
+						currency: utils::index_lp(evm, names::USDC),
+						currency_payout: remaining_amount,
+						remaining_invest_amount: 0,
+					}
+				)
+			});
+
+			assert_eq!(
+				Decoder::<Balance>::decode(&evm.view(
+					Keyring::TrancheInvestor(1),
+					names::POOL_A_T_1_USDC,
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),

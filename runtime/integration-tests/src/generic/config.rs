@@ -170,6 +170,12 @@ pub trait Runtime:
 		Runner = pallet_evm::runner::stack::Runner<Self>,
 		Currency = pallet_balances::Pallet<Self>,
 	> + axelar_gateway_precompile::Config
+	+ pallet_token_mux::Config<
+		BalanceIn = Balance,
+		BalanceOut = Balance,
+		CurrencyId = CurrencyId,
+		OrderId = OrderId,
+	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
