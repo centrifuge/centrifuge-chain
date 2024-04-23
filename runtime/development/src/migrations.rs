@@ -19,16 +19,16 @@ parameter_types! {
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeDevelopment1047 = (
-    pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
-    cleanup_foreign_investments::Migration<crate::Runtime>,
+	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+	cleanup_foreign_investments::Migration<crate::Runtime>,
 	// v0 -> v1
 	pallet_multisig::migrations::v1::MigrateToV1<crate::Runtime>,
 	// v0 -> v1
 	pallet_balances::migration::MigrateToTrackInactive<super::Runtime, super::CheckingAccount, ()>,
 	// v0 -> v1
-	runtime_common::migrations::increase_storage_version::Migration<crate::Preimage, 0, 1>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Preimage, crate::RocksDbWeight, 0>,
 	// v0 -> v1
-	pallet_democracy::migrations::v1::v1::Migration<crate::Runtime>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Democracy, crate::RocksDbWeight, 0>,
 	// v0 -> v1
 	pallet_xcm::migration::v1::VersionUncheckedMigrateToV1<crate::Runtime>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::PoolSystem, 0, 2>,
