@@ -28,7 +28,11 @@ pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::{fee_keys::FeeKey, pools::PoolNav, tokens::CurrencyId};
+use cfg_types::{
+	fee_keys::FeeKey,
+	pools::PoolNav,
+	tokens::{CurrencyId, StakingCurrency},
+};
 use orml_traits::GetByKey;
 use pallet_loans::entities::input::PriceCollectionInput;
 use pallet_pool_system::Nav;
@@ -38,6 +42,11 @@ use sp_runtime::{
 	DispatchError,
 };
 use sp_std::marker::PhantomData;
+
+pub mod instances {
+	/// The rewards associated to block rewards
+	pub type BlockRewards = pallet_rewards::Instance1;
+}
 
 parameter_types! {
 	/// The native currency identifier of our currency id enum
@@ -81,6 +90,7 @@ where
 	fn get(currency_id: &CurrencyId) -> Balance {
 		match currency_id {
 			CurrencyId::Native => T::ExistentialDeposit::get(),
+			CurrencyId::Staking(StakingCurrency::BlockRewards) => T::ExistentialDeposit::get(),
 			currency_id => orml_asset_registry::Pallet::<T>::metadata(currency_id)
 				.map(|metadata| metadata.existential_deposit)
 				.unwrap_or_default(),

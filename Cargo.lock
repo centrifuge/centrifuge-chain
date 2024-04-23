@@ -2993,6 +2993,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",

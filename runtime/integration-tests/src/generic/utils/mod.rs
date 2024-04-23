@@ -21,13 +21,15 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_support::BoundedVec;
+use frame_support::{traits::fungible::Mutate, BoundedVec};
 use frame_system::RawOrigin;
+use pallet_evm::FeeCalculator;
 use pallet_oracle_collection::types::CollectionInfo;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use runtime_common::oracle::Feeder;
+use runtime_common::{account_conversion::AccountConverter, oracle::Feeder};
+use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{One, StaticLookup},
+	traits::{Get, One, StaticLookup},
 	Perquintill,
 };
 
@@ -250,5 +252,48 @@ pub mod oracle {
 			pool_id,
 		)
 		.unwrap();
+	}
+}
+
+pub mod evm {
+	use super::*;
+
+	pub fn mint_balance_into_derived_account<T: Runtime>(
+		address: H160,
+		balance: Balance,
+	) -> Balance {
+		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
+		let derived_account =
+			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
+
+		pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance).unwrap()
+	}
+
+	pub fn deploy_contract<T: Runtime>(address: H160, code: Vec<u8>) -> H160 {
+		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
+		let derived_address =
+			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
+
+		let transaction_create_cost = T::config().gas_transaction_create;
+		let (base_fee, _) = T::FeeCalculator::min_gas_price();
+
+		pallet_evm::Pallet::<T>::create(
+			RawOrigin::from(Some(derived_address)).into(),
+			address,
+			code,
+			U256::from(0),
+			transaction_create_cost * 10,
+			U256::from(base_fee + 10),
+			None,
+			None,
+			Vec::new(),
+		)
+		.unwrap();
+
+		// returns the contract address
+		pallet_evm::AccountCodes::<T>::iter()
+			.find(|(_address, code)| code.len() > 0)
+			.unwrap()
+			.0
 	}
 }

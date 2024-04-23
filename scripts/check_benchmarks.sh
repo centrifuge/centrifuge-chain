@@ -22,7 +22,7 @@ run_benchmark() {
 
 if [[ $runtime == "development" ]];
 then
-  chain="development-local"
+  chain="development"
 elif [[ $runtime == "centrifuge" ]];
 then
   chain="centrifuge-local"

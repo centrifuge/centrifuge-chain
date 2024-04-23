@@ -18,7 +18,7 @@ case $TARGET in
     ;;
 
   test-integration)
-    cargo test --release --package runtime-integration-tests --features fast-runtime
+    cargo test --release --package runtime-integration-tests
     ;;
 
   lint-fmt)

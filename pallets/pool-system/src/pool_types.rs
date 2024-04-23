@@ -148,7 +148,7 @@ pub struct PoolParameters {
 	pub max_nav_age: Seconds,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolChanges<Rate, StringLimit, MaxTranches>
 where
 	StringLimit: Get<u32>,
@@ -158,31 +158,6 @@ where
 	pub tranche_metadata: Change<BoundedVec<TrancheMetadata<StringLimit>, MaxTranches>>,
 	pub min_epoch_time: Change<Seconds>,
 	pub max_nav_age: Change<Seconds>,
-}
-
-// NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
-// https://github.com/open-web3-stack/open-runtime-module-library/pull/867
-impl<Rate, StringLimit, MaxTranches> MaxEncodedLen for PoolChanges<Rate, StringLimit, MaxTranches>
-where
-	StringLimit: Get<u32>,
-	MaxTranches: Get<u32>,
-	PoolChanges<Rate, StringLimit, MaxTranches>: Encode,
-	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
-	BoundedVec<TrancheMetadata<StringLimit>, MaxTranches>: MaxEncodedLen,
-	Seconds: MaxEncodedLen,
-{
-	fn max_encoded_len() -> usize {
-		// The tranches (default bound)
-		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
-			// The tranche metadata (default bound)
-			.saturating_add(
-				BoundedVec::<TrancheMetadata<StringLimit>, MaxTranches>::max_encoded_len(),
-			)
-			// The min epoc time and max nav age (default bounds)
-			.saturating_add(Seconds::max_encoded_len().saturating_mul(2))
-			// From the `Change` enum which wraps all four fields of Self
-			.saturating_add(4)
-	}
 }
 
 /// Information about the deposit that has been taken to create a pool

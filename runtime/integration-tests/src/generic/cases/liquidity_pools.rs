@@ -1,6 +1,5 @@
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, CouncilCollective, OrderId, PoolId,
-	TrancheId,
+	currency_decimals, parachains, AccountId, Balance, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency},
@@ -23,7 +22,6 @@ use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::RawOrigin,
 	traits::{
-		fungible::Mutate as FungibleMutate,
 		fungibles::{Inspect, Mutate as FungiblesMutate},
 		OriginTrait, PalletInfo,
 	},
@@ -74,10 +72,21 @@ use crate::{
 		config::Runtime,
 		env::{Blocks, Env},
 		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
-		utils::{democracy::execute_via_democracy, genesis, genesis::Genesis},
+		utils::{
+			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
+			genesis::Genesis,
+		},
 	},
-	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
+	utils::accounts::Keyring,
 };
+
+/// The AUSD asset id
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
+/// The USDT asset id
+pub const USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
+pub const AUSD_ED: Balance = 1_000_000_000;
+pub const USDT_ED: Balance = 10_000;
 
 pub mod utils {
 	use super::*;
@@ -279,7 +288,7 @@ mod development {
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
 	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
-		DomainAddress::EVM(crate::utils::MOONBEAM_EVM_CHAIN_ID, [0; 20]);
+		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
 	pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
@@ -1001,7 +1010,7 @@ mod development {
 
 				// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
 				// successfully when given a valid pool + tranche id pair.
-				let new_member = DomainAddress::EVM(crate::utils::MOONBEAM_EVM_CHAIN_ID, [3; 20]);
+				let new_member = DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [3; 20]);
 
 				// Make ALICE the MembersListAdmin of this Pool
 				assert_ok!(pallet_permissions::Pallet::<T>::add(
@@ -4763,35 +4772,11 @@ mod development {
 
 			use super::*;
 
-			mod utils {
-				use super::*;
-
-				pub fn mint_balance_into_derived_account<T: Runtime>(
-					env: &mut impl Env<T>,
-					address: H160,
-					balance: u128,
-				) {
-					let chain_id = env.parachain_state(|| pallet_evm_chain_id::Pallet::<T>::get());
-
-					let derived_account =
-						AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
-
-					env.parachain_state_mut(|| {
-						pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
-							.unwrap()
-					});
-				}
-			}
-
-			use utils::*;
-
 			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
 						.add(genesis::balances::<T>(cfg(1_000)))
-						.add(genesis::council_members::<T, CouncilCollective>(
-							get_council_members(),
-						))
+						.add(genesis::council_members::<T>(get_council_members()))
 						.storage(),
 				);
 
@@ -4894,22 +4879,15 @@ mod development {
 
 				nonce.add_assign(T::OutboundMessageNonce::one());
 
-				// Success
-
-				// Note how both the target address and the gateway sender need to have some
-				// balance.
-				mint_balance_into_derived_account::<T>(
-					&mut env,
-					axelar_contract_address,
-					cfg(1_000_000_000),
-				);
-				mint_balance_into_derived_account::<T>(
-					&mut env,
-					gateway_sender_h160,
-					cfg(1_000_000),
-				);
-
 				assert_ok!(env.parachain_state_mut(|| {
+					// Note how both the target address and the gateway sender need to have some
+					// balance.
+					mint_balance_into_derived_account::<T>(
+						axelar_contract_address,
+						cfg(1_000_000_000),
+					);
+					mint_balance_into_derived_account::<T>(gateway_sender_h160, cfg(1_000_000));
+
 					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
 						sender.clone(),
 						test_domain.clone(),
@@ -4982,7 +4960,7 @@ mod development {
 								interior: X1(Parachain(T::FudgeHandle::SIBLING_ID)),
 							}
 							.into(),
-							crate::utils::GLMR_CURRENCY_ID,
+							GLMR_CURRENCY_ID,
 						);
 
 						assert_ok!(
@@ -5121,9 +5099,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 
@@ -5192,9 +5168,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 
@@ -5250,9 +5224,7 @@ mod development {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T, CouncilCollective>(
-						get_council_members(),
-					))
+					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 
@@ -6846,11 +6818,6 @@ mod centrifuge {
 			);
 		}
 
-		#[test]
-		fn _test() {
-			restrict_cfg_extrinsic::<crate::chain::centrifuge::Runtime>()
-		}
-
 		fn restrict_cfg_extrinsic<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7598,6 +7565,7 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
+		crate::test_for_runtimes!([centrifuge], restrict_cfg_extrinsic);
 		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 
