@@ -16,7 +16,7 @@
 // All code in this crate is test related
 #![cfg(test)]
 
-// Allow test_for_runtimes macros to be called everywhere in the crate
+// Allow `#[test_runtimes]` macro to be called everywhere in the crate
 #[macro_use]
 extern crate runtime_integration_tests_proc_macro;
 
