@@ -272,18 +272,8 @@ pub mod pallet {
 				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
 			}
 
-			if let Some(m) = metadata.clone() {
-				let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
-					m.try_into().map_err(|_| Error::<T>::BadMetadata)?;
-
-				PoolMetadata::<T>::insert(
-					pool_id,
-					PoolMetadataOf::<T> {
-						metadata: checked_metadata,
-					},
-				);
-			}
-
+			// For SubQuery, pool registration event should be dispatched before MetadataSet
+			// one
 			T::ModifyPool::create(
 				admin,
 				depositor,
@@ -294,6 +284,8 @@ pub mod pallet {
 				pool_fees,
 			)
 			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?;
+
+			Self::do_set_metadata(pool_id, metadata.unwrap_or_default())?;
 
 			T::ModifyWriteOffPolicy::update(pool_id, write_off_policy)
 		}
@@ -412,22 +404,14 @@ pub mod pallet {
 				BadOrigin,
 			);
 
-			let checked_metadata = Self::do_set_metadata(pool_id, metadata)?;
-
-			Self::deposit_event(Event::MetadataSet {
-				pool_id,
-				metadata: checked_metadata,
-			});
+			Self::do_set_metadata(pool_id, metadata)?;
 
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn do_set_metadata(
-			pool_id: T::PoolId,
-			metadata: Vec<u8>,
-		) -> Result<BoundedVec<u8, T::MaxSizeMetadata>, DispatchError> {
+		pub(crate) fn do_set_metadata(pool_id: T::PoolId, metadata: Vec<u8>) -> DispatchResult {
 			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
 				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
@@ -438,7 +422,12 @@ pub mod pallet {
 				},
 			);
 
-			Ok(checked_metadata)
+			Self::deposit_event(Event::MetadataSet {
+				pool_id,
+				metadata: checked_metadata,
+			});
+
+			Ok(())
 		}
 	}
 
@@ -454,7 +443,7 @@ pub mod pallet {
 		}
 
 		fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult {
-			Self::do_set_metadata(pool_id, metadata).map(|_| ())
+			Self::do_set_metadata(pool_id, metadata)
 		}
 
 		fn get_tranche_token_metadata(
