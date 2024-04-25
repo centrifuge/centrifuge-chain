@@ -1087,7 +1087,8 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let old_pool = pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
+				let old_pool =
+					pool.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1142,7 +1143,8 @@ pub mod pallet {
 				Self::deposit_event(Event::Updated {
 					id: *pool_id,
 					old: old_pool,
-					new: pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
+					new: pool
+						.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);
