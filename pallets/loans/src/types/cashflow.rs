@@ -28,7 +28,7 @@ use sp_std::{cmp::min, vec, vec::Vec};
 // Modifying this value would make `monthly_dates()` and
 // `monthly_dates_intervals()` to no longer work as expected.
 // Supporting more reference dates will imply more logic related to dates.
-const REFERENCE_DAY_1: u32 = 1;
+const DAY_1: u32 = 1;
 
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
@@ -180,24 +180,18 @@ fn monthly_dates(
 		return Err(DispatchError::Other("Cashflow must start before it ends"));
 	}
 
-	if reference_day != REFERENCE_DAY_1 {
+	if reference_day != DAY_1 {
 		return Err(DispatchError::Other(
 			"Only day 1 as reference is supported by now",
 		));
 	}
 
-	let first_date =
-		next_month_with_day(start_date, REFERENCE_DAY_1).ok_or("must be a correct date, qed")?;
+	let first_date = next_month_with_day(start_date, DAY_1).ok_or("it's a correct date, qed")?;
 
 	let mut dates = vec![min(first_date, end_date)];
-
 	loop {
-		let last = dates
-			.last()
-			.ok_or(DispatchError::Other("must be a last date, qed"))?;
-
-		let next =
-			next_month_with_day(*last, REFERENCE_DAY_1).ok_or("must be a correct date, qed")?;
+		let last = dates.last().ok_or("must be a last date, qed")?;
+		let next = next_month_with_day(*last, DAY_1).ok_or("it's a correct date, qed")?;
 
 		if next >= end_date {
 			if *last < end_date {
@@ -226,10 +220,10 @@ fn monthly_dates_intervals<Rate: FixedPointNumber>(
 		.enumerate()
 		.map(|(i, date)| {
 			let days = match i {
-				0 if last_index == 0 => end_date.day() - REFERENCE_DAY_1,
-				0 if start_date.day() == REFERENCE_DAY_1 => 30,
+				0 if last_index == 0 => end_date.day().ensure_sub(DAY_1)?,
+				0 if start_date.day() == DAY_1 => 30,
 				0 => (date - start_date).num_days().ensure_into()?,
-				n if n == last_index && end_date.day() == REFERENCE_DAY_1 => 30,
+				n if n == last_index && end_date.day() == DAY_1 => 30,
 				n if n == last_index => {
 					let prev_date = monthly_dates
 						.get(n.ensure_sub(1)?)
