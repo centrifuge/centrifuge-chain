@@ -357,19 +357,19 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
-		// TODO
-		// If the loan has an interest or pay down schedule other than None,
-		// then we should only allow borrowing more if no interest or principal
-		// payments are overdue.
-		//
-		// This is required because after borrowing more, it is not possible
-		// to validate anymore whether previous cashflows matched the repayment
-		// schedule, as we don't store historic data of the principal.
-		//
-		// Therefore, in `borrow()` we set repayments_on_schedule_until to now.
-		//
-		// TODO: check total_repaid_interest >= total_expected_interest
-		// and total_repaid_principal >= total_expected_principal
+		if self.schedule.has_cashflow() {
+			let expected_payment = self.schedule.expected_payment(
+				self.origination_date,
+				self.principal()?,
+				self.pricing.interest().rate(),
+				now,
+			)?;
+
+			ensure!(
+				self.total_repaid.effective()? >= expected_payment,
+				DispatchError::Other("payment overdue")
+			)
+		}
 
 		Ok(())
 	}
@@ -387,6 +387,8 @@ impl<T: Config> ActiveLoan<T> {
 				inner.adjust(Adjustment::Increase(amount.external()?), Zero::zero())?
 			}
 		}
+
+		self.repayments_on_schedule_until = T::Time::now();
 
 		Ok(())
 	}

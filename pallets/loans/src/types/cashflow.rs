@@ -18,7 +18,8 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub,
+		EnsureSubAssign,
 	},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
@@ -103,6 +104,8 @@ pub enum InterestPayments {
 	/// The associated value correspond to the paydown day in the month,
 	/// from 1-31.
 	/// The day will be adjusted to the month.
+	///
+	/// NOTE: Only day 1 is supported by now
 	Monthly(u8),
 }
 
@@ -131,6 +134,20 @@ pub struct RepaymentSchedule {
 impl RepaymentSchedule {
 	pub fn is_valid(&self, now: Seconds) -> bool {
 		self.maturity.is_valid(now)
+	}
+
+	pub fn has_cashflow(&self) -> bool {
+		let has_interest_payments = match self.interest_payments {
+			InterestPayments::None => false,
+			_ => true,
+		};
+
+		let has_pay_down_schedule = match self.pay_down_schedule {
+			PayDownSchedule::None => false,
+			_ => true,
+		};
+
+		has_interest_payments || has_pay_down_schedule
 	}
 
 	pub fn generate_cashflows<Balance, Rate>(
@@ -168,6 +185,30 @@ impl RepaymentSchedule {
 				))
 			})
 			.collect()
+	}
+
+	pub fn expected_payment<Balance, Rate>(
+		&self,
+		origination_date: Seconds,
+		principal: Balance,
+		interest_rate: &InterestRate<Rate>,
+		until: Seconds,
+	) -> Result<Balance, DispatchError>
+	where
+		Balance: FixedPointOperand + EnsureAdd,
+		Rate: FixedPointNumber,
+	{
+		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
+
+		let until_date = seconds_to_date(until)?;
+
+		let total_amount = cashflow
+			.iter()
+			.take_while(|(date, _)| *date < until)
+			.map(|(_, amount)| amount)
+			.try_fold(Balance::zero(), |a, b| a.ensure_add(*b))?;
+
+		Ok(total_amount)
 	}
 }
 
@@ -268,6 +309,7 @@ mod tests {
 		from_ymd(year, month, day)
 			.and_hms_opt(hour, min, seconds)
 			.unwrap()
+			.and_utc()
 			.timestamp() as Seconds
 	}
 
