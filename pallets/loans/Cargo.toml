@@ -16,7 +16,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 chrono = { workspace = true }
-chronoutil = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
