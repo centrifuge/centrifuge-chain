@@ -611,3 +611,159 @@ fn increase_debt_does_not_withdraw() {
 		));
 	});
 }
+
+mod cashflow {
+	use super::*;
+
+	fn create_cashflow_loan() -> LoanId {
+		util::create_loan(LoanInfo {
+			schedule: RepaymentSchedule {
+				maturity: Maturity::Fixed {
+					date: (now() + YEAR).as_secs(),
+					extension: 0,
+				},
+				interest_payments: InterestPayments::Monthly(1),
+				pay_down_schedule: PayDownSchedule::None,
+			},
+			..util::base_internal_loan()
+		})
+	}
+
+	#[test]
+	fn computed_correctly() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_cashflow_loan();
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
+			));
+
+			let loan = util::get_loan(loan_id);
+
+			assert_eq!(
+				loan.origination_date(),
+				secs_from_ymdhms(1970, 1, 1, 0, 0, 10)
+			);
+			assert_eq!(loan.maturity_date(), secs_from_ymdhms(1971, 1, 1, 0, 0, 10));
+
+			let month_value = COLLATERAL_VALUE / 2 / 12 / 2 /* due to 0.5 of interest */;
+			assert_ok!(
+				loan.cashflow(),
+				vec![
+					(secs_from_ymdhms(1970, 2, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 3, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 4, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 5, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 6, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 7, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 8, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 9, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 10, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 11, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1970, 12, 1, 23, 59, 59), month_value),
+					(secs_from_ymdhms(1971, 1, 1, 23, 59, 59), month_value),
+				]
+			);
+		});
+	}
+
+	#[test]
+	fn borrow_twice_same_month() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_cashflow_loan();
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
+			));
+
+			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+
+			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			advance_time(time_until_next_month);
+
+			config_mocks(COLLATERAL_VALUE / 4);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
+			));
+		});
+	}
+
+	#[test]
+	fn payment_overdue() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_cashflow_loan();
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
+			));
+
+			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+
+			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			advance_time(time_until_next_month);
+
+			// Start of the next month
+			advance_time(Duration::from_secs(1));
+
+			config_mocks(COLLATERAL_VALUE / 4);
+			assert_noop!(
+				Loans::borrow(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					PrincipalInput::Internal(COLLATERAL_VALUE / 4)
+				),
+				DispatchError::Other("payment overdue")
+			);
+		});
+	}
+
+	#[test]
+	fn allow_borrow_again_after_repay_overdue_amount() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_cashflow_loan();
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
+			));
+
+			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+
+			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			advance_time(time_until_next_month);
+
+			// Start of the next month
+			advance_time(Duration::from_secs(1));
+
+			// Repaying the overdue amount allow to borrow again
+			util::repay_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
+
+			config_mocks(COLLATERAL_VALUE / 4);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
+			));
+		});
+	}
+}

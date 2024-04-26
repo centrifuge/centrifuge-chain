@@ -78,7 +78,7 @@ fn seconds_to_date(date_in_seconds: Seconds) -> Result<NaiveDate, DispatchError>
 
 fn date_to_seconds(date: NaiveDate) -> Result<Seconds, DispatchError> {
 	Ok(date
-		.and_hms_opt(0, 0, 0)
+		.and_hms_opt(23, 59, 59) // Until the last second on the day
 		.ok_or(DispatchError::Other("Invalid h/m/s"))?
 		.and_utc()
 		.timestamp()
@@ -142,6 +142,7 @@ impl RepaymentSchedule {
 			_ => true,
 		};
 
+		#[allow(unreachable_patterns)] // Remove when pay_down_schedule has more than `None`
 		let has_pay_down_schedule = match self.pay_down_schedule {
 			PayDownSchedule::None => false,
 			_ => true,
@@ -199,8 +200,6 @@ impl RepaymentSchedule {
 		Rate: FixedPointNumber,
 	{
 		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
-
-		let until_date = seconds_to_date(until)?;
 
 		let total_amount = cashflow
 			.iter()
@@ -281,7 +280,7 @@ fn monthly_dates_intervals<Rate: FixedPointNumber>(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use cfg_traits::interest::CompoundingSchedule;
 	use frame_support::{assert_err, assert_ok};
 	use sp_runtime::traits::One;
@@ -298,7 +297,7 @@ mod tests {
 		secs_from_ymdhms(year, month, day, 0, 0, 0)
 	}
 
-	fn secs_from_ymdhms(
+	pub fn secs_from_ymdhms(
 		year: i32,
 		month: u32,
 		day: u32,

@@ -20,7 +20,9 @@ use super::{
 	},
 	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
 	types::{
-		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
+		cashflow::{
+			tests::secs_from_ymdhms, InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule,
+		},
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,

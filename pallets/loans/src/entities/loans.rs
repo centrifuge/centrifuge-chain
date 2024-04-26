@@ -223,6 +223,10 @@ impl<T: Config> ActiveLoan<T> {
 		&self.borrower
 	}
 
+	pub fn origination_date(&self) -> Seconds {
+		self.origination_date
+	}
+
 	pub fn maturity_date(&self) -> Seconds {
 		self.schedule.maturity.date()
 	}
