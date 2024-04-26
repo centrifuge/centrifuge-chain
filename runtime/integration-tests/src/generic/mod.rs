@@ -25,6 +25,8 @@ mod cases {
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage
 ///
+/// NOTE: Your probably want to use `#[test_runtimes]` proc macro instead
+///
 /// ```rust
 /// use crate::generic::config::Runtime;
 ///
@@ -49,6 +51,7 @@ mod cases {
 #[macro_export]
 macro_rules! test_for_runtimes {
 	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+        #[cfg(test)]
 		mod $test_name {
 			use super::*;
 

@@ -63,6 +63,7 @@ mod common {
 	}
 }
 
+#[test_runtimes(all)]
 fn investment_portfolio_single_tranche<T: Runtime>() {
 	let mut env = common::initialize_state_for_investments::<RuntimeEnv<T>, T>();
 
@@ -189,5 +190,3 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		)]
 	);
 }
-
-crate::test_for_runtimes!(all, investment_portfolio_single_tranche);

@@ -81,6 +81,7 @@ cfg-utils = { workspace = true, features = ["std"] }
 development-runtime = { workspace = true, features = ["std"] }
 liquidity-pools-gateway-routers = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }
+runtime-integration-tests-proc-macro = { workspace = true }
 
 # Pallet list
 axelar-gateway-precompile = { workspace = true, features = ["std"] }
