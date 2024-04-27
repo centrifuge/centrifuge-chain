@@ -248,7 +248,7 @@ impl<T: Config> ActiveLoan<T> {
 			.ensure_sub(self.total_repaid.principal)?)
 	}
 
-	pub fn cashflow(&self) -> Result<Vec<(Seconds, T::Balance)>, DispatchError> {
+	pub fn cashflow(&self) -> Result<Vec<(Seconds, T::Balance, T::Balance)>, DispatchError> {
 		self.schedule.generate_cashflows(
 			self.origination_date,
 			self.principal()?,

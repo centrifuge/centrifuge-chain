@@ -650,22 +650,24 @@ mod cashflow {
 			);
 			assert_eq!(loan.maturity_date(), secs_from_ymdhms(1971, 1, 1, 0, 0, 10));
 
-			let month_value = COLLATERAL_VALUE / 2 / 12 / 2 /* due to 0.5 of interest */;
+			let principal = COLLATERAL_VALUE / 2 / 12;
+			let interest = Rate::from_float(DEFAULT_INTEREST_RATE).saturating_mul_int(principal);
+
 			assert_ok!(
 				loan.cashflow(),
 				vec![
-					(secs_from_ymdhms(1970, 2, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 3, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 4, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 5, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 6, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 7, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 8, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 9, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 10, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 11, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1970, 12, 1, 23, 59, 59), month_value),
-					(secs_from_ymdhms(1971, 1, 1, 23, 59, 59), month_value),
+					(last_secs_from_ymd(1970, 2, 1), principal, interest),
+					(last_secs_from_ymd(1970, 3, 1), principal, interest),
+					(last_secs_from_ymd(1970, 4, 1), principal, interest),
+					(last_secs_from_ymd(1970, 5, 1), principal, interest),
+					(last_secs_from_ymd(1970, 6, 1), principal, interest),
+					(last_secs_from_ymd(1970, 7, 1), principal, interest),
+					(last_secs_from_ymd(1970, 8, 1), principal, interest),
+					(last_secs_from_ymd(1970, 9, 1), principal, interest),
+					(last_secs_from_ymd(1970, 10, 1), principal, interest),
+					(last_secs_from_ymd(1970, 11, 1), principal, interest),
+					(last_secs_from_ymd(1970, 12, 1), principal, interest),
+					(last_secs_from_ymd(1971, 1, 1), principal, interest),
 				]
 			);
 		});

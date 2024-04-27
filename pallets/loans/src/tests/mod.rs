@@ -21,7 +21,8 @@ use super::{
 	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
 	types::{
 		cashflow::{
-			tests::secs_from_ymdhms, InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule,
+			tests::{last_secs_from_ymd, secs_from_ymdhms},
+			InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule,
 		},
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
