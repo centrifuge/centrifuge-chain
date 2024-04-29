@@ -22,20 +22,6 @@ jobs:
         with:
             submodules: 'recursive'
 
-      - name: Check submodule checkout status
-        id: check-submodule
-        run: |
-          ls -la ./runtime/integration-tests/submodules/
-          if [ -d "./runtime/integration-tests/submodules/liquidity-pools/" ]; then
-            echo "Submodule is checked out."
-            ls -la ./runtime/integration-tests/submodules/liquidity-pools/
-            echo "::set-output name=submodule_checked::true"
-          else
-            echo "Submodule is not checked out."
-            echo "::set-output name=submodule_checked::false"
-            exit 1
-          fi
-
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
@@ -48,7 +34,7 @@ jobs:
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
-          # RUSTC_WRAPPER: "sccache"
+          RUSTC_WRAPPER: "sccache"
           # SCCACHE_RECACHE: true 
 
   # benchmark-check:

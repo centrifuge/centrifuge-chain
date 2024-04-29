@@ -22,9 +22,10 @@ case $TARGET in
     cargo test --release --package runtime-integration-tests --features fast-runtime > $OUTPUT_FILE 2>&1 &
     CARGO_PID=$!
     while true; do
-      if [ -d "target/debug/" ]; then
-        ls -la target/debug/build/runtime-integration*/out/
-        ls -la target/debug/deps/runtime_integration*/out/
+      ls -la ./target/
+      if [ -d "./target/debug/" ]; then
+        ls -la ./target/debug/build/runtime-integration*/out/
+        ls -la ./target/debug/deps/runtime_integration*/out/
         break
       else
         echo "Folder not found"
