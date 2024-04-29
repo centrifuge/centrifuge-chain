@@ -22,11 +22,9 @@ case $TARGET in
     cargo test --release --package runtime-integration-tests --features fast-runtime &
     CARGO_PID=$!
     BUILD_DISCOVERED=false
-    DEPS_DISCOVERED=false    
+    DEPS_DISCOVERED=false
     while true; do
       if [ -d "./target/" ]; then
-        echo ".target folder graph:"
-        find ./target/ -type d -maxdepth 3
         if ls ./target/release/build/runtime-integration* 1> /dev/null 2>&1; then
           ls -la ./target/release/build/runtime-integration*/out/
           echo "release build directory exists."
@@ -41,7 +39,7 @@ case $TARGET in
           echo "Both build and dependency directories have been discovered."
           break
         fi
-        sleep 10
+        sleep 30
       else
         echo "Folder ./target not found"
         sleep 5
