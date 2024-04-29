@@ -18,20 +18,20 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    # TODO: Remove before merging PR
-    find "." -type d -name "target"
-    # locate --directory "target"
-
-   find . -name "runtime-integration-tests-*" -print0 | xargs -0 -r du -h
-    # rm -rf target/debug/deps/runtime_integration_tests-*
-    # rm -rf target/debug/build/runtime-integration*
-
-    # git submodule status
-    # git submodule update --init --recursive --remote
-    find runtime/integration-tests/submodules/ -name "liquidity-pools" -print0 | xargs -0 -r du -h
-    # git submodule status
-
-    SCCACHE_RECACHE=true cargo test --release --package runtime-integration-tests --features fast-runtime
+    cargo test --release --package runtime-integration-tests --features fast-runtime &
+    CARGO_PID=$!
+    while true; do
+      if [ -d "target/debug/" ]; then
+        ls -la target/debug/build/runtime-integration*/out/
+        ls -la target/debug/deps/runtime_integration*/out/
+        break
+      else
+        echo "Folder not found"
+        sleep 3
+      fi
+    done
+    wait $CARGO_PID
+    echo "Cargo test command has finished"
     ;;
 
   lint-fmt)
