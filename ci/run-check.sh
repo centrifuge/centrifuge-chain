@@ -21,6 +21,8 @@ case $TARGET in
     OUTPUT_FILE="cargo_test_output.txt"
     cargo test --release --package runtime-integration-tests --features fast-runtime > $OUTPUT_FILE 2>&1 &
     CARGO_PID=$!
+    BUILD_DISCOVERED=false
+    DEPS_DISCOVERED=false    
     while true; do
       if [ -d "./target/" ]; then
         if ls ./target/debug/build/runtime-integration* 1> /dev/null 2>&1; then
