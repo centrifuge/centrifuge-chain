@@ -25,6 +25,8 @@ case $TARGET in
     DEPS_DISCOVERED=false    
     while true; do
       if [ -d "./target/" ]; then
+        echo ".target folder graph:"
+        find ./target/ -type d
         if ls ./target/debug/build/runtime-integration* 1> /dev/null 2>&1; then
           ls -la ./target/debug/build/runtime-integration*/out/
           echo "Debug build directory exists."
