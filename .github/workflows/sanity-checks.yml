@@ -26,9 +26,9 @@ jobs:
         id: check-submodule
         run: |
           ls -la ./
-          if [ -d "/home/runner/work/centrifuge-chain/centrifuge-chain/runtime/integration-tests/submodules/liquidity-pools/" ]; then
+          if [ -d "./runtime/integration-tests/submodules/liquidity-pools/" ]; then
             echo "Submodule is checked out."
-            echo "ls -la runtime/integrations/tests/submodules/liquidity-pools"
+            echo "ls -la ./runtime/integrations/tests/submodules/liquidity-pools"
             echo "::set-output name=submodule_checked::true"
           else
             echo "Submodule is not checked out."
