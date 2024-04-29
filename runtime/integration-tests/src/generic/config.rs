@@ -27,18 +27,22 @@ use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
+	instances,
 	oracle::Feeder,
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
 };
-use sp_core::H256;
+use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
 	scale_info::TypeInfo,
-	traits::{AccountIdLookup, Block, Dispatchable, Get, Member},
+	traits::{
+		AccountIdLookup, Block, Dispatchable, Get, MaybeSerializeDeserialize, Member, OpaqueKeys,
+	},
 	FixedI128,
 };
 
 /// Kind of runtime to check in runtime time
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RuntimeKind {
 	Development,
 	Altair,
@@ -149,12 +153,15 @@ pub trait Runtime:
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
+	+ pallet_collator_selection::Config<Currency = pallet_balances::Pallet<Self>>
+	+ pallet_collator_allowlist::Config<ValidatorId = AccountId>
+	+ pallet_session::Config<Keys = Self::SessionKeysExt, ValidatorId = AccountId>
 	+ pallet_evm_chain_id::Config
 	+ pallet_evm::Config
 	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
 	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_rewards::Config<
-		pallet_rewards::Instance1,
+		instances::BlockRewards,
 		GroupId = u32,
 		CurrencyId = CurrencyId,
 		RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
@@ -163,8 +170,16 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
+	> + pallet_block_rewards::Config<
+		Rate = Rate,
+		CurrencyId = CurrencyId,
+		Balance = Balance,
+		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
 	> + axelar_gateway_precompile::Config
 {
+	/// Value to differentiate the runtime in tests.
+	const KIND: RuntimeKind;
+
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
 	/// RuntimeCall in tests.
@@ -193,6 +208,7 @@ pub trait Runtime:
 		+ From<pallet_remarks::Call<Self>>
 		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_utility::Call<Self>>
+		+ From<pallet_collator_selection::Call<Self>>
 		+ IsSubType<pallet_balances::Call<Self>>
 		+ IsSubType<pallet_remarks::Call<Self>>
 		+ IsSubType<pallet_proxy::Call<Self>>
@@ -213,6 +229,9 @@ pub trait Runtime:
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
 		+ TryInto<pallet_ethereum::Event>
+		+ TryInto<pallet_collator_selection::Event<Self>>
+		+ TryInto<pallet_rewards::Event<Self, instances::BlockRewards>>
+		+ TryInto<pallet_block_rewards::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
@@ -222,6 +241,7 @@ pub trait Runtime:
 		+ From<pallet_oracle_feed::Event<Self>>
 		+ From<pallet_oracle_collection::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
+		+ From<pallet_collator_selection::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
 		+ From<pallet_liquidity_pools_gateway::Event<Self>>
 		+ From<pallet_order_book::Event<Self>>
@@ -229,6 +249,8 @@ pub trait Runtime:
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
 		+ From<pallet_proxy::Event<Self>>
 		+ From<pallet_democracy::Event<Self>>
+		+ From<pallet_rewards::Event<Self, instances::BlockRewards>>
+		+ From<pallet_block_rewards::Event<Self>>
 		+ From<pallet_ethereum::Event>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
@@ -296,6 +318,7 @@ pub trait Runtime:
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
 
-	/// Value to differentiate the runtime in tests.
-	const KIND: RuntimeKind;
+	type SessionKeysExt: OpaqueKeys + Member + Parameter + MaybeSerializeDeserialize;
+
+	fn initialize_session_keys(public_id: Public) -> Self::SessionKeysExt;
 }

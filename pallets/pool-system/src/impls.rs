@@ -154,6 +154,43 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::MaxTranches,
 		>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone(), now)?;
 
+		let pool_details = PoolDetails {
+			currency,
+			tranches: tranches.clone(),
+			status: PoolStatus::Open,
+			epoch: EpochState {
+				current: One::one(),
+				last_closed: now,
+				last_executed: Zero::zero(),
+			},
+			parameters: PoolParameters {
+				min_epoch_time: T::DefaultMinEpochTime::get(),
+				max_nav_age: T::DefaultMaxNAVAge::get(),
+			},
+			reserve: ReserveDetails {
+				max: max_reserve,
+				available: Zero::zero(),
+				total: Zero::zero(),
+			},
+		};
+
+		Pool::<T>::insert(pool_id, pool_details.clone());
+
+		// For SubQuery, pool creation event should be dispatched before related events
+		let ids: Vec<T::TrancheCurrency> = tranches
+			.tranches
+			.clone()
+			.into_iter()
+			.map(|tranche| tranche.currency)
+			.collect();
+		Self::deposit_event(Event::Created {
+			admin: admin.clone(),
+			depositor,
+			pool_id,
+			essence: pool_details
+				.essence_from_tranche_input::<T::StringLimit>(ids, tranche_inputs.clone())?,
+		});
+
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name = tranche_input.metadata.token_name.clone();
 			let token_symbol = tranche_input.metadata.token_symbol.clone();
@@ -175,35 +212,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
 			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
 		}
-
-		let pool_details = PoolDetails {
-			currency,
-			tranches,
-			status: PoolStatus::Open,
-			epoch: EpochState {
-				current: One::one(),
-				last_closed: now,
-				last_executed: Zero::zero(),
-			},
-			parameters: PoolParameters {
-				min_epoch_time: T::DefaultMinEpochTime::get(),
-				max_nav_age: T::DefaultMaxNAVAge::get(),
-			},
-			reserve: ReserveDetails {
-				max: max_reserve,
-				available: Zero::zero(),
-				total: Zero::zero(),
-			},
-		};
-
-		Pool::<T>::insert(pool_id, pool_details.clone());
-
-		Self::deposit_event(Event::Created {
-			admin: admin.clone(),
-			depositor,
-			pool_id,
-			essence: pool_details.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
-		});
 
 		T::Permission::add(
 			PermissionScope::Pool(pool_id),

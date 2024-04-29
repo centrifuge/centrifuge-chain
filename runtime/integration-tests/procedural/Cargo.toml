@@ -1,0 +1,24 @@
+[package]
+name = "runtime-integration-tests-proc-macro"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+prettyplease = "0.2"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+
+[features]
+default = []
+
+# Enable this macro to show the proc macros unrolled when compiling
+debug-proc-macros = []

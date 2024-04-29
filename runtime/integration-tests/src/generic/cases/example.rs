@@ -16,6 +16,7 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
+#[test_runtimes([development, altair, centrifuge])]
 fn transfer_balance<T: Runtime>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
@@ -27,7 +28,7 @@ fn transfer_balance<T: Runtime>() {
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
-					Keyring::Alice.to_account_id(),
+					Keyring::Alice.id(),
 					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
 			})
@@ -47,8 +48,8 @@ fn transfer_balance<T: Runtime>() {
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
-		from: Keyring::Alice.to_account_id(),
-		to: Keyring::Bob.to_account_id(),
+		from: Keyring::Alice.id(),
+		to: Keyring::Bob.id(),
 		amount: TRANSFER,
 	})
 	.unwrap();
@@ -56,11 +57,11 @@ fn transfer_balance<T: Runtime>() {
 	// Check the state
 	env.parachain_state(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
 		);
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.id()),
 			TRANSFER
 		);
 	});
@@ -70,6 +71,7 @@ fn transfer_balance<T: Runtime>() {
 }
 
 // Identical to `transfer_balance()` test but using fudge.
+#[test_runtimes([development, altair, centrifuge])]
 fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
@@ -78,7 +80,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
-					Keyring::Alice.to_account_id(),
+					Keyring::Alice.id(),
 					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
 			})
@@ -99,8 +101,8 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
-		from: Keyring::Alice.to_account_id(),
-		to: Keyring::Bob.to_account_id(),
+		from: Keyring::Alice.id(),
+		to: Keyring::Bob.id(),
 		amount: TRANSFER,
 	})
 	.unwrap();
@@ -118,16 +120,17 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	// Check the state
 	env.parachain_state(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
 		);
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.id()),
 			TRANSFER
 		);
 	});
 }
 
+#[test_runtimes(all)]
 fn call_api<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -141,6 +144,7 @@ fn call_api<T: Runtime>() {
 	})
 }
 
+#[test_runtimes(all)]
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	let env = FudgeEnv::<T>::default();
 
@@ -157,6 +161,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	})
 }
 
+#[test_runtimes(all)]
 fn pass_time_one_block<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 
@@ -169,9 +174,3 @@ fn pass_time_one_block<T: Runtime>() {
 
 	assert_eq!((after - before).into_seconds(), SECONDS_PER_YEAR)
 }
-
-crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
-crate::test_for_runtimes!(all, call_api);
-crate::test_for_runtimes!(all, fudge_transfer_balance);
-crate::test_for_runtimes!(all, fudge_call_api);
-crate::test_for_runtimes!(all, pass_time_one_block);

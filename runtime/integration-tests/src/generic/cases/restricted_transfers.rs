@@ -227,6 +227,7 @@ mod cfg {
 		}
 	}
 
+	#[test_runtimes(all)]
 	fn transfer_no_restriction<T: Runtime>() {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
@@ -263,11 +264,13 @@ mod cfg {
 		});
 	}
 
+	#[test_runtimes(all)]
 	fn basic_transfer<T: Runtime>() {
 		validate_ok::<T>(Keyring::Alice, transfer_ok::<T>());
 		validate_fail::<T>(Keyring::Alice, transfer_fail::<T>());
 	}
 
+	#[test_runtimes(all)]
 	fn proxy_transfer<T: Runtime>() {
 		validate_ok::<T>(
 			Keyring::Dave,
@@ -287,6 +290,7 @@ mod cfg {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn batch_proxy_transfer<T: Runtime>() {
 		validate_ok::<T>(
 			Keyring::Dave,
@@ -316,6 +320,7 @@ mod cfg {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn batch_transfer<T: Runtime>() {
 		validate_ok::<T>(
 			Keyring::Alice,
@@ -335,6 +340,7 @@ mod cfg {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn batch_all_transfer<T: Runtime>() {
 		validate_ok::<T>(
 			Keyring::Alice,
@@ -354,6 +360,7 @@ mod cfg {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn remark_transfer<T: Runtime>() {
 		validate_ok::<T>(
 			Keyring::Alice,
@@ -388,12 +395,4 @@ mod cfg {
 			},
 		);
 	}
-
-	crate::test_for_runtimes!(all, transfer_no_restriction);
-	crate::test_for_runtimes!(all, basic_transfer);
-	crate::test_for_runtimes!(all, proxy_transfer);
-	crate::test_for_runtimes!(all, batch_proxy_transfer);
-	crate::test_for_runtimes!(all, batch_transfer);
-	crate::test_for_runtimes!(all, batch_all_transfer);
-	crate::test_for_runtimes!(all, remark_transfer);
 }
