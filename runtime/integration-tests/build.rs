@@ -32,13 +32,15 @@ fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
 
 fn main() {
 	debug_cwd(env::current_dir().unwrap()).unwrap();
+	let submodules_dir = env::current_dir()
+		.expect("Current directory not empty")
+		.join("submodules");
 
-	let paths = fs::read_dir(
-		env::current_dir()
-			.expect("Current directory not empty")
-			.join("submodules"),
-	)
-	.expect("Submodules directory must exist for integration-tests");
+	eprintln!("Submodules directory {submodules_dir:?}");
+	debug_cwd(submodules_dir.clone()).unwrap();
+
+	let paths = fs::read_dir(submodules_dir)
+		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
 	let mut verified_dir = Vec::new();
@@ -112,13 +114,15 @@ fn main() {
 			}
 			Err(err) => {
 				debug_cwd(env::current_dir().unwrap()).unwrap();
+				let submodules_dir = env::current_dir()
+					.expect("Current directory not empty")
+					.join("submodules");
 
-				let paths = fs::read_dir(
-					env::current_dir()
-						.expect("Current directory not empty")
-						.join("submodules"),
-				)
-				.expect("Submodules directory must exist for integration-tests");
+				eprintln!("Submodules directory {submodules_dir:?}");
+				debug_cwd(submodules_dir.clone()).unwrap();
+
+				let paths = fs::read_dir(submodules_dir)
+					.expect("Submodules directory must exist for integration-tests");
 				eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
 				eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
 
