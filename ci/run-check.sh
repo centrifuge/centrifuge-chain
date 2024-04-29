@@ -18,7 +18,7 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    cargo test --release --package runtime-integration-tests --features fast-runtime &
+    cargo test --release -vv --package runtime-integration-tests --features fast-runtime &
     CARGO_PID=$!
     BUILD_DISCOVERED=false
     DEPS_DISCOVERED=false

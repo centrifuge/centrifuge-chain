@@ -21,10 +21,10 @@ fn main() {
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
 	let current_dir = env::current_dir().expect("Current dir exists");
-	println!("Current directory is {current_dir:?}");
+	eprintln!("Current directory is {current_dir:?}");
 
 	let files_in_cur_dir = fs::read_dir("./").expect("Current directory exists");
-	println!("Files in current directory are {files_in_cur_dir:?}");
+	eprintln!("Files in current directory are {files_in_cur_dir:?}");
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
@@ -96,8 +96,14 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				println!("Current directory is {current_dir:?}");
-				println!("Files in current directory are {files_in_cur_dir:?}");
+				eprintln!("cargo:warning=Current directory is {:?}", current_dir);
+				eprintln!(
+					"cargo:warning=Files in current directory are {:?}",
+					files_in_cur_dir
+				);
+				eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
+				eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
+
 				println!("cargo:warning=Failed to instantiate the submodule: {}", err);
 			}
 		}
