@@ -18,8 +18,8 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    OUTPUT_FILE="cargo_test_output.txt"
-    cargo test --release --package runtime-integration-tests --features fast-runtime > $OUTPUT_FILE 2>&1 &
+    # OUTPUT_FILE="cargo_test_output.txt"
+    cargo test --release --package runtime-integration-tests --features fast-runtime &
     CARGO_PID=$!
     BUILD_DISCOVERED=false
     DEPS_DISCOVERED=false    
@@ -46,7 +46,7 @@ case $TARGET in
       fi
     done
     wait $CARGO_PID
-    cat $OUTPUT_FILE
+    # cat $OUTPUT_FILE
     ;;
 
   lint-fmt)

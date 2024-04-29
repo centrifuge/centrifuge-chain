@@ -3,7 +3,7 @@ on:
 name: Sanity checks
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
-  cancel-in-progress: true
+  cancel-in-progress: false
 permissions:
     id-token: write
     contents: read
