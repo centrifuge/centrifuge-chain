@@ -28,7 +28,7 @@ jobs:
           ls -la ./runtime/integration-tests/submodules/
           if [ -d "./runtime/integration-tests/submodules/liquidity-pools/" ]; then
             echo "Submodule is checked out."
-            echo "ls -la ./runtime/integrations-tests/submodules/liquidity-pools/"
+            ls -la ./runtime/integrations-tests/submodules/liquidity-pools/
             echo "::set-output name=submodule_checked::true"
           else
             echo "Submodule is not checked out."
