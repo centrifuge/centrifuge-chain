@@ -13,8 +13,7 @@ use std::{env, fs, path::PathBuf, process::Command};
 
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 
-fn debug_cwd() -> std::io::Result<()> {
-	let cwd = env::current_dir()?;
+fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
 	eprintln!("Listing contents of: {}", cwd.display());
 
 	let entries = fs::read_dir(cwd)?;
@@ -32,14 +31,19 @@ fn debug_cwd() -> std::io::Result<()> {
 }
 
 fn main() {
-	debug_cwd().unwrap();
-	let paths = fs::read_dir("./submodules/")
-		.expect("Submodules directory must exist for integration-tests");
+	debug_cwd(env::current_dir().unwrap()).unwrap();
+
+	let paths = fs::read_dir(
+		env::current_dir()
+			.expect("Current directory not empty")
+			.join("submodules"),
+	)
+	.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
-		if let Ok(dir_entry) = path.as_ref() {
+		if let Ok(dir_entry) = path {
 			if dir_entry
 				.metadata()
 				.map(|meta| meta.is_dir())
@@ -107,10 +111,14 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				debug_cwd().unwrap();
+				debug_cwd(env::current_dir().unwrap()).unwrap();
 
-				let paths = fs::read_dir("./submodules/")
-					.expect("Submodules directory must exist for integration-tests");
+				let paths = fs::read_dir(
+					env::current_dir()
+						.expect("Current directory not empty")
+						.join("submodules"),
+				)
+				.expect("Submodules directory must exist for integration-tests");
 				eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
 				eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
 
