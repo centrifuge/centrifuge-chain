@@ -31,7 +31,6 @@ case $TARGET in
       fi
     done
     wait $CARGO_PID
-    echo "Cargo test command has finished"
     ;;
 
   lint-fmt)
