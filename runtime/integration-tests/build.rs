@@ -14,28 +14,17 @@ use std::{env, fs, path::PathBuf, process::Command};
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 
 fn main() {
+	// FIXME: Pathing seems off
+	// TODO: log current directory
 	let paths = fs::read_dir("./submodules/")
 		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
-	/*
-	match Command::new("git")
-		.args(&["fetch", "--all", "--recurse-submodules=yes"])
-		.output()
-	{
-		Ok(o) if o.status.success() => {}
-		Ok(o) => {
-			println!(
-				"cargo:warning=Git fetch failed with: \n  - status: {}\n   -stderr: {}",
-				o.status,
-				String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
-			);
-		}
-		Err(err) => {
-			println!("cargo:warning=Failed to execute git command: {}", err);
-		}
-	}
-	 */
+	let current_dir = env::current_dir().expect("Current dir exists");
+	println!("Current directory is {current_dir:?}");
+
+	let files_in_cur_dir = fs::read_dir("./").expect("Current directory exists");
+	println!("Files in current directory are {files_in_cur_dir:?}");
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
@@ -107,7 +96,7 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				println!("cargo:warning=Failed to execute git command: {}", err);
+				println!("cargo:warning=Failed to instantiate the submodule: {}", err);
 			}
 		}
 	}
