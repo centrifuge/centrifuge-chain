@@ -46,7 +46,7 @@ case $TARGET in
       fi
     done
     wait $CARGO_PID
-    # cat $OUTPUT_FILE
+    exit $?
     ;;
 
   lint-fmt)
