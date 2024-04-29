@@ -18,7 +18,8 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    cargo test --release --package runtime-integration-tests --features fast-runtime &
+    OUTPUT_FILE="cargo_test_output.txt"
+    cargo test --release --package runtime-integration-tests --features fast-runtime > $OUTPUT_FILE 2>&1 &
     CARGO_PID=$!
     while true; do
       if [ -d "target/debug/" ]; then
@@ -31,6 +32,7 @@ case $TARGET in
       fi
     done
     wait $CARGO_PID
+    cat $OUTPUT_FILE
     ;;
 
   lint-fmt)
