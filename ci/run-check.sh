@@ -22,13 +22,18 @@ case $TARGET in
     cargo test --release --package runtime-integration-tests --features fast-runtime > $OUTPUT_FILE 2>&1 &
     CARGO_PID=$!
     while true; do
-      ls -la ./target/
-      if [ -d "./target/debug/" ]; then
-        ls -la ./target/debug/build/runtime-integration*/out/
-        ls -la ./target/debug/deps/runtime_integration*/out/
+      if [ -d "./target/" ]; then
+        if [ -d "./target/debug/build" ]; then
+          ls -la ./target/debug/build/runtime-integration*/out/
+          echo "Debug build directory exists."
+        fi
+        if [ -d "./target/debug/deps" ]; then
+          ls -la ./target/debug/deps/runtime_integration*/out/
+          echo "Deps build directory exists."
+        fi        
         break
       else
-        echo "Folder not found"
+        echo "Folder ./target not found"
         sleep 3
       fi
     done
