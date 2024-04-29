@@ -25,7 +25,7 @@ jobs:
       - name: Check submodule checkout status
         id: check-submodule
         run: |
-          ls -la ./
+          ls -la ./runtime/integrations/tests/submodules/
           if [ -d "./runtime/integration-tests/submodules/liquidity-pools/" ]; then
             echo "Submodule is checked out."
             echo "ls -la ./runtime/integrations/tests/submodules/liquidity-pools"
