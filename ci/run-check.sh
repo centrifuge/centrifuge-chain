@@ -23,18 +23,23 @@ case $TARGET in
     CARGO_PID=$!
     while true; do
       if [ -d "./target/" ]; then
-        if [ -d "./target/debug/build" ]; then
+        if ls ./target/debug/build/runtime-integration* 1> /dev/null 2>&1; then
           ls -la ./target/debug/build/runtime-integration*/out/
           echo "Debug build directory exists."
+          BUILD_DISCOVERED=true
         fi
-        if [ -d "./target/debug/deps" ]; then
+        if [ -d "./target/debug/deps" ] && ls ./target/debug/deps/runtime_integration* 1> /dev/null 2>&1; then
           ls -la ./target/debug/deps/runtime_integration*/out/
           echo "Deps build directory exists."
+          DEPS_DISCOVERED=true
         fi        
-        break
+        if [ "$BUILD_DISCOVERED" = true ] && [ "$DEPS_DISCOVERED" = true ]; then
+          echo "Both build and dependency directories have been discovered."
+          break
+        fi
       else
         echo "Folder ./target not found"
-        sleep 3
+        sleep 5
       fi
     done
     wait $CARGO_PID
