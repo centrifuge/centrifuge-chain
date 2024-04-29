@@ -14,17 +14,14 @@ use std::{env, fs, path::PathBuf, process::Command};
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 
 fn main() {
-	// FIXME: Pathing seems off
-	// TODO: log current directory
 	let paths = fs::read_dir("./submodules/")
 		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
 
 	let current_dir = env::current_dir().expect("Current dir exists");
-	eprintln!("Current directory is {current_dir:?}");
-
 	let files_in_cur_dir = fs::read_dir("./").expect("Current directory exists");
-	eprintln!("Files in current directory are {files_in_cur_dir:?}");
+	eprintln!("Current directory is {:?}", current_dir);
+	eprintln!("Files in current directory are {:?}", files_in_cur_dir);
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
@@ -96,6 +93,11 @@ fn main() {
 				);
 			}
 			Err(err) => {
+				let paths = fs::read_dir("./submodules/")
+					.expect("Submodules directory must exist for integration-tests");
+				let current_dir = env::current_dir().expect("Current dir exists");
+				let files_in_cur_dir = fs::read_dir("./").expect("Current directory exists");
+
 				eprintln!("cargo:warning=Current directory is {:?}", current_dir);
 				eprintln!(
 					"cargo:warning=Files in current directory are {:?}",
