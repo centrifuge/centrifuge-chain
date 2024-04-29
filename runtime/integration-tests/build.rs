@@ -96,6 +96,8 @@ fn main() {
 				);
 			}
 			Err(err) => {
+				println!("Current directory is {current_dir:?}");
+				println!("Files in current directory are {files_in_cur_dir:?}");
 				println!("cargo:warning=Failed to instantiate the submodule: {}", err);
 			}
 		}
