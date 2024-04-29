@@ -21,10 +21,12 @@ jobs:
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
         with:
             submodules: 'recursive'
+
       - name: Check submodule checkout status
         id: check-submodule
         run: |
-          if [ -d "runtime/integrations/tests/submodules/liquidity-pools" ]; then
+          ls -la ./
+          if [ -d "/home/runner/work/centrifuge-chain/centrifuge-chain/runtime/integration-tests/submodules/liquidity-pools/" ]; then
             echo "Submodule is checked out."
             echo "ls -la runtime/integrations/tests/submodules/liquidity-pools"
             echo "::set-output name=submodule_checked::true"
