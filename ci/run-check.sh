@@ -46,6 +46,10 @@ case $TARGET in
         echo "Folder ./target not found"
         sleep 5
       fi
+    if ! ps -p $CARGO_PID > /dev/null; then
+      echo "Cargo process has finished."
+      break
+    fi
     done
     wait $CARGO_PID
     exit $?
