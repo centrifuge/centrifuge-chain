@@ -27,13 +27,13 @@ case $TARGET in
       if [ -d "./target/" ]; then
         echo ".target folder graph:"
         find ./target/ -type d -maxdepth 3
-        if ls ./target/debug/build/runtime-integration* 1> /dev/null 2>&1; then
-          ls -la ./target/debug/build/runtime-integration*/out/
-          echo "Debug build directory exists."
+        if ls ./target/release/build/runtime-integration* 1> /dev/null 2>&1; then
+          ls -la ./target/release/build/runtime-integration*/out/
+          echo "release build directory exists."
           BUILD_DISCOVERED=true
         fi
-        if [ -d "./target/debug/deps" ] && ls ./target/debug/deps/runtime_integration* 1> /dev/null 2>&1; then
-          ls -la ./target/debug/deps/runtime_integration*/out/
+        if [ -d "./target/release/deps" ] && ls ./target/release/deps/runtime_integration* 1> /dev/null 2>&1; then
+          ls -la ./target/release/deps/runtime_integration*/out/
           echo "Deps build directory exists."
           DEPS_DISCOVERED=true
         fi        
