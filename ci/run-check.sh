@@ -39,6 +39,7 @@ case $TARGET in
           echo "Both build and dependency directories have been discovered."
           break
         fi
+        sleep 10
       else
         echo "Folder ./target not found"
         sleep 5
