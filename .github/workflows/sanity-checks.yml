@@ -33,6 +33,11 @@ jobs:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"
           # SCCACHE_RECACHE: true 
+          
+      - name: Output test results
+        if: always()
+        run: cat cargo_test_output.txt
+
 
   # benchmark-check:
   #   name: bench-check-${{ matrix.runtime }}

@@ -18,8 +18,8 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    # OUTPUT_FILE="cargo_test_output.txt"
-    cargo test --release --package runtime-integration-tests --features fast-runtime &
+    OUTPUT_FILE="cargo_test_output.txt"
+    cargo test --release --package runtime-integration-tests --features fast-runtime | tee $OUTPUT_FILE &
     CARGO_PID=$!
     BUILD_DISCOVERED=false
     DEPS_DISCOVERED=false
