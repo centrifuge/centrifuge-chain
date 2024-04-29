@@ -18,20 +18,19 @@ case $TARGET in
 #    ;;
 
   test-integration)
-    OUTPUT_FILE="cargo_test_output.txt"
-    cargo test --release --package runtime-integration-tests --features fast-runtime | tee $OUTPUT_FILE &
+    cargo test --release --package runtime-integration-tests --features fast-runtime &
     CARGO_PID=$!
     BUILD_DISCOVERED=false
     DEPS_DISCOVERED=false
     while true; do
       if [ -d "./target/" ]; then
         if ls ./target/release/build/runtime-integration* 1> /dev/null 2>&1; then
-          ls -la ./target/release/build/runtime-integration*/out/
+          ls -l ./target/release/build/runtime-integration*/out/
           echo "release build directory exists."
           BUILD_DISCOVERED=true
         fi
         if [ -d "./target/release/deps" ] && ls ./target/release/deps/runtime_integration* 1> /dev/null 2>&1; then
-          ls -la ./target/release/deps/runtime_integration*/out/
+          ls -l ./target/release/deps/runtime_integration*/out/
           echo "Deps build directory exists."
           DEPS_DISCOVERED=true
         fi        
