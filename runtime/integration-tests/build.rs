@@ -31,11 +31,13 @@ fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
 }
 
 fn main() {
+	eprintln!("NOT ERROR CLOSURE1");
 	debug_cwd(env::current_dir().unwrap()).unwrap();
 	let submodules_dir = env::current_dir()
 		.expect("Current directory not empty")
 		.join("submodules");
 
+	eprintln!("NOT ERROR CLOSURE2");
 	eprintln!("Submodules directory {submodules_dir:?}");
 	debug_cwd(submodules_dir.clone()).unwrap();
 
@@ -113,11 +115,13 @@ fn main() {
 				);
 			}
 			Err(err) => {
+				eprintln!("ERROR CLOSURE1");
 				debug_cwd(env::current_dir().unwrap()).unwrap();
 				let submodules_dir = env::current_dir()
 					.expect("Current directory not empty")
 					.join("submodules");
 
+				eprintln!("ERROR CLOSURE1");
 				eprintln!("Submodules directory {submodules_dir:?}");
 				debug_cwd(submodules_dir.clone()).unwrap();
 
