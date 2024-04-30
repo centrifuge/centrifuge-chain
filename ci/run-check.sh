@@ -18,6 +18,9 @@ case $TARGET in
 #    ;;
 
   test-integration)
+    cargo build --release --package runtime-integration-tests --vv
+
+    echo "NOW TESTING"
     cargo test --release --package runtime-integration-tests --features fast-runtime &
     CARGO_PID=$!
     BUILD_DISCOVERED=false

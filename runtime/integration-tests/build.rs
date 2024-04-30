@@ -13,7 +13,7 @@ use std::{env, fs, path::PathBuf, process::Command};
 
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 
-fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
+pub fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
 	eprintln!("Listing contents of: {}", cwd.display());
 
 	let entries = fs::read_dir(cwd)?;
@@ -31,6 +31,7 @@ fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
 }
 
 fn main() {
+	println!("cargo:info=NOT ERROR CLOSURE1");
 	eprintln!("NOT ERROR CLOSURE1");
 	debug_cwd(env::current_dir().unwrap()).unwrap();
 	let submodules_dir = env::current_dir()
