@@ -37,14 +37,18 @@ fn main() {
 	let submodules_dir = env::current_dir()
 		.expect("Current directory not empty")
 		.join("submodules");
+	let lp_dir = submodules_dir.join("liquidity-pools");
 
 	eprintln!("NOT ERROR CLOSURE2");
 	eprintln!("Submodules directory {submodules_dir:?}");
 	debug_cwd(submodules_dir.clone()).unwrap();
+	eprintln!("LP directory {lp_dir:?}");
+	debug_cwd(lp_dir.clone()).unwrap();
 
 	let paths = fs::read_dir(submodules_dir)
 		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
+	eprintln!("Outdir {out_dir:?}");
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
@@ -54,6 +58,7 @@ fn main() {
 				.map(|meta| meta.is_dir())
 				.unwrap_or(false)
 			{
+				eprintln!("Pushing directory {:?} onto verified_dir", &dir_entry);
 				verified_dir.push(
 					fs::canonicalize(dir_entry.path()).expect("Failed to find absolute path."),
 				);
