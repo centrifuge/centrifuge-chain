@@ -79,30 +79,9 @@ fn traversal(path: impl AsRef<Path>, files: &mut Vec<PathBuf>) {
 	}
 }
 
-// TODO(william): Remove
-pub fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
-	eprintln!("[evm.rs] Listing contents of: {}", cwd.display());
-
-	let entries = fs::read_dir(cwd)?;
-
-	for entry in entries {
-		let entry = entry?;
-		let path = entry.path();
-		let metadata = fs::metadata(&path)?;
-
-		let type_str = if metadata.is_dir() { "Dir" } else { "File" };
-		eprintln!("[evm.rs] {}: {}", type_str, path.display());
-	}
-
-	Ok(())
-}
-
 pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 	let mut contracts = HashMap::new();
 	let mut files = Vec::new();
-
-	debug_cwd(std::env::current_dir().unwrap()).unwrap();
-
 	traversal(LP_SOL_SOURCES, &mut files);
 	files.iter().for_each(|path| {
 		let file_name = path

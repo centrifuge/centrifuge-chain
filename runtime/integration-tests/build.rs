@@ -13,52 +13,38 @@ use std::{env, fs, path::PathBuf, process::Command};
 
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 
-pub fn debug_cwd(cwd: PathBuf) -> std::io::Result<()> {
-	eprintln!("Listing contents of: {}", cwd.display());
-
-	let entries = fs::read_dir(cwd)?;
-
-	for entry in entries {
-		let entry = entry?;
-		let path = entry.path();
-		let metadata = fs::metadata(&path)?;
-
-		let type_str = if metadata.is_dir() { "Dir" } else { "File" };
-		eprintln!("{}: {}", type_str, path.display());
-	}
-
-	Ok(())
-}
-
 fn main() {
-	println!("cargo:info=NOT ERROR CLOSURE1");
-	eprintln!("NOT ERROR CLOSURE1");
-	debug_cwd(env::current_dir().unwrap()).unwrap();
-	let submodules_dir = env::current_dir()
-		.expect("Current directory not empty")
-		.join("submodules");
-	let lp_dir = submodules_dir.join("liquidity-pools");
-
-	eprintln!("NOT ERROR CLOSURE2");
-	eprintln!("Submodules directory {submodules_dir:?}");
-	debug_cwd(submodules_dir.clone()).unwrap();
-	eprintln!("LP directory {lp_dir:?}");
-	debug_cwd(lp_dir.clone()).unwrap();
-
-	let paths = fs::read_dir(submodules_dir)
+	let paths = fs::read_dir("./submodules/")
 		.expect("Submodules directory must exist for integration-tests");
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
-	eprintln!("Outdir {out_dir:?}");
+
+	/*
+	match Command::new("git")
+		.args(&["pull", "--all", "--recurse-submodules=yes"])
+		.output()
+	{
+		Ok(o) if o.status.success() => {}
+		Ok(o) => {
+			println!(
+				"cargo:warning=Git fetch failed with: \n  - status: {}\n   -stderr: {}",
+				o.status,
+				String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
+			);
+		}
+		Err(err) => {
+			println!("cargo:warning=Failed to execute git command: {}", err);
+		}
+	}
+	 */
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
-		if let Ok(dir_entry) = path {
+		if let Ok(dir_entry) = path.as_ref() {
 			if dir_entry
 				.metadata()
 				.map(|meta| meta.is_dir())
 				.unwrap_or(false)
 			{
-				eprintln!("Pushing directory {:?} onto verified_dir", &dir_entry);
 				verified_dir.push(
 					fs::canonicalize(dir_entry.path()).expect("Failed to find absolute path."),
 				);
@@ -121,22 +107,7 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				// eprintln!("ERROR CLOSURE1");
-				// debug_cwd(env::current_dir().unwrap()).unwrap();
-				// let submodules_dir = env::current_dir()
-				// 	.expect("Current directory not empty")
-				// 	.join("submodules");
-				//
-				// eprintln!("ERROR CLOSURE1");
-				// eprintln!("Submodules directory {submodules_dir:?}");
-				// debug_cwd(submodules_dir.clone()).unwrap();
-				//
-				// let paths = fs::read_dir(submodules_dir)
-				// 	.expect("Submodules directory must exist for integration-tests");
-				// eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
-				// eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
-
-				eprintln!("cargo:warning=Failed to instantiate the submodule: {}", err);
+				eprintln!("cargo:warning=Failed to execute git command: {}", err);
 			}
 		}
 	}

@@ -1,6 +1,9 @@
 on:
   pull_request:
 name: Sanity checks
+concurrency:
+  group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
 permissions:
   id-token: write
   contents: read
@@ -10,14 +13,11 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     strategy:
       matrix:
-        target: [ test-integration ]
-        # target: [test-general, test-integration,
-        #          lint-fmt, lint-clippy, cargo-build, docs-build, lint-taplo]
+        target: [ test-general, test-integration,
+                  lint-fmt, lint-clippy, cargo-build, docs-build, lint-taplo ]
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-        with:
-          submodules: 'recursive'
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -26,43 +26,38 @@ jobs:
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
-
-      # Required for integration tests
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+          submodules: 'recursive'
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"
-          # SCCACHE_RECACHE: true 
 
-      - name: Output test results
-        if: always()
-        run: cat cargo_test_output.txt
+  benchmark-check:
+    name: bench-check-${{ matrix.runtime }}
+    runs-on: ubuntu-latest #-4-cores
+    strategy:
+      matrix:
+        runtime: [ altair, centrifuge ]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          cache: enabled
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
-  # benchmark-check:
-  #   name: bench-check-${{ matrix.runtime }}
-  #   runs-on: ubuntu-latest #-4-cores
-  #   strategy:
-  #     matrix:
-  #       runtime: [altair, centrifuge]
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+      # Required for integration tests evm interaction
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
 
-  #     - name: Prep build
-  #       uses: ./.github/actions/prep-ubuntu
-  #       with:
-  #         cache: enabled
-  #         GWIP: ${{ secrets.GWIP_SCCACHE }}
-  #         GSA: ${{ secrets.GSA_SCCACHE }}
-
-  #     - name: Runing cargo ${{ matrix.target }}
-  #       run: ./ci/run-check.sh
-  #       env:
-  #         TARGET: benchmark-check
-  #         RUNTIME: ${{ matrix.runtime }}
-  #         RUSTC_WRAPPER: "sccache"
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh
+        env:
+          TARGET: benchmark-check
+          RUNTIME: ${{ matrix.runtime }}
+          RUSTC_WRAPPER: "sccache"
