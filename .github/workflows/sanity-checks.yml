@@ -2,22 +2,22 @@ on:
   pull_request:
 name: Sanity checks
 permissions:
-    id-token: write
-    contents: read
+  id-token: write
+  contents: read
 jobs:
   test-n-lint:
     name: ${{ matrix.target }}
     runs-on: ubuntu-latest-8-cores
     strategy:
       matrix:
-        target: [test-integration]        
+        target: [ test-integration ]
         # target: [test-general, test-integration,
         #          lint-fmt, lint-clippy, cargo-build, docs-build, lint-taplo]
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
         with:
-            submodules: 'recursive'
+          submodules: 'recursive'
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -27,13 +27,17 @@ jobs:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 
+      # Required for integration tests
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"
           # SCCACHE_RECACHE: true 
-          
+
       - name: Output test results
         if: always()
         run: cat cargo_test_output.txt
