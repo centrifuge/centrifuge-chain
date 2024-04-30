@@ -115,22 +115,22 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				eprintln!("ERROR CLOSURE1");
-				debug_cwd(env::current_dir().unwrap()).unwrap();
-				let submodules_dir = env::current_dir()
-					.expect("Current directory not empty")
-					.join("submodules");
+				// eprintln!("ERROR CLOSURE1");
+				// debug_cwd(env::current_dir().unwrap()).unwrap();
+				// let submodules_dir = env::current_dir()
+				// 	.expect("Current directory not empty")
+				// 	.join("submodules");
+				//
+				// eprintln!("ERROR CLOSURE1");
+				// eprintln!("Submodules directory {submodules_dir:?}");
+				// debug_cwd(submodules_dir.clone()).unwrap();
+				//
+				// let paths = fs::read_dir(submodules_dir)
+				// 	.expect("Submodules directory must exist for integration-tests");
+				// eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
+				// eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
 
-				eprintln!("ERROR CLOSURE1");
-				eprintln!("Submodules directory {submodules_dir:?}");
-				debug_cwd(submodules_dir.clone()).unwrap();
-
-				let paths = fs::read_dir(submodules_dir)
-					.expect("Submodules directory must exist for integration-tests");
-				eprintln!("cargo:warning=Files in ./liquidity-pools are {:?}", paths);
-				eprintln!("cargo:warning=Desired output dir is {:?}", out_dir_build);
-
-				println!("cargo:warning=Failed to instantiate the submodule: {}", err);
+				eprintln!("cargo:warning=Failed to instantiate the submodule: {}", err);
 			}
 		}
 	}
