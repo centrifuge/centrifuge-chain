@@ -39,7 +39,7 @@ jobs:
     # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
         if: ${{ always() }}
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
