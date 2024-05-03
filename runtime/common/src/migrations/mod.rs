@@ -15,6 +15,7 @@
 pub mod increase_storage_version;
 pub mod nuke;
 pub mod precompile_account_codes;
+pub mod technical_comittee;
 
 pub mod utils {
 	use frame_support::storage::unhashed;
