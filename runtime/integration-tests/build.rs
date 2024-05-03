@@ -20,7 +20,7 @@ fn main() {
 
 	/*
 	match Command::new("git")
-		.args(&["fetch", "--all", "--recurse-submodules=yes"])
+		.args(&["pull", "--all", "--recurse-submodules=yes"])
 		.output()
 	{
 		Ok(o) if o.status.success() => {}
@@ -107,7 +107,7 @@ fn main() {
 				);
 			}
 			Err(err) => {
-				println!("cargo:warning=Failed to execute git command: {}", err);
+				eprintln!("cargo:warning=Failed to execute git command: {}", err);
 			}
 		}
 	}

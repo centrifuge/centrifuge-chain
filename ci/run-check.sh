@@ -9,29 +9,16 @@ rustup --version
 cargo --version
 
 case $TARGET in
- cargo-build)
-   SCCACHE_RECACHE=true cargo build -p centrifuge-chain --release "$@"
-   ;;
-#
-#  test-general)
-#    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
-#    ;;
+  cargo-build)
+    cargo build -p centrifuge-chain --release "$@"
+    ;;
+
+  test-general)
+    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    ;;
 
   test-integration)
-    cargo test --release --package runtime-integration-tests --features fast-runtime &
-    CARGO_PID=$!
-    while true; do
-      if [ -d "target/debug/" ]; then
-        ls -la target/debug/build/runtime-integration*/out/
-        ls -la target/debug/deps/runtime_integration*/out/
-        break
-      else
-        echo "Folder not found"
-        sleep 3
-      fi
-    done
-    wait $CARGO_PID
-    echo "Cargo test command has finished"
+    cargo test --release --package runtime-integration-tests
     ;;
 
   lint-fmt)

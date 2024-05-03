@@ -71,8 +71,8 @@ staging-xcm-executor = { workspace = true, features = ["std"] }
 
 orml-traits = { workspace = true, features = ["std"] }
 
+fp-evm = { workspace = true, features = ["std"] }
 fp-self-contained = { workspace = true, features = ["std"] }
-fp-evm = { workspace = true, features = ["std"]}
 
 # Locals
 altair-runtime = { workspace = true, features = ["std"] }
@@ -144,10 +144,10 @@ pallet-session = { workspace = true, features = ["std"] }
 pallet-sudo = { workspace = true, features = ["std"] }
 pallet-swaps = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
+pallet-token-mux = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 pallet-transfer-allowlist = { workspace = true, features = ["std"] }
 pallet-treasury = { workspace = true, features = ["std"] }
-pallet-token-mux = { workspace = true, features = ["std"] }
 pallet-uniques = { workspace = true, features = ["std"] }
 pallet-utility = { workspace = true, features = ["std"] }
 pallet-vesting = { workspace = true, features = ["std"] }
