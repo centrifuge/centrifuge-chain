@@ -513,7 +513,7 @@ fn altair_genesis(
 		orml_tokens: altair_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
-			members: council_members,
+			members: council_members.clone(),
 			phantom: Default::default(),
 		},
 
@@ -589,6 +589,14 @@ fn altair_genesis(
 		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 			..Default::default()
+		},
+		technical_committee: altair_runtime::TechnicalCommitteeConfig {
+			members: council_members.clone(),
+			phantom: Default::default(),
+		},
+		technical_committee_membership: altair_runtime::TechnicalCommitteeMembershipConfig {
+			members: BoundedVec::truncate_from(council_members),
+			phantom: Default::default(),
 		},
 	}
 }
