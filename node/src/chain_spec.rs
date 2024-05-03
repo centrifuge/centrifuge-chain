@@ -762,6 +762,14 @@ fn development_genesis(
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 			..Default::default()
 		},
+		technical_committee: development_runtime::TechnicalCommitteeConfig {
+			members: Default::default(),
+			phantom: Default::default(),
+		},
+		technical_committee_membership: development_runtime::TechnicalCommitteeMembershipConfig {
+			members: Default::default(),
+			phantom: Default::default(),
+		},
 	}
 }
 

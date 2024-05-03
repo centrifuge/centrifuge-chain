@@ -20,6 +20,7 @@ serde = { workspace = true, optional = true }
 static_assertions = { workspace = true }
 
 sp-api = { workspace = true }
+sp-arithmetic = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-core = { workspace = true }
@@ -90,6 +91,7 @@ pallet-bridge = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
+pallet-conviction-voting = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-elections-phragmen = { workspace = true }
 pallet-ethereum = { workspace = true }
@@ -117,6 +119,7 @@ pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
+pallet-referenda = { workspace = true }
 pallet-remarks = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
 pallet-restricted-xtokens = { workspace = true }
@@ -133,6 +136,7 @@ pallet-treasury = { workspace = true }
 pallet-uniques = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
+pallet-whitelist = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
 parachain-info = { workspace = true }
@@ -152,6 +156,7 @@ std = [
   "serde/std",
   # Substrate related
   "sp-api/std",
+  "sp-arithmetic/std",
   "sp-runtime/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",
@@ -214,6 +219,7 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
+  "pallet-conviction-voting/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
@@ -241,6 +247,7 @@ std = [
   "pallet-pool-system/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
+  "pallet-referenda/std",
   "pallet-remarks/std",
   "pallet-restricted-tokens/std",
   "pallet-restricted-xtokens/std",
@@ -257,6 +264,7 @@ std = [
   "pallet-uniques/std",
   "pallet-utility/std",
   "pallet-vesting/std",
+  "pallet-whitelist/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
   "parachain-info/std",
@@ -299,6 +307,7 @@ runtime-benchmarks = [
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
+  "pallet-conviction-voting/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -326,6 +335,7 @@ runtime-benchmarks = [
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-remarks/runtime-benchmarks",
+  "pallet-referenda/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-restricted-xtokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
@@ -339,6 +349,7 @@ runtime-benchmarks = [
   "pallet-uniques/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
+  "pallet-whitelist/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
 ]
@@ -381,6 +392,7 @@ try-runtime = [
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
+  "pallet-conviction-voting/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
@@ -408,6 +420,7 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
+  "pallet-referenda/try-runtime",
   "pallet-remarks/try-runtime",
   "pallet-restricted-tokens/try-runtime",
   "pallet-restricted-xtokens/try-runtime",
@@ -424,6 +437,7 @@ try-runtime = [
   "pallet-uniques/try-runtime",
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
+  "pallet-whitelist/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
   "parachain-info/try-runtime",
