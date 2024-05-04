@@ -2065,7 +2065,7 @@ pub mod test {
 		fn replace_tranche_less_interest_than_next_works() {
 			let mut tranches = default_tranches();
 
-			// ensure we have an interest rate lower than the the left side tranche with a
+			// ensure we have an interest rate lower than the left side tranche with a
 			// lower index, e.g. lower than 10% at index 1
 			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
@@ -2145,7 +2145,7 @@ pub mod test {
 			let mut tranches = default_tranches();
 
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
-			// ensure we have an interest rate larger than the the right-side tranche with a
+			// ensure we have an interest rate larger than the right-side tranche with a
 			// greater index, e.g. larger than 5% at index 2
 			let int_per_sec = Rate::saturating_from_rational(6u64, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
