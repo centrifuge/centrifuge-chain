@@ -77,6 +77,9 @@ pub struct ExternalPricing<T: Config> {
 	/// borrow/repay and the current oracle price.
 	/// See [`ExternalAmount::settlement_price`].
 	pub max_price_variation: T::Rate,
+
+	/// If the pricing is estimated with a linear pricing model.
+	pub with_linear_pricing: bool,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -151,17 +154,21 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	fn linear_accrual_price(
+	fn maybe_with_linear_accrual_price(
 		&self,
 		maturity: Seconds,
 		price: T::Balance,
 		price_last_updated: Seconds,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(cfg_utils::math::y_coord_in_rect(
-			(price_last_updated, price),
-			(maturity, self.info.notional),
-			T::Time::now(),
-		)?)
+		if self.info.with_linear_pricing {
+			Ok(cfg_utils::math::y_coord_in_rect(
+				(price_last_updated, price),
+				(maturity, self.info.notional),
+				T::Time::now(),
+			)?)
+		} else {
+			Ok(price)
+		}
 	}
 
 	pub fn current_price(
@@ -181,9 +188,13 @@ impl<T: Config> ExternalActivePricing<T> {
 		oracle: Option<PriceOf<T>>,
 	) -> Result<T::Balance, DispatchError> {
 		if let Some((oracle_price, oracle_provided_at)) = oracle {
-			self.linear_accrual_price(maturity, oracle_price, oracle_provided_at.into_seconds())
+			self.maybe_with_linear_accrual_price(
+				maturity,
+				oracle_price,
+				oracle_provided_at.into_seconds(),
+			)
 		} else {
-			self.linear_accrual_price(
+			self.maybe_with_linear_accrual_price(
 				maturity,
 				self.latest_settlement_price,
 				self.settlement_price_updated,

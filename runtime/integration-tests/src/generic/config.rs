@@ -87,6 +87,7 @@ pub trait Runtime:
 		Rate = Rate,
 		Quantity = Quantity,
 		PriceId = OracleKey,
+		Moment = Millis,
 	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ orml_asset_registry::Config<
 		AssetId = CurrencyId,
