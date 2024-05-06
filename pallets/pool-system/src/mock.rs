@@ -388,6 +388,12 @@ pub struct LiquidityAndPoolAdmin;
 impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for LiquidityAndPoolAdmin {
 	type Success = ();
 
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
+		Ok(())
+	}
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	fn try_origin(o: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
 		<RuntimeOrigin as Into<Result<RawOrigin<AccountId>, RuntimeOrigin>>>::into(o).and_then(
 			|r| match r {
@@ -406,7 +412,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for LiquidityAndPoolAdmin {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
-		Ok(RuntimeOrigin::Signed(DEFAULT_POOL_OWNER))
+		Ok(RawOrigin::Signed(DEFAULT_POOL_OWNER).into())
 	}
 }
 

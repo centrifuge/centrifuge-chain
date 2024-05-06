@@ -48,15 +48,15 @@ where
 				) {
 					Ok(())
 				} else {
-					Err(T::RuntimeOrigin::from(RawOrigin::Signed(by)))
+					Err(RawOrigin::Signed(by).into())
 				}
 			}
-			RawOrigin::None => Err(T::RuntimeOrigin::from(RawOrigin::None)),
+			RawOrigin::None => Err(RawOrigin::None.into()),
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &T::PoolId) -> Result<T::RuntimeOrigin, ()> {
-		Ok(T::RuntimeOrigin::root())
+		Ok(RawOrigin::Root.into())
 	}
 }
