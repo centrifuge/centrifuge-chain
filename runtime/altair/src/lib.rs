@@ -1455,6 +1455,7 @@ parameter_types! {
 }
 
 impl pallet_pool_system::Config for Runtime {
+	type AdminOrigin = runtime_common::pool::LiquidityAndPoolAdminOrRoot<Runtime>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;

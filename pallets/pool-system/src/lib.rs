@@ -184,7 +184,7 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		sp_runtime::traits::Convert,
-		traits::{tokens::Preservation, Contains},
+		traits::{tokens::Preservation, Contains, EnsureOriginWithArg},
 		PalletId,
 	};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
@@ -194,6 +194,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type AdminOrigin: EnsureOriginWithArg<Self::RuntimeOrigin, Self::PoolId>;
 
 		type Balance: Member
 			+ Parameter
@@ -613,15 +615,7 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::LiquidityAdmin)
-				),
-				BadOrigin
-			);
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -884,15 +878,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::LiquidityAdmin)
-				),
-				BadOrigin
-			);
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
 				let epoch = epoch_info
