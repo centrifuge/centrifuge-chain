@@ -1,8 +1,3 @@
-// For generic modules we can reactive the unused warn disabled on lib.rs
-#![warn(unused)]
-// Allow dead code for utilities not used yet
-#![allow(dead_code)]
-
 pub mod env;
 pub mod envs {
 	pub mod fudge_env;
@@ -15,6 +10,7 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod account_derivation;
+	mod block_rewards;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
@@ -24,11 +20,12 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
-	mod rewards;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage
+///
+/// NOTE: Your probably want to use `#[test_runtimes]` proc macro instead
 ///
 /// ```rust
 /// use crate::generic::config::Runtime;
@@ -54,6 +51,7 @@ mod cases {
 #[macro_export]
 macro_rules! test_for_runtimes {
 	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+        #[cfg(test)]
 		mod $test_name {
 			use super::*;
 

@@ -2478,7 +2478,7 @@ fn essence() {
 
 		let pool_details = Pool::<Runtime>::get(DEFAULT_POOL_ID).expect("Pool is registered; qed");
 		let essence = pool_details
-			.essence::<<Runtime as Config>::AssetRegistry, Balance, StringLimit>()
+			.essence_from_registry::<<Runtime as Config>::AssetRegistry, Balance, StringLimit>()
 			.expect("Tranche token metadata is registered; qed");
 
 		assert_eq!(essence.currency, AUSD_CURRENCY_ID);
@@ -2786,8 +2786,26 @@ mod pool_fees {
 			],
 			AUSD_CURRENCY_ID,
 			DEFAULT_POOL_MAX_RESERVE,
-			fees,
+			fees.clone(),
 		));
+
+		if !fees.is_empty() {
+			let pos_pool_creation = System::events()
+				.iter()
+				.position(|e| match e.event {
+					RuntimeEvent::PoolSystem(Event::Created { .. }) => true,
+					_ => false,
+				})
+				.expect("Pool created; qed");
+			let pos_pool_fee_added = System::events()
+				.iter()
+				.position(|e| match e.event {
+					RuntimeEvent::PoolFees(pallet_pool_fees::Event::Added { .. }) => true,
+					_ => false,
+				})
+				.expect("Pool fees added; qed");
+			assert!(pos_pool_creation < pos_pool_fee_added);
+		}
 		test_nav_up(DEFAULT_POOL_ID, NAV_AMOUNT);
 
 		// Force min_epoch_time to 0 without using update

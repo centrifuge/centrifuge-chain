@@ -44,7 +44,7 @@ use crate::{
 			POOL_MIN_EPOCH_TIME,
 		},
 	},
-	utils::{accounts::Keyring, tokens::rate_from_percent},
+	utils::accounts::Keyring,
 };
 
 const POOL_ADMIN: Keyring = Keyring::Admin;
@@ -172,6 +172,10 @@ mod common {
 	pub fn price_to_usd6(price: Quantity) -> Balance {
 		currency::price_to_currency(price, Usd6)
 	}
+
+	pub fn rate_from_percent(perc: u64) -> Rate {
+		Rate::saturating_from_rational(perc, 100)
+	}
 }
 
 /// Predefined loan calls for use cases
@@ -270,6 +274,7 @@ mod call {
 /// - borrow from the loan
 /// - fully repay the loan until
 /// - close the loan
+#[test_runtimes(all)]
 fn internal_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
@@ -307,6 +312,7 @@ fn internal_priced<T: Runtime>() {
 }
 
 /// Test using oracles to price the loan
+#[test_runtimes(all)]
 fn oracle_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
@@ -362,6 +368,7 @@ fn oracle_priced<T: Runtime>() {
 /// Test using oracles to valuate a portfolio.
 /// The oracle values used by the portfilio comes from the oracle
 /// collection
+#[test_runtimes(all)]
 fn portfolio_valuated_by_oracle<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
@@ -418,6 +425,7 @@ fn portfolio_valuated_by_oracle<T: Runtime>() {
 	assert_eq!(present_value_price_b, total_portfolio_value.0);
 }
 
+#[test_runtimes(all)]
 fn update_maturity_extension<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
@@ -454,6 +462,7 @@ fn update_maturity_extension<T: Runtime>() {
 		.unwrap();
 }
 
+#[test_runtimes(all)]
 fn fake_oracle_portfolio_api<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
@@ -514,9 +523,3 @@ fn fake_oracle_portfolio_api<T: Runtime>() {
 		);
 	});
 }
-
-crate::test_for_runtimes!(all, internal_priced);
-crate::test_for_runtimes!(all, oracle_priced);
-crate::test_for_runtimes!(all, portfolio_valuated_by_oracle);
-crate::test_for_runtimes!(all, update_maturity_extension);
-crate::test_for_runtimes!(all, fake_oracle_portfolio_api);

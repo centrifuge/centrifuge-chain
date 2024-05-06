@@ -29,7 +29,7 @@ use sp_runtime::{
 use sp_std::{cmp::PartialEq, vec::Vec};
 
 use crate::tranches::{
-	EpochExecutionTranches, TrancheEssence, TrancheSolution, TrancheUpdate, Tranches,
+	EpochExecutionTranches, TrancheEssence, TrancheInput, TrancheSolution, TrancheUpdate, Tranches,
 };
 
 // The TypeId impl we derive pool-accounts from
@@ -240,7 +240,15 @@ impl<
 			.map_err(Into::into)
 	}
 
-	pub fn essence<AssetRegistry, AssetId, StringLimit>(
+	/// Constructs the pool essence from tranche metadata stored in the asset
+	/// registry.
+	///
+	/// Must not be used for the creation of a new pool as each tranche token is
+	/// required to be registered in the registry which happens after the pool
+	/// creation for Subquery convenience.
+	///
+	/// NOTE: Uses `essence_from_tranche_input` under the hood.
+	pub fn essence_from_registry<AssetRegistry, AssetId, StringLimit>(
 		&self,
 	) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>, DispatchError>
 	where
@@ -248,7 +256,8 @@ impl<
 			orml_traits::asset_registry::Inspect<StringLimit = StringLimit, AssetId = CurrencyId>,
 		StringLimit: Get<u32>,
 	{
-		let mut tranches: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> = Vec::new();
+		let mut ids: Vec<TrancheCurrency> = Vec::new();
+		let mut tranche_input: Vec<TrancheInput<Rate, StringLimit>> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
 			let metadata = AssetRegistry::metadata(
@@ -258,12 +267,43 @@ impl<
 			)
 			.ok_or(DispatchError::CannotLookup)?;
 
-			tranches.push(TrancheEssence {
-				currency: tranche.currency,
-				ty: tranche.tranche_type,
+			ids.push(tranche.currency);
+			tranche_input.push(TrancheInput {
+				tranche_type: tranche.tranche_type,
+				seniority: Some(tranche.seniority),
 				metadata: TrancheMetadata {
 					token_name: metadata.name,
 					token_symbol: metadata.symbol,
+				},
+			});
+		}
+
+		Self::essence_from_tranche_input::<StringLimit>(self, ids, tranche_input)
+	}
+
+	/// Constructs the pool essence from the input tranche metadata such that.
+	///
+	/// Does not require each tranche token to be registered in some storage
+	/// such that this function can be called when a new pool is created.
+	pub fn essence_from_tranche_input<StringLimit>(
+		&self,
+		ids: Vec<TrancheCurrency>,
+		tranche_input: Vec<TrancheInput<Rate, StringLimit>>,
+	) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, StringLimit>, DispatchError>
+	where
+		StringLimit: Get<u32>,
+		TrancheCurrency: Into<CurrencyId>,
+	{
+		let mut tranche_essence: Vec<TrancheEssence<TrancheCurrency, Rate, StringLimit>> =
+			Vec::new();
+
+		for (id, input) in ids.into_iter().zip(tranche_input) {
+			tranche_essence.push(TrancheEssence {
+				currency: id,
+				ty: input.tranche_type,
+				metadata: TrancheMetadata {
+					token_name: input.metadata.token_name,
+					token_symbol: input.metadata.token_symbol,
 				},
 			});
 		}
@@ -273,7 +313,7 @@ impl<
 			max_reserve: self.reserve.max,
 			max_nav_age: self.parameters.max_nav_age,
 			min_epoch_time: self.parameters.min_epoch_time,
-			tranches,
+			tranches: tranche_essence,
 		})
 	}
 }

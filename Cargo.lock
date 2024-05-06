@@ -2984,6 +2984,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -11741,6 +11742,7 @@ dependencies = [
  "polkadot-runtime-parachains",
  "rococo-runtime",
  "runtime-common",
+ "runtime-integration-tests-proc-macro",
  "sc-block-builder",
  "sc-client-api",
  "sc-executor",
@@ -11766,6 +11768,16 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "runtime-integration-tests-proc-macro"
+version = "0.1.0"
+dependencies = [
+ "prettyplease 0.2.17",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.57",
 ]
 
 [[package]]

@@ -5,7 +5,10 @@ use cfg_types::{
 };
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{fungibles::Inspect, tokens::WithdrawConsequence, ConstU32, OnFinalize, OnInitialize},
+	traits::{
+		fungibles::Inspect, tokens::WithdrawConsequence, ConstU128, ConstU32, OnFinalize,
+		OnInitialize,
+	},
 	PalletId,
 };
 use frame_system::EnsureRoot;
@@ -81,26 +84,24 @@ impl pallet_session::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	// the minimum fee for an anchor is 500,000ths of a CFG.
-	// This is set to a value so you can still get some return without getting your account removed.
-	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
-}
+pub const BALANCE_ED: Balance = 23;
+pub const REWARD_CURRENCY_ED: Balance = 42;
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<BALANCE_ED>;
 	type RuntimeHoldReason = ();
 }
 
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
-			CurrencyId::Native => ExistentialDeposit::get(),
-			_ => 1,
+			CurrencyId::Native => BALANCE_ED,
+			CurrencyId::Staking(BlockRewardsCurrency) => REWARD_CURRENCY_ED,
+			_ => unreachable!()
 		}
 	};
 }
@@ -188,7 +189,6 @@ impl pallet_block_rewards::Config for Test {
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
 	type MaxCollators = MaxCollators;
 	type Rate = Rate;
 	type Rewards = Rewards;
@@ -207,13 +207,13 @@ pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
 		// NOTE: This is now the ED instead of 0, as we collators need ED now.
 		Tokens::balance(BlockRewardCurrency::get(), who),
-		ExistentialDeposit::get()
+		REWARD_CURRENCY_ED
 	);
 	assert_eq!(
 		<Test as Config>::Tokens::can_withdraw(
 			<Test as Config>::StakeCurrencyId::get(),
 			who,
-			ExistentialDeposit::get() * 2
+			REWARD_CURRENCY_ED * 2
 		),
 		WithdrawConsequence::BalanceLow
 	);
@@ -229,11 +229,7 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		// NOTE: IF a collator has been staked before the system already granted them ED
 		//       of `StakeCurrency`.
-		if was_before {
-			ExistentialDeposit::get()
-		} else {
-			0
-		}
+		if was_before { REWARD_CURRENCY_ED } else { 0 }
 	);
 }
 
