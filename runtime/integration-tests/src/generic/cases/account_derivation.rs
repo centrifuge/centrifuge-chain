@@ -50,6 +50,7 @@ fn evm_derivation_copy(chain_id: u64) -> AccountId {
 	AccountId::new(bytes)
 }
 
+#[test_runtimes(all)]
 fn local_evm_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -70,6 +71,7 @@ fn local_evm_account<T: Runtime>() {
 	);
 }
 
+#[test_runtimes(all)]
 fn lp_evm_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -87,6 +89,7 @@ fn lp_evm_account<T: Runtime>() {
 	assert_eq!(evm_derivation_copy(RANDOM_EVM_ID), derived);
 }
 
+#[test_runtimes(all)]
 fn relay_chain_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -129,6 +132,7 @@ fn relay_chain_account<T: Runtime>() {
 	);
 }
 
+#[test_runtimes(all)]
 fn sibling_chain_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -177,6 +181,7 @@ fn sibling_chain_account<T: Runtime>() {
 	);
 }
 
+#[test_runtimes(all)]
 fn remote_account_on_relay<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -205,6 +210,7 @@ fn remote_account_on_relay<T: Runtime>() {
 	);
 }
 
+#[test_runtimes(all)]
 fn remote_account_on_sibling<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -235,10 +241,3 @@ fn remote_account_on_sibling<T: Runtime>() {
 		derived
 	);
 }
-
-crate::test_for_runtimes!(all, local_evm_account);
-crate::test_for_runtimes!(all, lp_evm_account);
-crate::test_for_runtimes!(all, relay_chain_account);
-crate::test_for_runtimes!(all, sibling_chain_account);
-crate::test_for_runtimes!(all, remote_account_on_relay);
-crate::test_for_runtimes!(all, remote_account_on_sibling);

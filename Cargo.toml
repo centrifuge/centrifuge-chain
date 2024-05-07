@@ -45,6 +45,7 @@ members = [
   "runtime/development",
   "runtime/common",
   "runtime/integration-tests",
+  "runtime/integration-tests/procedural",
 ]
 
 [workspace.package]
@@ -276,6 +277,7 @@ runtime-common = { path = "runtime/common", default-features = false }
 development-runtime = { path = "runtime/development", default-features = false }
 altair-runtime = { path = "runtime/altair", default-features = false }
 centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
+runtime-integration-tests-proc-macro = { path = "runtime/integration-tests/procedural" }
 
 # Build dependencies
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
