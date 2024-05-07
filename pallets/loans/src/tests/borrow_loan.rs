@@ -734,7 +734,7 @@ mod cashflow {
 					loan_id,
 					PrincipalInput::Internal(COLLATERAL_VALUE / 4)
 				),
-				DispatchError::Other("payment overdue")
+				Error::<Runtime>::from(BorrowLoanError::PaymentOverdue)
 			);
 		});
 	}

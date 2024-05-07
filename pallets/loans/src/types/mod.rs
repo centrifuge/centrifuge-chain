@@ -44,6 +44,8 @@ pub enum BorrowLoanError {
 	Restriction,
 	/// Emits when maturity has passed and borrower tried to borrow more
 	MaturityDatePassed,
+	/// Emits when the cashflow payment is overdue
+	PaymentOverdue,
 }
 
 /// Error related to loan borrowing

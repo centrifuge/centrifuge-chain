@@ -370,7 +370,7 @@ impl<T: Config> ActiveLoan<T> {
 
 		ensure!(
 			self.total_repaid.effective()? >= expected_payment,
-			DispatchError::Other("payment overdue")
+			Error::<T>::from(BorrowLoanError::PaymentOverdue)
 		);
 
 		Ok(())
