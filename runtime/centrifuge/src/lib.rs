@@ -78,6 +78,7 @@ use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
+use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -2399,7 +2400,7 @@ impl_runtime_apis! {
 			Ok(runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum)
 		}
 
-		fn cashflow(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<(Seconds, Balance)>, DispatchError> {
+		fn cashflow(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError> {
 			Loans::cashflow(pool_id, loan_id)
 		}
 	}

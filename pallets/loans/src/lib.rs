@@ -107,6 +107,7 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 	use types::{
 		self,
+		cashflow::CashflowPayment,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
 		WrittenOffError,
@@ -1217,7 +1218,7 @@ pub mod pallet {
 		pub fn cashflow(
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-		) -> Result<Vec<(Seconds, T::Balance, T::Balance)>, DispatchError> {
+		) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)

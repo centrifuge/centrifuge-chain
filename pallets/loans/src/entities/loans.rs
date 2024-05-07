@@ -27,7 +27,7 @@ use crate::{
 	},
 	pallet::{AssetOf, Config, Error},
 	types::{
-		cashflow::RepaymentSchedule,
+		cashflow::{CashflowPayment, RepaymentSchedule},
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
 		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
@@ -248,7 +248,7 @@ impl<T: Config> ActiveLoan<T> {
 			.ensure_sub(self.total_repaid.principal)?)
 	}
 
-	pub fn cashflow(&self) -> Result<Vec<(Seconds, T::Balance, T::Balance)>, DispatchError> {
+	pub fn cashflow(&self) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
 		self.schedule.generate_cashflows(
 			self.origination_date,
 			self.principal()?,
@@ -361,19 +361,17 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
-		if self.schedule.has_cashflow() {
-			let expected_payment = self.schedule.expected_payment(
-				self.origination_date,
-				self.principal()?,
-				self.pricing.interest().rate(),
-				now,
-			)?;
+		let expected_payment = self.schedule.expected_payment(
+			self.origination_date,
+			self.principal()?,
+			self.pricing.interest().rate(),
+			now,
+		)?;
 
-			ensure!(
-				self.total_repaid.effective()? >= expected_payment,
-				DispatchError::Other("payment overdue")
-			)
-		}
+		ensure!(
+			self.total_repaid.effective()? >= expected_payment,
+			DispatchError::Other("payment overdue")
+		);
 
 		Ok(())
 	}

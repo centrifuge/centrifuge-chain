@@ -92,6 +92,13 @@ pub enum PayDownSchedule {
 	None,
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct CashflowPayment<Balance> {
+	pub when: Seconds,
+	pub principal: Balance,
+	pub interest: Balance,
+}
+
 /// Specify the repayment schedule of the loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct RepaymentSchedule {
@@ -125,27 +132,12 @@ impl RepaymentSchedule {
 		Ok(self.maturity.is_valid(now))
 	}
 
-	pub fn has_cashflow(&self) -> bool {
-		let has_interest_payments = match self.interest_payments {
-			InterestPayments::None => false,
-			_ => true,
-		};
-
-		#[allow(unreachable_patterns)] // Remove when pay_down_schedule has more than `None`
-		let has_pay_down_schedule = match self.pay_down_schedule {
-			PayDownSchedule::None => false,
-			_ => true,
-		};
-
-		has_interest_payments || has_pay_down_schedule
-	}
-
 	pub fn generate_cashflows<Balance, Rate>(
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
 		interest_rate: &InterestRate<Rate>,
-	) -> Result<Vec<(Seconds, Balance, Balance)>, DispatchError>
+	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
 		Balance: FixedPointOperand,
 		Rate: FixedPointNumber,
@@ -171,11 +163,11 @@ impl RepaymentSchedule {
 		timeflow
 			.into_iter()
 			.map(|(date, interval)| {
-				Ok((
-					date::into_seconds(date)?,
-					interval.ensure_mul_int(principal_per_period)?,
-					interval.ensure_mul_int(interest_per_period)?,
-				))
+				Ok(CashflowPayment {
+					when: date::into_seconds(date)?,
+					principal: interval.ensure_mul_int(principal_per_period)?,
+					interest: interval.ensure_mul_int(interest_per_period)?,
+				})
 			})
 			.collect()
 	}
@@ -195,10 +187,8 @@ impl RepaymentSchedule {
 
 		let total_amount = cashflow
 			.into_iter()
-			.take_while(|(date, _, _)| *date < until)
-			.map(|(_, principal_amount, interest_amount)| {
-				principal_amount.ensure_add(interest_amount)
-			})
+			.take_while(|payment| payment.when < until)
+			.map(|payment| payment.principal.ensure_add(payment.interest))
 			.try_fold(Balance::zero(), |a, b| a.ensure_add(b?))?;
 
 		Ok(total_amount)

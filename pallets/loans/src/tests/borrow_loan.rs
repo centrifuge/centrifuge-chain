@@ -653,8 +653,12 @@ mod cashflow {
 			let principal = COLLATERAL_VALUE / 2 / 12;
 			let interest = Rate::from_float(DEFAULT_INTEREST_RATE).saturating_mul_int(principal);
 
-			assert_ok!(
-				loan.cashflow(),
+			assert_eq!(
+				loan.cashflow()
+					.unwrap()
+					.into_iter()
+					.map(|payment| (payment.when, payment.principal, payment.interest))
+					.collect::<Vec<_>>(),
 				vec![
 					(last_secs_from_ymd(1970, 2, 1), principal, interest),
 					(last_secs_from_ymd(1970, 3, 1), principal, interest),
@@ -688,7 +692,7 @@ mod cashflow {
 
 			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
 
-			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);
 
 			config_mocks(COLLATERAL_VALUE / 4);
@@ -716,7 +720,7 @@ mod cashflow {
 
 			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
 
-			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);
 
 			// Start of the next month
@@ -750,7 +754,7 @@ mod cashflow {
 
 			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
 
-			let time_until_next_month = Duration::from_secs(cashflow[0].0) - now();
+			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);
 
 			// Start of the next month
