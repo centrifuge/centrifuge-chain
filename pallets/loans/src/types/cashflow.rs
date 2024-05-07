@@ -107,8 +107,22 @@ pub struct RepaymentSchedule {
 }
 
 impl RepaymentSchedule {
-	pub fn is_valid(&self, now: Seconds) -> bool {
-		self.maturity.is_valid(now)
+	pub fn is_valid(&self, now: Seconds) -> Result<bool, DispatchError> {
+		match self.interest_payments {
+			InterestPayments::None => (),
+			InterestPayments::Monthly(_) => {
+				let start = date::from_seconds(now)?;
+				let end = date::from_seconds(self.maturity.date())?;
+
+				// We want to avoid creating a loan with a cashflow consuming a lot of computing
+				// time Maximum 40 years, which means a cashflow list of 40 * 12 elements
+				if end.year() - start.year() > 40 {
+					return Ok(false);
+				}
+			}
+		}
+
+		Ok(self.maturity.is_valid(now))
 	}
 
 	pub fn has_cashflow(&self) -> bool {
@@ -196,14 +210,14 @@ mod date {
 
 	pub fn from_seconds(date_in_seconds: Seconds) -> Result<NaiveDate, DispatchError> {
 		Ok(DateTime::from_timestamp(date_in_seconds.ensure_into()?, 0)
-			.ok_or(DispatchError::Other("Invalid date in seconds"))?
+			.ok_or("Invalid date in seconds, qed")?
 			.date_naive())
 	}
 
 	pub fn into_seconds(date: NaiveDate) -> Result<Seconds, DispatchError> {
 		Ok(date
 			.and_hms_opt(23, 59, 59) // Until the last second on the day
-			.ok_or(DispatchError::Other("Invalid h/m/s"))?
+			.ok_or("Invalid h/m/s, qed")?
 			.and_utc()
 			.timestamp()
 			.ensure_into()?)
@@ -326,6 +340,29 @@ pub mod tests {
 			rate_per_year: Rate::from_float(0.1),
 			compounding: CompoundingSchedule::Secondly,
 		}
+	}
+
+	#[test]
+	fn repayment_schedule_validation() {
+		assert_ok!(
+			RepaymentSchedule {
+				maturity: Maturity::fixed(last_secs_from_ymd(2040, 1, 1)),
+				interest_payments: InterestPayments::Monthly(1),
+				pay_down_schedule: PayDownSchedule::None,
+			}
+			.is_valid(last_secs_from_ymd(2000, 1, 1)),
+			true
+		);
+
+		assert_ok!(
+			RepaymentSchedule {
+				maturity: Maturity::fixed(last_secs_from_ymd(2041, 1, 1)),
+				interest_payments: InterestPayments::Monthly(1),
+				pay_down_schedule: PayDownSchedule::None,
+			}
+			.is_valid(last_secs_from_ymd(2000, 1, 1)),
+			false
+		);
 	}
 
 	mod dates {

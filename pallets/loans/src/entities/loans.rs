@@ -71,7 +71,7 @@ impl<T: Config> LoanInfo<T> {
 		T::InterestAccrual::validate_rate(&self.interest_rate)?;
 
 		ensure!(
-			self.schedule.is_valid(now),
+			self.schedule.is_valid(now)?,
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
