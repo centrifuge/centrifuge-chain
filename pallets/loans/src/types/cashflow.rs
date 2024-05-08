@@ -18,7 +18,8 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub,
+		EnsureSubAssign,
 	},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
@@ -139,8 +140,8 @@ impl RepaymentSchedule {
 		interest_rate: &InterestRate<Rate>,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
-		Balance: FixedPointOperand,
-		Rate: FixedPointNumber,
+		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
+		Rate: FixedPointNumber + EnsureDiv,
 	{
 		let start_date = date::from_seconds(origination_date)?;
 		let end_date = date::from_seconds(self.maturity.date())?;
@@ -153,20 +154,25 @@ impl RepaymentSchedule {
 			),
 		};
 
-		let principal_per_period =
-			Rate::ensure_from_rational(1, periods_per_year)?.ensure_mul_int(principal)?;
+		let total = timeflow
+			.iter()
+			.map(|(_, interval)| interval)
+			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
 
 		let interest_per_period = interest_rate
 			.per_year()
-			.ensure_mul_int(principal_per_period)?;
+			.ensure_div(Rate::saturating_from_integer(periods_per_year))?;
 
 		timeflow
 			.into_iter()
 			.map(|(date, interval)| {
+				let principal = interval.ensure_div(total)?.ensure_mul_int(principal)?;
+				let interest = interest_per_period.ensure_mul_int(principal)?;
+
 				Ok(CashflowPayment {
 					when: date::into_seconds(date)?,
-					principal: interval.ensure_mul_int(principal_per_period)?,
-					interest: interval.ensure_mul_int(interest_per_period)?,
+					principal,
+					interest,
 				})
 			})
 			.collect()
@@ -180,7 +186,7 @@ impl RepaymentSchedule {
 		until: Seconds,
 	) -> Result<Balance, DispatchError>
 	where
-		Balance: FixedPointOperand + EnsureAdd,
+		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
 		Rate: FixedPointNumber,
 	{
 		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
@@ -325,40 +331,17 @@ pub mod tests {
 		secs_from_ymdhms(year, month, day, 23, 59, 59)
 	}
 
-	fn rate_per_year(rate: f32) -> InterestRate<Rate> {
+	fn rate_per_year(rate: f64) -> InterestRate<Rate> {
 		InterestRate::Fixed {
-			rate_per_year: Rate::from_float(0.1),
+			rate_per_year: Rate::from_float(rate),
 			compounding: CompoundingSchedule::Secondly,
 		}
 	}
 
-	#[test]
-	fn repayment_schedule_validation() {
-		assert_ok!(
-			RepaymentSchedule {
-				maturity: Maturity::fixed(last_secs_from_ymd(2040, 1, 1)),
-				interest_payments: InterestPayments::Monthly(1),
-				pay_down_schedule: PayDownSchedule::None,
-			}
-			.is_valid(last_secs_from_ymd(2000, 1, 1)),
-			true
-		);
-
-		assert_ok!(
-			RepaymentSchedule {
-				maturity: Maturity::fixed(last_secs_from_ymd(2041, 1, 1)),
-				interest_payments: InterestPayments::Monthly(1),
-				pay_down_schedule: PayDownSchedule::None,
-			}
-			.is_valid(last_secs_from_ymd(2000, 1, 1)),
-			false
-		);
-	}
-
-	mod dates {
+	mod months {
 		use super::*;
 
-		mod months {
+		mod dates {
 			use super::*;
 
 			#[test]
@@ -408,6 +391,47 @@ pub mod tests {
 					vec![(from_ymd(2022, 1, 15), Rate::from((14, 30)))]
 				);
 			}
+		}
+
+		#[test]
+		fn repayment_schedule_validation() {
+			assert_ok!(
+				RepaymentSchedule {
+					maturity: Maturity::fixed(last_secs_from_ymd(2040, 1, 1)),
+					interest_payments: InterestPayments::Monthly(1),
+					pay_down_schedule: PayDownSchedule::None,
+				}
+				.is_valid(last_secs_from_ymd(2000, 1, 1)),
+				true
+			);
+
+			assert_ok!(
+				RepaymentSchedule {
+					maturity: Maturity::fixed(last_secs_from_ymd(2041, 1, 1)),
+					interest_payments: InterestPayments::Monthly(1),
+					pay_down_schedule: PayDownSchedule::None,
+				}
+				.is_valid(last_secs_from_ymd(2000, 1, 1)),
+				false // Exceeds the limit of a 40 years cashflow
+			);
+		}
+
+		#[test]
+		fn correct_amounts() {
+			// Note that an interest rate of 0.12 corresponds to 0.01 monthly.
+			assert_eq!(
+				RepaymentSchedule {
+					maturity: Maturity::fixed(last_secs_from_ymd(2022, 7, 1)),
+					interest_payments: InterestPayments::Monthly(1),
+					pay_down_schedule: PayDownSchedule::None,
+				}
+				.generate_cashflows(last_secs_from_ymd(2022, 4, 16), 25000, &rate_per_year(0.12))
+				.unwrap()
+				.into_iter()
+				.map(|payment| (payment.principal, payment.interest))
+				.collect::<Vec<_>>(),
+				vec![(5000, 50), (10000, 100), (10000, 100)]
+			)
 		}
 	}
 }
