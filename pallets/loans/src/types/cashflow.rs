@@ -21,7 +21,7 @@ use sp_runtime::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub,
 		EnsureSubAssign,
 	},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand, FixedU128,
 };
 use sp_std::{cmp::min, vec, vec::Vec};
 
@@ -149,15 +149,15 @@ impl RepaymentSchedule {
 		let (timeflow, periods_per_year) = match &self.interest_payments {
 			InterestPayments::None => (vec![], 1),
 			InterestPayments::Monthly(reference_day) => (
-				date::monthly_intervals::<Rate>(start_date, end_date, (*reference_day).into())?,
+				date::monthly_intervals(start_date, end_date, (*reference_day).into())?,
 				12,
 			),
 		};
 
-		let total = timeflow
+		let total_weight = timeflow
 			.iter()
-			.map(|(_, interval)| interval)
-			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
+			.map(|(_, weight)| weight)
+			.try_fold(0, |a, b| a.ensure_add(*b))?;
 
 		let interest_per_period = interest_rate
 			.per_year()
@@ -165,8 +165,9 @@ impl RepaymentSchedule {
 
 		timeflow
 			.into_iter()
-			.map(|(date, interval)| {
-				let principal = interval.ensure_div(total)?.ensure_mul_int(principal)?;
+			.map(|(date, weight)| {
+				let proportion = FixedU128::ensure_from_rational(weight, total_weight)?;
+				let principal = proportion.ensure_mul_int(principal)?;
 				let interest = interest_per_period.ensure_mul_int(principal)?;
 
 				Ok(CashflowPayment {
@@ -264,11 +265,11 @@ mod date {
 		Ok(dates)
 	}
 
-	pub fn monthly_intervals<Rate: FixedPointNumber>(
+	pub fn monthly_intervals(
 		start_date: NaiveDate,
 		end_date: NaiveDate,
 		reference_day: u32,
-	) -> Result<Vec<(NaiveDate, Rate)>, DispatchError> {
+	) -> Result<Vec<(NaiveDate, u32)>, DispatchError> {
 		let monthly_dates = monthly(start_date, end_date, reference_day)?;
 		let last_index = monthly_dates.len().ensure_sub(1)?;
 
@@ -277,22 +278,19 @@ mod date {
 			.into_iter()
 			.enumerate()
 			.map(|(i, date)| {
-				let days = match i {
+				let weight = match i {
 					0 if last_index == 0 => end_date.day().ensure_sub(DAY_1)?,
 					0 if start_date.day() == DAY_1 => 30,
 					0 => (date - start_date).num_days().ensure_into()?,
 					n if n == last_index && end_date.day() == DAY_1 => 30,
 					n if n == last_index => {
-						let prev_date = monthly_dates
-							.get(n.ensure_sub(1)?)
-							.ok_or(DispatchError::Other("n > 1. qed"))?;
-
+						let prev_date = monthly_dates.get(n.ensure_sub(1)?).ok_or("n > 1. qed")?;
 						(date - *prev_date).num_days().ensure_into()?
 					}
 					_ => 30,
 				};
 
-				Ok((date, Rate::saturating_from_rational(days, 30)))
+				Ok((date, weight))
 			})
 			.collect()
 	}
@@ -331,13 +329,6 @@ pub mod tests {
 		secs_from_ymdhms(year, month, day, 23, 59, 59)
 	}
 
-	fn rate_per_year(rate: f64) -> InterestRate<Rate> {
-		InterestRate::Fixed {
-			rate_per_year: Rate::from_float(rate),
-			compounding: CompoundingSchedule::Secondly,
-		}
-	}
-
 	mod months {
 		use super::*;
 
@@ -349,10 +340,10 @@ pub mod tests {
 				assert_ok!(
 					date::monthly_intervals(from_ymd(2022, 1, 20), from_ymd(2022, 4, 20), 1),
 					vec![
-						(from_ymd(2022, 2, 1), Rate::from((12, 30))),
-						(from_ymd(2022, 3, 1), Rate::one()),
-						(from_ymd(2022, 4, 1), Rate::one()),
-						(from_ymd(2022, 4, 20), Rate::from((19, 30))),
+						(from_ymd(2022, 2, 1), 12),
+						(from_ymd(2022, 3, 1), 30),
+						(from_ymd(2022, 4, 1), 30),
+						(from_ymd(2022, 4, 20), 19),
 					]
 				);
 			}
@@ -377,10 +368,7 @@ pub mod tests {
 			fn start_and_end_same_day_as_reference_day() {
 				assert_ok!(
 					date::monthly_intervals(from_ymd(2022, 1, 1), from_ymd(2022, 3, 1), 1),
-					vec![
-						(from_ymd(2022, 2, 1), Rate::one()),
-						(from_ymd(2022, 3, 1), Rate::one()),
-					]
+					vec![(from_ymd(2022, 2, 1), 30), (from_ymd(2022, 3, 1), 30),]
 				);
 			}
 
@@ -388,7 +376,7 @@ pub mod tests {
 			fn same_month() {
 				assert_ok!(
 					date::monthly_intervals(from_ymd(2022, 1, 1), from_ymd(2022, 1, 15), 1),
-					vec![(from_ymd(2022, 1, 15), Rate::from((14, 30)))]
+					vec![(from_ymd(2022, 1, 15), 14)]
 				);
 			}
 		}
@@ -418,14 +406,20 @@ pub mod tests {
 
 		#[test]
 		fn correct_amounts() {
-			// Note that an interest rate of 0.12 corresponds to 0.01 monthly.
 			assert_eq!(
 				RepaymentSchedule {
 					maturity: Maturity::fixed(last_secs_from_ymd(2022, 7, 1)),
 					interest_payments: InterestPayments::Monthly(1),
 					pay_down_schedule: PayDownSchedule::None,
 				}
-				.generate_cashflows(last_secs_from_ymd(2022, 4, 16), 25000, &rate_per_year(0.12))
+				.generate_cashflows(
+					last_secs_from_ymd(2022, 4, 16),
+					25000, /* principal */
+					&InterestRate::Fixed {
+						rate_per_year: Rate::from_float(0.01 * 12.0),
+						compounding: CompoundingSchedule::Secondly,
+					}
+				)
 				.unwrap()
 				.into_iter()
 				.map(|payment| (payment.principal, payment.interest))
