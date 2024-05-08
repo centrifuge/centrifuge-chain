@@ -250,7 +250,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn cashflow(&self) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
 		self.schedule.generate_cashflows(
-			self.origination_date,
+			self.repayments_on_schedule_until,
 			self.principal()?,
 			self.pricing.interest().rate(),
 		)
@@ -362,7 +362,7 @@ impl<T: Config> ActiveLoan<T> {
 		);
 
 		let expected_payment = self.schedule.expected_payment(
-			self.origination_date,
+			self.repayments_on_schedule_until,
 			self.principal()?,
 			self.pricing.interest().rate(),
 			now,
