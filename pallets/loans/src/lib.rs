@@ -1215,14 +1215,14 @@ pub mod pallet {
 				.transpose()
 		}
 
-		pub fn cashflow(
+		pub fn expected_cashflows(
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 		) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| loan.cashflow())
+				.map(|(_, loan)| loan.expected_cashflows())
 				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?
 		}
 	}

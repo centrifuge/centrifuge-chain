@@ -655,7 +655,7 @@ mod cashflow {
 			let interest = Rate::from_float(interest_rate_per_month).saturating_mul_int(principal);
 
 			assert_eq!(
-				loan.cashflow()
+				loan.expected_cashflows()
 					.unwrap()
 					.into_iter()
 					.map(|payment| (payment.when, payment.principal, payment.interest))
@@ -691,7 +691,7 @@ mod cashflow {
 				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 			));
 
-			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
 
 			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);
@@ -719,7 +719,7 @@ mod cashflow {
 				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 			));
 
-			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
 
 			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);
@@ -753,7 +753,7 @@ mod cashflow {
 				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 			));
 
-			let cashflow = util::get_loan(loan_id).cashflow().unwrap();
+			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
 
 			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
 			advance_time(time_until_next_month);

@@ -31,6 +31,6 @@ decl_runtime_apis! {
 		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, Loan)>;
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
 		fn portfolio_valuation(pool_id: PoolId, input_prices: PriceCollectionInput) -> Result<Balance, DispatchError>;
-		fn cashflow(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>;
+		fn expected_cashflows(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>;
 	}
 }

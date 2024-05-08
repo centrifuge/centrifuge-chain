@@ -2439,8 +2439,8 @@ impl_runtime_apis! {
 			Ok(runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum)
 		}
 
-		fn cashflow(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError> {
-			Loans::cashflow(pool_id, loan_id)
+		fn expected_cashflows(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError> {
+			Loans::expected_cashflows(pool_id, loan_id)
 		}
 	}
 
