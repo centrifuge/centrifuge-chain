@@ -3,11 +3,12 @@ on:
   # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
   workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
   push:
-    branches: [main]
+    tags: ['v*.*.*']
   release:
     # Release logic:
     #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
-    types: [ created ] # GITHUB_REF == tag pushed with the release
+    # 
+    types: [ released ] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
@@ -56,6 +57,11 @@ jobs:
           images: |
             ghcr.io/centrifuge/centrifuge-chain
             ${{ github.event_name != 'pull_request' && 'centrifugeio/centrifuge-chain' || ''}}
+          # TAGS:
+          # v.X.Y.Z when pushing a git tag (or a release)
+          # latest when triggered by a release
+          # PRXYZ when triggered from a PR (testing)
+          # {BRANCH_NAME} when triggered from branch push
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
@@ -105,12 +111,12 @@ jobs:
           enable-url-completion: true
 
       - name: Update GitHub release
-        if: github.event_name == 'release' && matrix.target == 'release'
+        if: github.event_name == 'release' && github.event.action == 'released' && matrix.target == 'release'
         uses: softprops/action-gh-release@v1
         with:
           append_body: true
           body: |
-            **Docker tags:**
+            **Docker tags (${{ env.NOW }}):**
                ${{ steps.meta.outputs.tags }}
 
       - if: failure()
