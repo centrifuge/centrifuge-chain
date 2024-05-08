@@ -1,4 +1,3 @@
-#![feature(stmt_expr_attributes)]
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
@@ -11,27 +10,15 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+// Allow dead code for utilities not used yet
+#![allow(dead_code)]
+// All code in this crate is test related
 #![cfg(test)]
-#![allow(unused)]
+
+// Allow `#[test_runtimes]` macro to be called everywhere in the crate
+#[macro_use]
+extern crate runtime_integration_tests_proc_macro;
 
 mod generic;
-mod rewards;
 mod utils;
-
-/// Re-exports the correct runtimes that we run the integration tests with
-/// This allows all other modules to use the import of `crate::chain::{...}`
-/// in order to get the right stuff from the respective runtime.
-mod chain {
-	pub mod centrifuge {
-		pub use development::*;
-
-		pub mod development {
-			pub use development_runtime::*;
-			pub const PARA_ID: u32 = 2000;
-		}
-	}
-
-	pub mod relay {
-		pub use rococo_runtime::*;
-	}
-}
