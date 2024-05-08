@@ -109,7 +109,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		KeyId<T::Hash>,
-		Key<T::BlockNumber, T::Balance>,
+		Key<BlockNumberFor<T>, T::Balance>,
 	>;
 
 	/// Storage used for retrieving last key by purpose.
@@ -138,7 +138,7 @@ pub mod pallet {
 		KeyRevoked {
 			owner: T::AccountId,
 			key: T::Hash,
-			block_number: T::BlockNumber,
+			block_number: BlockNumberFor<T>,
 		},
 		/// A deposit was set.
 		DepositSet { new_deposit: T::Balance },
@@ -161,7 +161,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Add keys to the storages.
-		#[pallet::weight(T::WeightInfo::add_keys(T::MaxKeys::get() as u32))]
+		#[pallet::weight(T::WeightInfo::add_keys(T::MaxKeys::get()))]
 		#[pallet::call_index(0)]
 		pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -182,7 +182,7 @@ pub mod pallet {
 		}
 
 		/// Revoke keys with specified purpose.
-		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
+		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get()))]
 		#[pallet::call_index(1)]
 		pub fn revoke_keys(
 			origin: OriginFor<T>,

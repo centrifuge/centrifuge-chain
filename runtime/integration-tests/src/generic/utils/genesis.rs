@@ -1,35 +1,24 @@
 //! PLEASE be as much generic as possible because no domain or use cases are
 //! considered at this level.
 
-use std::marker::PhantomData;
-
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
-use codec::Encode;
-use frame_support::traits::GenesisBuild;
-use sp_runtime::Storage;
+use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
+use parity_scale_codec::Encode;
+use sp_core::Get;
+use sp_runtime::{BuildStorage, FixedPointNumber, Storage};
 
 use crate::{
-	generic::{config::Runtime, utils::currency},
-	utils::accounts::default_accounts,
+	generic::{config::Runtime, utils::currency::CurrencyInfo},
+	utils::accounts::{default_accounts, Keyring},
 };
 
-pub struct Genesis<T> {
+#[derive(Default)]
+pub struct Genesis {
 	storage: Storage,
-	_config: PhantomData<T>,
 }
 
-impl<T> Default for Genesis<T> {
-	fn default() -> Self {
-		Self {
-			storage: Default::default(),
-			_config: Default::default(),
-		}
-	}
-}
-
-impl<T: Runtime> Genesis<T> {
-	pub fn add(mut self, builder: impl GenesisBuild<T>) -> Self {
+impl Genesis {
+	pub fn add(mut self, builder: impl BuildStorage) -> Self {
 		builder.assimilate_storage(&mut self.storage).unwrap();
 		self
 	}
@@ -39,9 +28,7 @@ impl<T: Runtime> Genesis<T> {
 	}
 }
 
-// Add GenesisBuild functions for pallet initialization.
-
-pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
+pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
 	pallet_balances::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
@@ -50,7 +37,7 @@ pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	}
 }
 
-pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBuild<T> {
+pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStorage {
 	orml_tokens::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
@@ -66,12 +53,45 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 	}
 }
 
-pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T> {
+pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl BuildStorage {
 	orml_asset_registry::GenesisConfig::<T> {
 		assets: currency_ids
 			.into_iter()
-			.map(|currency_id| (currency_id, currency::find_metadata(currency_id).encode()))
+			.map(|currency_id| (currency_id.id(), currency_id.metadata().encode()))
 			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
+	}
+}
+
+pub fn council_members<T: Runtime>(members: Vec<Keyring>) -> impl BuildStorage {
+	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
+		phantom: Default::default(),
+		members: members.into_iter().map(|acc| acc.id()).collect(),
+	}
+}
+
+pub fn invulnerables<T: Runtime>(invulnerables: Vec<Keyring>) -> impl BuildStorage {
+	pallet_collator_selection::GenesisConfig::<T> {
+		invulnerables: invulnerables.into_iter().map(|acc| acc.id()).collect(),
+		candidacy_bond: cfg_primitives::MILLI_CFG,
+		desired_candidates: T::MaxCandidates::get(),
+	}
+}
+
+pub fn session_keys<T: Runtime>() -> impl BuildStorage {
+	pallet_session::GenesisConfig::<T> {
+		keys: default_accounts()
+			.into_iter()
+			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.public())))
+			.collect(),
+	}
+}
+
+pub fn block_rewards<T: Runtime>(collators: Vec<Keyring>) -> impl BuildStorage {
+	pallet_block_rewards::GenesisConfig::<T> {
+		collators: collators.into_iter().map(|acc| acc.id()).collect(),
+		collator_reward: (1000 * cfg_primitives::CFG).into(),
+		treasury_inflation_rate: Rate::saturating_from_rational(3, 100).into(),
+		last_update: Default::default(),
 	}
 }

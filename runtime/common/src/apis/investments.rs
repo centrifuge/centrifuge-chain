@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Codec;
+use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 

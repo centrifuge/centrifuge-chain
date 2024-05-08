@@ -9,6 +9,16 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Ethereum Transaction Pallet
+//!
+//! The Ethereum Transaction pallet is a wrapper around the Ethereum pallet,
+//! and it allows other pallets to execute EVM calls. It keeps track
+//! of the nonce used for each call and builds a fake signature for executing
+//! the provided call.
+//!
+//! The execution fees are charged by the Ethereum pallet, the only other extra
+//! fee is be the one from the nonce read operation.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::TRANSACTION_RECOVERY_ID;
@@ -29,6 +39,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ethereum::ReceiptV3;
 	use frame_system::pallet_prelude::OriginFor;
 
 	use super::*;
@@ -64,17 +75,32 @@ pub mod pallet {
 		}
 	}
 
+	#[pallet::error]
+	pub enum Error<T> {
+		EvmExecutionFailed,
+	}
+
+	impl<T: Config> Pallet<T>
+	where
+		OriginFor<T>:
+			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
+	{
+		fn valid_code(receipt: &ReceiptV3) -> bool {
+			let code = match receipt {
+				ReceiptV3::Legacy(inner)
+				| ReceiptV3::EIP2930(inner)
+				| ReceiptV3::EIP1559(inner) => inner.status_code,
+			};
+
+			code == 1
+		}
+	}
+
 	impl<T: Config> EthereumTransactor for Pallet<T>
 	where
 		OriginFor<T>:
 			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 	{
-		/// This implementation serves as a wrapper around the Ethereum pallet
-		/// execute functionality. It keeps track of the nonce used for each
-		/// call and builds a fake signature for executing the provided call.
-		///
-		/// NOTE - The execution fees are charged by the Ethereum pallet,
-		/// we only have to charge for the nonce read operation.
 		fn call(
 			from: H160,
 			to: H160,
@@ -107,7 +133,7 @@ pub mod pallet {
 
 			Nonce::<T>::put(nonce.saturating_add(U256::one()));
 
-			pallet_ethereum::Pallet::<T>::transact(
+			let info = pallet_ethereum::Pallet::<T>::transact(
 				pallet_ethereum::Origin::EthereumTransaction(from).into(),
 				transaction,
 			)
@@ -129,7 +155,21 @@ pub mod pallet {
 					.map_or(Some(read_weight), |weight| {
 						Some(weight.saturating_add(read_weight))
 					}),
-			})
+			})?;
+
+			// NOTE: The Ethereuem side of things never returns a DispatchError
+			//       if the execution failed. But we can check that manually by
+			//       querying the `Pending` storage of the pallet-ethereum.
+			let pending = pallet_ethereum::Pending::<T>::get();
+			let (_, _, receipt) = pending.last().ok_or(DispatchError::Other(
+				"Ethereum not adding pending storage. Unexpected.",
+			))?;
+
+			if Pallet::<T>::valid_code(receipt) {
+				Ok(info)
+			} else {
+				Err(Error::<T>::EvmExecutionFailed.into())
+			}
 		}
 	}
 }

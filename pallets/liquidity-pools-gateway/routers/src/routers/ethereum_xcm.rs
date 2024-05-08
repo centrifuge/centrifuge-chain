@@ -10,9 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_traits::liquidity_pools::Codec;
-use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Bytes, Contract};
-use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
+use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	sp_runtime::DispatchError,
+};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
@@ -43,7 +46,7 @@ where
 
 	/// Encodes the message to the required format and executes the
 	/// call via the XCM router.
-	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
+	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResultWithPostInfo {
 		let contract_call = get_encoded_contract_call(msg.serialize())
 			.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
 

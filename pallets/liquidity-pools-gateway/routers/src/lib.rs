@@ -9,6 +9,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Liquidity Pools Gateway Routers
+//!
+//! This crate contains the `DomainRouters` used by the Liquidity Pools Gateway
+//! pallet.
+//!
+//! The routers can be used to communicate with:
+//!
+//! Axelar - via EVM and XCM (through Moonbeam).
+//!
+//! Moonbeam - via XCM.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // polkadot/blob/19f6665a6162e68cd2651f5fe3615d6676821f90/xcm/src/v3/mod.rs#
@@ -28,22 +39,21 @@ pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
 pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
 
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, Weight},
+	dispatch::PostDispatchInfo,
 	ensure,
+	pallet_prelude::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	traits::OriginTrait,
+	weights::Weight,
 };
 use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
-use xcm::{
-	latest::{MultiLocation, OriginKind},
-	VersionedMultiLocation,
-};
+use staging_xcm::{latest::OriginKind, VersionedMultiLocation};
 
 #[cfg(test)]
 mod mock;
@@ -113,7 +123,7 @@ where
 		}
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
 			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
@@ -159,12 +169,9 @@ where
 	/// pallet, this EVM address will be converted back into a substrate account
 	/// which will be charged for the transaction. This converted substrate
 	/// account is not the same as the original account.
-	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResult {
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
 
-		// TODO(cdamian): This returns a `DispatchResultWithPostInfo`. Should we
-		// propagate that to another layer that will eventually charge for the
-		// weight in the PostDispatchInfo?
 		<pallet_ethereum_transaction::Pallet<T> as EthereumTransactor>::call(
 			sender_evm_address,
 			self.evm_domain.target_contract_address,
@@ -173,9 +180,6 @@ where
 			self.evm_domain.fee_values.gas_price,
 			self.evm_domain.fee_values.gas_limit,
 		)
-		.map_err(|e| e.error)?;
-
-		Ok(())
 	}
 }
 
@@ -231,7 +235,7 @@ where
 
 	/// Encodes the message to the required format and executes the
 	/// call via the XCM transactor pallet.
-	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResult {
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
@@ -257,7 +261,10 @@ where
 			true,
 		)?;
 
-		Ok(())
+		Ok(PostDispatchInfo {
+			actual_weight: Some(self.xcm_domain.overall_weight),
+			pays_fee: Default::default(),
+		})
 	}
 }
 
@@ -293,7 +300,7 @@ where
 
 /// XcmDomain gathers all the required fields to build and send remote
 /// calls to a specific XCM-based Domain.
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct XcmDomain<CurrencyId> {
 	/// The XCM multilocation of the domain.
 	pub location: Box<VersionedMultiLocation>,
@@ -335,33 +342,4 @@ pub struct XcmTransactInfo {
 	pub transact_extra_weight: Weight,
 	pub max_weight: Weight,
 	pub transact_extra_weight_signed: Option<Weight>,
-}
-
-/// NOTE: Remove this custom implementation once the following underlying data
-/// implements MaxEncodedLen:
-/// * Polkadot Repo: xcm::VersionedMultiLocation
-/// * PureStake Repo: pallet_xcm_transactor::Config<Self = T>::CurrencyId
-impl<CurrencyId> MaxEncodedLen for XcmDomain<CurrencyId>
-where
-	XcmDomain<CurrencyId>: Encode,
-{
-	fn max_encoded_len() -> usize {
-		// The domain's `VersionedMultiLocation` (custom bound)
-		MultiLocation::max_encoded_len()
-			// From the enum wrapping of `VersionedMultiLocation` for the XCM domain location.
-			.saturating_add(1)
-			// From the enum wrapping of `VersionedMultiLocation` for the asset fee location.
-			.saturating_add(1)
-			// The ethereum xcm call index (default bound)
-			.saturating_add(BoundedVec::<
-				u8,
-				ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
-			>::max_encoded_len())
-			// The contract address (default bound)
-			.saturating_add(H160::max_encoded_len())
-			// The fee currency (custom bound)
-			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
-			// The XcmTransactInfo
-			.saturating_add(XcmTransactInfo::max_encoded_len())
-	}
 }

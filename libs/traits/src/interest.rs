@@ -1,6 +1,10 @@
 use cfg_primitives::SECONDS_PER_YEAR;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::DispatchResult, scale_info::TypeInfo, Parameter, RuntimeDebug};
+use frame_support::{
+	dispatch::DispatchResult,
+	pallet_prelude::{RuntimeDebug, TypeInfo},
+	Parameter,
+};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_arithmetic::{
 	traits::{EnsureAdd, EnsureDiv, EnsureSub},
 	ArithmeticError, FixedPointNumber,

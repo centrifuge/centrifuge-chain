@@ -13,8 +13,9 @@
 //! Mocks of traits for usage in pallet-tests.
 //! Also does contain implementations for Substrate based traits for testing
 
-pub mod accountant;
-pub mod authority_origin;
 pub mod nav;
-pub mod order_manager;
 pub mod orml_asset_registry;
+
+// README! Before adding a mock here,
+// evaluate first if the mock can be built using mock-builder under
+// `cfg-mocks` crate.

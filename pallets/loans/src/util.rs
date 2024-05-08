@@ -11,69 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	changes::ChangeGuard,
-	data::{DataCollection, DataRegistry},
-};
-use orml_traits::{DataFeeder, DataProvider};
-use sp_runtime::{DispatchError, DispatchResult};
+use cfg_traits::changes::ChangeGuard;
+use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
 
-use crate::{
-	entities::changes::Change,
-	pallet::{Config, PriceOf},
-};
-
-const DEFAULT_PRICE_ERR: DispatchError =
-	DispatchError::Other("No configured price registry for pallet-loans");
-
-/// Type used to configure the pallet without a price registry
-pub struct NoPriceRegistry<T>(PhantomData<T>);
-
-impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
-	type Collection = NoPriceCollection<T>;
-	type Data = PriceOf<T>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
-
-	fn get(_: &T::PriceId, _: &T::PoolId) -> Result<Self::Data, DispatchError> {
-		Err(DEFAULT_PRICE_ERR)
-	}
-
-	fn collection(_: &T::PoolId) -> Self::Collection {
-		NoPriceCollection(PhantomData)
-	}
-
-	fn register_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {
-		Err(DEFAULT_PRICE_ERR)
-	}
-
-	fn unregister_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {
-		Err(DEFAULT_PRICE_ERR)
-	}
-}
-
-impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
-	fn get(_: &T::PriceId) -> Option<T::Rate> {
-		None
-	}
-}
-
-impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
-	fn feed_value(_: Option<T::AccountId>, _: T::PriceId, _: T::Rate) -> DispatchResult {
-		Err(DEFAULT_PRICE_ERR)
-	}
-}
-
-pub struct NoPriceCollection<T>(PhantomData<T>);
-
-impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
-	type Data = PriceOf<T>;
-
-	fn get(&self, _: &T::PriceId) -> Result<Self::Data, DispatchError> {
-		Err(DEFAULT_PRICE_ERR)
-	}
-}
+use crate::{entities::changes::Change, pallet::Config};
 
 const DEFAULT_CHANGE_ERR: DispatchError =
 	DispatchError::Other("No configured change system for pallet-loans");

@@ -1,20 +1,25 @@
 use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
-use cfg_types::ParaId;
-use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
+	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
-	traits::GenesisBuild,
+	storage::{transactional, TransactionOutcome},
 };
+use frame_system::LastRuntimeUpgradeInfo;
+use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, H256};
-use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, Storage};
+use sp_core::{sr25519::Public, Get, H256};
+use sp_runtime::{
+	traits::Extrinsic,
+	transaction_validity::{InvalidTransaction, TransactionValidityError},
+	Digest, DigestItem, DispatchError, Storage,
+};
 use sp_timestamp::Timestamp;
 
 use crate::{
@@ -31,7 +36,6 @@ pub struct RuntimeEnv<T: Runtime> {
 	parachain_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
-	pending_xcm: Vec<(ParaId, Vec<u8>)>,
 	_config: PhantomData<T>,
 }
 
@@ -47,37 +51,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	}
 
 	fn from_storage(
-		mut _relay_storage: Storage,
-		mut parachain_storage: Storage,
-		mut sibling_storage: Storage,
+		_relay_storage: Storage,
+		parachain_storage: Storage,
+		sibling_storage: Storage,
 	) -> Self {
-		// Needed for the aura usage
-		pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Public([0; 32]))],
-		}
-		.assimilate_storage(&mut parachain_storage)
-		.unwrap();
-
-		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
-
-		parachain_ext.execute_with(|| Self::prepare_block(1));
-
-		// Needed for the aura usage
-		pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Public([0; 32]))],
-		}
-		.assimilate_storage(&mut sibling_storage)
-		.unwrap();
-
-		let mut sibling_ext = sp_io::TestExternalities::new(sibling_storage);
-
-		sibling_ext.execute_with(|| Self::prepare_block(1));
-
 		Self {
-			parachain_ext: Rc::new(RefCell::new(parachain_ext)),
-			sibling_ext: Rc::new(RefCell::new(sibling_ext)),
+			parachain_ext: Self::build_externality(parachain_storage),
+			sibling_ext: Self::build_externality(sibling_storage),
 			pending_extrinsics: Vec::default(),
-			pending_xcm: Vec::default(),
 			_config: PhantomData,
 		}
 	}
@@ -87,12 +68,27 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		who: Keyring,
 		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
+		let call: T::RuntimeCallExt = call.into();
+		let info = self.parachain_state(|| call.get_dispatch_info());
+
 		let extrinsic = self.parachain_state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
+		let len = extrinsic.encoded_size();
 
-		self.parachain_state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
+		self.parachain_state_mut(|| {
+			let res = T::Api::apply_extrinsic(extrinsic);
+			// NOTE: This is our custom error that we are having in the
+			//       `PreBalanceTransferExtension` SignedExtension, so we need to
+			//        catch that here.
+			if let Err(TransactionValidityError::Invalid(InvalidTransaction::Custom(255))) = res {
+				Ok(Ok(()))
+			} else {
+				res
+			}
+			.unwrap()
+		})?;
 
 		let fee = self
 			.find_event(|e| match e {
@@ -101,7 +97,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 				}
 				_ => None,
 			})
-			.unwrap();
+			.unwrap_or_else(|| {
+				self.parachain_state(|| {
+					pallet_transaction_payment::Pallet::<T>::compute_fee(len as u32, &info, 0)
+				})
+			});
 
 		Ok(fee)
 	}
@@ -129,13 +129,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.parachain_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 
@@ -145,13 +146,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.sibling_ext.borrow_mut().execute_with(|| {
-			let version = frame_support::StateVersion::V1;
-			let hash = frame_support::storage_root(version);
+			transactional::with_transaction(|| {
+				let result = f();
 
-			let result = f();
-
-			assert_eq!(hash, frame_support::storage_root(version));
-			result
+				// We do not want to apply any changes, because this is inmutable
+				// only check if there is no error in applying it.
+				TransactionOutcome::Rollback(Ok::<_, DispatchError>(result))
+			})
+			.expect("Rollback result is always Ok")
 		})
 	}
 
@@ -165,6 +167,27 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 }
 
 impl<T: Runtime> RuntimeEnv<T> {
+	fn build_externality(storage: Storage) -> Rc<RefCell<sp_io::TestExternalities>> {
+		let mut ext = sp_io::TestExternalities::new(storage);
+
+		ext.execute_with(|| {
+			// NOTE: Setting the current on-chain runtime version to the latest one, to
+			//       prevent running migrations
+			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
+				<T as frame_system::Config>::Version::get(),
+			));
+
+			// If no authorities we set a default authority
+			if pallet_aura::Pallet::<T>::authorities().is_empty() {
+				pallet_aura::Pallet::<T>::initialize_authorities(&[AuraId::from(Public([0; 32]))]);
+			}
+
+			Self::prepare_block(1);
+		});
+
+		Rc::new(RefCell::new(ext))
+	}
+
 	fn process_pending_extrinsics(&mut self) {
 		let pending_extrinsics = mem::replace(&mut self.pending_extrinsics, Vec::default());
 
@@ -251,6 +274,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 	}
 }
 
+#[cfg(test)]
 mod tests {
 	use cfg_primitives::CFG;
 

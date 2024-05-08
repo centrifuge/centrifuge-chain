@@ -9,12 +9,12 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-//! # Pallet-Restricted-Xtokens Module
+//
+//! # Restricted Xtokens Pallet
 //!
 //! ## Overview
 //!
-//! This pallet is a wrapper pallet over `orml-xtokens` and allows the runtime
+//! This pallet is a wrapper pallet over `orml-xtokens` which allows the runtime
 //! to create arbitrary filters for transfers of x-chain-transfers.
 //! The interface mimic 1-to-1 the interface of `orml-xtokens`.
 //!
@@ -46,7 +46,9 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::XtokensWeightInfo;
 pub use pallet::*;
 use sp_std::{boxed::Box, vec::Vec};
-use xcm::{v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation};
+use staging_xcm::{
+	v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
+};
 
 pub enum TransferEffects<AccountId, CurrencyId, Balance> {
 	Transfer {

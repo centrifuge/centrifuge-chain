@@ -24,7 +24,7 @@ alice_p2p_port="30333"
 alice_rpc_port="9944"
 bob_p2p_port="30344"
 bob_rpc_port="9945"
-chain="${RELAY_CHAIN_SPEC:-./res/rococo-local.json}"
+chain="${RELAY_CHAIN_SPEC:-./node/res/rococo-local.json}"
 
 
 get_id () {

@@ -9,34 +9,40 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
+use cfg_mocks::{pallet_mock_change_guard, pallet_mock_pre_conditions};
+use cfg_primitives::{
+	Balance, BlockNumber, CollectionId, PoolFeeId, PoolId, TrancheId, SECONDS_PER_YEAR,
+};
 pub use cfg_primitives::{PoolEpochId, TrancheWeight};
 use cfg_traits::{
+	fee::PoolFeeBucket,
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds,
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
+	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Encode;
 use frame_support::{
-	assert_ok, parameter_types,
-	sp_std::marker::PhantomData,
-	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
-	Blake2_128, StorageHasher,
+	assert_ok, derive_impl, parameter_types,
+	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	Blake2_128, PalletId, StorageHasher,
 };
-use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
+use parity_scale_codec::Encode;
+use sp_arithmetic::FixedPointNumber;
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup, Zero},
+	traits::{ConstU128, Zero},
+	BuildStorage,
 };
+use sp_std::marker::PhantomData;
 
 use crate::{
 	self as pallet_pool_system,
@@ -44,32 +50,111 @@ use crate::{
 	Config, DispatchResult,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
-pub type MockAccountId = u64;
+pub type AccountId = u64;
 
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
+pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
+pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
+pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
+pub const START_DATE: u64 = 1640991600; // 2022.01.01
+pub const SECONDS: u64 = 1000;
+
+pub const DEFAULT_POOL_ID: PoolId = 0;
+pub const DEFAULT_POOL_OWNER: AccountId = 10;
+pub const DEFAULT_POOL_MAX_RESERVE: Balance = 10_000 * CURRENCY;
+
+pub const DEFAULT_FEE_EDITOR: PoolFeeEditor<AccountId> = PoolFeeEditor::Account(100);
+pub const DEFAULT_FEE_DESTINATION: AccountId = 101;
+pub const POOL_FEE_FIXED_RATE_MULTIPLIER: u64 = SECONDS_PER_YEAR / 12;
+pub const POOL_FEE_CHARGED_AMOUNT_PER_SECOND: Balance = 1000;
+
+pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
+	vec![
+		PoolFeeInfoOf::<Runtime> {
+			destination: DEFAULT_FEE_DESTINATION,
+			editor: DEFAULT_FEE_EDITOR,
+			fee_type: PoolFeeType::Fixed {
+				// For simplicity, we take 10% per block to simulate fees on a per-block basis
+				// because advancing one full year takes too long
+				limit: PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(
+					POOL_FEE_FIXED_RATE_MULTIPLIER,
+					10,
+				)),
+			},
+		},
+		PoolFeeInfoOf::<Runtime> {
+			destination: DEFAULT_FEE_DESTINATION,
+			editor: DEFAULT_FEE_EDITOR,
+			fee_type: PoolFeeType::ChargedUpTo {
+				limit: PoolFeeAmount::AmountPerSecond(POOL_FEE_CHARGED_AMOUNT_PER_SECOND),
+			},
+		},
+	]
+}
+
+pub fn assert_pending_fees(
+	pool_id: PoolId,
+	fees: Vec<PoolFeeInfoOf<Runtime>>,
+	pending_disbursement_payable: Vec<(Balance, Balance, Option<Balance>)>,
+) {
+	let active_fees = pallet_pool_fees::ActiveFees::<Runtime>::get(pool_id, PoolFeeBucket::Top);
+
+	assert_eq!(fees.len(), pending_disbursement_payable.len());
+	assert_eq!(fees.len(), active_fees.len());
+
+	for i in 0..fees.len() {
+		let active_fee = active_fees.get(i).unwrap();
+		let fee = fees.get(i).unwrap();
+		let (pending, disbursement, payable) = pending_disbursement_payable.get(i).unwrap();
+
+		assert_eq!(active_fee.destination, fee.destination);
+		assert_eq!(active_fee.editor, fee.editor);
+		assert_eq!(active_fee.amounts.fee_type, fee.fee_type);
+		assert_eq!(active_fee.amounts.pending, *pending);
+		assert_eq!(active_fee.amounts.disbursement, *disbursement);
+		assert!(match fee.fee_type {
+			PoolFeeType::ChargedUpTo { .. } => matches!(
+				active_fee.amounts.payable,
+				cfg_types::pools::PayableFeeAmount::UpTo(p) if p == payable.unwrap()
+			),
+			_ => payable.is_none(),
+		});
+	}
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
-		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>},
-		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Storage, Event<T>},
-		ParachainInfo: parachain_info::{Pallet, Storage},
-		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+	pub enum Runtime {
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		Tokens: pallet_restricted_tokens,
+		OrmlTokens: orml_tokens,
+		PoolSystem: pallet_pool_system,
+		FakeNav: cfg_test_utils::mocks::nav,
+		Permissions: pallet_permissions,
+		Balances: pallet_balances,
+		Investments: pallet_investments,
+		MockChangeGuard: pallet_mock_change_guard,
+		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
+		PoolFees: pallet_pool_fees,
 	}
 );
+
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+impl frame_system::Config for Runtime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
+}
+
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+	type Balance = Balance;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU128<1>;
+	type RuntimeHoldReason = ();
+}
 
 parameter_types! {
 	pub const One: u64 = 1;
@@ -95,38 +180,6 @@ impl SortedMembers<u64> for One {
 	}
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const SS58Prefix: u8 = 42;
-}
-
-impl system::Config for Runtime {
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = MockAccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = BlockHashCount;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = ();
-	type Version = ();
-}
-
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = Millis;
@@ -138,28 +191,6 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
-}
-
-// Parameterize balances pallet
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-}
-
-// Implement balances pallet configuration for mock runtime
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -185,7 +216,8 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
-	CustomMetadata
+	CustomMetadata,
+	StringLimit
 }
 
 parameter_types! {
@@ -257,8 +289,8 @@ where
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
-	type Id = cfg_types::investments::ForeignInvestmentInfo<MockAccountId, TrancheCurrency, ()>;
-	type Status = cfg_types::investments::CollectedAmount<Balance>;
+	type Id = (AccountId, TrancheCurrency);
+	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
 		Ok(())
@@ -290,6 +322,42 @@ impl<T> PreConditions<T> for Always {
 	}
 }
 
+impl pallet_mock_change_guard::Config for Runtime {
+	type Change = pallet_pool_fees::types::Change<Runtime>;
+	type ChangeId = H256;
+	type PoolId = PoolId;
+}
+
+impl pallet_mock_pre_conditions::Config for Runtime {
+	type Conditions = (AccountId, PoolId);
+	type Result = bool;
+}
+
+parameter_types! {
+	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_FEES_PER_POOL;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = MockChangeGuard;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type IsPoolAdmin = MockIsAdmin;
+	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = PoolFeesPalletId;
+	type PoolId = PoolId;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = pallet_pool_fees::types::Change<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
@@ -312,16 +380,14 @@ parameter_types! {
 	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenNameLength: u32 = 128;
-
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 32;
+	pub const StringLimit: u32 = 128;
 
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
 impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
+	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -332,23 +398,24 @@ impl Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxTokenNameLength = MaxTokenNameLength;
-	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = FakeNav;
+	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = PoolChangeProposal;
 	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = StringLimit;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -382,8 +449,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		u64,
 		MaxTranches,
 	>;
-	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate, StringLimit, MaxTranches>;
 
 	fn released(
 		pool: &Self::PoolDetails,
@@ -418,8 +484,6 @@ impl cfg_test_utils::mocks::nav::Config for Runtime {
 	type PoolId = PoolId;
 }
 
-pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
-
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
 	Blake2_128::hash(&hash_input)
@@ -429,24 +493,17 @@ parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
 }
-pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
-pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
-pub const START_DATE: u64 = 1640991600; // 2022.01.01
-pub const SECONDS: u64 = 1000;
-
-pub const DEFAULT_POOL_ID: PoolId = 0;
-pub const DEFAULT_POOL_OWNER: MockAccountId = 10;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+	let mut t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
 		.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..20)
 			.into_iter()
-			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, 2000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
@@ -466,8 +523,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			AUSD_CURRENCY_ID,
 			AssetMetadata {
 				decimals: 12,
-				name: "MOCK AUSD".as_bytes().to_vec(),
-				symbol: "MckAUSD".as_bytes().to_vec(),
+				name: Vec::from(b"MOCK AUSD").try_into().unwrap(),
+				symbol: Vec::from(b"MckAUSD").try_into().unwrap(),
 				existential_deposit: 0,
 				location: None,
 				additional: CustomMetadata {
@@ -551,10 +608,7 @@ pub fn test_nav_update(pool_id: u64, amount: Balance, now: Seconds) {
 }
 
 /// Assumes externalities are available
-pub fn invest_close_and_collect(
-	pool_id: u64,
-	investments: Vec<(MockAccountId, TrancheId, Balance)>,
-) {
+pub fn invest_close_and_collect(pool_id: u64, investments: Vec<(AccountId, TrancheId, Balance)>) {
 	for (account, tranche_id, investment) in investments.clone() {
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(account),

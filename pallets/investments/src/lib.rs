@@ -10,7 +10,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
+//! # Investments Pallet
+//!
+//! Provides orders for assets and allows user to collect these orders.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::OrderId;
@@ -20,10 +23,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	investments::{
-		CollectedAmount, ForeignInvestmentInfo, InvestCollection, InvestmentAccount,
-		RedeemCollection,
-	},
+	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
@@ -104,7 +104,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_types::investments::{ForeignInvestmentInfo, InvestmentInfo};
+	use cfg_types::investments::InvestmentInfo;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -174,8 +174,8 @@ pub mod pallet {
 		/// NOTE: NOOP if the investment is not foreign.
 		type CollectedInvestmentHook: StatusNotificationHook<
 			Error = DispatchError,
-			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
-			Status = CollectedAmount<Self::Amount>,
+			Id = (Self::AccountId, Self::InvestmentId),
+			Status = CollectedAmount<Self::Amount, Self::Amount>,
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled order
@@ -183,8 +183,8 @@ pub mod pallet {
 		/// NOTE: NOOP if the redemption is not foreign.
 		type CollectedRedemptionHook: StatusNotificationHook<
 			Error = DispatchError,
-			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
-			Status = CollectedAmount<Self::Amount>,
+			Id = (Self::AccountId, Self::InvestmentId),
+			Status = CollectedAmount<Self::Amount, Self::Amount>,
 		>;
 
 		/// The weight information for this pallet extrinsics.
@@ -632,7 +632,7 @@ impl<T: Config> Pallet<T> {
 			&who,
 			investment_id,
 			|maybe_order| -> Result<
-				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				(CollectedAmount<T::Amount, T::Amount>, PostDispatchInfo),
 				DispatchErrorWithPostInfo,
 			> {
 				// Exit early if order does not exist
@@ -734,11 +734,7 @@ impl<T: Config> Pallet<T> {
 		if collected_investment != Default::default() {
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedInvestmentHook::notify_status_change(
-				ForeignInvestmentInfo {
-					owner: who,
-					id: investment_id,
-					last_swap_reason: None,
-				},
+				(who, investment_id),
 				collected_investment,
 			)?;
 		}
@@ -756,7 +752,7 @@ impl<T: Config> Pallet<T> {
 			&who,
 			investment_id,
 			|maybe_order| -> Result<
-				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				(CollectedAmount<T::Amount, T::Amount>, PostDispatchInfo),
 				DispatchErrorWithPostInfo,
 			> {
 				// Exit early if order does not exist
@@ -869,11 +865,7 @@ impl<T: Config> Pallet<T> {
 		if collected_redemption != Default::default() {
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedRedemptionHook::notify_status_change(
-				ForeignInvestmentInfo {
-					owner: who,
-					id: investment_id,
-					last_swap_reason: None,
-				},
+				(who, investment_id),
 				collected_redemption,
 			)?;
 		}
@@ -1098,6 +1090,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
+	type TrancheAmount = T::Amount;
 
 	fn update_investment(
 		who: &T::AccountId,
@@ -1105,15 +1098,6 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error> {
 		Pallet::<T>::do_update_investment(who.clone(), investment_id, amount)
-	}
-
-	fn accepted_payment_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool {
-		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency == currency)
-			.unwrap_or(false)
 	}
 
 	fn investment(
@@ -1127,24 +1111,15 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	fn update_redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::TrancheAmount,
 	) -> Result<(), Self::Error> {
 		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
-	}
-
-	fn accepted_payout_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool {
-		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency == currency)
-			.unwrap_or(false)
 	}
 
 	fn redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error> {
+	) -> Result<Self::TrancheAmount, Self::Error> {
 		Ok(RedeemOrders::<T>::get(who, investment_id)
 			.map_or_else(Zero::zero, |order| order.amount()))
 	}

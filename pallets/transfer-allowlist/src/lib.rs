@@ -9,17 +9,21 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-#![cfg_attr(not(feature = "std"), no_std)]
-
-//! This module checks whether an account should be allowed to make a transfer
+//
+//! # Transfer Allowlist Pallet
+//!
+//! This pallet checks whether an account should be allowed to make a transfer
 //! to a receiving location with a specific currency.
+//!
 //! If there are no allowances specified, then the account is assumed to be
 //! allowed to send to any location without restrictions.
-//! However once an allowance for a sender to a specific recieving location and
+//!
+//! However, once an allowance for a sender to a specific receiving location and
 //! currency is made, /then/ transfers from the sending account are restricted
 //! for that currency to:
 //! - the account(s) for which allowances have been made
 //! - the block range specified in the allowance
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -40,7 +44,6 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{
@@ -51,6 +54,7 @@ pub mod pallet {
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
+	use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::{
 		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub},
@@ -64,16 +68,16 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
-	/// AllowanceDetails where `BlockNumber` is of type T::BlockNumber
-	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
+	/// AllowanceDetails where `BlockNumber` is of type `BlockNumberFor<T>`
+	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberFor<T>>;
 
-	/// Resons for holding as defined by the fungible::hold::Inspect trait
+	/// Resons for holding as defined by the `fungible::hold::Inspect` trait
 	pub type ReasonOf<T> = <<T as Config>::ReserveCurrency as fungible::hold::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Reason;
 
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -84,13 +88,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type CurrencyId: AssetId + Parameter + Member + Copy + Default;
-
-		// We need this to block restrictions on the native chain currency as
-		// currently it is impossible to place transfer restrictions
-		// on native currencies as we simply have no way of
-		// restricting pallet-balances...
-		type NativeCurrency: Get<Self::CurrencyId>;
+		type CurrencyId: AssetId + Parameter + Member + Copy;
 
 		/// Currency for holding/unholding with allowlist adding/removal,
 		/// given that the allowlist will be in storage
@@ -184,14 +182,14 @@ pub mod pallet {
 	/// Storage item containing number of allowances set, delay for sending
 	/// account/currency, and block number delay is modifiable at. Contains an
 	/// instance of AllowanceMetadata with allowance count as `u64`,
-	/// current_delay as `Option<T::BlockNumber>`, and modifiable_at as
-	/// `Option<T::BlockNumber>`. If a delay is set, but no allowances have been
-	/// created, `allowance_count` will be set to `0`. A double map is used here
-	/// as we need to know whether there is a restriction set for the account
-	/// and currency in the case where there is no allowance for destination
-	/// location. Using an StorageNMap would not allow us to look up whether
-	/// there was a restriction for the sending account and currency, given
-	/// that:
+	/// current_delay as `Option<BlockNumberFor<T>>`, and modifiable_at as
+	/// `Option<BlockNumberFor<T>>`. If a delay is set, but no allowances have
+	/// been created, `allowance_count` will be set to `0`. A double map is used
+	/// here as we need to know whether there is a restriction set for the
+	/// account and currency in the case where there is no allowance for
+	/// destination location. Using an StorageNMap would not allow us to look up
+	/// whether there was a restriction for the sending account and currency,
+	/// given that:
 	/// - we're checking whether there's an allowance specified for the receiver
 	///   location
 	///   - we would only find whether a restriction was set for the account in
@@ -211,7 +209,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::CurrencyId,
-		AllowanceMetadata<T::BlockNumber>,
+		AllowanceMetadata<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
@@ -226,7 +224,7 @@ pub mod pallet {
 			NMapKey<Twox64Concat, T::CurrencyId>,
 			NMapKey<Blake2_128Concat, T::Location>,
 		),
-		AllowanceDetails<T::BlockNumber>,
+		AllowanceDetails<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
@@ -256,8 +254,6 @@ pub mod pallet {
 		/// Transfer from sending account and currency not allowed to
 		/// destination
 		NoAllowanceForDestination,
-		/// Native currency can not be restricted with allowances
-		NativeCurrencyNotRestrictable,
 	}
 
 	#[pallet::event]
@@ -268,16 +264,16 @@ pub mod pallet {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 			receiver: T::Location,
-			allowed_at: T::BlockNumber,
-			blocked_at: T::BlockNumber,
+			allowed_at: BlockNumberFor<T>,
+			blocked_at: BlockNumberFor<T>,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowanceRemoved {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 			receiver: T::Location,
-			allowed_at: T::BlockNumber,
-			blocked_at: T::BlockNumber,
+			allowed_at: BlockNumberFor<T>,
+			blocked_at: BlockNumberFor<T>,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowancePurged {
@@ -289,19 +285,19 @@ pub mod pallet {
 		TransferAllowanceDelayAdd {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		},
 		/// Event for Allowance delay update
 		TransferAllowanceDelayUpdate {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		},
 		/// Event for Allowance delay future modification allowed
 		ToggleTransferAllowanceDelayFutureModifiable {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			modifiable_once_after: Option<T::BlockNumber>,
+			modifiable_once_after: Option<BlockNumberFor<T>>,
 		},
 		/// Event for Allowance delay removal
 		TransferAllowanceDelayPurge {
@@ -331,11 +327,6 @@ pub mod pallet {
 			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-
-			ensure!(
-				currency_id != T::NativeCurrency::get(),
-				Error::<T>::NativeCurrencyNotRestrictable
-			);
 
 			let allowance_details = match Self::get_account_currency_restriction_count_delay(
 				&account_id,
@@ -469,7 +460,7 @@ pub mod pallet {
 		pub fn add_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let count_delay = match Self::get_account_currency_restriction_count_delay(
@@ -513,7 +504,7 @@ pub mod pallet {
 		pub fn update_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -766,24 +757,28 @@ pub mod pallet {
 			send: T::AccountId,
 			receive: Self::Location,
 			currency: T::CurrencyId,
-		) -> DispatchResult {
+		) -> Result<Option<Self::Location>, DispatchError> {
 			match Self::get_account_currency_restriction_count_delay(&send, currency) {
 				Some(AllowanceMetadata {
 					allowance_count: count,
 					..
 				}) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						receive.clone(),
+					)) {
 						Some(AllowanceDetails {
 							allowed_at,
 							blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(()),
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(Some(receive)),
 						_ => Err(DispatchError::from(Error::<T>::NoAllowanceForDestination)),
 					}
 				}
 				// In this case no allowances are set for the sending account & currency,
 				// therefore no restrictions should be in place.
-				_ => Ok(()),
+				_ => Ok(None),
 			}
 		}
 	}

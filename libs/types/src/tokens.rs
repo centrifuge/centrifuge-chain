@@ -14,22 +14,25 @@ use core::marker::PhantomData;
 
 use cfg_primitives::{
 	types::{PoolId, TrancheId},
-	Balance, PalletIndex,
+	Balance,
 };
-use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
-use codec::{Decode, Encode, MaxEncodedLen};
-pub use orml_asset_registry::AssetMetadata;
+use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
+use orml_traits::asset_registry;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
-use xcm::{
-	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
-	v3::{MultiLocation, NetworkId},
-	VersionedMultiLocation,
-};
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
+
+pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
+
+frame_support::parameter_types! {
+	#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const AssetStringLimit: u32 = MAX_ASSET_STRING_LIMIT;
+}
+
+pub type AssetMetadata = asset_registry::AssetMetadata<Balance, CustomMetadata, AssetStringLimit>;
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -52,8 +55,9 @@ use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	#[default]
@@ -64,9 +68,9 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
+	/// DEPRECATED - Will be removed in the next Altair RU 1034 when the
+	/// orml_tokens' balances are migrated to the new CurrencyId for AUSD.
 	#[codec(index = 3)]
-	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once
-	/// the orml_tokens' balances are migrated to the new CurrencyId for AUSD.
 	AUSD,
 
 	/// A foreign asset
@@ -76,12 +80,62 @@ pub enum CurrencyId {
 	/// A staking currency
 	#[codec(index = 5)]
 	Staking(StakingCurrency),
+
+	/// A local asset
+	#[codec(index = 6)]
+	LocalAsset(LocalAssetId),
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct LocalAssetId(pub u32);
+
+impl From<LocalAssetId> for CurrencyId {
+	fn from(value: LocalAssetId) -> Self {
+		Self::LocalAsset(value)
+	}
+}
+
+impl TryFrom<CurrencyId> for LocalAssetId {
+	type Error = ();
+
+	fn try_from(value: CurrencyId) -> Result<Self, Self::Error> {
+		if let CurrencyId::LocalAsset(local) = value {
+			Ok(local)
+		} else {
+			Err(())
+		}
+	}
+}
+
+#[derive(
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+)]
 pub enum StakingCurrency {
 	/// An emulated internal, non-transferable currency
 	/// Its issuance and holding is handled inherently
@@ -183,9 +237,20 @@ where
 /// enables us to use the `TrancheCurrency` type separately where solely this
 /// enum variant would be relevant. Most notably, in the `struct Tranche`.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
 	pub pool_id: PoolId,
 	pub tranche_id: TrancheId,
@@ -216,8 +281,9 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 
 /// A type describing our custom additional metadata stored in the
 /// OrmlAssetRegistry.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
+	Serialize,
+	Deserialize,
 	Clone,
 	Copy,
 	Default,
@@ -248,6 +314,11 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
+
+	/// Whether an asset has a local representation. Usually, this means that we
+	/// are receiving the same asset from multiple domains and unify the asset
+	/// under a common local representation.
+	pub local_representation: Option<LocalAssetId>,
 }
 
 /// The Cross Chain Transferability property of an asset describes the way(s),
@@ -270,8 +341,9 @@ pub struct CustomMetadata {
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CrossChainTransferability {
 	/// The asset is not transferable cross-chain
 	#[default]
@@ -282,18 +354,15 @@ pub enum CrossChainTransferability {
 
 	/// The asset is only transferable through Centrifuge Liquidity Pools
 	LiquidityPools,
-
-	/// The asset is transferable through all available options
-	All(XcmMetadata),
 }
 
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
-		matches!(self, Self::Xcm(..) | Self::All(..))
+		matches!(self, Self::Xcm(..))
 	}
 
 	pub fn includes_liquidity_pools(self) -> bool {
-		matches!(self, Self::LiquidityPools | Self::All(..))
+		matches!(self, Self::LiquidityPools)
 	}
 }
 
@@ -303,9 +372,20 @@ impl CrossChainTransferability {
 /// therefore we only support EVM tokens. In the far future, we might support
 /// wrapped tokens from other chains such as Cosmos based ones.
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {
@@ -324,9 +404,49 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 	}
 }
 
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub enum FilterCurrency {
+	All,
+	Specific(CurrencyId),
+}
+
+impl From<CurrencyId> for FilterCurrency {
+	fn from(value: CurrencyId) -> Self {
+		Self::Specific(value)
+	}
+}
+
+impl<AssetInspect> HasLocalAssetRepresentation<AssetInspect> for CurrencyId
+where
+	AssetInspect: orml_traits::asset_registry::Inspect<
+		AssetId = CurrencyId,
+		Balance = Balance,
+		CustomMetadata = CustomMetadata,
+	>,
+{
+	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError> {
+		let meta_local = AssetInspect::metadata(self).ok_or(DispatchError::CannotLookup)?;
+		let meta_variant =
+			AssetInspect::metadata(variant_currency).ok_or(DispatchError::CannotLookup)?;
+
+		if let Some(local) = meta_variant.additional.local_representation {
+			frame_support::ensure!(
+				meta_local.decimals == meta_variant.decimals,
+				DispatchError::Other("Mismatching decimals")
+			);
+
+			Ok(self == &local.into())
+		} else {
+			Ok(false)
+		}
+	}
+}
+
 pub mod before {
 	use cfg_primitives::{PoolId, TrancheId};
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 
 	use crate::tokens::{ForeignAssetId, StakingCurrency};
@@ -366,20 +486,24 @@ pub mod before {
 }
 
 pub mod usdc {
-	use sp_std::vec::Vec;
-
 	use super::*;
 
 	pub const MIN_SWAP_ORDER_AMOUNT: Balance = 10_000_000;
 	pub const DECIMALS: u32 = 6;
 	pub const EXISTENTIAL_DEPOSIT: Balance = 1000;
 
+	pub const CURRENCY_ID_AXELAR: CurrencyId = CurrencyId::ForeignAsset(2);
 	pub const CURRENCY_ID_DOT_NATIVE: CurrencyId = CurrencyId::ForeignAsset(6);
 	pub const CURRENCY_ID_LP_ETH: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_ETH_GOERLI: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_BASE: CurrencyId = CurrencyId::ForeignAsset(100_002);
 	pub const CURRENCY_ID_LP_ARB: CurrencyId = CurrencyId::ForeignAsset(100_003);
-	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_004);
+
+	pub const CURRENCY_ID_LP_CELO_WORMHOLE: CurrencyId = CurrencyId::ForeignAsset(100_004);
+	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_006);
+
+	pub const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
+	pub const CURRENCY_ID_LOCAL: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID);
 
 	pub const CHAIN_ID_ETHEREUM_MAINNET: EVMChainId = 1;
 	pub const CHAIN_ID_ETH_GOERLI_TESTNET: EVMChainId = 5;
@@ -397,42 +521,6 @@ pub mod usdc {
 		hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
 	pub const CONTRACT_CELO: [u8; 20] =
 		hex_literal::hex!("37f750B7cC259A2f741AF45294f6a16572CF5cAd");
-
-	/// The metadata generator for the LP wrapped USDC currencies
-	// TODO(future): If no further LP wrapped USDC variants are expected, move this
-	// to `chain_spec.rs`.
-	pub fn lp_wrapped_usdc_metadata(
-		name: Vec<u8>,
-		symbol: Vec<u8>,
-		pallet_index: PalletIndex,
-		chain_id: EVMChainId,
-		contract_address_usdc: [u8; 20],
-		pool_currency: bool,
-	) -> AssetMetadata<Balance, CustomMetadata> {
-		AssetMetadata {
-			decimals: DECIMALS,
-			name,
-			symbol,
-			existential_deposit: EXISTENTIAL_DEPOSIT,
-			location: Some(VersionedMultiLocation::V3(MultiLocation {
-				parents: 0,
-				interior: xcm::v3::Junctions::X3(
-					PalletInstance(pallet_index),
-					GlobalConsensus(NetworkId::Ethereum { chain_id }),
-					AccountKey20 {
-						network: None,
-						key: contract_address_usdc,
-					},
-				),
-			})),
-			additional: CustomMetadata {
-				transferability: CrossChainTransferability::LiquidityPools,
-				mintable: false,
-				permissioned: false,
-				pool_currency,
-			},
-		}
-	}
 }
 
 #[cfg(test)]
@@ -440,7 +528,7 @@ mod tests {
 	use frame_support::parameter_types;
 
 	use super::*;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche, AUSD};
+	use crate::tokens::CurrencyId::{ForeignAsset, LocalAsset, Native, Staking, Tranche, AUSD};
 
 	const FOREIGN: CurrencyId = ForeignAsset(1u32);
 
@@ -495,8 +583,8 @@ mod tests {
 	#[cfg(test)]
 	mod tests {
 		use cfg_primitives::TrancheId;
-		use codec::Encode;
 		use hex::FromHex;
+		use parity_scale_codec::Encode;
 
 		use super::StakingCurrency;
 		use crate::{tokens as after, tokens::before};
@@ -570,6 +658,7 @@ mod tests {
 			AUSD,
 			ForeignAsset(89),
 			Staking(StakingCurrency::BlockRewards),
+			LocalAsset(LocalAssetId(103)),
 		]
 		.into_iter()
 		.for_each(|x| assert_eq!(x.encode(), expected_encoded_value(x)));
@@ -593,6 +682,11 @@ mod tests {
 					r
 				}
 				Staking(StakingCurrency::BlockRewards) => vec![5, 0],
+				LocalAsset(LocalAssetId(id)) => {
+					let mut r: Vec<u8> = vec![6];
+					r.append(&mut id.encode());
+					r
+				}
 			}
 		}
 	}

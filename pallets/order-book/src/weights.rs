@@ -13,46 +13,31 @@
 pub use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn create_order() -> Weight;
-	fn user_cancel_order() -> Weight;
-	fn user_update_order() -> Weight;
-	fn fill_order_full() -> Weight;
-	fn fill_order_partial() -> Weight;
-	fn add_trading_pair() -> Weight;
-	fn rm_trading_pair() -> Weight;
-	fn update_min_order() -> Weight;
+	fn place_order() -> Weight;
+	fn update_order() -> Weight;
+	fn cancel_order() -> Weight;
+	fn fill_order() -> Weight;
+	fn set_market_feeder() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn create_order() -> Weight {
+	fn place_order() -> Weight {
 		Weight::zero()
 	}
 
-	fn user_cancel_order() -> Weight {
+	fn update_order() -> Weight {
 		Weight::zero()
 	}
 
-	fn user_update_order() -> Weight {
+	fn cancel_order() -> Weight {
 		Weight::zero()
 	}
 
-	fn fill_order_full() -> Weight {
+	fn fill_order() -> Weight {
 		Weight::zero()
 	}
 
-	fn fill_order_partial() -> Weight {
-		Weight::zero()
-	}
-
-	fn add_trading_pair() -> Weight {
-		Weight::zero()
-	}
-
-	fn rm_trading_pair() -> Weight {
-		Weight::zero()
-	}
-
-	fn update_min_order() -> Weight {
+	fn set_market_feeder() -> Weight {
 		Weight::zero()
 	}
 }

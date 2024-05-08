@@ -14,36 +14,36 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn set_max_reserve() -> Weight;
-	fn close_epoch_no_orders(n: u32) -> Weight;
-	fn close_epoch_no_execution(n: u32) -> Weight;
-	fn close_epoch_execute(n: u32) -> Weight;
-	fn submit_solution(n: u32) -> Weight;
-	fn execute_epoch(n: u32) -> Weight;
+	fn set_max_reserve(m: u32) -> Weight;
+	fn close_epoch_no_orders(n: u32, m: u32) -> Weight;
+	fn close_epoch_no_execution(n: u32, m: u32) -> Weight;
+	fn close_epoch_execute(n: u32, m: u32) -> Weight;
+	fn submit_solution(n: u32, m: u32) -> Weight;
+	fn execute_epoch(n: u32, m: u32) -> Weight;
 }
 
 impl WeightInfo for () {
-	fn set_max_reserve() -> Weight {
+	fn set_max_reserve(_: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn close_epoch_no_orders(_: u32) -> Weight {
+	fn close_epoch_no_orders(_: u32, _: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn close_epoch_no_execution(_: u32) -> Weight {
+	fn close_epoch_no_execution(_: u32, _: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn close_epoch_execute(_: u32) -> Weight {
+	fn close_epoch_execute(_: u32, _: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn submit_solution(_: u32) -> Weight {
+	fn submit_solution(_: u32, _: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn execute_epoch(_: u32) -> Weight {
+	fn execute_epoch(_: u32, _: u32) -> Weight {
 		Weight::zero()
 	}
 }

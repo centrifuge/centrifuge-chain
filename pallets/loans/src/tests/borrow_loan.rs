@@ -582,3 +582,32 @@ fn twice_with_elapsed_time() {
 		);
 	});
 }
+
+#[test]
+fn increase_debt_does_not_withdraw() {
+	new_test_ext().execute_with(|| {
+		MockPools::mock_withdraw(|_, _, _| {
+			unreachable!("increase debt must not withdraw funds from the pool");
+		});
+
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PrincipalInput::External(amount)
+		));
+	});
+}

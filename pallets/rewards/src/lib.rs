@@ -77,17 +77,17 @@ pub mod migrations {
 }
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
-use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, InspectHold, Mutate, MutateHold},
 		tokens::AssetId,
 	},
-	PalletId,
+	DefaultNoBound, PalletId,
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
+use parity_scale_codec::FullCodec;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
 
@@ -147,17 +147,11 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>(core::marker::PhantomData<(T, I)>);
 
-	#[cfg(feature = "std")]
-	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
-		fn default() -> Self {
-			Self(core::marker::PhantomData)
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I>
+	impl<T: Config<I>, I: 'static> BuildGenesisConfig for GenesisConfig<T, I>
 	where
 		BalanceOf<T, I>: MaybeSerializeDeserialize,
 	{

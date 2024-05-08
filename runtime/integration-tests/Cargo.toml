@@ -9,7 +9,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
 ethabi = { workspace = true, features = ["std"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
@@ -18,12 +17,12 @@ getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
+parity-scale-codec = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-node-primitives = { workspace = true, features = ["std"] }
 sc-block-builder = { workspace = true }
 sc-client-api = { workspace = true }
 sc-executor = { workspace = true, features = ["std"] }
@@ -51,21 +50,22 @@ cumulus-primitives-core = { workspace = true, features = ["std"] }
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-kusama-runtime = { workspace = true, features = ["std"] }
 polkadot-core-primitives = { workspace = true, features = ["std"] }
-polkadot-parachain = { workspace = true, features = ["std"] }
+polkadot-node-primitives = { workspace = true }
+polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
 polkadot-runtime-parachains = { workspace = true, features = ["std"] }
 rococo-runtime = { workspace = true, features = ["std"] }
+staging-kusama-runtime = { workspace = true, features = ["std"] }
 
 pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }
 pallet-im-online = { workspace = true, features = ["std"] }
 
-xcm = { workspace = true, features = ["std"] }
-xcm-executor = { workspace = true, features = ["std"] }
+staging-xcm = { workspace = true, features = ["std"] }
+staging-xcm-executor = { workspace = true, features = ["std"] }
 
 orml-traits = { workspace = true, features = ["std"] }
 
@@ -81,6 +81,7 @@ cfg-utils = { workspace = true, features = ["std"] }
 development-runtime = { workspace = true, features = ["std"] }
 liquidity-pools-gateway-routers = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }
+runtime-integration-tests-proc-macro = { workspace = true }
 
 # Pallet list
 axelar-gateway-precompile = { workspace = true, features = ["std"] }
@@ -91,7 +92,6 @@ cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-pallet-xcm = { workspace = true, features = ["std"] }
 cumulus-pallet-xcmp-queue = { workspace = true, features = ["std"] }
 orml-asset-registry = { workspace = true, features = ["std"] }
-orml-oracle = { workspace = true, features = ["std"] }
 orml-tokens = { workspace = true, features = ["std"] }
 orml-xcm = { workspace = true, features = ["std"] }
 orml-xtokens = { workspace = true, features = ["std"] }
@@ -102,13 +102,11 @@ pallet-balances = { workspace = true, features = ["std"] }
 pallet-base-fee = { workspace = true, features = ["std"] }
 pallet-block-rewards = { workspace = true, features = ["std"] }
 pallet-bridge = { workspace = true, features = ["std"] }
-pallet-claims = { workspace = true, features = ["std"] }
 pallet-collator-allowlist = { workspace = true, features = ["std"] }
 pallet-collator-selection = { workspace = true, features = ["std"] }
 pallet-collective = { workspace = true, features = ["std"] }
 pallet-crowdloan-claim = { workspace = true, features = ["std"] }
 pallet-crowdloan-reward = { workspace = true, features = ["std"] }
-pallet-data-collector = { workspace = true, features = ["std"] }
 pallet-democracy = { workspace = true, features = ["std"] }
 pallet-elections-phragmen = { workspace = true, features = ["std"] }
 pallet-ethereum = { workspace = true, features = ["std"] }
@@ -126,22 +124,23 @@ pallet-liquidity-pools-gateway = { workspace = true, features = ["std"] }
 pallet-liquidity-rewards = { workspace = true, features = ["std"] }
 pallet-loans = { workspace = true, features = ["std"] }
 pallet-membership = { workspace = true, features = ["std"] }
-pallet-migration-manager = { workspace = true, features = ["std"] }
 pallet-multisig = { workspace = true, features = ["std"] }
-pallet-nft = { workspace = true, features = ["std"] }
-pallet-nft-sales = { workspace = true, features = ["std"] }
+pallet-oracle-collection = { workspace = true, features = ["std"] }
+pallet-oracle-feed = { workspace = true, features = ["std"] }
 pallet-order-book = { workspace = true, features = ["std"] }
 pallet-permissions = { workspace = true, features = ["std"] }
 pallet-pool-registry = { workspace = true, features = ["std"] }
 pallet-pool-system = { workspace = true, features = ["std"] }
 pallet-preimage = { workspace = true, features = ["std"] }
 pallet-proxy = { workspace = true, features = ["std"] }
+pallet-remarks = { workspace = true, features = ["std"] }
 pallet-restricted-tokens = { workspace = true, features = ["std"] }
 pallet-restricted-xtokens = { workspace = true, features = ["std"] }
 pallet-rewards = { workspace = true, features = ["std"] }
 pallet-scheduler = { workspace = true, features = ["std"] }
 pallet-session = { workspace = true, features = ["std"] }
 pallet-sudo = { workspace = true, features = ["std"] }
+pallet-swaps = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }
 pallet-transfer-allowlist = { workspace = true, features = ["std"] }
@@ -154,8 +153,8 @@ pallet-xcm-transactor = { workspace = true, features = ["std"] }
 parachain-info = { workspace = true, features = ["std"] }
 
 [features]
+# There is no need for integration test to add new features.
+# Just add the required ones to default:
 default = [
   "development-runtime/instant-voting",
 ]
-
-fast-runtime = ["development-runtime/fast-runtime"]

@@ -71,18 +71,21 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, IntoSeconds,
-		Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate, Seconds,
-		TimeAsSecs,
+		self,
+		changes::ChangeGuard,
+		data::{DataCollection, DataRegistry},
+		interest::InterestAccrual,
+		IntoSeconds, Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
+		Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
+		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
-	use codec::HasCompact;
 	use entities::{
 		changes::{Change, LoanMutation},
-		input::{PrincipalInput, RepaidInput},
+		input::{PriceCollectionInput, PrincipalInput, RepaidInput},
 		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
 	};
 	use frame_support::{
@@ -94,17 +97,17 @@ pub mod pallet {
 		},
 	};
 	use frame_system::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::{FixedPointNumber, PerThing};
 	use sp_runtime::{
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
-	use sp_std::{vec, vec::Vec};
+	use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
-		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
 		WrittenOffError,
 	};
@@ -115,7 +118,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -128,7 +131,7 @@ pub mod pallet {
 		/// Represent a runtime change
 		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
-		/// Identify a curreny.
+		/// Identify a currency.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
@@ -148,7 +151,7 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen;
+		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen + Ord;
 
 		/// Defines the rate type used for math computations
 		type Rate: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
@@ -244,7 +247,7 @@ pub mod pallet {
 	/// `ClosedLoan` because here we try to minimize the iteration speed over
 	/// all active loans in a pool.
 	#[pallet::storage]
-	pub(crate) type ActiveLoans<T: Config> = StorageMap<
+	pub type ActiveLoans<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -343,7 +346,14 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
 			to_loan_id: T::LoanId,
-			amount: T::Balance,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
+		},
+		/// Debt of a loan has been increased
+		DebtIncreased {
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
 		},
 	}
 
@@ -468,7 +478,6 @@ pub mod pallet {
 		/// at [`types::LoanRestrictions`]. The `amount` will be transferred
 		/// from pool reserve to borrower. The portfolio valuation of the pool
 		/// is updated to reflect the new present value of the loan.
-		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(1)]
 		pub fn borrow(
@@ -760,7 +769,10 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
+			let (_, count) = Self::update_portfolio_valuation_for_pool(
+				pool_id,
+				PriceCollectionInput::FromRegistry,
+			)?;
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
@@ -826,13 +838,13 @@ pub mod pallet {
 				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			let (amount, _count) = Self::transfer_debt_action(
+			let (_, _count) = Self::transfer_debt_action(
 				&who,
 				pool_id,
 				from_loan_id,
 				to_loan_id,
-				repaid_amount,
-				borrow_amount,
+				repaid_amount.clone(),
+				borrow_amount.clone(),
 				true,
 			)?;
 
@@ -840,6 +852,35 @@ pub mod pallet {
 				pool_id,
 				from_loan_id,
 				to_loan_id,
+				repaid_amount,
+				borrow_amount,
+			});
+
+			Ok(())
+		}
+
+		/// Increase debt for a loan. Similar to [`Pallet::borrow()`] but
+		/// without transferring from the pool.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The increase debt action should fulfill the borrow restrictions
+		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
+		/// of the pool is updated to reflect the new present value of the loan.
+		#[pallet::weight(T::WeightInfo::increase_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(13)]
+		pub fn increase_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
+
+			Self::deposit_event(Event::<T>::DebtIncreased {
+				pool_id,
+				loan_id,
 				amount,
 			});
 
@@ -1007,11 +1048,33 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
 		}
 
-		fn update_portfolio_valuation_for_pool(
+		pub fn registered_prices(
 			pool_id: T::PoolId,
+		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
+			let collection = T::PriceRegistry::collection(&pool_id)?;
+			Ok(ActiveLoans::<T>::get(pool_id)
+				.iter()
+				.filter_map(|(_, loan)| loan.price_id())
+				.filter_map(|price_id| {
+					collection
+						.get(&price_id)
+						.map(|price| (price_id, price.0))
+						.ok()
+				})
+				.collect::<BTreeMap<_, _>>())
+		}
+
+		pub fn update_portfolio_valuation_for_pool(
+			pool_id: T::PoolId,
+			input_prices: PriceCollectionInput<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
-			let prices = T::PriceRegistry::collection(&pool_id);
+			let prices = match input_prices {
+				PriceCollectionInput::Empty => BTreeMap::default(),
+				PriceCollectionInput::Custom(prices) => prices.into(),
+				PriceCollectionInput::FromRegistry => Self::registered_prices(pool_id)?,
+			};
+
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let values = loans
 				.iter()
@@ -1153,6 +1216,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
+	// TODO: Check with team about state of comment
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
@@ -1163,11 +1227,12 @@ pub mod pallet {
 		}
 
 		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
+			Self::update_portfolio_valuation_for_pool(pool_id, PriceCollectionInput::FromRegistry)
+				.map(|portfolio| portfolio.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
-			// This Loans implementation does not need to initialize explicitally.
+			// This Loans implementation does not need to initialize explicitly.
 			Ok(())
 		}
 	}

@@ -11,15 +11,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Input;
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
+use parity_scale_codec::Input;
 use sp_std::vec::Vec;
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait Codec: Sized {
 	fn serialize(&self) -> Vec<u8>;
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error>;
 }
 
 /// The trait required for sending outbound messages.
@@ -34,7 +34,7 @@ pub trait Router {
 	fn init(&self) -> DispatchResult;
 
 	/// Send the message to the router's destination.
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult;
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo;
 }
 
 /// The trait required for processing outbound messages.

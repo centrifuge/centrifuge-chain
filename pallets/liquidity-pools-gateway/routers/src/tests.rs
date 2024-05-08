@@ -1,8 +1,3 @@
-use ::xcm::{
-	lts::WeightLimit,
-	v2::OriginKind,
-	v3::{Instruction::*, MultiAsset},
-};
 use cfg_mocks::MessageMock;
 use cfg_primitives::CFG;
 use cfg_traits::liquidity_pools::{Codec, Router};
@@ -14,6 +9,11 @@ use sp_core::{bounded_vec, crypto::AccountId32, H160, H256, U256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash},
 	DispatchError,
+};
+use staging_xcm::{
+	lts::WeightLimit,
+	v2::OriginKind,
+	v3::{Instruction::*, MultiAsset},
 };
 
 use super::mock::*;
@@ -55,7 +55,7 @@ mod evm_router {
 				target_contract_address: test_contract_address,
 				target_contract_hash: test_contract_hash,
 				fee_values: FeeValues {
-					value: U256::from(10),
+					value: U256::from(0),
 					gas_limit: U256::from(10),
 					gas_price: U256::from(10),
 				},
@@ -169,7 +169,7 @@ mod evm_router {
 				let res = router.do_send(test_data.sender, test_data.msg);
 
 				assert_eq!(
-					res.err().unwrap(),
+					res.err().unwrap().error,
 					pallet_evm::Error::<Runtime>::BalanceLow.into()
 				);
 			});
@@ -261,16 +261,20 @@ mod xcm_router {
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
@@ -337,7 +341,7 @@ mod axelar_evm {
 				target_contract_address: axelar_contract_address,
 				target_contract_hash: axelar_contract_hash,
 				fee_values: FeeValues {
-					value: U256::from(10),
+					value: U256::from(0),
 					gas_limit: U256::from(10),
 					gas_price: U256::from(10),
 				},
@@ -483,7 +487,7 @@ mod axelar_evm {
 				let res = domain_router.send(test_data.sender, test_data.msg);
 
 				assert_eq!(
-					res.err().unwrap(),
+					res.err().unwrap().error,
 					pallet_evm::Error::<Runtime>::BalanceLow.into()
 				);
 			});
@@ -598,16 +602,20 @@ mod axelar_xcm {
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
@@ -734,16 +742,20 @@ mod ethereum_xcm {
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
-						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
+						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: staging_xcm::v3::Fungibility::Fungible(
+							test_data.xcm_domain.fee_amount
+						),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));

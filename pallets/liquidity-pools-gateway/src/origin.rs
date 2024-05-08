@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_types::domain_address::DomainAddress;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::EnsureOrigin;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "runtime-benchmarks")]
 use sp_core::H160;

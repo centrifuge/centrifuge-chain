@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode};
 use frame_support::traits::UnixTime;
+use parity_scale_codec::{Decode, Encode};
 use scale_info::{build::Fields, Path, Type, TypeInfo};
 use sp_std::{cmp::PartialEq, marker::PhantomData};
 

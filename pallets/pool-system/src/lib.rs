@@ -18,22 +18,23 @@ use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
+	pallet_prelude::RuntimeDebug,
 	traits::{
 		fungibles::{Inspect, Mutate},
 		ReservableCurrency,
 	},
-	transactional, BoundedVec, RuntimeDebug,
+	transactional, BoundedVec,
 };
-use frame_system::pallet_prelude::*;
+use frame_system::pallet_prelude::{BlockNumberFor, *};
 use orml_traits::{
 	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
 };
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use pool_types::{
 	changes::{NotedPoolChange, PoolChangeProposal},
 	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,
@@ -129,7 +130,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::MaxTranches,
 >;
@@ -140,25 +141,19 @@ type PoolDepositOf<T> =
 
 type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
 	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::StringLimit,
 	<T as Config>::MaxTranches,
 >;
 
-pub type PoolChangesOf<T> = PoolChanges<
-	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
-	<T as Config>::MaxTranches,
->;
+pub type PoolChangesOf<T> =
+	PoolChanges<<T as Config>::Rate, <T as Config>::StringLimit, <T as Config>::MaxTranches>;
 
 pub type PoolEssenceOf<T> = PoolEssence<
 	<T as Config>::CurrencyId,
 	<T as Config>::Balance,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::StringLimit,
 >;
 
 #[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
@@ -177,11 +172,13 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
+		fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-		PoolUpdateGuard,
+		EpochTransitionHook, PoolUpdateGuard,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
+		pools::PoolFeeInfo,
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -284,6 +281,7 @@ pub mod pallet {
 			AssetId = Self::CurrencyId,
 			Balance = Self::Balance,
 			CustomMetadata = CustomMetadata,
+			StringLimit = Self::StringLimit,
 		>;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
@@ -298,7 +296,11 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		type NAV: PoolNAV<Self::PoolId, Self::Balance>;
+		/// The provider for the positive NAV
+		type AssetsUnderManagementNAV: PoolNAV<Self::PoolId, Self::Balance>;
+
+		/// The provider for the negative NAV
+		type PoolFeesNAV: PoolNAV<Self::PoolId, Self::Balance>;
 
 		type TrancheCurrency: Into<Self::CurrencyId>
 			+ Clone
@@ -317,9 +319,27 @@ pub mod pallet {
 
 		type Time: TimeAsSecs;
 
+		/// Add pool fees
+		type PoolFees: PoolFeesMutate<
+				FeeInfo = PoolFeeInfo<
+					<Self as frame_system::Config>::AccountId,
+					Self::Balance,
+					Self::Rate,
+				>,
+				PoolId = Self::PoolId,
+			> + PoolFeesInspect<PoolId = Self::PoolId>;
+
+		/// Epoch transition hook required for Pool Fees
+		type OnEpochTransition: EpochTransitionHook<
+			Balance = Self::Balance,
+			PoolId = Self::PoolId,
+			Time = Seconds,
+			Error = DispatchError,
+		>;
+
 		/// Challenge time
 		#[pallet::constant]
-		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
+		type ChallengeTime: Get<BlockNumberFor<Self>>;
 
 		/// Pool parameter defaults
 		#[pallet::constant]
@@ -342,13 +362,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinUpdateDelay: Get<Seconds>;
 
-		/// Max length for a tranche token name
 		#[pallet::constant]
-		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
-		/// Max length for a tranche token symbol
-		#[pallet::constant]
-		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+		type StringLimit: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
 		/// Max number of Tranches
 		#[pallet::constant]
@@ -365,7 +380,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -446,6 +461,20 @@ pub mod pallet {
 			change_id: T::Hash,
 			change: T::RuntimeChange,
 		},
+		/// A change was released
+		ReleasedChange {
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+			change: T::RuntimeChange,
+		},
+		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
+		/// the pool
+		NegativeBalanceSheet {
+			pool_id: T::PoolId,
+			nav_aum: T::Balance,
+			nav_fees: T::Balance,
+			reserve: T::Balance,
+		},
 	}
 
 	#[pallet::error]
@@ -492,7 +521,7 @@ pub mod pallet {
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
-		/// No metada for the given currency found
+		/// No metadata for the given currency found
 		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit
 		TrancheTokenNameTooLong,
@@ -535,7 +564,7 @@ pub mod pallet {
 		/// given to the pool creator by default, and must be
 		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
-		#[pallet::weight(T::WeightInfo::set_max_reserve())]
+		#[pallet::weight(T::WeightInfo::set_max_reserve(T::PoolFees::get_max_fees_per_bucket()))]
 		#[pallet::call_index(0)]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
@@ -578,9 +607,9 @@ pub mod pallet {
 		/// submission period, partial executions can be submitted
 		/// to be scored, and the best-scoring solution will
 		/// eventually be executed. See `submit_solution`.
-		#[pallet::weight(T::WeightInfo::close_epoch_no_orders(T::MaxTranches::get())
-                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
-                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
+		#[pallet::weight(T::WeightInfo::close_epoch_no_orders(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket())
+                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket()))
+                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket())))]
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
@@ -599,21 +628,49 @@ pub mod pallet {
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
-				let (nav, nav_last_updated) = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-
+				// Get positive NAV from AUM
+				let (nav_aum, aum_last_updated) =
+					T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 				ensure!(
-					now.saturating_sub(nav_last_updated) <= pool.parameters.max_nav_age,
+					now.saturating_sub(aum_last_updated) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 
+				// Calculate fees to get negative NAV
+				T::OnEpochTransition::on_closing_mutate_reserve(
+					pool_id,
+					nav_aum,
+					&mut pool.reserve.total,
+				)?;
+				let (nav_fees, fees_last_updated) =
+					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+				ensure!(
+					now.saturating_sub(fees_last_updated) <= pool.parameters.max_nav_age,
+					Error::<T>::NAVTooOld
+				);
+				let nav = Nav::new(nav_aum, nav_fees);
+				let nav_total = nav
+					.total(pool.reserve.total)
+					// NOTE: From an accounting perspective, erroring out would be correct. However,
+					// since investments of this epoch are included in the reserve only in the next
+					// epoch, every new pool with a configured fee is likely to be blocked if we
+					// threw an error here. Thus, we dispatch an event as a defensive workaround.
+					.map_err(|_| {
+						Self::deposit_event(Event::NegativeBalanceSheet {
+							pool_id,
+							nav_aum,
+							nav_fees,
+							reserve: pool.reserve.total,
+						});
+					})
+					.unwrap_or(T::Balance::default());
 				let submission_period_epoch = pool.epoch.current;
-				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
 				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
 					.tranches
-					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
+					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav_total, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -631,8 +688,9 @@ pub mod pallet {
 
 				// Get the orders
 				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
-
 				if orders.all_are_zero() {
+					T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
+
 					pool.tranches.combine_with_mut_residual_top(
 						&epoch_tranche_prices,
 						|tranche, price| {
@@ -657,6 +715,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into());
 				}
@@ -683,10 +742,8 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					epoch: submission_period_epoch,
 					nav,
-					reserve: pool.reserve.total,
-					max_reserve: pool.reserve.max,
+					epoch: submission_period_epoch,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
@@ -713,6 +770,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into())
 				} else {
@@ -735,6 +793,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into())
 				}
@@ -751,7 +810,10 @@ pub mod pallet {
 		/// Once a valid solution has been submitted, the
 		/// challenge time begins. The pool can be executed once
 		/// the challenge time has expired.
-		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
+		#[pallet::weight(T::WeightInfo::submit_solution(
+			T::MaxTranches::get(),
+			T::PoolFees::get_max_fees_per_bucket()
+		))]
 		#[pallet::call_index(2)]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
@@ -792,6 +854,7 @@ pub mod pallet {
 						.num_tranches()
 						.try_into()
 						.expect("MaxTranches is u32. qed."),
+					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 				))
 				.into())
 			})
@@ -804,7 +867,10 @@ pub mod pallet {
 		/// * Updates the portion of the reserve and loan balance assigned to
 		///   each tranche, based on the investments and redemptions to those
 		///   tranches.
-		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
+		#[pallet::weight(T::WeightInfo::execute_epoch(
+			T::MaxTranches::get(),
+			T::PoolFees::get_max_fees_per_bucket()
+		))]
 		#[pallet::call_index(3)]
 		pub fn execute_epoch(
 			origin: OriginFor<T>,
@@ -868,13 +934,17 @@ pub mod pallet {
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
 				*epoch_info = None;
-				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
+				Ok(Some(T::WeightInfo::execute_epoch(
+					num_tranches,
+					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
+				))
+				.into())
 			})
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn current_block() -> <T as frame_system::Config>::BlockNumber {
+		pub(crate) fn current_block() -> BlockNumberFor<T> {
 			<frame_system::Pallet<T>>::block_number()
 		}
 
@@ -927,8 +997,8 @@ pub mod pallet {
 				PoolState::Unhealthy(states) => EpochSolution::score_solution_unhealthy(
 					solution,
 					&epoch.tranches,
-					epoch.reserve,
-					epoch.max_reserve,
+					pool_id.reserve.total,
+					pool_id.reserve.max,
 					&states,
 				),
 			}
@@ -955,7 +1025,7 @@ pub mod pallet {
 			>(&epoch.tranches, solution)
 			.map_err(|e| {
 				// In case we have an underflow in the calculation, there
-				// is not enough balance in the tranches to realize the redeemptions.
+				// is not enough balance in the tranches to realize the redemptions.
 				// We convert this at the pool level into an InsufficientCurrency error.
 				if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
 					Error::<T>::InsufficientCurrency
@@ -965,7 +1035,7 @@ pub mod pallet {
 			})?;
 
 			let currency_available: T::Balance = acc_invest
-				.checked_add(&epoch.reserve)
+				.checked_add(&pool.reserve.total)
 				.ok_or(Error::<T>::InvalidSolution)?;
 
 			let new_reserve = currency_available
@@ -1017,9 +1087,8 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let old_pool = pool
-					.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-					)?;
+				let old_pool =
+					pool.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1061,8 +1130,8 @@ pub mod pallet {
 						T::AssetRegistry::update_asset(
 							tranche.currency.into(),
 							None,
-							Some(updated_metadata.clone().token_name.to_vec()),
-							Some(updated_metadata.clone().token_symbol.to_vec()),
+							Some(updated_metadata.clone().token_name),
+							Some(updated_metadata.clone().token_symbol),
 							None,
 							None,
 							None,
@@ -1075,8 +1144,7 @@ pub mod pallet {
 					id: *pool_id,
 					old: old_pool,
 					new: pool
-						.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-						)?,
+						.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);
@@ -1087,7 +1155,7 @@ pub mod pallet {
 
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
-			new_tranches: &Vec<TrancheUpdate<T::Rate>>,
+			new_tranches: &[TrancheUpdate<T::Rate>],
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
 			ensure!(
@@ -1126,7 +1194,8 @@ pub mod pallet {
 			// setup.
 			if let Some(old_tranches) = old_tranches {
 				// For now, adding or removing tranches is not allowed, unless it's on pool
-				// creation. TODO: allow adding tranches as most senior, and removing most
+				// creation.
+				// TODO: allow adding tranches as most senior, and removing most
 				// senior and empty (debt+reserve=0) tranches
 				ensure!(
 					new_tranches.len() == old_tranches.num_tranches(),
@@ -1142,6 +1211,8 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
+			T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
+
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
 
 			for (tranche, solution) in epoch.tranches.residual_top_slice().iter().zip(solution) {
@@ -1152,6 +1223,7 @@ pub mod pallet {
 						price: tranche.price,
 					},
 				)?;
+
 				T::Investments::redeem_fulfillment(
 					tranche.currency,
 					FulfillmentWithPrice {
@@ -1164,7 +1236,7 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = pool.reserve.total.ensure_add(epoch.nav)?;
+			let total_assets = epoch.nav.total(pool.reserve.total)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				&executed_amounts,
 				|tranche, &(invest, redeem)| {
@@ -1178,7 +1250,7 @@ pub mod pallet {
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
 				pool.reserve.total,
-				epoch.nav,
+				epoch.nav.nav_aum,
 				tranche_ratios.as_slice(),
 				&executed_amounts,
 			)?;

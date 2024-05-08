@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::MaxEncodedLen;
 use frame_support::sp_runtime::traits::Convert;
+use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
 	traits::{EnsureFixedPointNumber, EnsureSub},
@@ -109,6 +109,26 @@ where
 	Unhealthy(UnhealthySolution<Balance, MaxTranches>),
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct Nav<Balance> {
+	pub nav_aum: Balance,
+	pub nav_fees: Balance,
+}
+
+impl<Balance: Copy + AtLeast32BitUnsigned> Nav<Balance> {
+	pub fn new(nav_aum: Balance, nav_fees: Balance) -> Self {
+		Self { nav_fees, nav_aum }
+	}
+
+	pub fn total(&self, reserve: Balance) -> Result<Balance, DispatchError> {
+		self.nav_aum
+			.ensure_add(reserve)?
+			.ensure_sub(self.nav_fees)
+			.map_err(Into::into)
+	}
+}
+
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochExecutionInfo<
@@ -123,9 +143,7 @@ pub struct EpochExecutionInfo<
 	MaxTranches: Get<u32>,
 {
 	pub epoch: EpochId,
-	pub nav: Balance,
-	pub reserve: Balance,
-	pub max_reserve: Balance,
+	pub nav: Nav<Balance>,
 	pub tranches:
 		EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>,
 	pub best_submission: Option<EpochSolution<Balance, MaxTranches>>,

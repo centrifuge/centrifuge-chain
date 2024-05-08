@@ -10,4 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeCentrifuge1024 = ();
+use crate::{OraclePriceCollection, OraclePriceFeed};
+
+/// The migration set for Centrifuge @ Polkadot.
+/// It includes all the migrations that have to be applied on that chain.
+pub type UpgradeCentrifuge1029 = (
+	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
+	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
+	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+);

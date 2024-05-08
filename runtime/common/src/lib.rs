@@ -23,15 +23,30 @@ pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
+use cfg_types::{
+	fee_keys::FeeKey,
+	pools::PoolNav,
+	tokens::{CurrencyId, StakingCurrency},
+};
 use orml_traits::GetByKey;
+use pallet_loans::entities::input::PriceCollectionInput;
+use pallet_pool_system::Nav;
 use sp_core::parameter_types;
-use sp_runtime::traits::Get;
+use sp_runtime::{
+	traits::{Get, Zero},
+	DispatchError,
+};
 use sp_std::marker::PhantomData;
+
+pub mod instances {
+	/// The rewards associated to block rewards
+	pub type BlockRewards = pallet_rewards::Instance1;
+}
 
 parameter_types! {
 	/// The native currency identifier of our currency id enum
@@ -75,11 +90,91 @@ where
 	fn get(currency_id: &CurrencyId) -> Balance {
 		match currency_id {
 			CurrencyId::Native => T::ExistentialDeposit::get(),
+			CurrencyId::Staking(StakingCurrency::BlockRewards) => T::ExistentialDeposit::get(),
 			currency_id => orml_asset_registry::Pallet::<T>::metadata(currency_id)
 				.map(|metadata| metadata.existential_deposit)
 				.unwrap_or_default(),
 		}
 	}
+}
+
+pub fn update_nav<T>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
+where
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
+{
+	let input_prices: PriceCollectionInput<T> =
+		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
+				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
+			})?)
+		} else {
+			PriceCollectionInput::Empty
+		};
+
+	update_nav_with_input::<T>(pool_id, input_prices)
+}
+
+/// ## Updates the nav for a pool.
+///
+/// NOTE: Should NEVER be used in consensus relevant state changes!
+///
+/// ### Execution infos
+/// * For external assets it is either using the latest
+/// oracle prices if they are not outdated or it is using no prices and allows
+/// the chain to use the estimates based on the linear accrual of the last
+/// settlement prices.
+/// * IF `nav_fees > nav_loans` then the `nav_total` will saturate at 0
+pub fn update_nav_with_input<T>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
+	price_input: PriceCollectionInput<T>,
+) -> Result<PoolNav<<T as pallet_pool_system::Config>::Balance>, DispatchError>
+where
+	T: pallet_loans::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		> + pallet_pool_system::Config
+		+ pallet_pool_fees::Config<
+			PoolId = <T as pallet_pool_system::Config>::PoolId,
+			Balance = <T as pallet_pool_system::Config>::Balance,
+		>,
+{
+	let mut pool = pallet_pool_system::Pool::<T>::get(pool_id)
+		.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
+
+	let prev_nav_loans = pallet_loans::Pallet::<T>::portfolio_valuation(pool_id).value();
+	let nav_loans =
+		pallet_loans::Pallet::<T>::update_portfolio_valuation_for_pool(pool_id, price_input)
+			.map(|(nav_loans, _)| nav_loans)
+			.unwrap_or(prev_nav_loans);
+
+	let prev_fees_loans = pallet_pool_fees::Pallet::<T>::portfolio_valuation(pool_id).value();
+	let nav_fees = pallet_pool_fees::Pallet::<T>::update_portfolio_valuation_for_pool(
+		pool_id,
+		&mut pool.reserve.total,
+	)
+	.map(|(nav_fees, _)| nav_fees)
+	.unwrap_or(prev_fees_loans);
+
+	let nav = Nav::new(nav_loans, nav_fees);
+	let total = nav
+		.total(pool.reserve.total)
+		.unwrap_or(<T as pallet_pool_system::Config>::Balance::zero());
+
+	Ok(PoolNav {
+		nav_aum: nav.nav_aum,
+		nav_fees: nav.nav_fees,
+		reserve: pool.reserve.total,
+		total,
+	})
 }
 
 pub mod xcm_fees {
@@ -116,28 +211,28 @@ pub mod xcm_fees {
 
 /// AssetRegistry's AssetProcessor
 pub mod asset_registry {
-	use cfg_primitives::types::{AccountId, Balance};
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use cfg_primitives::types::AccountId;
+	use cfg_types::tokens::{AssetMetadata, CurrencyId};
 	use frame_support::{
 		dispatch::RawOrigin,
-		sp_std::marker::PhantomData,
 		traits::{EnsureOrigin, EnsureOriginWithArg},
 	};
-	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use orml_traits::asset_registry::AssetProcessor;
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
+	use sp_std::marker::PhantomData;
 
 	#[derive(
 		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 	)]
 	pub struct CustomAssetProcessor;
 
-	impl AssetProcessor<CurrencyId, AssetMetadata<Balance, CustomMetadata>> for CustomAssetProcessor {
+	impl AssetProcessor<CurrencyId, AssetMetadata> for CustomAssetProcessor {
 		fn pre_register(
 			id: Option<CurrencyId>,
-			metadata: AssetMetadata<Balance, CustomMetadata>,
-		) -> Result<(CurrencyId, AssetMetadata<Balance, CustomMetadata>), DispatchError> {
+			metadata: AssetMetadata,
+		) -> Result<(CurrencyId, AssetMetadata), DispatchError> {
 			match id {
 				Some(id) => Ok((id, metadata)),
 				None => Err(DispatchError::Other("asset-registry: AssetId is required")),
@@ -146,7 +241,7 @@ pub mod asset_registry {
 
 		fn post_register(
 			_id: CurrencyId,
-			_asset_metadata: AssetMetadata<Balance, CustomMetadata>,
+			_asset_metadata: AssetMetadata,
 		) -> Result<(), DispatchError> {
 			Ok(())
 		}
@@ -362,7 +457,7 @@ pub mod investment_portfolios {
 }
 
 pub mod xcm_transactor {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
 	use sp_std::{vec, vec::Vec};
 	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
@@ -379,7 +474,7 @@ pub mod xcm_transactor {
 	}
 
 	impl XcmTransact for NullTransactor {
-		fn destination(self) -> xcm::latest::MultiLocation {
+		fn destination(self) -> staging_xcm::latest::MultiLocation {
 			Default::default()
 		}
 	}
@@ -387,9 +482,7 @@ pub mod xcm_transactor {
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
-	use cfg_traits::{
-		ConversionFromAssetBalance, ConversionToAssetBalance, IdentityCurrencyConversion,
-	};
+	use cfg_traits::IdentityCurrencyConversion;
 	use cfg_types::tokens::CurrencyId;
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;
@@ -443,80 +536,6 @@ pub mod foreign_investments {
 						from_metadata.decimals,
 						to_metadata.decimals,
 						amount_out,
-					)
-					.map_err(DispatchError::from)
-				}
-				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
-			}
-		}
-	}
-
-	/// Provides means of applying the decimals of an incoming currency to the
-	/// amount of an outgoing currency.
-	///
-	/// NOTE: Either the incoming (in case of `ConversionFromAssetBalance`) or
-	/// outgoing currency (in case of `ConversionToAssetBalance`) is assumed
-	/// to be `CurrencyId::Native`.
-	pub struct NativeBalanceDecimalConverter<AssetRegistry>(PhantomData<AssetRegistry>);
-
-	impl<AssetRegistry> ConversionToAssetBalance<Balance, CurrencyId, Balance>
-		for NativeBalanceDecimalConverter<AssetRegistry>
-	where
-		AssetRegistry: Inspect<
-			AssetId = CurrencyId,
-			Balance = Balance,
-			CustomMetadata = cfg_types::tokens::CustomMetadata,
-		>,
-	{
-		type Error = DispatchError;
-
-		fn to_asset_balance(
-			balance: Balance,
-			currency_in: CurrencyId,
-		) -> Result<Balance, DispatchError> {
-			match currency_in {
-				CurrencyId::Native => Ok(balance),
-				CurrencyId::ForeignAsset(_) => {
-					let to_decimals = AssetRegistry::metadata(&currency_in)
-						.ok_or(DispatchError::CannotLookup)?
-						.decimals;
-					convert_balance_decimals(
-						cfg_primitives::currency_decimals::NATIVE,
-						to_decimals,
-						balance,
-					)
-					.map_err(DispatchError::from)
-				}
-				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
-			}
-		}
-	}
-
-	impl<AssetRegistry> ConversionFromAssetBalance<Balance, CurrencyId, Balance>
-		for NativeBalanceDecimalConverter<AssetRegistry>
-	where
-		AssetRegistry: Inspect<
-			AssetId = CurrencyId,
-			Balance = Balance,
-			CustomMetadata = cfg_types::tokens::CustomMetadata,
-		>,
-	{
-		type Error = DispatchError;
-
-		fn from_asset_balance(
-			balance: Balance,
-			currency_out: CurrencyId,
-		) -> Result<Balance, DispatchError> {
-			match currency_out {
-				CurrencyId::Native => Ok(balance),
-				CurrencyId::ForeignAsset(_) => {
-					let from_decimals = AssetRegistry::metadata(&currency_out)
-						.ok_or(DispatchError::CannotLookup)?
-						.decimals;
-					convert_balance_decimals(
-						from_decimals,
-						cfg_primitives::currency_decimals::NATIVE,
-						balance,
 					)
 					.map_err(DispatchError::from)
 				}
@@ -729,5 +748,50 @@ pub mod origin {
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
 		}
+	}
+}
+
+pub mod permissions {
+	use cfg_primitives::{AccountId, PoolId};
+	use cfg_traits::{Permissions, PreConditions};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::CurrencyId,
+	};
+	use sp_std::marker::PhantomData;
+
+	/// Check if an account has a pool admin role
+	pub struct PoolAdminCheck<P>(PhantomData<P>);
+
+	impl<P> PreConditions<(AccountId, PoolId)> for PoolAdminCheck<P>
+	where
+		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+	{
+		type Result = bool;
+
+		fn check((account_id, pool_id): (AccountId, PoolId)) -> bool {
+			P::has(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn satisfy((account_id, pool_id): (AccountId, PoolId)) {
+			P::add(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+			.unwrap();
+		}
+	}
+}
+
+pub mod rewards {
+	frame_support::parameter_types! {
+		#[derive(scale_info::TypeInfo)]
+		pub const SingleCurrencyMovement: u32 = 1;
 	}
 }

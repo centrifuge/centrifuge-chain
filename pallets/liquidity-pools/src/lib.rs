@@ -47,7 +47,6 @@ use cfg_types::{
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{
 		fungibles::{Inspect, Mutate},
@@ -57,13 +56,14 @@ use frame_support::{
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
-use xcm::{
+use staging_xcm::{
 	latest::NetworkId,
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
 	VersionedMultiLocation,
@@ -82,8 +82,6 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 pub mod hooks;
 mod inbound;
 
@@ -124,11 +122,14 @@ pub mod pallet {
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
 		EVMChainId,
 	};
-	use codec::HasCompact;
-	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
+	use frame_support::{
+		pallet_prelude::*,
+		traits::tokens::{Fortitude, Precision, Preservation},
+	};
 	use frame_system::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
-	use xcm::latest::MultiLocation;
+	use staging_xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
@@ -226,7 +227,8 @@ pub mod pallet {
 		/// currencies.
 		type ForeignInvestment: ForeignInvestment<
 			Self::AccountId,
-			Amount = <Self as Config>::Balance,
+			Amount = Self::Balance,
+			TrancheAmount = Self::Balance,
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
@@ -314,8 +316,6 @@ pub mod pallet {
 		/// The asset is not a [LiquidityPoolsWrappedToken] and thus cannot be
 		/// transferred via liquidity pools.
 		AssetNotLiquidityPoolsWrappedToken,
-		/// The given asset does not match the currency of the pool.
-		AssetNotPoolCurrency,
 		/// A pool could not be found.
 		PoolNotFound,
 		/// A tranche could not be found.
@@ -326,28 +326,18 @@ pub mod pallet {
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
 		MissingTranchePrice,
-		/// Router not set for a given domain.
-		MissingRouter,
 		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
+		/// Senders balance is insufficient for transfer amount
+		BalanceTooLow,
 		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
-		/// Failed to build Ethereum_Xcm call.
-		FailedToBuildEthereumXcmCall,
-		/// The origin of an incoming message is not in the allow-list.
-		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message.
 		InvalidIncomingMessage,
 		/// The destination domain is invalid.
 		InvalidDomain,
 		/// The validity is in the past.
 		InvalidTrancheInvestorValidity,
-		/// The derived currency from the provided GeneralCurrencyIndex is not
-		/// accepted as payment for the given pool.
-		InvalidPaymentCurrency,
-		/// The derived currency from the provided GeneralCurrencyIndex is not
-		/// accepted as payout for the given pool.
-		InvalidPayoutCurrency,
 		/// The currency is not allowed to be transferred via LiquidityPools.
 		InvalidTransferCurrency,
 		/// The account derived from the [Domain] and [DomainAddress] has not
@@ -419,8 +409,8 @@ pub mod pallet {
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name);
-			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let token_name = vec_to_fixed_array(metadata.name.into_inner());
+			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
@@ -641,14 +631,30 @@ pub mod pallet {
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
-			// Transfer to the domain account for bookkeeping
-			T::Tokens::transfer(
+			// NOTE: This check is needed as `burn_from` has not a good error resolution and
+			//       might return `Arithmetic` errors.
+			ensure!(
+				T::Tokens::reducible_balance(
+					currency_id,
+					&who,
+					Preservation::Expendable,
+					// NOTE: We do not know whether there are locks or so, so we are using user
+					//       privilege
+					Fortitude::Polite
+				) >= amount,
+				Error::<T>::BalanceTooLow
+			);
+
+			// Burn token as we are never the reserve for LP tokens that are not tranche
+			// tokens.
+			T::Tokens::burn_from(
 				currency_id,
 				&who,
-				&Domain::convert(receiver.domain()),
 				amount,
-				// NOTE: Here, we allow death
-				Preservation::Expendable,
+				Precision::Exact,
+				// NOTE: We do not know whether there are locks or so, so we are using user
+				//       privilege
+				Fortitude::Polite,
 			)?;
 
 			T::OutboundQueue::submit(
@@ -701,7 +707,6 @@ pub mod pallet {
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			// TODO(future): In the future, should be permissioned by trait which
@@ -709,33 +714,16 @@ pub mod pallet {
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
-			// Ensure currency is allowed as payment and payout currency for pool
-			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-			// Required for increasing and collecting investments
 			ensure!(
-				T::ForeignInvestment::accepted_payment_currency(invest_id.clone(), currency_id),
-				Error::<T>::InvalidPaymentCurrency
-			);
-			// Required for decreasing investments as well as increasing, decreasing and
-			// collecting redemptions
-			ensure!(
-				T::ForeignInvestment::accepted_payout_currency(invest_id, currency_id),
-				Error::<T>::InvalidPayoutCurrency
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
 			);
 
-			// Ensure the currency is enabled as pool_currency
-			let metadata =
-				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
-			ensure!(
-				metadata.additional.pool_currency,
-				Error::<T>::AssetMetadataNotPoolCurrency
-			);
-
-			// Derive GeneralIndex for currency
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
-				Self::try_get_wrapped_token(&currency_id)?;
+			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
 			T::OutboundQueue::submit(
 				who,
@@ -800,22 +788,14 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				Error::<T>::NotPoolAdmin
-			);
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name);
-			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let token_name = vec_to_fixed_array(metadata.name.into_inner());
+			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
 
 			T::OutboundQueue::submit(
-				T::TreasuryAccount::get(),
+				who,
 				domain,
 				Message::UpdateTrancheTokenMetadata {
 					pool_id,
@@ -824,6 +804,37 @@ pub mod pallet {
 					token_symbol,
 				},
 			)
+		}
+
+		/// Disallow a currency to be used as a pool currency and to invest in a
+		/// pool on the domain derived from the given currency.
+		#[pallet::call_index(13)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn disallow_investment_currency(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			currency_id: CurrencyIdOf<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
+			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
+
+			T::OutboundQueue::submit(
+				who,
+				Domain::EVM(chain_id),
+				Message::DisallowInvestmentCurrency { pool_id, currency },
+			)?;
+
+			Ok(())
 		}
 	}
 
@@ -916,39 +927,25 @@ pub mod pallet {
 			Ok(TrancheCurrency::generate(pool_id, tranche_id))
 		}
 
-		/// Ensures that currency id can be derived from the
-		/// GeneralCurrencyIndex and that the former is an accepted payment
-		/// currency for the given investment id.
-		pub fn try_get_payment_currency(
-			invest_id: <T as pallet::Config>::TrancheCurrency,
-			currency_index: GeneralCurrencyIndexOf<T>,
-		) -> Result<CurrencyIdOf<T>, DispatchError> {
-			// retrieve currency id from general index
-			let currency = Self::try_get_currency_id(currency_index)?;
-
+		/// Performs multiple checks for the provided currency and returns its
+		/// general index and the EVM chain ID associated with it.
+		pub fn validate_investment_currency(
+			currency_id: CurrencyIdOf<T>,
+		) -> Result<(u128, EVMChainId), DispatchError> {
+			// Ensure the currency is enabled as pool_currency
+			let metadata =
+				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
-				T::ForeignInvestment::accepted_payment_currency(invest_id, currency),
-				Error::<T>::InvalidPaymentCurrency
+				metadata.additional.pool_currency,
+				Error::<T>::AssetMetadataNotPoolCurrency
 			);
 
-			Ok(currency)
-		}
+			let currency = Self::try_get_general_index(currency_id)?;
 
-		/// Ensures that currency id can be derived from the
-		/// GeneralCurrencyIndex and that the former is an accepted payout
-		/// currency for the given investment id.
-		pub fn try_get_payout_currency(
-			invest_id: <T as pallet::Config>::TrancheCurrency,
-			currency_index: GeneralCurrencyIndexOf<T>,
-		) -> Result<CurrencyIdOf<T>, DispatchError> {
-			let currency = Self::try_get_currency_id(currency_index)?;
+			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
+				Self::try_get_wrapped_token(&currency_id)?;
 
-			ensure!(
-				T::ForeignInvestment::accepted_payout_currency(invest_id, currency),
-				Error::<T>::InvalidPaymentCurrency
-			);
-
-			Ok(currency)
+			Ok((currency, chain_id))
 		}
 	}
 
@@ -1095,7 +1092,7 @@ pub mod pallet {
 
 #[cfg(test)]
 mod tests {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 
 	use crate::Domain;
 

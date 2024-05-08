@@ -12,7 +12,6 @@ run_benchmark() {
     --repeat=1 \
     --pallet="${pallet}" \
     --extrinsic=* \
-    --execution=wasm \
     --wasm-execution=compiled \
     --heap-pages=4096"
 
@@ -23,19 +22,19 @@ run_benchmark() {
 
 if [[ $runtime == "development" ]];
 then
-  chain="development-local"
+  chain="development"
 elif [[ $runtime == "centrifuge" ]];
 then
-  chain="centrifuge-dev"
+  chain="centrifuge-local"
 elif [[ $runtime == "altair" ]];
 then
-  chain="altair-dev"
+  chain="altair-local"
 else
   echo "Unknown runtime. Aborting!"
   exit 1;
 fi
 
-cargo build --release --features runtime-benchmarks
+cargo build -p centrifuge-chain --release --features runtime-benchmarks
 
 all_pallets=$(
   ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq

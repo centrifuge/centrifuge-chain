@@ -9,8 +9,8 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use codec::Codec;
 use pallet_anchors::AnchorData;
+use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 
 decl_runtime_apis! {

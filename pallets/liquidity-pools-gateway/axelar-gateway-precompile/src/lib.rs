@@ -9,6 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Axelar Gateway Precompile
+//!
+//! Pallet that serves as an EVM precompile for incoming Liquidity Pools
+//! messages from the Axelar network.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -42,10 +47,10 @@ pub mod weights;
 #[derive(
 	PartialEq,
 	Clone,
-	codec::Encode,
-	codec::Decode,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
 	scale_info::TypeInfo,
-	codec::MaxEncodedLen,
+	parity_scale_codec::MaxEncodedLen,
 	frame_support::RuntimeDebugNoBound,
 )]
 pub struct SourceConverter {
@@ -91,7 +96,7 @@ impl SourceConverter {
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, DefaultNoBound};
 	use frame_system::pallet_prelude::*;
 	use sp_core::{H160, H256};
 
@@ -111,7 +116,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin that is allowed to set the gateway address we accept
-		/// messageas from
+		/// messages from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		type WeightInfo: WeightInfo;
@@ -126,23 +131,14 @@ pub mod pallet {
 	pub type SourceConversion<T: Config> = StorageMap<_, Twox64Concat, H256, SourceConverter>;
 
 	#[pallet::genesis_config]
+	#[derive(DefaultNoBound)]
 	pub struct GenesisConfig<T> {
 		pub gateway: H160,
 		_phantom: core::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				gateway: Default::default(),
-				_phantom: Default::default(),
-			}
-		}
-	}
-
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			GatewayContract::<T>::set(self.gateway)
 		}

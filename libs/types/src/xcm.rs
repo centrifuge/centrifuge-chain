@@ -11,13 +11,13 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Balance;
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
+	Serialize,
+	Deserialize,
 	Clone,
 	Copy,
 	Default,
@@ -35,25 +35,4 @@ pub struct XcmMetadata {
 	/// The fee charged for every second that an XCM message takes to execute.
 	/// When `None`, the `default_per_second` will be used instead.
 	pub fee_per_second: Option<Balance>,
-}
-
-pub mod consts {
-	use frame_support::parameter_types;
-
-	use super::*;
-
-	// Pools-related constants
-	pub mod pools {
-		use super::*;
-
-		parameter_types! {
-			/// The max length in bytes allowed for a tranche token name
-			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-			pub const MaxTrancheNameLengthBytes: u32 = 128;
-
-			/// The max length in bytes allowed for a tranche token symbol
-			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-			pub const MaxTrancheSymbolLengthBytes: u32 = 32;
-		}
-	}
 }

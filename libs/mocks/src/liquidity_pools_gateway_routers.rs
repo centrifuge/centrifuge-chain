@@ -5,7 +5,7 @@ use sp_std::default::Default;
 
 use crate::MessageMock;
 
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use super::*;
 
@@ -16,19 +16,16 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_init(f: impl Fn() -> DispatchResult + 'static) {
 			register_call!(move |()| f());
 		}
 
-		pub fn mock_send(f: impl Fn(T::AccountId, MessageMock) -> DispatchResult + 'static) {
+		pub fn mock_send(
+			f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+		) {
 			register_call!(move |(sender, message)| f(sender, message));
 		}
 	}
@@ -41,7 +38,7 @@ pub mod pallet {
 			execute_call!(())
 		}
 
-		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResult {
+		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResultWithPostInfo {
 			execute_call!((sender, message))
 		}
 	}
@@ -68,7 +65,10 @@ impl<T: pallet::Config> RouterMock<T> {
 		pallet::Pallet::<T>::mock_init(f)
 	}
 
-	pub fn mock_send(&self, f: impl Fn(T::AccountId, MessageMock) -> DispatchResult + 'static) {
+	pub fn mock_send(
+		&self,
+		f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+	) {
 		pallet::Pallet::<T>::mock_send(f)
 	}
 }
@@ -83,7 +83,7 @@ impl<T: pallet::Config> Router for RouterMock<T> {
 		pallet::Pallet::<T>::init()
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
 		pallet::Pallet::<T>::send(sender, message)
 	}
 }
@@ -105,5 +105,5 @@ trait MockedRouter {
 	fn init() -> DispatchResult;
 
 	/// Send the message to the router's destination.
-	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResult;
+	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo;
 }

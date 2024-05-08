@@ -15,318 +15,38 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade},
 	weights::Weight,
 };
-use sp_core::H160;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 
-use crate::evm::precompile::PRECOMPILE_CODE_STORAGE;
+use crate::evm::precompile::{utils::initialize_accounts, H160Addresses};
 
 pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: pallet_evm::Config> OnRuntimeUpgrade for Migration<T> {
+impl<T> OnRuntimeUpgrade for Migration<T>
+where
+	T: pallet_evm::Config,
+	<T as pallet_evm::Config>::PrecompilesType: H160Addresses,
+{
 	fn on_runtime_upgrade() -> Weight {
-		log::info!("precompile::AccountCodes: Inserting precompile account codes: on_runtime_upgrade: started");
+		log::info!("precompile::AccountCodes: Inserting precompile account codes");
 
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::ECRECOVER_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for ECRECOVER.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::ECRECOVER_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: ECRECOVER storage already populated. Skipping.")
-		}
+		let (reads, writes) = initialize_accounts::<T>();
 
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::SHA256_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for SHA256.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::SHA256_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: SHA256 storage already populated. Skipping.")
-		}
+		log::info!(
+			"precompile::AccountCodes: Added new {} account codes",
+			writes
+		);
 
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::RIPEMD160_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for RIPEMD160.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::RIPEMD160_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: RIPEMD160 storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::IDENTITY_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for IDENTITY.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::IDENTITY_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: IDENTITY storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::MODEXP_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for MODEXP.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::MODEXP_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: MODEXP storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128ADD_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for BN128ADD.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::BN128ADD_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: BN128ADD storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128MUL_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for BN128MUL.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::BN128MUL_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: BN128MUL storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128PAIRING_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for BN128PAIRING.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::BN128PAIRING_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!(
-				"precompile::AccountCodes: BN128PAIRING storage already populated. Skipping."
-			)
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BLAKE2F_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for BLAKE2F.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::BLAKE2F_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: BLAKE2F storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::SHA3FIPS256_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for SHA3FIPS256.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::SHA3FIPS256_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: SHA3FIPS256 storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::DISPATCH_ADDR))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for DISPATCH.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::DISPATCH_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!("precompile::AccountCodes: DISPATCH storage already populated. Skipping.")
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(
-			crate::evm::precompile::ECRECOVERPUBLICKEY_ADDR,
-		))
-		.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for ECRECOVERPUBLICKEY.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::ECRECOVERPUBLICKEY_ADDR),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!(
-				"precompile::AccountCodes: ECRECOVERPUBLICKEY storage already populated. Skipping."
-			)
-		}
-
-		if pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::LP_AXELAR_GATEWAY))
-			.is_empty()
-		{
-			log::info!("precompile::AccountCodes: Inserting code for LP_AXELAR_GATEWAY.");
-			pallet_evm::AccountCodes::<T>::insert(
-				H160::from(crate::evm::precompile::LP_AXELAR_GATEWAY),
-				PRECOMPILE_CODE_STORAGE.to_vec(),
-			);
-		} else {
-			log::warn!(
-				"precompile::AccountCodes: LP_AXELAR_GATEWAY storage already populated. Skipping."
-			)
-		}
-
-		log::info!("precompile::AccountCodes: Inserting precompile account codes, on_runtime_upgrade: completed!");
-
-		// NOTE: This is a worst case weight and we do not care to adjust it correctly
-		// depending on skipped read/writes.
-		T::DbWeight::get().reads_writes(13, 13)
+		T::DbWeight::get().reads_writes(writes, reads)
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, DispatchError> {
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::ECRECOVER_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::SHA256_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::RIPEMD160_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::IDENTITY_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::MODEXP_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128ADD_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128MUL_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::BN128PAIRING_ADDR
-			)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BLAKE2F_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::SHA3FIPS256_ADDR
-			)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::DISPATCH_ADDR)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::ECRECOVERPUBLICKEY_ADDR
-			)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::LP_AXELAR_GATEWAY
-			)),
-			sp_std::vec::Vec::<u8>::new()
-		);
-
 		Ok(sp_std::vec::Vec::<u8>::new())
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), DispatchError> {
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::ECRECOVER_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::SHA256_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::RIPEMD160_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::IDENTITY_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::MODEXP_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128ADD_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BN128MUL_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::BN128PAIRING_ADDR
-			)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::BLAKE2F_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::SHA3FIPS256_ADDR
-			)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::DISPATCH_ADDR)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::ECRECOVERPUBLICKEY_ADDR
-			)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-		assert_eq!(
-			pallet_evm::AccountCodes::<T>::get(H160::from(
-				crate::evm::precompile::LP_AXELAR_GATEWAY
-			)),
-			PRECOMPILE_CODE_STORAGE.to_vec()
-		);
-
 		Ok(())
 	}
 }

@@ -15,8 +15,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{PoolNAV, Seconds};
-	use codec::HasCompact;
 	use frame_support::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, Zero};
 
 	#[pallet::config]

@@ -13,7 +13,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, Input};
+use parity_scale_codec::{Decode, Encode, Error, Input};
 use sp_std::{cmp::min, vec::Vec};
 
 /// Build a fixed-size array using as many elements from `src` as possible
@@ -39,9 +39,7 @@ pub fn encode_be(x: impl Encode) -> Vec<u8> {
 /// Decode a type O by reading S bytes from I. Those bytes are expected to be
 /// encoded as big-endian and thus needs reversing to little-endian before
 /// decoding to O.
-pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
-	input: &mut I,
-) -> Result<O, codec::Error> {
+pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 	bytes.reverse();
@@ -50,7 +48,7 @@ pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
 }
 
 /// Decode a type 0 by reading S bytes from I.
-pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 
@@ -60,8 +58,10 @@ pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, c
 /// Function that initializes the frame system & Aura, so a timestamp can be set
 /// and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
-where
+pub fn set_block_number_timestamp<T>(
+	block_number: frame_system::pallet_prelude::BlockNumberFor<T>,
+	timestamp: T::Moment,
+) where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
 {
 	use frame_support::traits::Hooks;
@@ -111,6 +111,101 @@ pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
 		Some(address)
 	} else {
 		None
+	}
+}
+
+pub mod math {
+	use sp_arithmetic::{
+		traits::{BaseArithmetic, EnsureFixedPointNumber},
+		ArithmeticError, FixedPointOperand, FixedU128,
+	};
+
+	/// Returns the coordinate `y` for coordinate `x`,
+	/// in a function given by 2 points: (x1, y1) and (x2, y2)
+	pub fn y_coord_in_rect<X, Y>(
+		(x1, y1): (X, Y),
+		(x2, y2): (X, Y),
+		x: X,
+	) -> Result<Y, ArithmeticError>
+	where
+		X: BaseArithmetic + FixedPointOperand,
+		Y: BaseArithmetic + FixedPointOperand,
+	{
+		// From the equation: (x - x1) / (x2 - x1) == (y - y1) / (y2 - y1) we solve y:
+		//
+		// NOTE: With rects that have x or y negative directions, we emulate a
+		// symmetry in those axis to avoid unsigned underflows in substractions. It
+		// means, we first "convert" the rect into an increasing rect, and in such rect,
+		// we find the y coordinate.
+
+		let left = if x1 <= x2 {
+			FixedU128::ensure_from_rational(x.ensure_sub(x1)?, x2.ensure_sub(x1)?)?
+		} else {
+			// X symmetry emulation
+			FixedU128::ensure_from_rational(x1.ensure_sub(x)?, x1.ensure_sub(x2)?)?
+		};
+
+		if y1 <= y2 {
+			left.ensure_mul_int(y2.ensure_sub(y1)?)?.ensure_add(y1)
+		} else {
+			// Y symmetry emulation
+			y1.ensure_sub(left.ensure_mul_int(y1.ensure_sub(y2)?)?)
+		}
+	}
+
+	#[cfg(test)]
+	mod test_y_coord_in_function_with_2_points {
+		use super::*;
+
+		#[test]
+		fn start_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 3), Ok(12));
+		}
+
+		#[test]
+		fn end_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 7), Ok(24));
+		}
+
+		// Rect defined as:
+		//    (x2, y2)
+		//      /
+		//     /
+		// (x1, y1)
+		#[test]
+		fn inner_point() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 12), (7, 24), 4), Ok(15));
+		}
+
+		// Rect defined as:
+		// (x2, y2)
+		//      \
+		//       \
+		//     (x1, y1)
+		#[test]
+		fn inner_point_with_greater_x1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((7, 12), (3, 24), 4), Ok(21));
+		}
+
+		// Rect defined as:
+		// (x1, y1)
+		//      \
+		//       \
+		//     (x2, y2)
+		#[test]
+		fn inner_point_with_greater_y1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((3, 24), (7, 12), 4), Ok(21));
+		}
+
+		// Rect defined as:
+		//    (x1, y1)
+		//      /
+		//     /
+		// (x2, y2)
+		#[test]
+		fn inner_point_with_greater_x1y1() {
+			assert_eq!(y_coord_in_rect::<u32, u32>((7, 24), (3, 12), 4), Ok(15));
+		}
 	}
 }
 

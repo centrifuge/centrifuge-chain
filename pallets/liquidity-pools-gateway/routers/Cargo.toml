@@ -11,68 +11,68 @@ version = "0.0.1"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-hex = { version = "0.4.3", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+hex = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-std = { workspace = true }
 
 # Substrate
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
 
 # XCM
-pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+pallet-xcm-transactor = { workspace = true }
+staging-xcm = { workspace = true }
+xcm-primitives = { workspace = true }
 
 # EVM
-ethabi = { version = "16.0", default-features = false }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+ethabi = { workspace = true }
+pallet-ethereum = { workspace = true }
+pallet-evm = { workspace = true }
 
 # Custom crates
-cfg-traits = { path = "../../../libs/traits", default-features = false }
-cfg-types = { path = "../../../libs/types", default-features = false }
+cfg-traits = { workspace = true }
 
 # Local pallets
-pallet-ethereum-transaction = { path = "../../ethereum-transaction", default-features = false }
-pallet-liquidity-pools-gateway = { path = "../.", default-features = false }
+pallet-ethereum-transaction = { workspace = true }
+pallet-liquidity-pools-gateway = { workspace = true }
 
 [dev-dependencies]
-lazy_static = "1.4.0"
+cfg-types = { workspace = true, default-features = true }
+lazy_static = { workspace = true }
 
-cumulus-primitives-core = { git = "https://github.com/moonbeam-foundation/cumulus", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+cumulus-primitives-core = { workspace = true, default-features = true }
 
-xcm-builder = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-xcm-executor = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+staging-xcm-builder = { workspace = true, default-features = true }
+staging-xcm-executor = { workspace = true, default-features = true }
 
-pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-timestamp = { git = "https://github.com/moonbeam-foundation/substrate", branch = "moonbeam-polkadot-v0.9.43" }
+pallet-evm-chain-id = { workspace = true, default-features = true }
+pallet-evm-precompile-simple = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
-orml-traits = { git = "https://github.com/moonbeam-foundation/open-runtime-module-library", branch = "moonbeam-polkadot-v0.9.43", default-features = false }
+orml-traits = { workspace = true, default-features = true }
 
-cfg-mocks = { path = "../../../libs/mocks" }
-cfg-primitives = { path = "../../../libs/primitives" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+cfg-mocks = { workspace = true, default-features = true }
+cfg-primitives = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
-  "codec/std",
-  "cfg-types/std",
+  "parity-scale-codec/std",
   "cfg-traits/std",
+  "cfg-mocks/std",
   "hex/std",
   "frame-support/std",
   "frame-system/std",
   "sp-std/std",
   "sp-core/std",
-  "xcm/std",
+  "staging-xcm/std",
   "pallet-liquidity-pools-gateway/std",
   "pallet-xcm-transactor/std",
   "pallet-ethereum/std",
@@ -86,6 +86,8 @@ std = [
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-liquidity-pools-gateway/runtime-benchmarks",
@@ -94,17 +96,22 @@ runtime-benchmarks = [
   "pallet-xcm-transactor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "staging-xcm-builder/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "cfg-traits/try-runtime",
+  "cfg-primitives/try-runtime",
   "cfg-types/try-runtime",
+  "cfg-mocks/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-ethereum/try-runtime",
   "pallet-ethereum-transaction/try-runtime",
   "pallet-xcm-transactor/try-runtime",
   "pallet-evm/try-runtime",
+  "pallet-balances/try-runtime",
   "sp-runtime/try-runtime",
 ]

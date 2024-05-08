@@ -1,9 +1,13 @@
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::{PoolInspect, PoolReserve, PriceValue, Seconds, TrancheTokenPrice};
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use cfg_traits::{
+		investments::InvestmentAccountant, PoolInspect, PoolReserve, PriceValue, Seconds,
+		TrancheTokenPrice,
+	};
+	use cfg_types::investments::InvestmentInfo;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_std::fmt::Debug;
 
@@ -29,12 +33,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {
@@ -64,6 +63,49 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_info(
+			f: impl Fn(
+					T::TrancheCurrency,
+				) -> Result<
+					InvestmentInfo<T::AccountId, T::CurrencyId, T::TrancheCurrency>,
+					DispatchError,
+				> + 'static,
+		) {
+			register_call!(f);
+		}
+
+		pub fn mock_balance(f: impl Fn(T::TrancheCurrency, &T::AccountId) -> T::Balance + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_transfer(
+			f: impl Fn(T::TrancheCurrency, &T::AccountId, &T::AccountId, T::Balance) -> DispatchResult
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+		}
+
+		#[allow(non_snake_case)]
+		pub fn mock_InvestmentAccountant_deposit(
+			f: impl Fn(&T::AccountId, T::TrancheCurrency, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+
+		#[allow(non_snake_case)]
+		pub fn mock_InvestmentAccountant_withdraw(
+			f: impl Fn(&T::AccountId, T::TrancheCurrency, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_bench_default_investment_id(
+			f: impl Fn(T::PoolId) -> T::TrancheCurrency + 'static,
+		) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
@@ -85,6 +127,38 @@ pub mod pallet {
 
 		fn currency_for(a: T::PoolId) -> Option<T::CurrencyId> {
 			execute_call!(a)
+		}
+	}
+
+	impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
+		type Amount = T::Balance;
+		type Error = DispatchError;
+		type InvestmentId = T::TrancheCurrency;
+		type InvestmentInfo = InvestmentInfo<T::AccountId, T::CurrencyId, Self::InvestmentId>;
+
+		fn info(a: Self::InvestmentId) -> Result<Self::InvestmentInfo, DispatchError> {
+			execute_call!(a)
+		}
+
+		fn balance(a: Self::InvestmentId, b: &T::AccountId) -> Self::Amount {
+			execute_call!((a, b))
+		}
+
+		fn transfer(
+			a: Self::InvestmentId,
+			b: &T::AccountId,
+			c: &T::AccountId,
+			d: Self::Amount,
+		) -> DispatchResult {
+			execute_call!((a, b, c, d))
+		}
+
+		fn deposit(a: &T::AccountId, b: Self::InvestmentId, c: Self::Amount) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		fn withdraw(a: &T::AccountId, b: Self::InvestmentId, c: Self::Amount) -> DispatchResult {
+			execute_call!((a, b, c))
 		}
 	}
 
@@ -115,6 +189,14 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type PoolId = T::PoolId;
+
+		fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> cfg_traits::benchmarking::FundedPoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
 		type Balance = T::Balance;
@@ -130,8 +212,8 @@ pub mod pallet {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
-		fn bench_default_investment_id(_: Self::PoolId) -> Self::InvestmentId {
-			unimplemented!();
+		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {
+			execute_call!(a)
 		}
 	}
 }

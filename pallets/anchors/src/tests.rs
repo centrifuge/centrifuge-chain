@@ -13,11 +13,14 @@
 
 use std::time::Instant;
 
-use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use frame_system::ensure_signed;
+use parity_scale_codec::Encode;
 use sp_core::H256;
-use sp_runtime::traits::{BadOrigin, Hash, Header};
+use sp_runtime::{
+	traits::{BadOrigin, Hash, Header},
+	ArithmeticError,
+};
 
 use super::*;
 use crate::{

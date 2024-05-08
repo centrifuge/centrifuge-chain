@@ -18,11 +18,11 @@
 // ----------------------------------------------------------------------------
 
 use cfg_primitives::constants::CFG;
-use codec::Encode;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::{LockableCurrency, WithdrawReasons},
 };
+use parity_scale_codec::Encode;
 use sp_core::{blake2_256, H256};
 use sp_runtime::{DispatchError, TokenError};
 

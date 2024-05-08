@@ -1,6 +1,6 @@
-use cfg_primitives::{Address, Balance, BlockNumber, Index};
+use cfg_primitives::{Address, Balance, BlockNumber, Nonce};
 use cfg_traits::{IntoSeconds, Seconds};
-use codec::Encode;
+use parity_scale_codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -31,6 +31,13 @@ pub enum Blocks<Event> {
 	/// computationally very fast.
 	/// (i.e. years)
 	JumpBySeconds(Seconds),
+
+	/// Jumps to a block in the future.
+	/// Only one real block is created in the process.
+	/// This can be used to emulate passing time during long periods
+	/// computationally very fast.
+	/// (i.e. years)
+	JumpByNumber(BlockNumber),
 }
 
 impl<Event> Blocks<Event> {
@@ -53,6 +60,7 @@ impl<Event> Blocks<Event> {
 				};
 				(next + blocks.saturating_sub(1), next + blocks)
 			}
+			Blocks::JumpByNumber(n) => (next + (*n - 1), next + *n),
 		};
 		from..to
 	}
@@ -166,7 +174,7 @@ pub mod utils {
 	pub fn create_extrinsic<T: Runtime>(
 		who: Keyring,
 		call: impl Into<T::RuntimeCallExt>,
-		nonce: Index,
+		nonce: Nonce,
 	) -> <T::Block as Block>::Extrinsic {
 		let runtime_call = call.into();
 		let signed_extra = (
@@ -178,6 +186,7 @@ pub mod utils {
 			frame_system::CheckNonce::<T>::from(nonce),
 			frame_system::CheckWeight::<T>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
+			runtime_common::transfer_filter::PreBalanceTransferExtension::<T>::new(),
 		);
 
 		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
@@ -192,7 +201,6 @@ pub mod utils {
 
 mod tests {
 	use super::*;
-	struct MockEnv;
 
 	const SLOT_DURATION: Seconds = 12;
 	const EMPTY: [BlockNumber; 0] = [];

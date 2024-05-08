@@ -1,18 +1,18 @@
 use cfg_primitives::{Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_MINUTE};
 use cfg_traits::{
 	interest::{CompoundingSchedule, InterestRate},
-	Seconds, TimeAsSecs,
+	Seconds,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	oracles::OracleKey,
 	permissions::PoolRole,
 };
-use frame_support::{assert_err, traits::Get};
+use frame_support::{assert_err, assert_ok, traits::Get};
 use pallet_loans::{
 	entities::{
 		changes::LoanMutation,
-		input::{PrincipalInput, RepaidInput},
+		input::{PriceCollectionInput, PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
@@ -25,9 +25,12 @@ use pallet_loans::{
 		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
-use runtime_common::apis::{
-	runtime_decl_for_loans_api::LoansApiV1, runtime_decl_for_pools_api::PoolsApiV1,
+use runtime_common::{
+	apis::{runtime_decl_for_loans_api::LoansApiV2, runtime_decl_for_pools_api::PoolsApiV1},
+	oracle::Feeder,
 };
+use sp_runtime::FixedPointNumber;
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	generic::{
@@ -41,7 +44,7 @@ use crate::{
 			POOL_MIN_EPOCH_TIME,
 		},
 	},
-	utils::{accounts::Keyring, tokens::rate_from_percent},
+	utils::accounts::Keyring,
 };
 
 const POOL_ADMIN: Keyring = Keyring::Admin;
@@ -54,7 +57,8 @@ const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 const PRICE_A: OracleKey = OracleKey::Isin(*b"INE123456AB1");
 const PRICE_VALUE_A: Quantity = Quantity::from_integer(1_000);
-const PRICE_VALUE_B: Quantity = Quantity::from_integer(500);
+const PRICE_VALUE_B: Quantity = Quantity::from_integer(800);
+const PRICE_VALUE_C: Quantity = Quantity::from_integer(2_000);
 
 const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
@@ -67,17 +71,19 @@ mod common {
 
 	pub fn initialize_state_for_loans<E: Env<T>, T: Runtime>() -> E {
 		let mut env = E::from_parachain_storage(
-			Genesis::<T>::default()
-				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-				.add(genesis::assets(vec![Usd6::ID]))
-				.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
+			Genesis::default()
+				.add(genesis::balances::<T>(
+					T::ExistentialDeposit::get() + FOR_FEES,
+				))
+				.add(genesis::assets::<T>(vec![Box::new(Usd6)]))
+				.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 				.storage(),
 		);
 
 		env.parachain_state_mut(|| {
 			// Creating a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
+			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6.id());
 
 			// Setting borrower
 			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
@@ -90,7 +96,7 @@ mod common {
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
 			utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
-			utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, EXPECTED_POOL_BALANCE);
+			utils::give_tokens::<T>(INVESTOR.id(), Usd6.id(), EXPECTED_POOL_BALANCE);
 			utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
 		});
 
@@ -157,9 +163,17 @@ mod common {
 		Pricing::External(ExternalPricing {
 			price_id: PRICE_A,
 			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
-			notional: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
-			max_price_variation: rate_from_percent(0),
+			notional: currency::price_to_currency(PRICE_VALUE_A, Usd6),
+			max_price_variation: rate_from_percent(50),
 		})
+	}
+
+	pub fn price_to_usd6(price: Quantity) -> Balance {
+		currency::price_to_currency(price, Usd6)
+	}
+
+	pub fn rate_from_percent(perc: u64) -> Rate {
+		Rate::saturating_from_rational(perc, 100)
 	}
 }
 
@@ -182,13 +196,13 @@ mod call {
 		}
 	}
 
-	pub fn borrow_external<T: Runtime>(loan_id: LoanId) -> pallet_loans::Call<T> {
+	pub fn borrow_external<T: Runtime>(loan_id: LoanId, price: Quantity) -> pallet_loans::Call<T> {
 		pallet_loans::Call::borrow {
 			pool_id: POOL_A,
 			loan_id,
 			amount: PrincipalInput::External(ExternalAmount {
-				quantity: Quantity::from_integer(50),
-				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
+				quantity: QUANTITY / 2.into(),
+				settlement_price: common::price_to_usd6(price),
 			}),
 		}
 	}
@@ -215,8 +229,8 @@ mod call {
 			loan_id,
 			amount: RepaidInput {
 				principal: PrincipalInput::External(ExternalAmount {
-					quantity: Quantity::from_integer(50),
-					settlement_price: currency::price_to_currency(settlement_price, Usd6::ID),
+					quantity: QUANTITY / 2.into(),
+					settlement_price: common::price_to_usd6(settlement_price),
 				}),
 				interest,
 				unscheduled: 0,
@@ -248,6 +262,10 @@ mod call {
 			change_id,
 		}
 	}
+
+	pub fn update_portfolio_valuation<T: Runtime>() -> pallet_loans::Call<T> {
+		pallet_loans::Call::update_portfolio_valuation { pool_id: POOL_A }
+	}
 }
 
 /// Test the basic loan flow, which consist in:
@@ -255,12 +273,12 @@ mod call {
 /// - borrow from the loan
 /// - fully repay the loan until
 /// - close the loan
+#[test_runtimes(all)]
 fn internal_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.parachain_state(|| {
-		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan_info::<T>(now, common::default_internal_pricing())
+		common::default_loan_info::<T>(utils::now_secs::<T>(), common::default_internal_pricing())
 	});
 	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
@@ -275,7 +293,11 @@ fn internal_priced<T: Runtime>() {
 	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
-		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+		utils::give_tokens::<T>(
+			BORROWER.id(),
+			Usd6.id(),
+			loan_portfolio.outstanding_interest,
+		);
 	});
 
 	env.submit_now(
@@ -289,33 +311,48 @@ fn internal_priced<T: Runtime>() {
 }
 
 /// Test using oracles to price the loan
+#[test_runtimes(all)]
 fn oracle_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	env.parachain_state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_A)]));
+	env.parachain_state_mut(|| {
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, [Feeder::root()]);
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_A);
+	});
 
 	let info = env.parachain_state(|| {
-		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan_info::<T>(now, common::default_external_pricing())
+		common::default_loan_info::<T>(utils::now_secs::<T>(), common::default_external_pricing())
 	});
 	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
 	let loan_id = common::last_loan_id(&env);
 
-	env.submit_now(BORROWER, call::borrow_external(loan_id))
+	env.submit_now(BORROWER, call::borrow_external(loan_id, PRICE_VALUE_A))
 		.unwrap();
 
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
 	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_a = loan_portfolio.present_value;
+
 	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
-		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+		utils::give_tokens::<T>(
+			BORROWER.id(),
+			Usd6.id(),
+			loan_portfolio.outstanding_interest,
+		);
 
 		// Oracle modify the value
-		utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_B)])
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
 	});
+
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_b = loan_portfolio.present_value;
+
+	// The valuation by the oracle has been changed
+	assert_ne!(present_value_price_a, present_value_price_b);
 
 	env.submit_now(
 		BORROWER,
@@ -327,12 +364,72 @@ fn oracle_priced<T: Runtime>() {
 	env.submit_now(BORROWER, call::close(loan_id)).unwrap();
 }
 
+/// Test using oracles to valuate a portfolio.
+/// The oracle values used by the portfilio comes from the oracle
+/// collection
+#[test_runtimes(all)]
+fn portfolio_valuated_by_oracle<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, [Feeder::root()]);
+	});
+
+	let info = env.parachain_state(|| {
+		common::default_loan_info::<T>(utils::now_secs::<T>(), common::default_external_pricing())
+	});
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
+
+	let loan_id = common::last_loan_id(&env);
+
+	env.submit_now(BORROWER, call::borrow_external(loan_id, PRICE_VALUE_A))
+		.unwrap();
+
+	// There is no price fed, so the price comes from the one used as settement
+	// price when borrowing
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
+	});
+
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_b = loan_portfolio.present_value;
+
+	// There is a price fed, but the collection is not updated yet,
+	// so the price still comes from the one used as settement price when
+	// borrowing
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	let total_portfolio_value = env.parachain_state(|| {
+		<pallet_loans::Pallet<T> as cfg_traits::PoolNAV<PoolId, Balance>>::nav(POOL_A).unwrap()
+	});
+
+	assert_ne!(present_value_price_b, total_portfolio_value.0);
+
+	// We finally update the collection
+	env.parachain_state_mut(|| {
+		utils::oracle::update_collection::<T>(ANY.id(), POOL_A);
+	});
+
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	let total_portfolio_value = env.parachain_state(|| {
+		<pallet_loans::Pallet<T> as cfg_traits::PoolNAV<PoolId, Balance>>::nav(POOL_A).unwrap()
+	});
+
+	assert_eq!(present_value_price_b, total_portfolio_value.0);
+}
+
+#[test_runtimes(all)]
 fn update_maturity_extension<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.parachain_state(|| {
-		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan_info::<T>(now, common::default_internal_pricing())
+		common::default_loan_info::<T>(utils::now_secs::<T>(), common::default_internal_pricing())
 	});
 	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
@@ -364,6 +461,58 @@ fn update_maturity_extension<T: Runtime>() {
 		.unwrap();
 }
 
-crate::test_for_runtimes!(all, internal_priced);
-crate::test_for_runtimes!(all, oracle_priced);
-crate::test_for_runtimes!(all, update_maturity_extension);
+#[test_runtimes(all)]
+fn fake_oracle_portfolio_api<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, [Feeder::root()]);
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
+	});
+
+	let info = env.parachain_state(|| {
+		common::default_loan_info::<T>(utils::now_secs::<T>(), common::default_external_pricing())
+	});
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
+
+	env.submit_now(
+		BORROWER,
+		call::borrow_external(common::last_loan_id(&env), PRICE_VALUE_A),
+	)
+	.unwrap();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::update_collection::<T>(ANY.id(), POOL_A);
+	});
+
+	env.parachain_state(|| {
+		let expected_portfolio_for = |used_price| {
+			(QUANTITY / 2.into()).saturating_mul_int(common::price_to_usd6(used_price))
+		};
+
+		// Updating the portfolio with no prices will force to use linear accrual
+		// prices. Because no time has passed, it correspond to settlement price
+		assert_ok!(
+			T::Api::portfolio_valuation(POOL_A, PriceCollectionInput::Empty),
+			expected_portfolio_for(PRICE_VALUE_A)
+		);
+
+		// Updating the portfolio using the register will use the oracle values
+		assert_ok!(
+			T::Api::portfolio_valuation(POOL_A, PriceCollectionInput::FromRegistry),
+			expected_portfolio_for(PRICE_VALUE_B)
+		);
+
+		// Updating the portfolio with custom prices will use the overriden prices
+		let collection = [(PRICE_A, common::price_to_usd6(PRICE_VALUE_C))]
+			.into_iter()
+			.collect::<BTreeMap<_, _>>()
+			.try_into()
+			.unwrap();
+
+		assert_ok!(
+			T::Api::portfolio_valuation(POOL_A, PriceCollectionInput::Custom(collection)),
+			expected_portfolio_for(PRICE_VALUE_C)
+		);
+	});
+}

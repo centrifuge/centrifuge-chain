@@ -1,76 +1,47 @@
-use cfg_traits::rewards::AccountRewards;
-use cfg_types::tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency};
+use cfg_traits::{rewards::AccountRewards, Seconds};
+use cfg_types::{
+	fixed_point::Rate,
+	tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency},
+};
 use frame_support::{
-	parameter_types,
+	derive_impl, parameter_types,
 	traits::{
-		fungibles::Inspect, tokens::WithdrawConsequence, ConstU16, ConstU32, ConstU64,
-		Currency as CurrencyT, GenesisBuild, OnFinalize, OnInitialize, OnUnbalanced,
+		fungibles::Inspect, tokens::WithdrawConsequence, ConstU128, ConstU32, OnFinalize,
+		OnInitialize,
 	},
 	PalletId,
 };
 use frame_system::EnsureRoot;
 use num_traits::{One, Zero};
-use sp_core::H256;
-use sp_runtime::{
-	impl_opaque_keys,
-	testing::{Header, UintAuthorityId},
-	traits::{BlakeTwo256, ConvertInto, IdentityLookup},
-};
+use sp_runtime::{impl_opaque_keys, testing::UintAuthorityId, traits::ConvertInto, BuildStorage};
 
-use crate::{self as pallet_block_rewards, Config, NegativeImbalanceOf};
+use crate::{self as pallet_block_rewards, Config};
 
 pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
-pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
 
 pub(crate) type AccountId = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
 type BlockNumber = u64;
 type SessionIndex = u32;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
+	pub enum Test {
 		System: frame_system,
 		Balances: pallet_balances,
 		Tokens: pallet_restricted_tokens,
 		OrmlTokens: orml_tokens,
 		Rewards: pallet_rewards::<Instance1>,
 		Session: pallet_session,
+		MockTime: cfg_mocks::pallet_mock_time,
 		BlockRewards: pallet_block_rewards,
 	}
 );
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId;
-	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockHashCount = ConstU64<250>;
-	type BlockLength = ();
-	type BlockNumber = u64;
-	type BlockWeights = ();
-	type DbWeight = ();
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type Header = Header;
-	type Index = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = ConstU32<16>;
-	type OnKilledAccount = ();
-	type OnNewAccount = ();
-	type OnSetCode = ();
-	type PalletInfo = PalletInfo;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type SS58Prefix = ConstU16<42>;
-	type SystemWeightInfo = ();
-	type Version = ();
+	type Block = frame_system::mocking::MockBlock<Test>;
 }
 
 impl_opaque_keys! {
@@ -113,62 +84,37 @@ impl pallet_session::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	// the minimum fee for an anchor is 500,000ths of a CFG.
-	// This is set to a value so you can still get some return without getting your account removed.
-	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
-	// For weight estimation, we assume that the most locks on an individual account will be 50.
-	pub const MaxHolds: u32 = 50;
-	pub const MaxLocks: u32 = 50;
-	pub const MaxReserves: u32 = 50;
-}
+pub const BALANCE_ED: Balance = 23;
+pub const REWARD_CURRENCY_ED: Balance = 42;
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = MaxHolds;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub static RewardRemainderUnbalanced: Balance = 0;
-}
-
-/// Mock implementation of Treasury.
-pub struct RewardRemainderMock;
-impl OnUnbalanced<NegativeImbalanceOf<Test>> for RewardRemainderMock {
-	fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<Test>) {
-		let _ = Balances::resolve_creating(&TREASURY_ADDRESS, amount);
-	}
+	type ExistentialDeposit = ConstU128<BALANCE_ED>;
+	type RuntimeHoldReason = ();
 }
 
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
-			CurrencyId::Native => ExistentialDeposit::get(),
-			_ => 1,
+			CurrencyId::Native => BALANCE_ED,
+			CurrencyId::Staking(BlockRewardsCurrency) => REWARD_CURRENCY_ED,
+			_ => unreachable!()
 		}
 	};
 }
 
 impl orml_tokens::Config for Test {
-	type Amount = i64;
+	type Amount = i128;
 	type Balance = Balance;
 	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = MaxReserves;
+	type MaxLocks = ConstU32<100>;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -216,44 +162,43 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
-		i64,
+		i128,
 		sp_runtime::FixedI128,
 		MaxCurrencyMovements,
 	>;
 	type RuntimeEvent = RuntimeEvent;
 }
 
-// pub type MockRewards =
-// 	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId),
-// AccountId>;
+impl cfg_mocks::pallet_mock_time::Config for Test {
+	type Moment = Seconds;
+}
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const MaxChangesPerSession: u32 = 50;
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
+	pub const TreasuryPalletId: PalletId = cfg_types::ids::TREASURY_PALLET_ID;
 }
 
 impl pallet_block_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
-	type Beneficiary = RewardRemainderMock;
-	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposit = ExistentialDeposit;
-	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
+	type Rate = Rate;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type StakeAmount = StakeAmount;
 	type StakeCurrencyId = BlockRewardCurrency;
 	type StakeGroupId = CollatorGroupId;
+	type Time = MockTime;
+	type Tokens = Tokens;
+	type TreasuryPalletId = TreasuryPalletId;
 	type Weight = u64;
 	type WeightInfo = ();
 }
@@ -261,14 +206,14 @@ impl pallet_block_rewards::Config for Test {
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
 		// NOTE: This is now the ED instead of 0, as we collators need ED now.
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
-		ExistentialDeposit::get()
+		Tokens::balance(BlockRewardCurrency::get(), who),
+		REWARD_CURRENCY_ED
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(
+		<Test as Config>::Tokens::can_withdraw(
 			<Test as Config>::StakeCurrencyId::get(),
 			who,
-			ExistentialDeposit::get() * 2
+			REWARD_CURRENCY_ED * 2
 		),
 		WithdrawConsequence::BalanceLow
 	);
@@ -281,14 +226,10 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	)
 	.is_zero());
 	assert_eq!(
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		<Test as Config>::Tokens::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		// NOTE: IF a collator has been staked before the system already granted them ED
 		//       of `StakeCurrency`.
-		if was_before {
-			ExistentialDeposit::get()
-		} else {
-			0
-		}
+		if was_before { REWARD_CURRENCY_ED } else { 0 }
 	);
 }
 
@@ -333,7 +274,7 @@ pub(crate) fn advance_session() {
 
 pub(crate) struct ExtBuilder {
 	collator_reward: Balance,
-	total_reward: Balance,
+	treasury_inflation_rate: Rate,
 	run_to_block: BlockNumber,
 }
 
@@ -341,7 +282,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			collator_reward: Balance::zero(),
-			total_reward: Balance::zero(),
+			treasury_inflation_rate: Rate::zero(),
 			run_to_block: BlockNumber::one(),
 		}
 	}
@@ -353,8 +294,8 @@ impl ExtBuilder {
 		self
 	}
 
-	pub(crate) fn set_total_reward(mut self, reward: Balance) -> Self {
-		self.total_reward = reward;
+	pub(crate) fn set_treasury_inflation_rate(mut self, rate: Rate) -> Self {
+		self.treasury_inflation_rate = rate;
 		self
 	}
 
@@ -364,14 +305,15 @@ impl ExtBuilder {
 	}
 
 	pub(crate) fn build(self) -> sp_io::TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
+		let mut storage = frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
 			.unwrap();
 
 		pallet_block_rewards::GenesisConfig::<Test> {
 			collators: vec![1],
 			collator_reward: self.collator_reward,
-			total_reward: self.total_reward,
+			treasury_inflation_rate: self.treasury_inflation_rate,
+			last_update: 0,
 		}
 		.assimilate_storage(&mut storage)
 		.expect("BlockRewards pallet's storage can be assimilated");
@@ -399,6 +341,7 @@ impl ExtBuilder {
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
+			MockTime::mock_now(|| 0);
 			run_to_block(self.run_to_block);
 		});
 

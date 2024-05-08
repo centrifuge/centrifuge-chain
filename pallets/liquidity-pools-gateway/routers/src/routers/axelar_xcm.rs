@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::liquidity_pools::Codec;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_runtime::DispatchError;
@@ -53,7 +53,7 @@ where
 
 	/// Encodes the message to the required format,
 	/// then executes the EVM call using the generic XCM router.
-	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
+	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResultWithPostInfo {
 		let contract_call = get_axelar_encoded_msg(
 			msg.serialize(),
 			self.axelar_target_chain.clone().into_inner(),

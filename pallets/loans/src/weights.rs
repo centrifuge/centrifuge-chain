@@ -27,6 +27,7 @@ pub trait WeightInfo {
 	fn update_portfolio_valuation(n: u32) -> Weight;
 	fn propose_transfer_debt(n: u32) -> Weight;
 	fn apply_transfer_debt(n: u32) -> Weight;
+	fn increase_debt(n: u32) -> Weight;
 }
 
 impl WeightInfo for () {
@@ -79,6 +80,10 @@ impl WeightInfo for () {
 	}
 
 	fn apply_transfer_debt(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn increase_debt(_: u32) -> Weight {
 		Weight::zero()
 	}
 }

@@ -1,4 +1,4 @@
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::Time};
 	use mock_builder::{execute_call, register_call};
@@ -13,12 +13,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type CallIds<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		<Blake2_128 as frame_support::StorageHasher>::Output,
-		mock_builder::CallId,
-	>;
+	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_now(f: impl Fn() -> T::Moment + 'static) {
@@ -31,6 +26,15 @@ pub mod pallet {
 
 		fn now() -> Self::Moment {
 			execute_call!(())
+		}
+	}
+
+	impl<T: Config> frame_support::traits::UnixTime for Pallet<T>
+	where
+		T::Moment: Into<u64>,
+	{
+		fn now() -> std::time::Duration {
+			core::time::Duration::from_millis(<Pallet<T> as Time>::now().into())
 		}
 	}
 }

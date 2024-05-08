@@ -168,6 +168,7 @@ package pricing {
             outstanding_quantity: Rate,
             interest: ActiveInterestRate
             latest_settlement_price: Balance,
+            settlement_price_updated: Seconds,
         }
 
         ExternalActivePricing *-r-> ActiveInterestRate

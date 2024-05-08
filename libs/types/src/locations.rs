@@ -10,22 +10,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
-	AccountId32,
-};
-use xcm::{v3::MultiLocation, VersionedMultiLocation};
+use sp_core::{crypto::AccountId32, H256};
+use sp_runtime::traits::{BlakeTwo256, Hash};
+use staging_xcm::VersionedMultiLocation;
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum Location {
 	/// Local chain account sending destination.
-	Local(AccountId32),
+	Local(AccountId),
 	/// XCM MultiLocation sending destinations.
 	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but
 	/// next largest is only 40 bytes other values aren't hashed as we have
@@ -36,24 +34,8 @@ pub enum Location {
 }
 
 impl From<AccountId32> for Location {
-	fn from(a: AccountId32) -> Self {
-		Self::Local(a)
-	}
-}
-
-impl From<MultiLocation> for Location {
-	fn from(ml: MultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum
-		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&ml.encode()))
-	}
-}
-
-impl From<xcm::v2::MultiLocation> for Location {
-	fn from(ml: xcm::v2::MultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum
-		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&ml.encode()))
+	fn from(value: AccountId32) -> Self {
+		Self::Local(value)
 	}
 }
 
@@ -75,23 +57,9 @@ impl From<DomainAddress> for Location {
 mod test {
 
 	use hex::FromHex;
+	use staging_xcm::v3::MultiLocation;
 
 	use super::*;
-
-	#[test]
-	fn from_xcm_v1_address_works() {
-		let xa = MultiLocation::default();
-		let l = Location::from(xa.clone());
-		assert_eq!(
-			l,
-			Location::XCM(sp_core::H256(
-				<[u8; 32]>::from_hex(
-					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
-				)
-				.unwrap()
-			))
-		);
-	}
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
@@ -106,15 +74,6 @@ mod test {
 				.unwrap()
 			))
 		);
-	}
-
-	#[test]
-	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
-		let xa = xcm::v2::MultiLocation::default();
-		let xb = xcm::v3::MultiLocation::default();
-		let l0 = Location::from(xa.clone());
-		let l1 = Location::from(xb.clone());
-		assert_eq!(l0, l1);
 	}
 
 	#[test]
