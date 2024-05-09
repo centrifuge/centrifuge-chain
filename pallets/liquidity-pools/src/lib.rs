@@ -857,7 +857,7 @@ pub mod pallet {
 			Ok(general_index.index)
 		}
 
-		/// Returns the local currency identifier from from its general index.
+		/// Returns the local currency identifier from its general index.
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		///

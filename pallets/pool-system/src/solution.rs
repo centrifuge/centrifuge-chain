@@ -70,7 +70,7 @@ impl PoolState {
 	/// Removes an unhealthy state
 	///
 	/// * If the state was not present yet, it will not be removed,
-	///  it it was present if will be removed.
+	///  if it was present it will be removed.
 	///
 	/// * If there are no more unhealthy states, the state will
 	/// be switched to healthy

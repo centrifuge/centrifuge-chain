@@ -138,7 +138,7 @@ fn apply_and_check_session<T: Runtime>(
 	// The event exists in this list:
 	dbg!(frame_system::Pallet::<T>::events())
 
-	// But not in in this list (that is the implementation of find_event()),
+	// But not in this list (that is the implementation of find_event()),
 	// so try_into returns an Err for it.
 	dbg!(frame_system::Pallet::<T>::events()
 		.into_iter()

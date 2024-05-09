@@ -66,7 +66,7 @@ pub mod benchmarking;
 /// ## Overview
 /// The crowdloan reward mechanism is separated from the crowdloan claiming
 /// process, the latter being generic, acting as a kind of proxy to the
-/// rewarding mechanism, that is specific to to each crowdloan campaign. The aim
+/// rewarding mechanism, that is specific to each crowdloan campaign. The aim
 /// of this pallet is to ensure that a claim for a reward payout is well-formed,
 /// checking for replay attacks, spams or invalid claim (e.g. unknown
 /// contributor, exceeding reward amount, ...).

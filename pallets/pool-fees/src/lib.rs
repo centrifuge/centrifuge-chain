@@ -546,7 +546,7 @@ pub mod pallet {
 			})
 		}
 
-		/// Return the the last fee id and bump it for the next query
+		/// Return the last fee id and bump it for the next query
 		pub(crate) fn generate_fee_id() -> Result<T::FeeId, ArithmeticError> {
 			LastFeeId::<T>::try_mutate(|last_fee_id| {
 				last_fee_id.ensure_add_assign(One::one())?;
