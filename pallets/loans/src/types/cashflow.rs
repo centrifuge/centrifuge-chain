@@ -300,7 +300,6 @@ mod date {
 pub mod tests {
 	use cfg_traits::interest::CompoundingSchedule;
 	use frame_support::{assert_err, assert_ok};
-	use sp_runtime::traits::One;
 
 	use super::*;
 
