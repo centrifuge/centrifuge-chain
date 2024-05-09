@@ -123,10 +123,12 @@ where
 	}
 
 	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
+		let maturity_offset = 40 * 365 * 24 * 3600; // 40 years
+
 		LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::fixed(T::Time::now() + 120),
-				interest_payments: InterestPayments::None,
+				maturity: Maturity::fixed(T::Time::now() + maturity_offset),
+				interest_payments: InterestPayments::Monthly(1),
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			collateral: (COLLECION_ID.into(), item_id),
@@ -143,7 +145,7 @@ where
 					probability_of_default: T::Rate::zero(),
 					loss_given_default: T::Rate::zero(),
 					discount_rate: InterestRate::Fixed {
-						rate_per_year: T::Rate::one(),
+						rate_per_year: T::Rate::saturating_from_rational(1, 5000),
 						compounding: CompoundingSchedule::Secondly,
 					},
 				}),
@@ -164,30 +166,6 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			Self::base_loan(item_id),
-		)
-		.unwrap();
-
-		LastLoanId::<T>::get(pool_id)
-	}
-
-	fn create_cashflow_loan(pool_id: T::PoolId, item_id: T::ItemId) -> T::LoanId {
-		let borrower = account("borrower", 0, 0);
-
-		T::NonFungible::mint_into(&COLLECION_ID.into(), &item_id, &borrower).unwrap();
-
-		let maturity_offset = 40 * 365 * 24 * 3600; // 40 years
-
-		Pallet::<T>::create(
-			RawOrigin::Signed(borrower).into(),
-			pool_id,
-			LoanInfo {
-				schedule: RepaymentSchedule {
-					maturity: Maturity::fixed(T::Time::now() + maturity_offset),
-					interest_payments: InterestPayments::Monthly(1),
-					pay_down_schedule: PayDownSchedule::None,
-				},
-				..Self::base_loan(item_id)
-			},
 		)
 		.unwrap();
 
@@ -365,7 +343,7 @@ benchmarks! {
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
-		let loan_id = Helper::<T>::create_cashflow_loan(pool_id, u16::MAX.into());
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PrincipalInput::Internal(10.into()))
 
