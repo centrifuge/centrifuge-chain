@@ -121,7 +121,6 @@ pallet-evm = { workspace = true, default-features = true }
 
 [build-dependencies]
 substrate-build-script-utils = { workspace = true, default-features = true }
-vergen = { workspace = true, default-features = true }
 
 [features]
 default = []
