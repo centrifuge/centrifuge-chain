@@ -19,22 +19,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
 	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use orml_traits::asset_registry;
-use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
-use sp_runtime::{
-	traits::{
-		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeSerialize, MaybeSerializeDeserialize,
-		Member, Zero,
-	},
-	DispatchError,
-};
-use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, vec::Vec};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use sp_runtime::{traits::Member, DispatchError};
+use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
