@@ -16,7 +16,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use staging_xcm::VersionedMultiLocation;
+use staging_xcm::VersionedLocation;
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
@@ -39,8 +39,8 @@ impl From<AccountId32> for Location {
 	}
 }
 
-impl From<VersionedMultiLocation> for Location {
-	fn from(vml: VersionedMultiLocation) -> Self {
+impl From<VersionedLocation> for Location {
+	fn from(vml: VersionedLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
 		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&vml.encode()))
@@ -63,7 +63,8 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
-		let xa = VersionedMultiLocation::V3(MultiLocation::default());
+		// TODO-1.7: Must be changed to V4?
+		let xa = VersionedLocation::V3(MultiLocation::default());
 		let l = Location::from(xa.clone());
 		assert_eq!(
 			l,

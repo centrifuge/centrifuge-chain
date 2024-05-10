@@ -13,7 +13,7 @@
 pub mod reexport {
 	pub use staging_xcm::{
 		v3::prelude::MultiLocation as __private_MultiLocation,
-		VersionedMultiLocation as __private_VersionedMultiLocation,
+		VersionedLocation as __private_VersionedLocation,
 	};
 }
 
@@ -36,7 +36,7 @@ macro_rules! impl_mock_registry {
 			};
 			use sp_runtime::{BoundedVec, BuildStorage};
 			use $crate::mocks::orml_asset_registry::reexport::{
-				__private_MultiLocation, __private_VersionedMultiLocation,
+				__private_MultiLocation, __private_VersionedLocation,
 			};
 
 			use super::*;
@@ -103,7 +103,7 @@ macro_rules! impl_mock_registry {
 					name: Option<BoundedVec<u8, Self::StringLimit>>,
 					symbol: Option<BoundedVec<u8, Self::StringLimit>>,
 					existential_deposit: Option<Self::Balance>,
-					location: Option<Option<__private_VersionedMultiLocation>>,
+					location: Option<Option<__private_VersionedLocation>>,
 					additional: Option<Self::CustomMetadata>,
 				) -> __private_DispatchResult {
 					__private::STATE.with(|s| {
@@ -276,7 +276,7 @@ macro_rules! impl_mock_registry {
 						name: Option<BoundedVec<u8, $string_limit>>,
 						symbol: Option<BoundedVec<u8, $string_limit>>,
 						existential_deposit: Option<$balance>,
-						location: Option<Option<__private_VersionedMultiLocation>>,
+						location: Option<Option<__private_VersionedLocation>>,
 						additional: Option<$custom_metadata>,
 					) -> __private_DispatchResult {
 						for (curr_id, curr_meta) in &mut self.metadata {
