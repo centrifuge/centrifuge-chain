@@ -16,7 +16,7 @@ members = [
   #"pallets/crowdloan-claim",
   #"pallets/crowdloan-reward",
   #"pallets/ethereum-transaction",
-  #"pallets/fees",
+  "pallets/fees",
   #"pallets/foreign-investments",
   #"pallets/interest-accrual",
   #"pallets/investments",

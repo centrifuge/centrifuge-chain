@@ -2454,6 +2454,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-fees"
+version = "2.0.0"
+dependencies = [
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-treasury",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-timestamp"
 version = "27.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#0d7ca59fd4b4d15f9400971f32bc6a51b2fe837f"
@@ -2471,6 +2490,25 @@ dependencies = [
  "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
  "sp-storage 19.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
  "sp-timestamp",
+]
+
+[[package]]
+name = "pallet-treasury"
+version = "27.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#0d7ca59fd4b4d15f9400971f32bc6a51b2fe837f"
+dependencies = [
+ "docify",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
 ]
 
 [[package]]
