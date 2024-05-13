@@ -20,7 +20,7 @@ use parity_scale_codec::{Decode, Encode};
 use sp_runtime::FixedPointNumber;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_std::marker::PhantomData;
 
 use crate::{pallet, Config, Pallet, SessionData};
 
@@ -31,7 +31,7 @@ fn inflation_rate<T: Config>(percent: u32) -> T::Rate {
 pub mod init {
 	use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
 	use num_traits::Zero;
-	use sp_runtime::{BoundedVec, SaturatedConversion};
+	use sp_runtime::SaturatedConversion;
 
 	use super::*;
 
@@ -39,19 +39,6 @@ pub mod init {
 	pub struct InitBlockRewards<T, CollatorReward, AnnualTreasuryInflationPercent>(
 		PhantomData<(T, CollatorReward, AnnualTreasuryInflationPercent)>,
 	);
-
-	fn get_collators<T: pallet_collator_selection::Config>() -> Vec<T::AccountId> {
-		let candidates = BoundedVec::<
-			T::AccountId,
-			<T as pallet_collator_selection::Config>::MaxCandidates,
-		>::truncate_from(
-			pallet_collator_selection::Pallet::<T>::candidates()
-				.into_iter()
-				.map(|c| c.who)
-				.collect(),
-		);
-		pallet_collator_selection::Pallet::<T>::assemble_collators(candidates)
-	}
 
 	impl<T, CollatorReward, AnnualTreasuryInflationPercent> OnRuntimeUpgrade
 		for InitBlockRewards<T, CollatorReward, AnnualTreasuryInflationPercent>
@@ -63,7 +50,7 @@ pub mod init {
 	{
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-			let collators = get_collators::<T>();
+			let collators = pallet_collator_selection::Pallet::<T>::assemble_collators();
 			assert!(!collators.is_empty());
 
 			assert!(!CollatorReward::get().is_zero());
@@ -85,7 +72,7 @@ pub mod init {
 				pallet::ActiveSessionData::<T>::get() != Default::default();
 
 			log::info!("{LOG_PREFIX} Getting list of collators");
-			let collators = get_collators::<T>();
+			let collators = pallet_collator_selection::Pallet::<T>::assemble_collators();
 
 			let collators_are_staked = collators.clone().into_iter().all(|c| {
 				log::info!("{LOG_PREFIX} Checking stake of collator {c:?}");
