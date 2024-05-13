@@ -88,8 +88,7 @@ pub enum InterestPayments {
 /// Specify the paydown schedules of the loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum PayDownSchedule {
-	/// The entire borrowed amount is expected to be paid back at the maturity
-	/// date
+	/// No restrictions on how the paydown should be done.
 	None,
 }
 
