@@ -91,9 +91,7 @@ impl cfg_mocks::status_notification::pallet::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
-	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = ();
 }
 
