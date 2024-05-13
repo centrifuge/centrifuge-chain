@@ -32,7 +32,7 @@ members = [
   #"pallets/pool-system",
   #"pallets/pool-registry",
   "pallets/restricted-tokens",
-  #"pallets/restricted-xtokens",
+  "pallets/restricted-xtokens",
   "pallets/rewards",
   "pallets/swaps",
   "pallets/token-mux",

@@ -23,14 +23,14 @@
 //! ### Dispatchable functions
 //!
 //! - `transfer`: Transfer local assets with given `CurrencyId` and `Amount`.
-//! - `transfer_multiasset`: Transfer `MultiAsset` assets.
+//! - `transfer_multiasset`: Transfer `Asset` assets.
 //! - `transfer_with_fee`: Transfer native currencies specifying the fee and
 //!   amount as separate.
-//! - `transfer_multiasset_with_fee`: Transfer `MultiAsset` specifying the fee
+//! - `transfer_multiasset_with_fee`: Transfer `Asset` specifying the fee
 //!   and amount as separate.
 //! - `transfer_multicurrencies`: Transfer several currencies specifying the
 //!   item to be used as fee.
-//! - `transfer_multiassets`: Transfer several `MultiAsset` specifying the item
+//! - `transfer_multiassets`: Transfer several `Asset` specifying the item
 //!   to be used as fee.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -46,46 +46,44 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::XtokensWeightInfo;
 pub use pallet::*;
 use sp_std::{boxed::Box, vec::Vec};
-use staging_xcm::{
-	v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
-};
+use staging_xcm::{v4::prelude::*, VersionedAsset, VersionedAssets, VersionedLocation};
 
 pub enum TransferEffects<AccountId, CurrencyId, Balance> {
 	Transfer {
 		sender: AccountId,
-		destination: MultiLocation,
+		destination: Location,
 		currency_id: CurrencyId,
 		amount: Balance,
 	},
 	TransferMultiAsset {
 		sender: AccountId,
-		destination: MultiLocation,
-		asset: MultiAsset,
+		destination: Location,
+		asset: Asset,
 	},
 	TransferWithFee {
 		sender: AccountId,
-		destination: MultiLocation,
+		destination: Location,
 		currency_id: CurrencyId,
 		amount: Balance,
 		fee: Balance,
 	},
 	TransferMultiAssetWithFee {
 		sender: AccountId,
-		destination: MultiLocation,
-		asset: MultiAsset,
-		fee_asset: MultiAsset,
+		destination: Location,
+		asset: Asset,
+		fee_asset: Asset,
 	},
 	TransferMultiCurrencies {
 		sender: AccountId,
-		destination: MultiLocation,
+		destination: Location,
 		currencies: Vec<(CurrencyId, Balance)>,
 		fee: (CurrencyId, Balance),
 	},
 	TransferMultiAssets {
 		sender: AccountId,
-		destination: MultiLocation,
-		assets: MultiAssets,
-		fee_asset: MultiAsset,
+		destination: Location,
+		assets: Assets,
+		fee_asset: Asset,
 	},
 }
 
@@ -129,10 +127,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 			amount: T::Balance,
-			dest: Box<VersionedMultiLocation>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
 			let sender = ensure_signed(origin.clone())?;
@@ -153,7 +151,7 @@ pub mod pallet {
 			)
 		}
 
-		/// Transfer `MultiAsset`.
+		/// Transfer `Asset`.
 		///
 		/// `dest_weight_limit` is the weight for XCM execution on the dest
 		/// chain, and it would be charged from the transferred assets. If set
@@ -169,15 +167,15 @@ pub mod pallet {
 		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiasset(
 			origin: OriginFor<T>,
-			asset: Box<VersionedMultiAsset>,
-			dest: Box<VersionedMultiLocation>,
+			asset: Box<VersionedAsset>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let multi_asset: MultiAsset = (*asset.clone())
+			let multi_asset: Asset = (*asset.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
 
@@ -218,11 +216,11 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 			amount: T::Balance,
 			fee: T::Balance,
-			dest: Box<VersionedMultiLocation>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
 
@@ -244,7 +242,7 @@ pub mod pallet {
 			)
 		}
 
-		/// Transfer `MultiAsset` specifying the fee and amount as separate.
+		/// Transfer `Asset` specifying the fee and amount as separate.
 		///
 		/// `dest_weight_limit` is the weight for XCM execution on the dest
 		/// chain, and it would be charged from the transferred assets. If set
@@ -254,7 +252,7 @@ pub mod pallet {
 		/// `fee` is the multiasset to be spent to pay for execution in
 		/// destination chain. Both fee and amount will be subtracted form the
 		/// callers balance For now we only accept fee and asset having the same
-		/// `MultiLocation` id.
+		/// `Location` id.
 		///
 		/// If `fee` is not high enough to cover for the execution costs in the
 		/// destination chain, then the assets will be trapped in the
@@ -269,19 +267,19 @@ pub mod pallet {
 		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiasset_with_fee(
 			origin: OriginFor<T>,
-			asset: Box<VersionedMultiAsset>,
-			fee: Box<VersionedMultiAsset>,
-			dest: Box<VersionedMultiLocation>,
+			asset: Box<VersionedAsset>,
+			fee: Box<VersionedAsset>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let multi_asset: MultiAsset = (*asset.clone())
+			let multi_asset: Asset = (*asset.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let fee_asset: MultiAsset = (*fee.clone())
+			let fee_asset: Asset = (*fee.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
 
@@ -322,11 +320,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currencies: Vec<(T::CurrencyId, T::Balance)>,
 			fee_item: u32,
-			dest: Box<VersionedMultiLocation>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee = currencies
@@ -349,14 +347,14 @@ pub mod pallet {
 			)
 		}
 
-		/// Transfer several `MultiAsset` specifying the item to be used as fee
+		/// Transfer several `Asset` specifying the item to be used as fee
 		///
 		/// `dest_weight_limit` is the weight for XCM execution on the dest
 		/// chain, and it would be charged from the transferred assets. If set
 		/// below requirements, the execution may fail and assets wouldn't be
 		/// received.
 		///
-		/// `fee_item` is index of the MultiAssets that we want to use for
+		/// `fee_item` is index of the Assets that we want to use for
 		/// payment
 		///
 		/// It's a no-op if any error on local XCM execution or message sending.
@@ -368,19 +366,19 @@ pub mod pallet {
 		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiassets(assets, fee_item, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiassets(
 			origin: OriginFor<T>,
-			assets: Box<VersionedMultiAssets>,
+			assets: Box<VersionedAssets>,
 			fee_item: u32,
-			dest: Box<VersionedMultiLocation>,
+			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let multi_assets: MultiAssets = (*assets.clone())
+			let multi_assets: Assets = (*assets.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: MultiLocation = (*dest.clone())
+			let destination: Location = (*dest.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let fee_asset: &MultiAsset = multi_assets
+			let fee_asset: &Asset = multi_assets
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
 
