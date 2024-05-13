@@ -11,11 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::FilterCurrency;
-use frame_support::{
-	derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64},
-	Deserialize, Serialize,
-};
+use frame_support::{derive_impl, traits::ConstU64, Deserialize, Serialize};
 use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -71,20 +67,12 @@ impl From<u64> for Location {
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type MaxHolds = ConstU32<1>;
-	type RuntimeHoldReason = ();
-}
-
-parameter_types! {
-	pub const HoldId: () = ();
 }
 
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = ConstU64<10>;
-	type HoldId = HoldId;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;

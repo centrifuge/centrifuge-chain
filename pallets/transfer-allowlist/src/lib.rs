@@ -81,8 +81,13 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
-
 	pub struct Pallet<T>(_);
+
+	/// A reason for this pallet placing a hold on funds.
+	#[pallet::composite_enum]
+	pub enum HoldReason {
+		TransferAllowance,
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -92,10 +97,13 @@ pub mod pallet {
 
 		/// Currency for holding/unholding with allowlist adding/removal,
 		/// given that the allowlist will be in storage
-		type ReserveCurrency: fungible::hold::Mutate<Self::AccountId>;
+		type ReserveCurrency: fungible::hold::Mutate<
+			Self::AccountId,
+			Reason = Self::RuntimeHoldReason,
+		>;
 
 		/// The identifier to be used for holding.
-		type HoldId: Get<ReasonOf<Self>>;
+		type RuntimeHoldReason: From<HoldReason>;
 
 		/// Deposit amount
 		type Deposit: Get<DepositBalanceOf<Self>>;
@@ -348,7 +356,11 @@ pub mod pallet {
 				&receiver,
 			)) {
 				Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
-				T::ReserveCurrency::hold(&T::HoldId::get(), &account_id, T::Deposit::get())?;
+				T::ReserveCurrency::hold(
+					&HoldReason::TransferAllowance.into(),
+					&account_id,
+					T::Deposit::get(),
+				)?;
 			};
 			<AccountCurrencyTransferAllowance<T>>::insert(
 				(&account_id, &currency_id, &receiver),
@@ -428,7 +440,7 @@ pub mod pallet {
 			{
 				Some(AllowanceDetails { blocked_at, .. }) if blocked_at < current_block => {
 					T::ReserveCurrency::release(
-						&T::HoldId::get(),
+						&HoldReason::TransferAllowance.into(),
 						&account_id,
 						T::Deposit::get(),
 						Precision::BestEffort,

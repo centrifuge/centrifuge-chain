@@ -39,7 +39,7 @@ members = [
   "pallets/rewards",
   "pallets/swaps",
   "pallets/token-mux",
-  #"pallets/transfer-allowlist",
+  "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
   #"runtime/development",
