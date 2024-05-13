@@ -10,7 +10,7 @@ members = [
   "libs/types",
   "libs/utils",
   "pallets/anchors",
-  #"pallets/bridge",
+  "pallets/bridge",
   #"pallets/block-rewards",
   #"pallets/collator-allowlist",
   #"pallets/crowdloan-claim",
