@@ -38,7 +38,7 @@ members = [
   #"pallets/restricted-xtokens",
   "pallets/rewards",
   "pallets/swaps",
-  #"pallets/token-mux",
+  "pallets/token-mux",
   #"pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
