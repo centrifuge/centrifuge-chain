@@ -2630,6 +2630,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-foreign-investments"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-swaps",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-interest-accrual"
 version = "0.1.0"
 dependencies = [
@@ -2643,6 +2662,31 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "pallet-investments"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-restricted-tokens",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
