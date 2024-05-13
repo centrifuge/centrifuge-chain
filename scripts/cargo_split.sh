@@ -33,11 +33,6 @@ fi
 for crate in $all_crates
 do
     if [[ $2 == *"runtime-benchmarks"* || $2 == *"try-runtime"* ]]; then
-        if [[ "$crate" == "proofs" ]]; then
-            echo "Skipping!"
-            continue
-        fi
-
         if [[ "$crate" == "runtime-integration-tests" ]]; then
             echo "Skipping!"
             continue
