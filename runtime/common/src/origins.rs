@@ -78,4 +78,55 @@ pub mod gov {
 			ReferendumKiller,
 		);
 	}
+
+	pub mod types {
+		use cfg_primitives::AccountId;
+		use frame_support::traits::{EitherOf, EitherOfDiverse};
+		use frame_system::EnsureRoot;
+		use pallet_collective::EnsureProportionAtLeast;
+
+		use super::*;
+		use crate::instances::{CouncilCollective, TechnicalCollective};
+
+		// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
+		pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
+
+		/// All council members must vote yes to create this origin.
+		pub type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
+
+		/// 1/2 of all council members must vote yes to create this origin.
+		pub type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
+
+		/// 2/3 of all council members must vote yes to create this origin.
+		pub type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
+
+		/// 3/4 of all council members must vote yes to create this origin.
+		pub type ThreeFourthOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
+
+		/// 1/2 of all technical committee members must vote yes to create this
+		/// origin.
+		pub type HalfOfTechnicalCommitte =
+			EnsureProportionAtLeast<AccountId, TechnicalCollective, 1, 2>;
+
+		/// The origin which approves and rejects treasury spends.
+		///
+		/// NOTE: The council will be removed once the OpenGov transition has
+		/// concluded.
+		pub type TreasuryApproveOrigin = EnsureRootOr<EitherOf<TwoThirdOfCouncil, Treasurer>>;
+
+		/// The origin which can whitelist calls.
+		pub type WhitelistOrigin = EnsureRootOr<HalfOfTechnicalCommitte>;
+
+		/// The origin which dispatches whitelisted calls.
+		pub type DispatchWhitelistedOrigin = EnsureRootOr<WhitelistedCaller>;
+
+		/// The origin which can cancel ongoing referenda.
+		pub type RefCancelOrigin = EnsureRootOr<ReferendumCanceller>;
+
+		/// The origin which can kill ongoing referenda.
+		pub type RefKillerOrigin = EnsureRootOr<ReferendumKiller>;
+
+		/// The origin which can create new pools.
+		pub type PoolCreateOrigin = EnsureRootOr<PoolAdmin>;
+	}
 }

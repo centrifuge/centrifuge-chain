@@ -23,10 +23,9 @@ use cfg_primitives::{
 	constants::*,
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
-		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
-		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, ItemId,
-		LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
-		Signature, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
+		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
+		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 };
 use cfg_traits::{
@@ -104,10 +103,12 @@ use runtime_common::{
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
+	instances::CouncilCollective,
 	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
+	origins::gov::types::{AllOfCouncil, EnsureRootOr, HalfOfCouncil, TwoThirdOfCouncil},
 	permissions::PoolAdminCheck,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::PreLpTransfer,

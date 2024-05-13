@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{TechnicalCollective, TechnicalMembership};
 use frame_support::traits::{Get, InitializeMembers, OnRuntimeUpgrade};
 use pallet_order_book::weights::Weight;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_std::vec::Vec;
+
+use crate::instances::{TechnicalCollective, TechnicalMembership};
 
 const LOG_PREFIX: &str = "InitTechnicalCommittee:";
 

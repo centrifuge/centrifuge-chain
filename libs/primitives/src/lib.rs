@@ -23,9 +23,6 @@ pub use types::*;
 
 /// Common types for all runtimes
 pub mod types {
-	use frame_support::traits::EitherOfDiverse;
-	use frame_system::EnsureRoot;
-	use pallet_collective::EnsureProportionAtLeast;
 	use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
@@ -45,24 +42,6 @@ pub mod types {
 
 	/// EpochId type we use to identify epochs in our revolving pools
 	pub type PoolEpochId = u32;
-
-	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
-	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
-
-	/// The council
-	pub type CouncilCollective = pallet_collective::Instance1;
-
-	/// All council members must vote yes to create this origin.
-	pub type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-
-	/// 1/2 of all council members must vote yes to create this origin.
-	pub type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
-
-	/// 2/3 of all council members must vote yes to create this origin.
-	pub type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
-
-	/// 3/4 of all council members must vote yes to create this origin.
-	pub type ThreeFourthOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;
@@ -283,6 +262,19 @@ pub mod constants {
 
 	/// The maximum number of pool fees per pool fee bucket
 	pub const MAX_POOL_FEES_PER_BUCKET: u32 = 100;
+
+	/// The index of the root OpenGov track
+	pub const TRACK_INDEX_ROOT: u16 = 0;
+	/// The index of the whitelisted caller OpenGov track
+	pub const TRACK_INDEX_WHITELISTED_CALLER: u16 = 1;
+	/// The index of the pool admin OpenGov track
+	pub const TRACK_INDEX_POOL_ADMIN: u16 = 10;
+	/// The index of the treasurer OpenGov track
+	pub const TRACK_INDEX_TREASURER: u16 = 11;
+	/// The index of the referendum canceller OpenGov track
+	pub const TRACK_INDEX_REF_CANCELLER: u16 = 20;
+	/// The index of the referendum killer OpenGov track
+	pub const TRACK_INDEX_REF_KILLER: u16 = 21;
 }
 
 /// Listing of parachains we integrate with.

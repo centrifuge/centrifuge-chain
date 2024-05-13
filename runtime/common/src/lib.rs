@@ -47,6 +47,19 @@ use sp_std::marker::PhantomData;
 pub mod instances {
 	/// The rewards associated to block rewards
 	pub type BlockRewards = pallet_rewards::Instance1;
+
+	/// The technical fellowship collective which can whitelist proposal for the
+	/// WhitelistedCaller track
+	pub type TechnicalCollective = pallet_collective::Instance2;
+
+	/// The technical membership which handles membership of the
+	/// TechnicalCollective. It is not linked to the WhitelistedCaller track.
+	pub type TechnicalMembership = pallet_membership::Instance1;
+
+	/// The council collective which is used in Gov1.
+	///
+	/// NOTE: Will be deprecated once we have fully transitioned to OpenGov.
+	pub type CouncilCollective = pallet_collective::Instance1;
 }
 
 parameter_types! {
@@ -578,7 +591,6 @@ pub mod origin {
 
 	#[cfg(test)]
 	mod test {
-		use cfg_primitives::HalfOfCouncil;
 		use frame_support::traits::EnsureOrigin;
 		use sp_core::{crypto::AccountId32, parameter_types};
 
@@ -644,6 +656,7 @@ pub mod origin {
 
 		mod ensure_account_or_root_or {
 			use super::*;
+			use crate::origins::gov::types::HalfOfCouncil;
 
 			#[test]
 			fn works_with_account() {
@@ -795,4 +808,14 @@ pub mod rewards {
 		#[derive(scale_info::TypeInfo)]
 		pub const SingleCurrencyMovement: u32 = 1;
 	}
+}
+
+/// Converts the given number to percent
+pub const fn to_percent(x: u128) -> sp_arithmetic::FixedI64 {
+	sp_arithmetic::FixedI64::from_rational(x, 100)
+}
+
+/// Converts the given number to parts per million
+pub const fn to_ppm(x: u128) -> sp_arithmetic::FixedI64 {
+	sp_arithmetic::FixedI64::from_rational(x, 1_000_000)
 }
