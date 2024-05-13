@@ -202,7 +202,7 @@ pub mod pallet {
 			+ LockableCurrency<Self::AccountId>
 			+ ReservableCurrency<Self::AccountId>
 			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
-			+ fungible::InspectHold<Self::AccountId, Reason = ()>
+			+ fungible::InspectHold<Self::AccountId>
 			+ fungible::Mutate<Self::AccountId>
 			+ fungible::MutateHold<Self::AccountId>;
 
@@ -502,15 +502,6 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 
 			let token = if T::NativeToken::get() == currency_id {
-				let old_reserved =
-					<Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(&(), &who);
-
-				<Self as fungible::MutateHold<T::AccountId>>::release(
-					&(),
-					&who,
-					old_reserved,
-					Precision::Exact,
-				)?;
 				let to_burn = <Self as fungible::Inspect<T::AccountId>>::balance(&who);
 				<Self as fungible::Mutate<T::AccountId>>::burn_from(
 					&who,
@@ -519,23 +510,9 @@ pub mod pallet {
 					Fortitude::Force,
 				)?;
 				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
-				<Self as fungible::MutateHold<T::AccountId>>::hold(&(), &who, new_reserved)?;
 
 				TokenType::Native
 			} else {
-				let old_reserved =
-					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
-						currency_id,
-						&(),
-						&who,
-					);
-				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::release(
-					currency_id,
-					&(),
-					&who,
-					old_reserved,
-					Precision::Exact,
-				)?;
 				let to_burn =
 					<T::Fungibles as fungibles::Inspect<T::AccountId>>::balance(currency_id, &who);
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::burn_from(
@@ -549,12 +526,6 @@ pub mod pallet {
 					currency_id,
 					&who,
 					new_total,
-				)?;
-				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::hold(
-					currency_id,
-					&(),
-					&who,
-					new_reserved,
 				)?;
 
 				TokenType::Other

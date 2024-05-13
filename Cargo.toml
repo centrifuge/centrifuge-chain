@@ -31,7 +31,7 @@ members = [
   #"pallets/pool-fees",
   #"pallets/pool-system",
   #"pallets/pool-registry",
-  #"pallets/restricted-tokens",
+  "pallets/restricted-tokens",
   #"pallets/restricted-xtokens",
   "pallets/rewards",
   "pallets/swaps",

@@ -11,9 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_traits::PreConditions;
+use frame_support::traits::VariantCount;
 use frame_support::{derive_impl, parameter_types};
 use orml_traits::parameter_type_with_key;
 use pallet_restricted_tokens::TransferDetails;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::ConstU32, BuildStorage};
@@ -349,17 +352,7 @@ mod filter {
 }
 
 #[derive(
-	parity_scale_codec::Encode,
-	parity_scale_codec::Decode,
-	Clone,
-	Copy,
-	Debug,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	scale_info::TypeInfo,
-	parity_scale_codec::MaxEncodedLen,
+	Encode, Decode, Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
@@ -389,13 +382,17 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Debug, Copy, PartialEq, Eq, Clone)]
+pub struct HoldReason;
+impl VariantCount for HoldReason {
+	const VARIANT_COUNT: u32 = 1;
+}
+
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxHolds = ConstU32<1>;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = HoldReason;
 }
 
 parameter_type_with_key! {

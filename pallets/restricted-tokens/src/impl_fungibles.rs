@@ -171,7 +171,7 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	type Reason = ();
+	type Reason = <T::NativeFungible as fungible::InspectHold<T::AccountId>>::Reason;
 
 	fn total_balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		if asset == T::NativeToken::get() {
@@ -205,7 +205,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		if asset == T::NativeToken::get() {
 			<Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(reason, who)
 		} else {
-			<T::Fungibles as InspectHold<T::AccountId>>::balance_on_hold(asset, reason, who)
+			<T::Fungibles as InspectHold<T::AccountId>>::balance_on_hold(asset, &(), who)
 		}
 	}
 
@@ -214,7 +214,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 			<Self as fungible::InspectHold<T::AccountId>>::hold_available(reason, who)
 		} else {
 			let hold_available =
-				<T::Fungibles as InspectHold<T::AccountId>>::hold_available(asset, reason, who);
+				<T::Fungibles as InspectHold<T::AccountId>>::hold_available(asset, &(), who);
 
 			T::PreFungiblesInspectHold::check(FungiblesInspectHoldEffects::HoldAvailable(
 				asset,
@@ -234,7 +234,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 			<Self as fungible::InspectHold<T::AccountId>>::can_hold(reason, who, amount)
 		} else {
 			let can_hold =
-				<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, reason, who, amount);
+				<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, &(), who, amount);
 
 			T::PreFungiblesInspectHold::check(FungiblesInspectHoldEffects::CanHold(
 				asset,
@@ -399,7 +399,10 @@ impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
 			);
 
 			<T::Fungibles as fungibles::hold::Unbalanced<T::AccountId>>::set_balance_on_hold(
-				asset, reason, who, amount,
+				asset,
+				&(),
+				who,
+				amount,
 			)
 		}
 	}
@@ -424,7 +427,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::hold(asset, reason, who, amount)
+			<T::Fungibles as MutateHold<T::AccountId>>::hold(asset, &(), who, amount)
 		}
 	}
 
@@ -448,9 +451,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::release(
-				asset, reason, who, amount, precision,
-			)
+			<T::Fungibles as MutateHold<T::AccountId>>::release(asset, &(), who, amount, precision)
 		}
 	}
 
@@ -482,7 +483,14 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			);
 
 			<T::Fungibles as MutateHold<T::AccountId>>::transfer_on_hold(
-				asset, reason, source, dest, amount, precision, mode, force,
+				asset,
+				&(),
+				source,
+				dest,
+				amount,
+				precision,
+				mode,
+				force,
 			)
 		}
 	}

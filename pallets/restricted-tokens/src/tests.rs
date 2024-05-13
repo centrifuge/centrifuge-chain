@@ -396,7 +396,7 @@ fn fungible_balance_on_hold() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
-				>>::balance_on_hold(&(), &1),
+				>>::balance_on_hold(&HoldReason, &1),
 				0
 			);
 		})
@@ -410,7 +410,7 @@ fn fungible_can_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
-				>>::can_hold(&(), &1, DISTR_PER_ACCOUNT)
+				>>::can_hold(&HoldReason, &1, DISTR_PER_ACCOUNT)
 			);
 		})
 }
@@ -441,7 +441,7 @@ fn fungible_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::hold(&(), &1, DISTR_PER_ACCOUNT)
+				>>::hold(&HoldReason, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 		})
@@ -455,13 +455,13 @@ fn fungible_release() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::hold(&(), &1, DISTR_PER_ACCOUNT)
+				>>::hold(&HoldReason, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::release(&(), &1, DISTR_PER_ACCOUNT, Precision::Exact)
+				>>::release(&HoldReason, &1, DISTR_PER_ACCOUNT, Precision::Exact)
 				.is_ok()
 			);
 		})
@@ -472,13 +472,13 @@ fn fungible_transfer_on_hold() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &1, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::OnHold, Fortitude::Polite).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&HoldReason, &1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&HoldReason, &1, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::OnHold, Fortitude::Polite).is_ok());
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Preserve, Fortitude::Polite), 0);
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
 
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &2, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &2, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::Free,Fortitude::Polite).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&HoldReason, &2, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&HoldReason, &2, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::Free,Fortitude::Polite).is_ok());
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, Preservation::Preserve, Fortitude::Polite), 0);
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
 		})
@@ -738,7 +738,7 @@ fn fungibles_balance_on_hold() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::balance_on_hold(CurrencyId::AUSD, &(), &1),
+				>>::balance_on_hold(CurrencyId::AUSD, &HoldReason, &1),
 				0
 			);
 		})
@@ -752,17 +752,17 @@ fn fungibles_can_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::Cfg, &(), &1, DISTR_PER_ACCOUNT)
+				>>::can_hold(CurrencyId::Cfg, &HoldReason, &1, DISTR_PER_ACCOUNT)
 			);
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::AUSD, &(), &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &HoldReason, &1, 0)
 			);
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::AUSD, &(), &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &HoldReason, &1, 0)
 			);
 		})
 }
@@ -806,21 +806,21 @@ fn fungibles_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::RestrictedCoin, &(), &1, DISTR_PER_ACCOUNT)
+				>>::hold(CurrencyId::RestrictedCoin, &HoldReason, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, 1),
+				>>::hold(CurrencyId::AUSD, &HoldReason, &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, 1),
+				>>::hold(CurrencyId::AUSD, &HoldReason, &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 		})
@@ -834,25 +834,25 @@ fn fungibles_release() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::RestrictedCoin, &(), &1, DISTR_PER_ACCOUNT)
+				>>::hold(CurrencyId::RestrictedCoin, &HoldReason, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::release(CurrencyId::RestrictedCoin, &(), &1, DISTR_PER_ACCOUNT, Precision::Exact)
+				>>::release(CurrencyId::RestrictedCoin, &HoldReason, &1, DISTR_PER_ACCOUNT, Precision::Exact)
 				.is_ok()
 			);
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &HoldReason, &1, DISTR_PER_ACCOUNT),
 				Error::<Runtime>::PreConditionsNotMet
 			);
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &HoldReason, &1, DISTR_PER_ACCOUNT),
 				Error::<Runtime>::PreConditionsNotMet
 			);
 		})
@@ -866,7 +866,7 @@ fn fungibles_transfer_held() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::RestrictedCoin, &(), &1, DISTR_PER_ACCOUNT)
+				>>::hold(CurrencyId::RestrictedCoin, &HoldReason, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
@@ -874,7 +874,7 @@ fn fungibles_transfer_held() {
 					AccountId,
 				>>::transfer_on_hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&1,
 					&9,
 					DISTR_PER_ACCOUNT,
@@ -900,7 +900,7 @@ fn fungibles_transfer_held() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::RestrictedCoin, &(), &2, DISTR_PER_ACCOUNT)
+				>>::hold(CurrencyId::RestrictedCoin, &HoldReason, &2, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
@@ -908,7 +908,7 @@ fn fungibles_transfer_held() {
 					AccountId,
 				>>::transfer_on_hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&2,
 					&9,
 					DISTR_PER_ACCOUNT,
@@ -1315,11 +1315,11 @@ mod fungible_hold {
 	fn hold_available() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(&HoldReason, &HOLD_USER, RESERVED));
 			}))
 			.execute_with(|| {
-				assert!(Tokens::hold_available(&(), &1));
-				assert!(Tokens::hold_available(&(), &HOLD_USER));
+				assert!(Tokens::hold_available(&HoldReason, &1));
+				assert!(Tokens::hold_available(&HoldReason, &HOLD_USER));
 			})
 	}
 
@@ -1327,14 +1327,14 @@ mod fungible_hold {
 	fn balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(&HoldReason, &HOLD_USER, RESERVED));
 			}))
 			.execute_with(|| {
-				assert_eq!(Tokens::balance_on_hold(&(), &1), 0);
-				assert_eq!(Tokens::balance_on_hold(&(), &1), 0);
+				assert_eq!(Tokens::balance_on_hold(&HoldReason, &1), 0);
+				assert_eq!(Tokens::balance_on_hold(&HoldReason, &1), 0);
 
-				assert_eq!(Tokens::balance_on_hold(&(), &HOLD_USER), RESERVED);
-				assert_eq!(Tokens::balance_on_hold(&(), &HOLD_USER), RESERVED);
+				assert_eq!(Tokens::balance_on_hold(&HoldReason, &HOLD_USER), RESERVED);
+				assert_eq!(Tokens::balance_on_hold(&HoldReason, &HOLD_USER), RESERVED);
 			})
 	}
 
@@ -1342,7 +1342,7 @@ mod fungible_hold {
 	fn total_balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(&HoldReason, &HOLD_USER, RESERVED));
 			}))
 			.execute_with(|| {
 				assert_eq!(Tokens::total_balance_on_hold(&1), 0);
@@ -1357,7 +1357,7 @@ mod fungible_hold {
 	fn reducible_total_balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(&HoldReason, &HOLD_USER, RESERVED));
 			}))
 			.execute_with(|| {
 				assert_eq!(
@@ -1384,7 +1384,7 @@ mod fungible_hold {
 	fn reducible_balance() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(&HoldReason, &HOLD_USER, RESERVED));
 			}))
 			.execute_with(|| {
 				// Total funds can be withdrawn for Expendable and Protect
@@ -1486,19 +1486,24 @@ mod fungibles_hold {
 	fn hold_available() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::Cfg,
+					&HoldReason,
+					&HOLD_USER,
+					RESERVED
+				));
 				assert_ok!(Tokens::hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER,
 					RESERVED
 				));
 			}))
 			.execute_with(|| {
-				assert!(Tokens::hold_available(CurrencyId::Cfg, &(), &1));
+				assert!(Tokens::hold_available(CurrencyId::Cfg, &HoldReason, &1));
 				assert!(Tokens::hold_available(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER
 				));
 			})
@@ -1508,27 +1513,32 @@ mod fungibles_hold {
 	fn balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::Cfg,
+					&HoldReason,
+					&HOLD_USER,
+					RESERVED
+				));
 				assert_ok!(Tokens::hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER,
 					RESERVED
 				));
 			}))
 			.execute_with(|| {
-				assert_eq!(Tokens::balance_on_hold(CurrencyId::Cfg, &(), &1), 0);
+				assert_eq!(Tokens::balance_on_hold(CurrencyId::Cfg, &HoldReason, &1), 0);
 				assert_eq!(
-					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &(), &1),
+					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &HoldReason, &1),
 					0
 				);
 
 				assert_eq!(
-					Tokens::balance_on_hold(CurrencyId::Cfg, &(), &HOLD_USER),
+					Tokens::balance_on_hold(CurrencyId::Cfg, &HoldReason, &HOLD_USER),
 					RESERVED
 				);
 				assert_eq!(
-					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &(), &HOLD_USER),
+					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &HoldReason, &HOLD_USER),
 					RESERVED
 				);
 			})
@@ -1538,10 +1548,15 @@ mod fungibles_hold {
 	fn total_balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::Cfg,
+					&HoldReason,
+					&HOLD_USER,
+					RESERVED
+				));
 				assert_ok!(Tokens::hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER,
 					RESERVED
 				));
@@ -1568,10 +1583,15 @@ mod fungibles_hold {
 	fn reducible_total_balance_on_hold() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::Cfg,
+					&HoldReason,
+					&HOLD_USER,
+					RESERVED
+				));
 				assert_ok!(Tokens::hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER,
 					RESERVED
 				));
@@ -1609,10 +1629,15 @@ mod fungibles_hold {
 	fn reducible_balance() {
 		TestExternalitiesBuilder::default()
 			.build(Some(|| {
-				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::Cfg,
+					&HoldReason,
+					&HOLD_USER,
+					RESERVED
+				));
 				assert_ok!(Tokens::hold(
 					CurrencyId::RestrictedCoin,
-					&(),
+					&HoldReason,
 					&HOLD_USER,
 					RESERVED
 				));
