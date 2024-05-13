@@ -67,8 +67,8 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::TypeInfo,
 		sp_runtime::{
-			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
-			ArithmeticError, FixedPointOperand,
+			traits::{AtLeast32BitUnsigned, StaticLookup},
+			FixedPointOperand,
 		},
 		traits::tokens::{Fortitude, Precision, Preservation},
 	};
@@ -229,7 +229,6 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 			who: T::AccountId,
 			free: T::Balance,
-			reserved: T::Balance,
 		},
 	}
 
@@ -493,13 +492,9 @@ pub mod pallet {
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] new_free: T::Balance,
-			#[pallet::compact] new_reserved: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			let new_total = new_free
-				.checked_add(&new_reserved)
-				.ok_or(ArithmeticError::Overflow)?;
 
 			let token = if T::NativeToken::get() == currency_id {
 				let to_burn = <Self as fungible::Inspect<T::AccountId>>::balance(&who);
@@ -509,7 +504,7 @@ pub mod pallet {
 					Precision::Exact,
 					Fortitude::Force,
 				)?;
-				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
+				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_free)?;
 
 				TokenType::Native
 			} else {
@@ -525,7 +520,7 @@ pub mod pallet {
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
 					currency_id,
 					&who,
-					new_total,
+					new_free,
 				)?;
 
 				TokenType::Other
@@ -535,7 +530,6 @@ pub mod pallet {
 				currency_id,
 				who,
 				free: new_free,
-				reserved: new_reserved,
 			});
 
 			match token {

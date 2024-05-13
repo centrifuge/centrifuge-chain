@@ -323,16 +323,13 @@ benchmarks! {
 	// We let the other die to have clean-up logic in weight
 	set_balance_native {
 		let free = as_balance::<T>(300);
-		let reserved = as_balance::<T>(200);
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
 		let recv = get_account::<T>("receiver", false);
 		let recv_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 
 		make_free_balance::<T>(currency, &recv, free + free);
-		reserve_balance::<T>(currency, &recv, reserved + reserved);
-	}:set_balance(RawOrigin::Root, recv_lookup, currency, free, reserved)
+	}:set_balance(RawOrigin::Root, recv_lookup, currency, free)
 	verify {
-		assert!(<pallet_balances::Pallet<T> as fungible::InspectHold<T::AccountId>>::total_balance_on_hold(&recv) == reserved);
 		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, Preservation::Protect, Fortitude::Polite) == free - <pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::minimum_balance());
 		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::balance(&recv) == (free));
 	}
@@ -343,16 +340,13 @@ benchmarks! {
 	// We let the other die to have clean-up logic in weight
 	set_balance_other {
 		let free = as_balance::<T>(300);
-		let reserved = as_balance::<T>(200);
 		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 
 		make_free_balance::<T>(currency, &recv, free + free);
-		reserve_balance::<T>(currency, &recv, reserved + reserved);
-	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
+	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::InspectHold<T::AccountId>>::total_balance_on_hold(currency, &recv) == reserved);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == free - <orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::minimum_balance(currency));
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free));
 	}
