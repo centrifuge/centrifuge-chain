@@ -63,11 +63,7 @@ use sp_runtime::{
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
-use staging_xcm::{
-	latest::NetworkId,
-	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
-	VersionedMultiLocation,
-};
+use staging_xcm::{v3, v3::Junctions::X3, VersionedLocation};
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
@@ -129,7 +125,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
-	use staging_xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
@@ -888,14 +883,15 @@ pub mod pallet {
 				Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 
+			// TODO-1.7.2, should be v4?
 			match meta.location {
-				Some(VersionedMultiLocation::V3(MultiLocation {
+				Some(VersionedLocation::V3(v3::Location {
 					parents: 0,
 					interior:
 						X3(
-							PalletInstance(pallet_instance),
-							GlobalConsensus(NetworkId::Ethereum { chain_id }),
-							AccountKey20 {
+							v3::Junction::PalletInstance(pallet_instance),
+							v3::Junction::GlobalConsensus(v3::NetworkId::Ethereum { chain_id }),
+							v3::Junction::AccountKey20 {
 								network: None,
 								key: address,
 							},

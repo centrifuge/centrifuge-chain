@@ -53,7 +53,7 @@ use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
-use staging_xcm::{latest::OriginKind, VersionedMultiLocation};
+use staging_xcm::{latest::OriginKind, prelude::Limited, VersionedLocation};
 
 #[cfg(test)]
 mod mock;
@@ -244,7 +244,7 @@ where
 			// The destination to which the message should be sent.
 			self.xcm_domain.location.clone(),
 			// The sender will pay for this transaction.
-			sender,
+			Some(sender),
 			// The currency in which we want to pay fees.
 			CurrencyPayment {
 				currency: Currency::AsCurrencyId(self.xcm_domain.fee_currency.clone()),
@@ -255,7 +255,7 @@ where
 			OriginKind::SovereignAccount,
 			TransactWeights {
 				transact_required_weight_at_most: self.xcm_domain.transact_required_weight_at_most,
-				overall_weight: Some(self.xcm_domain.overall_weight),
+				overall_weight: Some(Limited(self.xcm_domain.overall_weight)),
 			},
 			// Opt-in on RefundSurplus
 			true,
@@ -303,7 +303,7 @@ where
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct XcmDomain<CurrencyId> {
 	/// The XCM multilocation of the domain.
-	pub location: Box<VersionedMultiLocation>,
+	pub location: Box<VersionedLocation>,
 
 	/// The ethereum_xcm::Call::transact call index on a given domain.
 	/// It should contain the pallet index + the `transact` call index, to which

@@ -4,9 +4,7 @@ use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, R
 use cfg_primitives::{OutboundMessageNonce, BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
-use cumulus_primitives_core::{
-	Instruction, MultiAsset, MultiLocation, PalletInstance, Parachain, SendError, Xcm, XcmHash,
-};
+use cumulus_primitives_core::{Instruction, PalletInstance, Parachain, SendError, Xcm, XcmHash};
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{FindAuthor, PalletInfo as PalletInfoTrait},
@@ -21,19 +19,16 @@ use pallet_evm::{
 };
 use pallet_liquidity_pools_gateway::EnsureLocal;
 use parity_scale_codec::{Decode, Encode};
-use sp_core::{crypto::AccountId32, ByteArray, H160, H256, U256};
+use sp_core::{crypto::AccountId32, ByteArray, ConstU32, H160, H256, U256};
 use sp_runtime::{traits::IdentityLookup, ConsensusEngineId, DispatchError};
 use sp_std::{cell::RefCell, marker::PhantomData};
-use staging_xcm::{
-	latest::{
-		Error as XcmError, InteriorMultiLocation, NetworkId, Result as XcmResult, SendResult,
-		XcmContext,
-	},
-	v3::{Junction, Junctions, MultiAssets, SendXcm},
+use staging_xcm::latest::{
+	opaque, Asset, Assets, Error as XcmError, InteriorLocation, Junction, Location, NetworkId,
+	Result as XcmResult, SendResult, SendXcm, XcmContext,
 };
 use staging_xcm_executor::{
 	traits::{TransactAsset, WeightBounds},
-	Assets,
+	AssetsInHolding,
 };
 use xcm_primitives::{
 	HrmpAvailableCalls, HrmpEncodeCall, UtilityAvailableCalls, UtilityEncodeCall, XcmTransact,
@@ -227,6 +222,7 @@ impl pallet_evm::Config for Runtime {
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
+	type SuicideQuickClearLimit = ConstU32<0>;
 }
 
 parameter_types! {
@@ -258,9 +254,9 @@ impl Default for Transactors {
 }
 
 impl XcmTransact for Transactors {
-	fn destination(self) -> MultiLocation {
+	fn destination(self) -> Location {
 		match self {
-			Transactors::Relay => MultiLocation::parent(),
+			Transactors::Relay => Location::parent(),
 		}
 	}
 }
@@ -280,36 +276,36 @@ impl UtilityEncodeCall for Transactors {
 	}
 }
 
-pub struct AccountIdToMultiLocation;
-impl sp_runtime::traits::Convert<AccountId32, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(_account: AccountId32) -> MultiLocation {
+pub struct AccountIdToLocation;
+impl sp_runtime::traits::Convert<AccountId32, Location> for AccountIdToLocation {
+	fn convert(_account: AccountId32) -> Location {
 		let as_h160: H160 = H160::repeat_byte(0xAA);
-		MultiLocation::new(
+		Location::new(
 			0,
-			Junctions::X1(Junction::AccountKey20 {
+			Junction::AccountKey20 {
 				network: None,
 				key: as_h160.as_fixed_bytes().clone(),
-			}),
+			},
 		)
 	}
 }
 
 pub struct DummyAssetTransactor;
 impl TransactAsset for DummyAssetTransactor {
-	fn deposit_asset(_what: &MultiAsset, _who: &MultiLocation, _context: &XcmContext) -> XcmResult {
+	fn deposit_asset(_what: &Asset, _who: &Location, _context: Option<&XcmContext>) -> XcmResult {
 		Ok(())
 	}
 
 	fn withdraw_asset(
-		_what: &MultiAsset,
-		_who: &MultiLocation,
+		_what: &Asset,
+		_who: &Location,
 		_context: Option<&XcmContext>,
-	) -> Result<Assets, XcmError> {
-		Ok(Assets::default())
+	) -> Result<AssetsInHolding, XcmError> {
+		Ok(AssetsInHolding::default())
 	}
 }
 
-pub struct CurrencyIdToMultiLocation;
+pub struct CurrencyIdToLocation;
 
 pub type AssetId = u128;
 
@@ -319,19 +315,19 @@ pub enum CurrencyId {
 	OtherReserve(AssetId),
 }
 
-impl sp_runtime::traits::Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdToMultiLocation {
-	fn convert(currency: CurrencyId) -> Option<MultiLocation> {
+impl sp_runtime::traits::Convert<CurrencyId, Option<Location>> for CurrencyIdToLocation {
+	fn convert(currency: CurrencyId) -> Option<Location> {
 		match currency {
 			CurrencyId::SelfReserve => {
-				let multi: MultiLocation = SelfReserve::get();
+				let multi: Location = SelfReserve::get();
 				Some(multi)
 			}
 			// To distinguish between relay and others, specially for reserve asset
 			CurrencyId::OtherReserve(asset) => {
 				if asset == 0 {
-					Some(MultiLocation::parent())
+					Some(Location::parent())
 				} else {
-					Some(MultiLocation::new(1, Junctions::X1(Parachain(2))))
+					Some(Location::new(1, Parachain(2)))
 				}
 			}
 		}
@@ -359,9 +355,9 @@ impl HrmpEncodeCall for MockHrmpEncoder {
 
 // Simulates sending a XCM message
 thread_local! {
-	pub static SENT_XCM: RefCell<Vec<(MultiLocation, staging_xcm::v3::opaque::Xcm)>> = RefCell::new(Vec::new());
+	pub static SENT_XCM: RefCell<Vec<(Location, opaque::Xcm)>> = RefCell::new(Vec::new());
 }
-pub fn sent_xcm() -> Vec<(MultiLocation, staging_xcm::v3::opaque::Xcm)> {
+pub fn sent_xcm() -> Vec<(Location, opaque::Xcm)> {
 	SENT_XCM.with(|q| (*q.borrow()).clone())
 }
 pub struct TestSendXcm;
@@ -369,14 +365,14 @@ impl SendXcm for TestSendXcm {
 	type Ticket = ();
 
 	fn validate(
-		destination: &mut Option<MultiLocation>,
-		message: &mut Option<staging_xcm::v3::opaque::Xcm>,
+		destination: &mut Option<Location>,
+		message: &mut Option<opaque::Xcm>,
 	) -> SendResult<Self::Ticket> {
 		SENT_XCM.with(|q| {
 			q.borrow_mut()
 				.push((destination.clone().unwrap(), message.clone().unwrap()))
 		});
-		Ok(((), MultiAssets::new()))
+		Ok(((), Assets::new()))
 	}
 
 	fn deliver(_: Self::Ticket) -> Result<XcmHash, SendError> {
@@ -429,32 +425,33 @@ parameter_types! {
 
 	pub ParachainId: cumulus_primitives_core::ParaId = 100.into();
 
-	pub SelfLocation: MultiLocation =
-		MultiLocation::new(1, Junctions::X1(Parachain(ParachainId::get().into())));
+	pub SelfLocation: Location =
+		Location::new(1, Parachain(ParachainId::get().into()));
 
-	pub SelfReserve: MultiLocation = MultiLocation::new(
+	pub SelfReserve: Location = Location::new(
 		1,
-		Junctions::X2(
+		[
 			Parachain(ParachainId::get().into()),
 			PalletInstance(
 				<Runtime as frame_system::Config>::PalletInfo::index::<Balances>().unwrap() as u8
 			)
-	));
+		]
+	);
 
 	pub const BaseXcmWeight: staging_xcm::latest::Weight = staging_xcm::latest::Weight::from_parts(1000, 0);
 
-	pub MaxFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+	pub MaxFee: Asset = (Location::parent(), 1_000_000_000_000u128).into();
 
-	pub UniversalLocation: InteriorMultiLocation = RelayNetwork::get().into();
+	pub UniversalLocation: InteriorLocation = RelayNetwork::get().into();
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToLocation = AccountIdToLocation;
 	type AssetTransactor = DummyAssetTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdToMultiLocation = CurrencyIdToMultiLocation;
+	type CurrencyIdToLocation = CurrencyIdToLocation;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId32>;
 	type HrmpManipulatorOrigin = EnsureRoot<AccountId32>;
 	type MaxHrmpFee = MaxHrmpRelayFee;
@@ -465,6 +462,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type Transactor = Transactors;
 	type UniversalLocation = UniversalLocation;
 	type Weigher = DummyWeigher<RuntimeCall>;
+	type HrmpOpenOrigin = EnsureRoot<AccountId32>;
 	type WeightInfo = ();
 	type XcmSender = TestSendXcm;
 }

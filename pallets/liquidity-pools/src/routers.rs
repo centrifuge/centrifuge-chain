@@ -3,7 +3,7 @@ use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{traits::ConstU32, BoundedVec};
 use sp_std::boxed::Box;
-use staging_xcm::VersionedMultiLocation;
+use staging_xcm::VersionedLocation;
 
 #[allow(clippy::derive_partial_eq_without_eq)] // XcmDomain does not impl Eq
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
@@ -19,7 +19,7 @@ pub enum Router<CurrencyId> {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct XcmDomain<CurrencyId> {
 	/// the xcm multilocation of the domain
-	pub location: Box<VersionedMultiLocation>,
+	pub location: Box<VersionedLocation>,
 	/// The ethereum_xcm::Call::transact call index on a given domain.
 	/// It should contain the pallet index + the `transact` call index, to which
 	/// we will append the eth_tx param. You can obtain this value by building
