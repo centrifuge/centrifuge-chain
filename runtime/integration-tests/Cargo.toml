@@ -105,8 +105,6 @@ pallet-bridge = { workspace = true, features = ["std"] }
 pallet-collator-allowlist = { workspace = true, features = ["std"] }
 pallet-collator-selection = { workspace = true, features = ["std"] }
 pallet-collective = { workspace = true, features = ["std"] }
-pallet-crowdloan-claim = { workspace = true, features = ["std"] }
-pallet-crowdloan-reward = { workspace = true, features = ["std"] }
 pallet-democracy = { workspace = true, features = ["std"] }
 pallet-elections-phragmen = { workspace = true, features = ["std"] }
 pallet-ethereum = { workspace = true, features = ["std"] }

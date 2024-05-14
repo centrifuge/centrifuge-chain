@@ -628,8 +628,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Preimage(..) |
 					RuntimeCall::Fees(..) |
 					RuntimeCall::Anchor(..) |
-					RuntimeCall::CrowdloanClaim(..) |
-					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
 					// Specifically omitting Loans `repay` & `borrow` for pallet_loans
 					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
@@ -1124,36 +1122,6 @@ impl chainbridge::Config for Runtime {
 	//       If we extend using this bridge
 	//       we need to write appropriate benches.
 	type WeightInfo = ();
-}
-
-// Parameterize crowdloan reward pallet configuration
-parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
-}
-
-// Implement crowdloan reward pallet's configuration trait for the runtime
-impl pallet_crowdloan_reward::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type PalletId = CrowdloanRewardPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_crowdloan_reward::WeightInfo<Self>;
-}
-
-// Parameterize crowdloan claim pallet
-parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = cfg_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
-	pub const MaxProofLength: u32 = 30;
-}
-
-// Implement crowdloan claim pallet configuration trait for the runtime
-impl pallet_crowdloan_claim::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxProofLength = MaxProofLength;
-	type PalletId = CrowdloanClaimPalletId;
-	type RelayChainAccountId = AccountId;
-	type RewardMechanism = CrowdloanReward;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_crowdloan_claim::WeightInfo<Self>;
 }
 
 // Parameterize collator selection pallet
@@ -2094,8 +2062,8 @@ construct_runtime!(
 		// Removed: Nfts = 93
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
 		// Removed: Migration = 95
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 96,
-		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 97,
+		// Removed: CrowdloanClaim = 96
+		// Removed: CrowdloanReward = 97
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 98,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 99,
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 100,
@@ -2751,8 +2719,6 @@ mod benches {
 		[pallet_fees, Fees]
 		[pallet_anchors, Anchor]
 		[pallet_block_rewards, BlockRewards]
-		[pallet_crowdloan_claim, CrowdloanClaim]
-		[pallet_crowdloan_reward, CrowdloanReward]
 		[pallet_collator_allowlist, CollatorAllowlist]
 		[pallet_collator_selection, CollatorSelection]
 		[pallet_pool_registry, PoolRegistry]
