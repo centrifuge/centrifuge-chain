@@ -18,7 +18,7 @@ use pallet_pool_system::{
 	pool_types::PoolChanges,
 	tranches::{TrancheInput, TrancheType},
 };
-use staging_xcm::VersionedMultiLocation;
+use staging_xcm::VersionedLocation;
 
 use crate::{mock::*, pallet, pallet::Error, Event, PoolMetadataOf};
 
@@ -145,10 +145,12 @@ fn trait_pool_metadata_set_pool_metadata() {
 				.as_bytes()
 				.to_vec();
 
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedMultiLocation,
-			>>::set_pool_metadata(pool_id, metadata.clone()));
+			assert_ok!(
+				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::set_pool_metadata(
+					pool_id,
+					metadata.clone()
+				)
+			);
 
 			assert!(find_metadata_event(pool_id, BoundedVec::truncate_from(metadata)).is_some())
 		})
@@ -223,19 +225,21 @@ fn trait_pool_metadata_get_pool_metadata() {
 				.to_vec();
 
 			assert_noop!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedMultiLocation>>::get_pool_metadata(
+				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_pool_metadata(
 					pool_id
 				),
 				Error::<Test>::NoSuchPoolMetadata
 			);
 
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedMultiLocation,
-			>>::set_pool_metadata(pool_id, metadata_bytes.clone()));
+			assert_ok!(
+				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::set_pool_metadata(
+					pool_id,
+					metadata_bytes.clone()
+				)
+			);
 
 			assert_eq!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedMultiLocation>>::get_pool_metadata(
+				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_pool_metadata(
 					pool_id
 				),
 				Ok(PoolMetadataOf::<Test> {
@@ -266,7 +270,7 @@ fn trait_pool_metadata_create_tranche_token_metadata() {
 
 			assert_ok!(<PoolRegistry as PoolMetadata<
 				Balance,
-				VersionedMultiLocation,
+				VersionedLocation,
 			>>::create_tranche_token_metadata(
 				pool_id, tranche_id, metadata
 			));
@@ -290,7 +294,7 @@ fn trait_pool_metadata_get_tranche_token_metadata() {
 			};
 
 			assert_noop!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedMultiLocation>>::get_tranche_token_metadata(
+				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_tranche_token_metadata(
 					pool_id, tranche_id
 				),
 				Error::<Test>::MetadataForCurrencyNotFound
@@ -298,7 +302,7 @@ fn trait_pool_metadata_get_tranche_token_metadata() {
 
 			assert_ok!(<PoolRegistry as PoolMetadata<
 				Balance,
-				VersionedMultiLocation,
+				VersionedLocation,
 			>>::create_tranche_token_metadata(
 				pool_id, tranche_id, metadata.clone()
 			));
@@ -306,7 +310,7 @@ fn trait_pool_metadata_get_tranche_token_metadata() {
 			assert_eq!(
 				<PoolRegistry as PoolMetadata<
 					Balance,
-					VersionedMultiLocation
+					VersionedLocation
 				>>::get_tranche_token_metadata(pool_id, tranche_id),
 				Ok(metadata)
 			);
@@ -339,12 +343,12 @@ fn trait_pool_metadata_update_tranche_token_metadata() {
 
 			assert_ok!(<PoolRegistry as PoolMetadata<
 				Balance,
-				VersionedMultiLocation,
+				VersionedLocation,
 			>>::create_tranche_token_metadata(pool_id, tranche_id, old));
 
 			assert_ok!(<PoolRegistry as PoolMetadata<
 				Balance,
-				VersionedMultiLocation,
+				VersionedLocation,
 			>>::update_tranche_token_metadata(
 				pool_id,
 				tranche_id,
@@ -359,7 +363,7 @@ fn trait_pool_metadata_update_tranche_token_metadata() {
 			assert_eq!(
 				<PoolRegistry as PoolMetadata<
 					Balance,
-					VersionedMultiLocation
+					VersionedLocation
 				>>::get_tranche_token_metadata(pool_id, tranche_id),
 				Ok(new)
 			);
