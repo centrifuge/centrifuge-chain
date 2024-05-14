@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, CollectionId, CouncilCollective, Header, IBalance, ItemId,
-	LoanId, Nonce, OrderId, PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, ItemId, LoanId, Nonce,
+	OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -28,6 +28,7 @@ use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
 	instances,
+	instances::CouncilCollective,
 	oracle::Feeder,
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,

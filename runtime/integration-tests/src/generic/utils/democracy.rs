@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use cfg_primitives::{Balance, BlockNumber, CouncilCollective};
+use cfg_primitives::{Balance, BlockNumber};
 use frame_support::{dispatch::GetDispatchInfo, traits::Bounded, weights::Weight};
 use pallet_collective::{Call as CouncilCall, MemberCount, ProposalIndex};
 use pallet_democracy::{
@@ -9,6 +9,7 @@ use pallet_democracy::{
 };
 use pallet_preimage::Call as PreimageCall;
 use parity_scale_codec::Encode;
+use runtime_common::instances::CouncilCollective;
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
 

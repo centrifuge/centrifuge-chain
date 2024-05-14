@@ -64,7 +64,7 @@ pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl Buil
 }
 
 pub fn council_members<T: Runtime>(members: Vec<Keyring>) -> impl BuildStorage {
-	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
+	pallet_collective::GenesisConfig::<T, runtime_common::instances::CouncilCollective> {
 		phantom: Default::default(),
 		members: members.into_iter().map(|acc| acc.id()).collect(),
 	}
