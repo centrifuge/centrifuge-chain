@@ -10,10 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::AccountId;
 use sp_core::parameter_types;
+
 parameter_types! {
 	pub const CollatorReward: cfg_primitives::Balance = cfg_primitives::constants::CFG;
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
+	// Alice
+	pub InitialTcMembers: sp_std::vec::Vec<AccountId> = sp_std::vec![AccountId::new(hex_literal::hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"))];
 }
 
 /// The migration set for Development & Demo.
@@ -48,6 +52,19 @@ pub type UpgradeDevelopment1047 = (
 		crate::Runtime,
 		CollatorReward,
 		AnnualTreasuryInflationPercent,
+	>,
+	// Initialize OpenGov Technical Committee with Alice
+	runtime_common::migrations::technical_comittee::InitMigration<crate::Runtime, InitialTcMembers>,
+	runtime_common::migrations::increase_storage_version::Migration<crate::Referenda, 0, 1>,
+	runtime_common::migrations::increase_storage_version::Migration<
+		crate::TechnicalCommittee,
+		0,
+		4,
+	>,
+	runtime_common::migrations::increase_storage_version::Migration<
+		crate::TechnicalCommitteeMembership,
+		0,
+		4,
 	>,
 );
 
