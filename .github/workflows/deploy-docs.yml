@@ -58,7 +58,7 @@ jobs:
           done
 
       - name: upload Docs files
-        uses: actions/upload-pages-artifact@0252fc4ba7626f0298f0cf00902a25c6afc77fa8 # v3.0
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 #v4.3.0
         with:
           path: ./target/doc
 
