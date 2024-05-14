@@ -19,22 +19,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
 	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use orml_traits::asset_registry;
-use parity_scale_codec::{Codec, Decode, Encode, MaxEncodedLen};
-use sp_runtime::{
-	traits::{
-		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeSerialize, MaybeSerializeDeserialize,
-		Member, Zero,
-	},
-	DispatchError,
-};
-use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, vec::Vec};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use sp_runtime::{traits::Member, DispatchError};
+use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -60,63 +54,6 @@ pub mod swaps;
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
-
-/// A trait used for loosely coupling the claim pallet with a reward mechanism.
-///
-/// ## Overview
-/// The crowdloan reward mechanism is separated from the crowdloan claiming
-/// process, the latter being generic, acting as a kind of proxy to the
-/// rewarding mechanism, that is specific to to each crowdloan campaign. The aim
-/// of this pallet is to ensure that a claim for a reward payout is well-formed,
-/// checking for replay attacks, spams or invalid claim (e.g. unknown
-/// contributor, exceeding reward amount, ...).
-/// See the [`crowdloan-reward`] pallet, that implements a reward mechanism with
-/// vesting, for instance.
-pub trait Reward {
-	/// The account from the parachain, that the claimer provided in her/his
-	/// transaction.
-	type ParachainAccountId: Debug
-		+ MaybeSerialize
-		+ MaybeSerializeDeserialize
-		+ Member
-		+ Ord
-		+ Parameter
-		+ TypeInfo;
-
-	/// The contribution amount in relay chain tokens.
-	type ContributionAmount: AtLeast32BitUnsigned
-		+ Codec
-		+ Copy
-		+ Debug
-		+ Default
-		+ MaybeSerializeDeserialize
-		+ Member
-		+ Parameter
-		+ Zero
-		+ TypeInfo;
-
-	/// Block number type used by the runtime
-	type BlockNumber: AtLeast32BitUnsigned
-		+ Bounded
-		+ Copy
-		+ Debug
-		+ Default
-		+ Hash
-		+ MaybeDisplay
-		+ MaybeSerializeDeserialize
-		+ Member
-		+ Parameter
-		+ TypeInfo;
-
-	/// Rewarding function that is invoked from the claim pallet.
-	///
-	/// If this function returns successfully, any subsequent claim of the same
-	/// claimer will be rejected by the claim module.
-	fn reward(
-		who: Self::ParachainAccountId,
-		contribution: Self::ContributionAmount,
-	) -> DispatchResultWithPostInfo;
-}
 
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
