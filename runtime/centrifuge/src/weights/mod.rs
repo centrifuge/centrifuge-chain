@@ -17,8 +17,6 @@ pub mod pallet_block_rewards;
 pub mod pallet_collator_allowlist;
 pub mod pallet_collator_selection;
 pub mod pallet_collective;
-pub mod pallet_crowdloan_claim;
-pub mod pallet_crowdloan_reward;
 pub mod pallet_democracy;
 pub mod pallet_elections_phragmen;
 pub mod pallet_fees;
