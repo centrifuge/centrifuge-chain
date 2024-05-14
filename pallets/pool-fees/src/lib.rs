@@ -726,7 +726,7 @@ pub mod pallet {
 		/// the valuation is maximized at this point in time because each unit
 		/// of reserve reduces the NAV by reducing pending to disbursment
 		/// amounts.
-		/// ```ignore
+		/// ```text
 		/// NAV(PoolFees) = sum(pending_fee_amount) = sum(epoch_amount - disbursement)
 		/// ```
 		pub fn update_portfolio_valuation_for_pool(
