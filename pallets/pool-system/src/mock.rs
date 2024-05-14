@@ -224,8 +224,6 @@ parameter_types! {
 	pub const MockParachainId: u32 = 100;
 }
 
-impl parachain_info::Config for Runtime {}
-
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
