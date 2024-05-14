@@ -13,6 +13,7 @@
 use frame_support::traits::{Get, InitializeMembers, OnRuntimeUpgrade};
 use pallet_order_book::weights::Weight;
 use sp_arithmetic::traits::SaturatedConversion;
+use sp_runtime::BoundedVec;
 use sp_std::vec::Vec;
 
 use crate::instances::{TechnicalCollective, TechnicalMembership};
@@ -50,10 +51,13 @@ where
 			<pallet_collective::Pallet<T, TechnicalCollective> as InitializeMembers<
 				T::AccountId,
 			>>::initialize_members(&Members::get());
+			pallet_membership::Members::<T, TechnicalMembership>::put(BoundedVec::truncate_from(
+				Members::get(),
+			));
 
 			log::info!("{LOG_PREFIX} Migration done");
-
-			T::DbWeight::get().reads_writes(2, Members::get().len().saturated_into())
+			T::DbWeight::get()
+				.reads_writes(2, Members::get().len().saturating_add(1).saturated_into())
 		} else {
 			log::warn!("{LOG_PREFIX} Members are not empty. Skipping initialization. This migration should probably be removed");
 			T::DbWeight::get().reads(2)
@@ -64,8 +68,20 @@ where
 	fn post_upgrade(_: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
 		let membership_members = pallet_membership::Members::<T, TechnicalMembership>::get();
 		let collective_members = pallet_collective::Members::<T, TechnicalCollective>::get();
-		assert_eq!(membership_members.into_inner(), Members::get());
-		assert_eq!(collective_members, Members::get());
+		assert_eq!(
+			collective_members,
+			Members::get(),
+			"Collective members {} vs input {}",
+			collective_members.len(),
+			Members::get().len()
+		);
+		assert_eq!(
+			membership_members.clone().into_inner(),
+			Members::get(),
+			"Membership members {} vs input {}",
+			membership_members.len(),
+			Members::get().len()
+		);
 
 		log::info!("{LOG_PREFIX} Post checks done");
 
