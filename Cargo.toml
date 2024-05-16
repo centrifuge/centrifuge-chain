@@ -378,3 +378,9 @@ sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "r
 sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
+
+#sp-crypto-ec-utils = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+# Check issue: https://github.com/paritytech/arkworks-substrate/issues/9
+[patch."https://github.com/paritytech/polkadot-sdk"]
+sp-crypto-ec-utils = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.7.2" }
+
