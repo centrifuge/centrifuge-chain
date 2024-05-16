@@ -157,10 +157,10 @@ pub struct CurrencyIdConvert<T>(PhantomData<T>);
 impl<T> MaybeEquivalence<MultiLocation, CurrencyId> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+		+ staging_parachain_info::Config,
 {
 	fn convert(location: &MultiLocation) -> Option<CurrencyId> {
-		let para_id = parachain_info::Pallet::<T>::parachain_id();
+		let para_id = staging_parachain_info::Pallet::<T>::parachain_id();
 		let unanchored_location = match location {
 			MultiLocation {
 				parents: 0,
@@ -191,7 +191,7 @@ where
 impl<T> Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+		+ staging_parachain_info::Config,
 {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		<Self as MaybeEquivalence<_, _>>::convert_back(&id)
@@ -205,7 +205,7 @@ where
 impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+		+ staging_parachain_info::Config,
 {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		<Self as MaybeEquivalence<_, _>>::convert(&location)
@@ -215,7 +215,7 @@ where
 impl<T> Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+		+ staging_parachain_info::Config,
 {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
 		if let MultiAsset {
@@ -234,7 +234,7 @@ pub struct ToTreasury<T>(PhantomData<T>);
 impl<T> TakeRevenue for ToTreasury<T>
 where
 	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config
+		+ staging_parachain_info::Config
 		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
 	fn take_revenue(revenue: MultiAsset) {

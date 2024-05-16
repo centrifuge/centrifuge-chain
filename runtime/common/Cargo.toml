@@ -116,7 +116,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
-parachain-info = { workspace = true }
+staging-parachain-info = { workspace = true }
 
 # Optionals for benchmarking
 frame-benchmarking = { workspace = true, optional = true }
@@ -150,15 +150,6 @@ std = [
   "pallet-evm-precompile-sha3fips/std",
   "pallet-evm-precompile-simple/std",
   "precompile-utils/std",
-  "pallet-evm/std",
-  "pallet-investments/std",
-  "pallet-liquidity-pools-gateway/std",
-  "pallet-liquidity-pools/std",
-  "pallet-loans/std",
-  "pallet-pool-system/std",
-  "pallet-restricted-tokens/std",
-  "pallet-treasury/std",
-  "parachain-info/std",
   "polkadot-parachain-primitives/std",
   "scale-info/std",
   "serde/std",
@@ -246,7 +237,7 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
-  "parachain-info/std",
+  "staging-parachain-info/std",
 ]
 runtime-benchmarks = [
   # Substrate related
@@ -397,7 +388,7 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
-  "parachain-info/try-runtime",
+  "staging-parachain-info/try-runtime",
 ]
 on-chain-release-build = [
   "sp-api/disable-logging",

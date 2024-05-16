@@ -391,7 +391,7 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		parachain_info: centrifuge_runtime::ParachainInfoConfig {
+		staging_parachain_info: centrifuge_runtime::ParachainInfoConfig {
 			parachain_id: id,
 			..Default::default()
 		},
@@ -532,7 +532,7 @@ fn altair_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		parachain_info: altair_runtime::ParachainInfoConfig {
+		staging_parachain_info: altair_runtime::ParachainInfoConfig {
 			parachain_id: id,
 			..Default::default()
 		},
@@ -685,7 +685,7 @@ fn development_genesis(
 		sudo: development_runtime::SudoConfig {
 			key: Some(root_key),
 		},
-		parachain_info: development_runtime::ParachainInfoConfig {
+		staging_parachain_info: development_runtime::ParachainInfoConfig {
 			parachain_id: id,
 			..Default::default()
 		},

@@ -189,7 +189,7 @@ fn remote_account_on_relay<T: Runtime>() {
 		T::Api::conversion_of(MultiLocation::new(
 			0,
 			X2(
-				Parachain(parachain_info::Pallet::<T>::get().into()),
+				Parachain(staging_parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
 					network: Some(NetworkId::ByGenesis(
@@ -218,7 +218,7 @@ fn remote_account_on_sibling<T: Runtime>() {
 		T::Api::conversion_of(MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachain_info::Pallet::<T>::get().into()),
+				Parachain(staging_parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
 					network: Some(NetworkId::ByGenesis(

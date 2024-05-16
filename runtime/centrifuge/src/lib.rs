@@ -290,7 +290,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
-	type SelfParaId = parachain_info::Pallet<Runtime>;
+	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
 }
 
@@ -426,7 +426,7 @@ impl orml_asset_registry::Config for Runtime {
 	//       case, pallet-pools and democracy
 	type WeightInfo = ();
 }
-impl parachain_info::Config for Runtime {}
+impl staging_parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
@@ -2028,7 +2028,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>} = 0,
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Config<T>, Storage, Inherent, Event<T>} = 1,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 3,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config<T>} = 4,
+		ParachainInfo: staging_parachain_info::{Pallet, Storage, Config<T>} = 4,
 
 		// money stuff
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,

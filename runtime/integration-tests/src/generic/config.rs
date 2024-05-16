@@ -110,7 +110,7 @@ pub trait Runtime:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
-	+ parachain_info::Config
+	+ staging_parachain_info::Config
 	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
 	+ pallet_oracle_collection::Config<
 		OracleKey = OracleKey,

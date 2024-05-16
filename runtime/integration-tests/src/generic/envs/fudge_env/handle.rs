@@ -287,7 +287,7 @@ pub trait FudgeHandle<T: Runtime> {
 			.expect("ESSENTIAL: Storage can be inserted");
 		state
 			.insert_storage(
-				parachain_info::GenesisConfig::<T> {
+				staging_parachain_info::GenesisConfig::<T> {
 					_config: Default::default(),
 					parachain_id: para_id,
 				}

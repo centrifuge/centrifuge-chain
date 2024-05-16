@@ -106,7 +106,7 @@ cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 
 pallet-collator-selection = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+staging-parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -379,7 +379,6 @@ sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk", branch = "r
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 
-#sp-crypto-ec-utils = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 # Check issue: https://github.com/paritytech/arkworks-substrate/issues/9
 [patch."https://github.com/paritytech/polkadot-sdk"]
 sp-crypto-ec-utils = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.7.2" }
