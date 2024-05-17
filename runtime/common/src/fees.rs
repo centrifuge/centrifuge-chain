@@ -143,6 +143,7 @@ mod test {
 	use cfg_types::ids::TREASURY_PALLET_ID;
 	use frame_support::{
 		derive_impl, parameter_types,
+		traits::tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		traits::{Currency, FindAuthor},
 		PalletId,
 	};
@@ -185,6 +186,7 @@ mod test {
 
 	parameter_types! {
 		pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
+		pub TreasuryAccount: AccountId = Treasury::account_id();
 		pub const MaxApprovals: u32 = 100;
 	}
 
@@ -205,6 +207,14 @@ mod test {
 		type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
 		type SpendPeriod = ();
 		type WeightInfo = ();
+		type AssetKind = ();
+		type Beneficiary = Self::AccountId;
+		type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+		type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+		type BalanceConverter = UnityAssetBalanceConversion;
+		type PayoutPeriod = ConstU64<10>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper = ();
 	}
 
 	pub struct OneAuthor;

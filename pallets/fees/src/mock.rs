@@ -57,7 +57,6 @@ impl pallet_authorship::Config for Runtime {
 parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
 	pub TreasuryAccount: u64 = Treasury::account_id();
-	pub TreasuryInstance1Account: u64 = Treasury::account_id();
 }
 
 impl pallet_treasury::Config for Runtime {
