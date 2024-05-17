@@ -838,7 +838,7 @@ pub mod pallet {
 				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			let (_, _count) = Self::transfer_debt_action(
+			let (repaid_amount, _count) = Self::transfer_debt_action(
 				&who,
 				pool_id,
 				from_loan_id,
@@ -945,7 +945,7 @@ pub mod pallet {
 			repaid_amount: RepaidInput<T>,
 			borrow_amount: PrincipalInput<T>,
 			permissionless: bool,
-		) -> Result<(T::Balance, u32), DispatchError> {
+		) -> Result<(RepaidInput<T>, u32), DispatchError> {
 			ensure!(
 				from_loan_id != to_loan_id,
 				Error::<T>::TransferDebtToSameLoan
@@ -962,7 +962,7 @@ pub mod pallet {
 			let count =
 				Self::borrow_action(who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
 
-			Ok((repaid_amount.repaid_amount()?.total()?, count))
+			Ok((repaid_amount, count))
 		}
 
 		/// Set the maturity date of the loan to this instant.
