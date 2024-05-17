@@ -14,7 +14,7 @@ use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
 use cfg_types::{
 	domain_address::DomainAddress,
-	locations::CfgLocation,
+	locations::RestrictedTransferLocation,
 	tokens::{CurrencyId, FilterCurrency},
 };
 use frame_support::{traits::IsSubType, RuntimeDebugNoBound};
@@ -34,7 +34,11 @@ use staging_xcm::v4::{Asset, Location};
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
-		T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = CfgLocation>,
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
 		C: Convert<Location, Option<CurrencyId>>,
 	> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T, C>
 {
@@ -45,12 +49,12 @@ impl<
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					CfgLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					CfgLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
 					FilterCurrency::All,
 				),
 			)
@@ -136,8 +140,13 @@ impl<
 
 pub struct PreNativeTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = CfgLocation>>
-	PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
+impl<
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
+	> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
 {
 	type Result = bool;
 
@@ -145,12 +154,12 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Cfg
 		amalgamate_allowance(
 			T::allowance(
 				t.send.clone(),
-				CfgLocation::Local(t.recv.clone()),
+				RestrictedTransferLocation::Local(t.recv.clone()),
 				FilterCurrency::Specific(t.id),
 			),
 			T::allowance(
 				t.send.clone(),
-				CfgLocation::Local(t.recv.clone()),
+				RestrictedTransferLocation::Local(t.recv.clone()),
 				FilterCurrency::All,
 			),
 		)
@@ -159,8 +168,13 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Cfg
 }
 pub struct PreLpTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = CfgLocation>>
-	PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
+impl<
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
+	> PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
 {
 	type Result = DispatchResult;
 
@@ -170,10 +184,14 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Cfg
 		amalgamate_allowance(
 			T::allowance(
 				sender.clone(),
-				CfgLocation::Address(receiver.clone()),
+				RestrictedTransferLocation::Address(receiver.clone()),
 				FilterCurrency::Specific(currency),
 			),
-			T::allowance(sender, CfgLocation::Address(receiver), FilterCurrency::All),
+			T::allowance(
+				sender,
+				RestrictedTransferLocation::Address(receiver),
+				FilterCurrency::All,
+			),
 		)
 	}
 }
@@ -297,8 +315,10 @@ where
 		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
-		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = CfgLocation>
-		+ Sync
+		+ pallet_transfer_allowlist::Config<
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		> + Sync
 		+ Send,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
 		+ IsSubType<pallet_utility::Call<T>>
@@ -329,12 +349,12 @@ where
 				amalgamate_allowance(
 					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
 						who.clone(),
-						CfgLocation::Local(recv.clone()),
+						RestrictedTransferLocation::Local(recv.clone()),
 						FilterCurrency::All,
 					),
 					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
 						who.clone(),
-						CfgLocation::Local(recv.clone()),
+						RestrictedTransferLocation::Local(recv.clone()),
 						FilterCurrency::Specific(CurrencyId::Native),
 					),
 				)
@@ -344,8 +364,8 @@ where
 }
 
 fn amalgamate_allowance(
-	first: Result<Option<CfgLocation>, DispatchError>,
-	second: Result<Option<CfgLocation>, DispatchError>,
+	first: Result<Option<RestrictedTransferLocation>, DispatchError>,
+	second: Result<Option<RestrictedTransferLocation>, DispatchError>,
 ) -> DispatchResult {
 	match (first, second) {
 		// There is an allowance set for `Specific(id)`, but NOT for the given recv

@@ -21,7 +21,7 @@ use staging_xcm::VersionedLocation;
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-pub enum CfgLocation {
+pub enum RestrictedTransferLocation {
 	/// Local chain account sending destination.
 	Local(AccountId),
 	/// XCM MultiLocation sending destinations.
@@ -33,13 +33,13 @@ pub enum CfgLocation {
 	Address(DomainAddress),
 }
 
-impl From<AccountId32> for CfgLocation {
+impl From<AccountId32> for RestrictedTransferLocation {
 	fn from(value: AccountId32) -> Self {
 		Self::Local(value)
 	}
 }
 
-impl From<VersionedLocation> for CfgLocation {
+impl From<VersionedLocation> for RestrictedTransferLocation {
 	fn from(vml: VersionedLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
 		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
@@ -50,7 +50,7 @@ impl From<VersionedLocation> for CfgLocation {
 	}
 }
 
-impl From<DomainAddress> for CfgLocation {
+impl From<DomainAddress> for RestrictedTransferLocation {
 	fn from(da: DomainAddress) -> Self {
 		Self::Address(da)
 	}
@@ -68,10 +68,10 @@ mod test {
 	fn from_xcm_versioned_address_works() {
 		// TODO-1.7: Must be changed to V4?
 		let xa = VersionedLocation::V3(MultiLocation::default());
-		let l = CfgLocation::from(xa.clone());
+		let l = RestrictedTransferLocation::from(xa.clone());
 		assert_eq!(
 			l,
-			CfgLocation::XCM(sp_core::H256(
+			RestrictedTransferLocation::XCM(sp_core::H256(
 				<[u8; 32]>::from_hex(
 					"a943e30c855a123a9506e69e678dc65ae9f5b70149cb6b26eb2ed58a59b4bf77"
 				)
@@ -86,8 +86,8 @@ mod test {
 			1284,
 			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").unwrap(),
 		);
-		let l = CfgLocation::from(da.clone());
+		let l = RestrictedTransferLocation::from(da.clone());
 
-		assert_eq!(l, CfgLocation::Address(da))
+		assert_eq!(l, RestrictedTransferLocation::Address(da))
 	}
 }
