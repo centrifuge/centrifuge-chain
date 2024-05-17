@@ -160,6 +160,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		price: T::Balance,
 		price_last_updated: Seconds,
 	) -> Result<T::Balance, DispatchError> {
+		log::warn!("maybe_with_linear_accrual_price: maturity {maturity:?}, price {price:?}, price_last_updated {price_last_updated:?}");
 		if self.info.with_linear_pricing {
 			Ok(cfg_utils::math::y_coord_in_rect(
 				(price_last_updated, price),
@@ -187,6 +188,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		maturity: Seconds,
 		oracle: Option<PriceOf<T>>,
 	) -> Result<T::Balance, DispatchError> {
+		log::warn!("current_price_inner: Seconds {maturity:?}, oracle {oracle:?}");
 		if let Some((oracle_price, oracle_provided_at)) = oracle {
 			self.maybe_with_linear_accrual_price(
 				maturity,

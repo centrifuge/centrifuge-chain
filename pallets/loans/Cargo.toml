@@ -15,6 +15,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+log = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -47,41 +48,42 @@ cfg-mocks = { workspace = true, default-features = true }
 [features]
 default = ["std"]
 std = [
-  "parity-scale-codec/std",
-  "scale-info/std",
-  "frame-support/std",
-  "frame-system/std",
-  "sp-arithmetic/std",
-  "sp-runtime/std",
-  "sp-std/std",
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "cfg-utils/std",
-  "frame-benchmarking/std",
-  "strum/std",
-  "orml-traits/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-arithmetic/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "cfg-primitives/std",
+    "cfg-traits/std",
+    "cfg-types/std",
+    "cfg-utils/std",
+    "frame-benchmarking/std",
+    "strum/std",
+    "orml-traits/std",
+    "log/std",
 ]
 runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "cfg-utils/runtime-benchmarks",
-  "pallet-uniques/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
+    "frame-benchmarking/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+    "cfg-primitives/runtime-benchmarks",
+    "cfg-traits/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
+    "cfg-utils/runtime-benchmarks",
+    "pallet-uniques/runtime-benchmarks",
+    "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "sp-runtime/try-runtime",
-  "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
-  "cfg-types/try-runtime",
-  "cfg-utils/try-runtime",
-  "cfg-mocks/try-runtime",
-  "sp-runtime/try-runtime",
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "sp-runtime/try-runtime",
+    "cfg-primitives/try-runtime",
+    "cfg-traits/try-runtime",
+    "cfg-types/try-runtime",
+    "cfg-utils/try-runtime",
+    "cfg-mocks/try-runtime",
+    "sp-runtime/try-runtime",
 ]
