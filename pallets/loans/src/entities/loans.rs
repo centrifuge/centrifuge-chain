@@ -582,3 +582,55 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 		})
 	}
 }
+
+/// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
+pub mod v3 {
+	use cfg_traits::Seconds;
+	use frame_support::pallet_prelude::{Decode, Encode};
+
+	use crate::{
+		entities::pricing::external::v3::ActivePricing,
+		types::{LoanRestrictions, RepaidAmount, RepaymentSchedule},
+		AssetOf, Config,
+	};
+
+	#[derive(Encode, Decode)]
+	pub struct ActiveLoan<T: Config> {
+		schedule: RepaymentSchedule,
+		collateral: AssetOf<T>,
+		restrictions: LoanRestrictions,
+		borrower: T::AccountId,
+		write_off_percentage: T::Rate,
+		origination_date: Seconds,
+		pricing: ActivePricing<T>,
+		total_borrowed: T::Balance,
+		total_repaid: RepaidAmount<T::Balance>,
+		repayments_on_schedule_until: Seconds,
+	}
+
+	impl<T: Config> ActiveLoan<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> crate::entities::loans::ActiveLoan<T> {
+			crate::entities::loans::ActiveLoan {
+				schedule: self.schedule,
+				collateral: self.collateral,
+				restrictions: self.restrictions,
+				borrower: self.borrower,
+				write_off_percentage: self.write_off_percentage,
+				origination_date: self.origination_date,
+				pricing: match self.pricing {
+					ActivePricing::Internal(inner) => {
+						crate::entities::pricing::ActivePricing::Internal(inner)
+					}
+					ActivePricing::External(inner) => {
+						crate::entities::pricing::ActivePricing::External(
+							inner.migrate(with_linear_pricing),
+						)
+					}
+				},
+				total_borrowed: self.total_borrowed,
+				total_repaid: self.total_repaid,
+				repayments_on_schedule_until: self.repayments_on_schedule_until,
+			}
+		}
+	}
+}
