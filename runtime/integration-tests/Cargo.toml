@@ -148,7 +148,7 @@ pallet-utility = { workspace = true, features = ["std"] }
 pallet-vesting = { workspace = true, features = ["std"] }
 pallet-xcm = { workspace = true, features = ["std"] }
 pallet-xcm-transactor = { workspace = true, features = ["std"] }
-parachain-info = { workspace = true, features = ["std"] }
+staging-parachain-info = { workspace = true, features = ["std"] }
 
 [features]
 # There is no need for integration test to add new features.

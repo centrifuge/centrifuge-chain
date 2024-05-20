@@ -135,7 +135,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
-parachain-info = { workspace = true }
+staging-parachain-info = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true }
@@ -262,7 +262,7 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
-  "parachain-info/std",
+  "staging-parachain-info/std",
 ]
 
 runtime-benchmarks = [
@@ -434,7 +434,7 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
-  "parachain-info/try-runtime",
+  "staging-parachain-info/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
