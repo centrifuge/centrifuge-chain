@@ -87,6 +87,12 @@ pub mod pallet {
 		},
 	};
 
+	/// A reason for this pallet placing a hold on funds.
+	#[pallet::composite_enum]
+	pub enum HoldReason {
+		NativeIndex,
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it
 	/// depends.
 	#[pallet::config]
@@ -94,6 +100,9 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's
 		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// The identifier to be used for holding.
+		type RuntimeHoldReason: From<HoldReason> + Parameter;
 
 		/// The balance type
 		type Balance: Parameter
@@ -202,7 +211,7 @@ pub mod pallet {
 			+ LockableCurrency<Self::AccountId>
 			+ ReservableCurrency<Self::AccountId>
 			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
-			+ fungible::InspectHold<Self::AccountId>
+			+ fungible::InspectHold<Self::AccountId, Reason = Self::RuntimeHoldReason>
 			+ fungible::Mutate<Self::AccountId>
 			+ fungible::MutateHold<Self::AccountId>;
 
