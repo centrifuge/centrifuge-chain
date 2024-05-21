@@ -10,7 +10,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
@@ -149,7 +148,6 @@ default = ["std"]
 
 std = [
   "parity-scale-codec/std",
-  "getrandom/std",
   "hex/std",
   "scale-info/std",
   "serde/std",
@@ -268,12 +266,6 @@ std = [
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
   "parachain-info/std",
-  "parity-scale-codec/std",
-  "getrandom/std",
-  "hex/std",
-  "scale-info/std",
-  "serde/std",
-  "log/std",
 ]
 
 runtime-benchmarks = [
