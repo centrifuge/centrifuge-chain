@@ -260,9 +260,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				// Block these calls when called by a signed extrinsic.
 				// Root will still be able to execute these.
 				pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::__Ignore { .. } => {
