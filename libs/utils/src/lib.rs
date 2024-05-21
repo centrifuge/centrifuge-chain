@@ -153,6 +153,34 @@ pub mod math {
 		}
 	}
 
+	/// Converts the given number to percent.
+	///
+	/// # Example
+	///
+	/// ```
+	/// use sp_arithmetic::FixedI64;
+	/// use cfg_utils::math::to_percent;
+	///
+	/// assert_eq!(to_percent(3u128), FixedI64::from_rational(3, 100));
+	/// ```
+	pub const fn to_percent(x: u128) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_rational(x, 100)
+	}
+
+	/// Converts the given number to parts per million
+	///
+	/// # Example
+	///
+	/// ```
+	/// use sp_arithmetic::FixedI64;
+	/// use cfg_utils::math::to_ppm;
+	///
+	/// assert_eq!(to_ppm(3u128), FixedI64::from_rational(3, 1_000_000));
+	/// ```
+	pub const fn to_ppm(x: u128) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_rational(x, 1_000_000)
+	}
+
 	#[cfg(test)]
 	mod test_y_coord_in_function_with_2_points {
 		use super::*;

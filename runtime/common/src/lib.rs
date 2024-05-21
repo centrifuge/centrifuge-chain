@@ -809,13 +809,3 @@ pub mod rewards {
 		pub const SingleCurrencyMovement: u32 = 1;
 	}
 }
-
-/// Converts the given number to percent
-pub const fn to_percent(x: u128) -> sp_arithmetic::FixedI64 {
-	sp_arithmetic::FixedI64::from_rational(x, 100)
-}
-
-/// Converts the given number to parts per million
-pub const fn to_ppm(x: u128) -> sp_arithmetic::FixedI64 {
-	sp_arithmetic::FixedI64::from_rational(x, 1_000_000)
-}

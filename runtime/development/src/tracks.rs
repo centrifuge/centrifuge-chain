@@ -21,8 +21,8 @@ use cfg_primitives::{
 	TRACK_INDEX_REF_KILLER, TRACK_INDEX_ROOT, TRACK_INDEX_TREASURER,
 	TRACK_INDEX_WHITELISTED_CALLER,
 };
+use cfg_utils::math::{to_percent, to_ppm};
 use pallet_referenda::Curve;
-use runtime_common::{to_percent, to_ppm};
 
 use crate::RuntimeOrigin;
 

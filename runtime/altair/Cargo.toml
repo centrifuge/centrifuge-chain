@@ -65,6 +65,7 @@ fp-self-contained = { workspace = true }
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
 liquidity-pools-gateway-routers = { workspace = true }
 runtime-common = { workspace = true }
 
@@ -191,6 +192,7 @@ std = [
   "polkadot-parachain-primitives/std",
   # Locals
   "cfg-primitives/std",
+  "cfg-utils/std",
   "cfg-traits/std",
   "cfg-types/std",
   "runtime-common/std",
@@ -285,6 +287,7 @@ runtime-benchmarks = [
   "polkadot-parachain-primitives/runtime-benchmarks",
   # Locals
   "cfg-primitives/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
@@ -363,6 +366,7 @@ try-runtime = [
   "polkadot-runtime-common/try-runtime",
   # Locals
   "cfg-primitives/try-runtime",
+  "cfg-utils/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "runtime-common/try-runtime",
