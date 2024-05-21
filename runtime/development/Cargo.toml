@@ -72,7 +72,6 @@ runtime-common = { workspace = true }
 axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
-cumulus-pallet-dmp-queue = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
@@ -135,6 +134,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
+pallet-message-queue = { workspace = true }
 staging-parachain-info = { workspace = true }
 
 [build-dependencies]
@@ -196,7 +196,6 @@ std = [
   "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
-  "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
@@ -259,6 +258,7 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
+  "pallet-message-queue/std",
   "staging-parachain-info/std",
 ]
 
@@ -341,6 +341,7 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
+  "pallet-message-queue/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -363,7 +364,6 @@ try-runtime = [
   "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
-  "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
@@ -426,6 +426,7 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
+  "pallet-message-queue/try-runtime",
   "staging-parachain-info/try-runtime",
 ]
 

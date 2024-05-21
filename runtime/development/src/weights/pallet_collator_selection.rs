@@ -64,7 +64,7 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 	}
 	/// Storage: CollatorSelection CandidacyBond (r:0 w:1)
 	/// Proof: CollatorSelection CandidacyBond (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
-	fn set_candidacy_bond() -> Weight {
+	fn set_candidacy_bond(_: u32, _: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -171,6 +171,16 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
     }
 
 	fn remove_invulnerable(_: u32) -> Weight {
+        // Pending to generate
+        Weight::default()
+    }
+
+    fn update_bond(_: u32) -> Weight {
+        // Pending to generate
+        Weight::default()
+    }
+
+    fn take_candidate_slot(_: u32) -> Weight {
         // Pending to generate
         Weight::default()
     }

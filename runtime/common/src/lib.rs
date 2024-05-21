@@ -52,10 +52,6 @@ parameter_types! {
 	/// The native currency identifier of our currency id enum
 	/// to be used for Get<CurrencyId> types.
 	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
-
-	/// The hold identifier in our system to be used for
-	/// Get<()> types
-	pub const HoldId: HoldIdentifier = ();
 }
 
 pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
@@ -765,5 +761,42 @@ pub mod rewards {
 	frame_support::parameter_types! {
 		#[derive(scale_info::TypeInfo)]
 		pub const SingleCurrencyMovement: u32 = 1;
+	}
+}
+
+/// Helpers to deal with configuring the message queue in the runtime.
+pub mod message_queue {
+	use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+	use frame_support::traits::{QueueFootprint, QueuePausedQuery};
+	use pallet_message_queue::OnQueueChanged;
+	use sp_std::marker::PhantomData;
+
+	pub struct NarrowOriginToSibling<Inner>(PhantomData<Inner>);
+	impl<Inner: QueuePausedQuery<ParaId>> QueuePausedQuery<AggregateMessageOrigin>
+		for NarrowOriginToSibling<Inner>
+	{
+		fn is_paused(origin: &AggregateMessageOrigin) -> bool {
+			match origin {
+				AggregateMessageOrigin::Sibling(id) => Inner::is_paused(id),
+				_ => false,
+			}
+		}
+	}
+
+	impl<Inner: OnQueueChanged<ParaId>> OnQueueChanged<AggregateMessageOrigin>
+		for NarrowOriginToSibling<Inner>
+	{
+		fn on_queue_changed(origin: AggregateMessageOrigin, fp: QueueFootprint) {
+			if let AggregateMessageOrigin::Sibling(id) = origin {
+				Inner::on_queue_changed(id, fp)
+			}
+		}
+	}
+
+	pub struct ParaIdToSibling;
+	impl sp_runtime::traits::Convert<ParaId, AggregateMessageOrigin> for ParaIdToSibling {
+		fn convert(para_id: ParaId) -> AggregateMessageOrigin {
+			AggregateMessageOrigin::Sibling(para_id)
+		}
 	}
 }

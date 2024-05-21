@@ -49,7 +49,7 @@ pub mod init {
 		AnnualTreasuryInflationPercent: Get<u32>,
 	{
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, TryRuntimeError> {
 			let collators = pallet_collator_selection::Pallet::<T>::assemble_collators();
 			assert!(!collators.is_empty());
 
@@ -139,14 +139,15 @@ pub mod init {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+		fn post_upgrade(pre_state: sp_std::vec::Vec<u8>) -> Result<(), TryRuntimeError> {
 			assert_eq!(
 				Pallet::<T>::on_chain_storage_version(),
 				Pallet::<T>::current_storage_version(),
 				"On-chain storage version should be updated"
 			);
-			let collators: Vec<T::AccountId> = Decode::decode(&mut pre_state.as_slice())
-				.expect("pre_upgrade provides a valid state; qed");
+			let collators: sp_std::vec::Vec<T::AccountId> =
+				Decode::decode(&mut pre_state.as_slice())
+					.expect("pre_upgrade provides a valid state; qed");
 
 			assert_ne!(Pallet::<T>::active_session_data(), Default::default());
 

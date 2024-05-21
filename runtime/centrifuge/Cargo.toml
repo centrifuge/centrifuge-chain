@@ -72,7 +72,6 @@ runtime-common = { workspace = true }
 axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
-cumulus-pallet-dmp-queue = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
@@ -199,7 +198,6 @@ std = [
   "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
-  "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
@@ -371,7 +369,6 @@ try-runtime = [
   "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
-  "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",

@@ -72,8 +72,8 @@ pub fn general_key(data: &[u8]) -> staging_xcm::latest::Junction {
 }
 
 /// How we convert an `[AccountId]` into an XCM Location
-pub struct AccountIdToMultiLocation;
-impl<AccountId: Into<[u8; 32]>> Convert<AccountId, Location> for AccountIdToMultiLocation {
+pub struct AccountIdToLocation;
+impl<AccountId: Into<[u8; 32]>> Convert<AccountId, Location> for AccountIdToLocation {
 	fn convert(account: AccountId) -> Location {
 		AccountId32 {
 			network: None,

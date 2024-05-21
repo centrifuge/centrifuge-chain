@@ -37,7 +37,7 @@ use cfg_types::{
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
@@ -49,7 +49,8 @@ use cfg_types::{
 	},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
-use cumulus_primitives_core::{MultiAsset, MultiLocation};
+use cumulus_primitives_core::AggregateMessageOrigin;
+use cumulus_primitives_core::ParaId;
 use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
@@ -57,9 +58,11 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult, RuntimeDebug},
 	parameter_types,
 	traits::{
+		fungible::HoldConsideration,
+		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOfDiverse,
-		EqualPrivilegeOnly, Get, InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess,
-		UnixTime, WithdrawReasons,
+		EqualPrivilegeOnly, Get, InstanceFilter, LinearStoragePrice, LockIdentifier, OnFinalize,
+		PalletInfoAccess, TransformOrigin, UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -93,6 +96,7 @@ use pallet_restricted_tokens::{
 use pallet_transaction_payment::CurrencyAdapter;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::{AccountConverter, RuntimeAccountConverter},
@@ -105,14 +109,15 @@ use runtime_common::{
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
 	liquidity_pools::LiquidityPoolsMessage,
+	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
 	permissions::PoolAdminCheck,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::PreLpTransfer,
-	xcm::AccountIdToMultiLocation,
-	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
+	xcm::AccountIdToLocation,
+	xcm_transactor, AllowanceDeposit, CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -122,7 +127,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, IdentityLookup, PostDispatchInfoOf, UniqueSaturatedInto, Verify, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -130,7 +135,7 @@ use sp_runtime::{
 use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::{marker::PhantomData, prelude::*};
 use sp_version::RuntimeVersion;
-use staging_xcm_executor::XcmExecutor;
+use staging_xcm::v4::{Asset, Location};
 use static_assertions::const_assert;
 
 use crate::xcm::*;
@@ -243,6 +248,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
+	type RuntimeTask = RuntimeTask;
 }
 
 /// Base Call Filter
@@ -255,6 +261,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				// Root will still be able to execute these.
 				pallet_xcm::Call::execute { .. }
 				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::transfer_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
@@ -283,17 +290,19 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 parameter_types! {
 	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	// Using AnyRelayNumber only for the development & demo environments,
 	// to be able to recover quickly from a relay chains issue
 	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::AnyRelayNumber;
-	type DmpMessageHandler = DmpQueue;
+	type WeightInfo = (); //TODO-1.7 check weights
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
@@ -302,8 +311,47 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl staging_parachain_info::Config for Runtime {}
 
 parameter_types! {
+	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_message_queue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = (); //TODO-1.7 check weights
+	#[cfg(feature = "runtime-benchmarks")]
+	type MessageProcessor =
+		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type MessageProcessor = staging_xcm_builder::ProcessXcmMessage<
+		AggregateMessageOrigin,
+		staging_xcm_executor::XcmExecutor<XcmConfig>,
+		RuntimeCall,
+	>;
+	type Size = u32;
+	type QueueChangeHandler = NarrowOriginToSibling<XcmpQueue>;
+	type QueuePausedQuery = NarrowOriginToSibling<XcmpQueue>;
+	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
+	type MaxStale = sp_core::ConstU32<8>;
+	type ServiceWeight = MessageQueueServiceWeight;
+}
+
+/// XCMP Queue is responsible to handle XCM messages coming directly from
+/// sibling parachains.
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type ChannelInfo = ParachainSystem;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
+	type MaxInboundSuspended = sp_core::ConstU32<1_000>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type RuntimeEvent = RuntimeEvent;
+	type VersionWrapper = PolkadotXcm;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
+}
+
+parameter_types! {
 	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
 }
+
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
@@ -350,13 +398,13 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ConstU32<10>;
-	type MaxHolds = ConstU32<10>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
 }
 
@@ -677,11 +725,16 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
 impl pallet_preimage::Config for Runtime {
-	type BaseDeposit = PreimageBaseDeposit;
-	type ByteDeposit = PreimageByteDeposit;
+	type Consideration = HoldConsideration<
+		AccountId,
+		Balances,
+		PreimageHoldReason,
+		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+	>;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
@@ -835,7 +888,7 @@ parameter_types! {
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
 	pub const BasicDeposit: Balance = 100 * CFG;
-	pub const FieldDeposit: Balance = 25 * CFG;
+	pub const ByteDeposit: Balance = deposit(0, 1); //TODO-1.7
 	pub const SubAccountDeposit: Balance = 20 * CFG;
 	pub const MaxRegistrars: u32 = 20;
 }
@@ -843,15 +896,21 @@ parameter_types! {
 impl pallet_identity::Config for Runtime {
 	type BasicDeposit = BasicDeposit;
 	type Currency = Tokens;
-	type FieldDeposit = FieldDeposit;
+	type ByteDeposit = ByteDeposit;
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxAdditionalFields = MaxAdditionalFields;
+	type IdentityInformation = pallet_identity::legacy::IdentityInfo<MaxAdditionalFields>;
 	type MaxRegistrars = MaxRegistrars;
 	type MaxSubAccounts = MaxSubAccounts;
 	type RegistrarOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RuntimeEvent = RuntimeEvent;
 	type Slashed = ();
 	type SubAccountDeposit = SubAccountDeposit;
+	type OffchainSignature = Signature;
+	type SigningPublicKey = <Signature as Verify>::Signer;
+	type UsernameAuthorityOrigin = EnsureRoot<Self::AccountId>;
+	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
+	type MaxSuffixLength = ConstU32<7>;
+	type MaxUsernameLength = ConstU32<32>;
 	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
@@ -867,6 +926,7 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type RuntimeEvent = RuntimeEvent;
 	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
+	type BlockNumberProvider = System;
 	type WeightInfo = weights::pallet_vesting::WeightInfo<Runtime>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 28;
@@ -937,28 +997,32 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	// either democracy or 75% of council votes
 	type ApproveOrigin = EnsureRootOr<
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 	>;
 	type Burn = Burn;
-	// we burn and dont handle the unbalance
 	type BurnDestination = ();
 	type Currency = Tokens;
 	type MaxApprovals = MaxApprovals;
-	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
 	type PalletId = TreasuryPalletId;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type ProposalBondMinimum = ProposalBondMinimum;
-	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
+	type AssetKind = ();
+	type Beneficiary = Self::AccountId;
+	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+	type BalanceConverter = UnityAssetBalanceConversion;
+	type PayoutPeriod = ConstU32<10>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 // our pallets
@@ -1229,16 +1293,16 @@ impl pallet_collator_selection::Config for Runtime {
 
 parameter_types! {
 	// 1 ROC should be enough to cover for fees opening/accepting hrmp channels
-	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+	pub MaxHrmpRelayFee: Asset = (Location::parent(), 1_000_000_000_000u128).into();
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToLocation = AccountIdToLocation;
 	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdToMultiLocation = CurrencyIdConvert;
+	type CurrencyIdToLocation = CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
 	type MaxHrmpFee = staging_xcm_builder::Case<MaxHrmpRelayFee>;
@@ -1250,6 +1314,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type Weigher = XcmWeigher;
 	type WeightInfo = ();
+	type HrmpOpenOrigin = EnsureRoot<AccountId>;
 	type XcmSender = XcmRouter;
 }
 
@@ -1457,6 +1522,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
@@ -1490,7 +1556,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl orml_asset_registry::Config for Runtime {
+impl orml_asset_registry::module::Config for Runtime {
 	type AssetId = CurrencyId;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
 	type AuthorityOrigin =
@@ -1720,10 +1786,10 @@ impl pallet_block_rewards::Config for Runtime {
 impl pallet_transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = AllowanceDeposit<Fees>;
-	type HoldId = HoldId;
-	type Location = Location;
+	type Location = RestrictedTransferLocation;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
 
@@ -1862,14 +1928,6 @@ impl pallet_remarks::Config for Runtime {
 	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
 }
 
-/// The config for the Downward Message Passing Queue, i.e., how messages coming
-/// from the relay-chain are handled.
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
 parameter_types! {
 	/// The amount of weight an XCM operation takes. This is a safe overestimate.
 	pub UnitWeightCost: Weight = Weight::from_parts(200_000_000u64, 0);
@@ -1880,20 +1938,6 @@ parameter_types! {
 /// Xcm Weigher shared between multiple Xcm-related configs.
 pub type XcmWeigher =
 	staging_xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-
-/// XCMP Queue is responsible to handle XCM messages coming directly from
-/// sibling parachains.
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type ChannelInfo = ParachainSystem;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type PriceForSiblingDelivery = ();
-	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
 
 pub type DevelopmentPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
 
@@ -1926,6 +1970,7 @@ impl pallet_evm::Config for Runtime {
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressTruncated;
+	type SuicideQuickClearLimit = ConstU32<0>;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -2032,7 +2077,7 @@ construct_runtime!(
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 72,
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason} = 72,
 
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -2044,7 +2089,7 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
-		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>, HoldReason} = 99,
 		// Removed: NftSales = 100
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
@@ -2057,7 +2102,7 @@ construct_runtime!(
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
-		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
+		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>, HoldReason} = 112,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
@@ -2069,15 +2114,16 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config<T>, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
-		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
+		// Removed: DmpQueue = 123
 		XTokens: pallet_restricted_xtokens::{Pallet, Call} = 124,
 		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 		OrmlXTokens: orml_xtokens::{Pallet, Event<T>} = 126,
+		MessageQueue: pallet_message_queue::{Pallet, Call, Storage, Event<T>} = 127,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
+		OrmlAssetRegistry: orml_asset_registry::module::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
 
 		// EVM pallets
@@ -2416,7 +2462,7 @@ impl_runtime_apis! {
 
 	// AccountConversionApi
 	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
-		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
+		fn conversion_of(location: Location) -> Option<AccountId> {
 			AccountConverter::location_to_account::<LocationToAccountId>(location)
 		}
 	}
@@ -2646,7 +2692,7 @@ impl_runtime_apis! {
 		fn gas_limit_multiplier_support() {}
 
 		fn pending_block(
-			xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
+			xts: Vec<<Block as BlockT>::Extrinsic>
 		) -> (
 			Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
 		) {
@@ -2770,6 +2816,8 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_loans, Loans]
 		[pallet_collator_selection, CollatorSelection]
+		[pallet_message_queue, MessageQueue]
+		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_transfer_allowlist, TransferAllowList]
 		[pallet_order_book, OrderBook]

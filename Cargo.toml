@@ -39,7 +39,7 @@ members = [
   "pallets/transfer-allowlist",
   #"runtime/altair",
   #"runtime/centrifuge",
-  #"runtime/development",
+  "runtime/development",
   "runtime/common",
   #"runtime/integration-tests",
   #"runtime/integration-tests/procedural",
@@ -85,7 +85,6 @@ num_enum = { version = "0.5.3", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -202,6 +201,7 @@ pallet-treasury = { git = "https://github.com/paritytech/polkadot-sdk", default-
 pallet-uniques = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 pallet-vesting = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+pallet-message-queue = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
