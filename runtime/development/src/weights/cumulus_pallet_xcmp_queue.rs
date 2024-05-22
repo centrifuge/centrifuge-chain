@@ -62,10 +62,10 @@ impl<T: frame_system::Config> cumulus_pallet_xcmp_queue::WeightInfo for WeightIn
 	}
 
 	fn on_idle_good_msg() -> Weight {
-        Weight::zero()
+        Weight::from_parts(1, 1)
 	}
 
     fn on_idle_large_msg() -> Weight {
-        Weight::zero()
+        Weight::from_parts(1, 1)
 	}
 }

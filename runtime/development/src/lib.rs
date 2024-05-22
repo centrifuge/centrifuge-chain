@@ -587,7 +587,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Elections(..)
 					| RuntimeCall::Utility(..)
 			),
-			// TODO: Should be no change when adding BlockRewards, right?
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
