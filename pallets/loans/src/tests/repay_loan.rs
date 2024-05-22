@@ -812,3 +812,41 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		);
 	});
 }
+
+#[test]
+fn with_external_pricing_and_overdue() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(LoanInfo {
+			..util::base_external_loan()
+		});
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
+
+		// The loan is overdue
+		advance_time(YEAR * 2);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		let active_loan = util::get_loan(loan_id);
+
+		let settlement_price_updated = match active_loan.pricing() {
+			ActivePricing::External(inner) => inner.settlement_price_updated(),
+			_ => unreachable!(),
+		};
+
+		// We must never overpass madurity date
+		assert_eq!(active_loan.maturity_date(), settlement_price_updated);
+	});
+}

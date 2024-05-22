@@ -143,6 +143,10 @@ impl<T: Config> ExternalActivePricing<T> {
 		self.info.price_id
 	}
 
+	pub fn settlement_price_updated(&self) -> Seconds {
+		self.settlement_price_updated
+	}
+
 	pub fn has_registered_price(&self, pool_id: T::PoolId) -> bool {
 		T::PriceRegistry::get(&self.info.price_id, &pool_id).is_ok()
 	}
@@ -298,6 +302,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		&mut self,
 		amount_adj: Adjustment<ExternalAmount<T>>,
 		interest: T::Balance,
+		when: Seconds,
 	) -> DispatchResult {
 		self.outstanding_quantity = amount_adj
 			.clone()
@@ -313,7 +318,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.interest.adjust_debt(interest_adj)?;
 		self.latest_settlement_price = amount_adj.abs().settlement_price;
-		self.settlement_price_updated = T::Time::now();
+		self.settlement_price_updated = when;
 
 		Ok(())
 	}
