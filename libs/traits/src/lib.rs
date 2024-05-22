@@ -405,19 +405,193 @@ pub trait TryConvert<A, B> {
 	fn try_convert(a: A) -> Result<B, Self::Error>;
 }
 
+macro_rules! implement_base_math {
+	(
+		$name:ident,
+		$inner_type:ty
+	) => {
+		impl $name {
+			/// Get the inner value.
+			pub fn inner(&self) -> $inner_type {
+				self.0
+			}
+		}
+
+		impl From<$inner_type> for $name {
+			fn from(int: $inner_type) -> Self {
+				$name(int)
+			}
+		}
+
+		impl From<u32> for $name {
+			fn from(t: u32) -> $name {
+				$name(t.into())
+			}
+		}
+		impl core::ops::Add for $name {
+			type Output = Self;
+
+			fn add(self, rhs: Self) -> Self::Output {
+				$name(self.0 + rhs.0)
+			}
+		}
+
+		impl core::ops::Sub for $name {
+			type Output = Self;
+
+			fn sub(self, rhs: Self) -> Self::Output {
+				$name(self.0 - rhs.0)
+			}
+		}
+
+		impl core::ops::Mul for $name {
+			type Output = Self;
+
+			fn mul(self, rhs: Self) -> Self::Output {
+				$name(self.0 * rhs.0)
+			}
+		}
+
+		impl core::ops::Div for $name {
+			type Output = Self;
+
+			fn div(self, rhs: Self) -> Self::Output {
+				$name(self.0 / rhs.0)
+			}
+		}
+
+		impl core::ops::AddAssign for $name {
+			fn add_assign(&mut self, rhs: Self) {
+				self.0 = self.0 + rhs.0;
+			}
+		}
+
+		impl core::ops::SubAssign for $name {
+			fn sub_assign(&mut self, rhs: Self) {
+				self.0 = self.0 - rhs.0;
+			}
+		}
+
+		impl core::ops::MulAssign for $name {
+			fn mul_assign(&mut self, rhs: Self) {
+				self.0 = self.0 * rhs.0;
+			}
+		}
+
+		impl core::ops::DivAssign for $name {
+			fn div_assign(&mut self, rhs: Self) {
+				self.0 = self.0 / rhs.0;
+			}
+		}
+
+		impl core::cmp::PartialOrd for $name {
+			fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+				self.0.partial_cmp(&other.0)
+			}
+		}
+
+		impl core::cmp::Ord for $name {
+			fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+				self.0.cmp(&other.0)
+			}
+		}
+
+		impl sp_arithmetic::traits::CheckedAdd for $name {
+			fn checked_add(&self, rhs: &Self) -> Option<Self> {
+				self.0.checked_add(rhs.0).map($name)
+			}
+		}
+
+		impl sp_arithmetic::traits::CheckedSub for $name {
+			fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+				self.0.checked_sub(rhs.0).map($name)
+			}
+		}
+
+		impl sp_arithmetic::traits::CheckedMul for $name {
+			fn checked_mul(&self, rhs: &Self) -> Option<Self> {
+				self.0.checked_mul(rhs.0).map($name)
+			}
+		}
+
+		impl sp_arithmetic::traits::CheckedDiv for $name {
+			fn checked_div(&self, rhs: &Self) -> Option<Self> {
+				self.0.checked_div(rhs.0).map($name)
+			}
+		}
+
+		impl sp_arithmetic::traits::Bounded for $name {
+			fn min_value() -> Self {
+				$name(<$inner_type>::min_value())
+			}
+
+			fn max_value() -> Self {
+				$name(<$inner_type>::max_value())
+			}
+		}
+
+		impl num_traits::Saturating for $name {
+			fn saturating_add(self, rhs: Self) -> Self {
+				$name(self.0.saturating_add(rhs.0))
+			}
+
+			fn saturating_sub(self, rhs: Self) -> Self {
+				$name(self.0.saturating_sub(rhs.0))
+			}
+		}
+
+		impl sp_runtime::traits::One for $name {
+			fn one() -> Self {
+				$name(<$inner_type>::one())
+			}
+		}
+
+		impl sp_runtime::traits::Zero for $name {
+			fn zero() -> Self {
+				$name(<$inner_type>::zero())
+			}
+
+			fn is_zero(&self) -> bool {
+				self.0.is_zero()
+			}
+		}
+	};
+}
+
 // TODO: Probably these should be in a future cfg-utils.
 // Issue: https://github.com/centrifuge/centrifuge-chain/issues/1380
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct Seconds(u64);
 
-/// Type to represent milliseconds
-pub type Millis = u64;
+implement_base_math!(Seconds, u64);
 
-/// Type to represent seconds
-pub type Seconds = u64;
+impl IntoSeconds for Seconds {
+	fn into_seconds(self) -> Seconds {
+		self
+	}
+}
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct Millis(u64);
+
+implement_base_math!(Millis, u64);
+
+impl IntoSeconds for Millis {
+	fn into_seconds(self) -> Seconds {
+		if self.0 == 0 {
+			Seconds(0)
+		} else {
+			Seconds(self.0 / 1000)
+		}
+	}
+}
 
 /// Trait to obtain the time as seconds
 pub trait TimeAsSecs: UnixTime {
 	fn now() -> Seconds {
-		<Self as UnixTime>::now().as_secs()
+		Seconds::from(<Self as UnixTime>::now().as_secs())
 	}
 }
 
@@ -426,12 +600,6 @@ impl<T: UnixTime> TimeAsSecs for T {}
 /// Trait to convert into seconds
 pub trait IntoSeconds {
 	fn into_seconds(self) -> Seconds;
-}
-
-impl IntoSeconds for Millis {
-	fn into_seconds(self) -> Seconds {
-		self / 1000
-	}
 }
 
 pub trait ValueProvider<Source, Key> {

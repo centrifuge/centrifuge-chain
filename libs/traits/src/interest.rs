@@ -1,4 +1,3 @@
-use cfg_primitives::SECONDS_PER_YEAR;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
@@ -6,11 +5,11 @@ use frame_support::{
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_arithmetic::{
-	traits::{EnsureAdd, EnsureDiv, EnsureSub},
+	traits::{EnsureAdd, EnsureSub},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::{
-	traits::{Get, Member, One, Zero},
+	traits::{Get, Member, Zero},
 	DispatchError,
 };
 
@@ -20,6 +19,22 @@ use crate::Seconds;
 pub enum CompoundingSchedule {
 	/// Interest compounds every second
 	Secondly,
+	/// Interest compounds every minute
+	Minutely,
+	/// Interest compounds every hour
+	Hourly,
+	/// Interest compounds every day
+	Daily,
+	/// Interest compounds every week
+	Weekly,
+	/// Interest compounds every month
+	Monthly,
+	/// Interest compounds every quarter
+	Quarterly,
+	/// Interest compounds every half year
+	SemiAnnually,
+	/// Interest compounds every year
+	Annually,
 }
 
 /// Interest rate method with compounding schedule information
@@ -39,10 +54,17 @@ impl<Rate: FixedPointNumber> InterestRate<Rate> {
 		}
 	}
 
-	pub fn per_sec(&self) -> Result<Rate, ArithmeticError> {
-		self.per_year()
-			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
-			.ensure_add(One::one())
+	pub fn per_schedule(&self) -> Result<Rate, ArithmeticError> {
+		todo!()
+	}
+
+	pub fn acc_rate(
+		&self,
+		acc_rate: Rate,
+		last_updated: Seconds,
+		now: Seconds,
+	) -> Result<Rate, ArithmeticError> {
+		todo!()
 	}
 }
 

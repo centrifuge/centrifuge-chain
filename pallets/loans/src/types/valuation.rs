@@ -88,7 +88,6 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
 
 		// Discount the risk-adjusted expected cash flows
-
 		// TODO: use InterestAccrual for this once #1231 is merged
 		// This would immply that discount_rate should be register/unregister.
 		let discount_rate_per_sec = self.discount_rate.per_sec()?;

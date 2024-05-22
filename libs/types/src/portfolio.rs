@@ -59,10 +59,10 @@ where
 	ElemId: Eq,
 	MaxElems: Get<u32>,
 {
-	pub fn new(when: Seconds) -> Self {
+	pub fn new(when: impl Into<Seconds>) -> Self {
 		Self {
 			value: Balance::zero(),
-			last_updated: when,
+			last_updated: when.into(),
 			values: BoundedVec::default(),
 		}
 	}
@@ -179,7 +179,7 @@ mod tests {
 
 	#[test]
 	fn general_usage() {
-		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(10);
+		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(10u64);
 
 		assert_ok!(portfolio.insert_elem(1, 100));
 		assert_ok!(portfolio.insert_elem(2, 200));

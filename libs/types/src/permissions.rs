@@ -16,6 +16,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_arithmetic::traits::Saturating;
 use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	marker::PhantomData,
@@ -185,7 +186,7 @@ where
 /// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
 /// Seconds) variant. This UNION shall reflect that and explain to the reader
 /// why it is passed here.
-pub const UNION: Seconds = 0;
+pub const UNION: Seconds = Seconds::from(0u32);
 
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
@@ -459,7 +460,7 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: u64 = 4;
+		pub const MinDelay: Seconds = Seconds::from(4u64);
 		pub const MaxTranches: u32 = 5;
 	}
 
@@ -488,7 +489,8 @@ mod tests {
 
 	/// The exists call does not care what is passed as moment. This type shall
 	/// reflect that
-	const UNION: u64 = 0u64;
+	const UNION: Seconds = Seconds::from(0u64);
+
 	/// The tranceh id type we use in our runtime-common. But we don't want a
 	/// dependency here.
 	type TrancheId = [u8; 16];
@@ -507,19 +509,19 @@ mod tests {
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				10
+				Seconds::from(10u32)
 			)))
 			.is_ok());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				9
+				Seconds::from(9u32)
 			)))
 			.is_err());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				11
+				Seconds::from(11u32)
 			)))
 			.is_ok());
 
@@ -543,7 +545,7 @@ mod tests {
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(0),
-				0
+				Seconds::from(0u32)
 			)))
 			.is_err());
 		Now::pass(1);
@@ -554,7 +556,7 @@ mod tests {
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(0),
-				MinDelay::get() - 1
+				MinDelay::get() - Seconds::from(1u32)
 			)))
 			.is_err());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -612,14 +614,14 @@ mod tests {
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(8),
-				MinDelay::get() + 2
+				MinDelay::get() + Seconds::from(2u32)
 			)))
 			.is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
 			UNION
 		))));
-		Now::pass(MinDelay::get() + 2);
+		Now::pass((MinDelay::get() + Seconds::from(2u32)).inner());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
 			UNION
@@ -635,7 +637,7 @@ mod tests {
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(5),
-				MinDelay::get() - 1
+				MinDelay::get() - Seconds::from(1u32)
 			)))
 			.is_err());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(

@@ -167,7 +167,7 @@ type RateDetailsOf<T> = RateDetails<<T as Config>::Rate>;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct RateDetails<Rate> {
-	pub interest_rate_per_sec: Rate,
+	pub interest_rate_per_compounding_period: Rate,
 	pub accumulated_rate: Rate,
 	pub reference_count: u32,
 }
@@ -264,13 +264,13 @@ pub mod pallet {
 					weight.saturating_accrue(T::Weights::calculate_accumulated_rate(bits));
 
 					let RateDetailsOf::<T> {
-						interest_rate_per_sec,
+						interest_rate_per_compounding_period,
 						accumulated_rate,
 						reference_count,
 					} = rate;
 
 					Self::calculate_accumulated_rate(
-						interest_rate_per_sec,
+						interest_rate_per_compounding_period,
 						accumulated_rate,
 						then,
 						now,
@@ -387,6 +387,8 @@ pub mod pallet {
 			last_updated: Seconds,
 			now: Seconds,
 		) -> Result<Rate, ArithmeticError> {
+			todo!("Fix with new period calculation");
+
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
 			let time_difference_secs = now.ensure_sub(last_updated)?;
 			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
@@ -399,11 +401,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
+					let interest_rate_per_compounding_period =
+						interest_rate_per_year.per_schedule()?;
 					Rates::<T>::try_mutate(|rates| {
-						let rate = rates
-							.iter_mut()
-							.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec);
+						let rate = rates.iter_mut().find(|rate| {
+							rate.interest_rate_per_compounding_period
+								== interest_rate_per_compounding_period
+						});
 
 						match rate {
 							Some(rate) => Ok(rate.reference_count.ensure_add_assign(1)?),
@@ -411,7 +415,7 @@ pub mod pallet {
 								Self::validate_interest_rate(interest_rate_per_year)?;
 
 								let new_rate = RateDetailsOf::<T> {
-									interest_rate_per_sec,
+									interest_rate_per_compounding_period,
 									accumulated_rate: One::one(),
 									reference_count: 1,
 								};
@@ -433,12 +437,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
+					let interest_rate_per_compounding_period =
+						interest_rate_per_year.per_schedule()?;
 					Rates::<T>::try_mutate(|rates| {
 						let idx = rates
 							.iter()
 							.enumerate()
-							.find(|(_, rate)| rate.interest_rate_per_sec == interest_rate_per_sec)
+							.find(|(_, rate)| {
+								rate.interest_rate_per_compounding_period
+									== interest_rate_per_compounding_period
+							})
 							.ok_or(Error::<T>::NoSuchRate)?
 							.0;
 						rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
@@ -456,10 +464,14 @@ pub mod pallet {
 		) -> Result<RateDetailsOf<T>, DispatchError> {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
+					let interest_rate_per_compounding_period =
+						interest_rate_per_year.per_schedule()?;
 					Rates::<T>::get()
 						.into_iter()
-						.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+						.find(|rate| {
+							rate.interest_rate_per_compounding_period
+								== interest_rate_per_compounding_period
+						})
 						.ok_or_else(|| Error::<T>::NoSuchRate.into())
 				}
 			}
@@ -543,10 +555,12 @@ impl<T: Config> RateCollection<T::Rate, T::Balance, T::Balance> for RateVec<T> {
 		interest_rate: &InterestRate<T::Rate>,
 		normalized_debt: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let interest_rate_per_sec = unchecked_conversion(interest_rate.per_year())?;
+		let interest_rate_per_compounding_period = interest_rate.per_schedule()?;
 		self.0
 			.iter()
-			.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+			.find(|rate| {
+				rate.interest_rate_per_compounding_period == interest_rate_per_compounding_period
+			})
 			.ok_or(Error::<T>::NoSuchRate)
 			.and_then(|rate| {
 				Pallet::<T>::calculate_debt(normalized_debt, rate.accumulated_rate)

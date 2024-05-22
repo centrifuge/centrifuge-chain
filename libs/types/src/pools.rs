@@ -227,12 +227,12 @@ where
 /// Converts an annual balance amount into its proratio based on the given
 /// period duration.
 pub fn saturated_balance_proration<
-	Balance: From<Seconds> + FixedPointOperand + sp_std::ops::Div<Output = Balance>,
+	Balance: From<u64> + FixedPointOperand + sp_std::ops::Div<Output = Balance>,
 >(
 	annual_amount: Balance,
-	period: Seconds,
+	period: impl Into<Seconds>,
 ) -> Balance {
-	let amount = annual_amount.saturating_mul(period.into());
+	let amount = annual_amount.saturating_mul(period.into().inner().into());
 	amount.div(cfg_primitives::SECONDS_PER_YEAR.into())
 }
 
@@ -240,9 +240,10 @@ pub fn saturated_balance_proration<
 /// period duration.
 pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 	annual_rate: Rate,
-	period: Seconds,
+	period: impl Into<Seconds>,
 ) -> Rate {
-	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period));
+	let rate =
+		annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period.into().inner()));
 
 	rate.saturating_div_ceil(&Rate::saturating_from_integer::<u64>(
 		cfg_primitives::SECONDS_PER_YEAR,
@@ -281,7 +282,7 @@ mod tests {
 		#[test]
 		fn balance_zero() {
 			assert_eq!(
-				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 0),
+				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 0u32),
 				0
 			);
 			assert_eq!(
@@ -289,7 +290,7 @@ mod tests {
 				0
 			);
 			assert_eq!(
-				saturated_balance_proration::<Balance>((SECONDS_PER_YEAR - 1).into(), 1),
+				saturated_balance_proration::<Balance>((SECONDS_PER_YEAR - 1).into(), 1u32),
 				0
 			);
 			assert_eq!(
@@ -301,7 +302,7 @@ mod tests {
 		#[test]
 		fn balance_one() {
 			assert_eq!(
-				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 1),
+				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 1u32),
 				1u128
 			);
 			assert_eq!(
@@ -320,7 +321,7 @@ mod tests {
 		#[test]
 		fn rate_zero() {
 			assert_eq!(
-				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 0),
+				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 0u32),
 				Rate::zero()
 			);
 			assert_eq!(
@@ -330,7 +331,7 @@ mod tests {
 			assert!(
 				saturated_rate_proration::<Rate>(
 					Rate::from_integer((SECONDS_PER_YEAR - 1).into()),
-					1
+					1u32
 				) > Rate::zero()
 			);
 			assert!(
@@ -341,7 +342,7 @@ mod tests {
 		#[test]
 		fn rate_one() {
 			assert_eq!(
-				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 1),
+				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 1u32),
 				Rate::one()
 			);
 			assert_eq!(
@@ -356,7 +357,7 @@ mod tests {
 
 			let rate = saturated_rate_proration::<Rate>(
 				Rate::from_integer(u128::from(u128::MAX / 10u128.pow(27))),
-				1,
+				1u32,
 			);
 			assert!(left_bound < rate);
 			assert!(rate < right_bound);
@@ -372,7 +373,7 @@ mod tests {
 
 		#[test]
 		fn precision_quantity_vs_rate() {
-			let period = (DAYS / 4) as Seconds;
+			let period = Seconds::from(DAYS / 4);
 			let nav_multiplier = 1_000_000;
 			let nav = nav_multiplier * CFG;
 
