@@ -261,6 +261,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				// Root will still be able to execute these.
 				pallet_xcm::Call::execute { .. }
 				| pallet_xcm::Call::transfer_assets { .. }
+				| pallet_xcm::Call::teleport_assets { .. } // deprecated
+				| pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::__Ignore { .. } => {
@@ -2741,6 +2743,7 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 
 			let mut list = Vec::<BenchmarkList>::new();
 			list_benchmarks!(list, extra);
@@ -2768,6 +2771,9 @@ impl_runtime_apis! {
 
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
+
+			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
+			impl pallet_xcm::benchmarking::Config for Runtime {}
 
 			use frame_support::traits::WhitelistedStorageKeys;
 			let whitelist = AllPalletsWithSystem::whitelisted_storage_keys();
@@ -2820,7 +2826,7 @@ mod benches {
 		[pallet_transfer_allowlist, TransferAllowList]
 		[pallet_order_book, OrderBook]
 		[pallet_investments, Investments]
-		[pallet_xcm, PolkadotXcm]
+		[pallet_xcm, PalletXcmExtrinsicsBenchmark::<Runtime>]
 		[pallet_oracle_feed, OraclePriceFeed]
 		[pallet_oracle_collection, OraclePriceCollection]
 		[pallet_remarks, Remarks]
