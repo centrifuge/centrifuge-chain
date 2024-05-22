@@ -14,7 +14,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::{cmp::min, collections::btree_map::BTreeMap};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
 	entities::{
@@ -359,8 +359,7 @@ impl<T: Config> ActiveLoan<T> {
 				inner.adjust(Adjustment::Increase(amount.balance()?))?
 			}
 			ActivePricing::External(inner) => {
-				let when = T::Time::now();
-				inner.adjust(Adjustment::Increase(amount.external()?), Zero::zero(), when)?
+				inner.adjust(Adjustment::Increase(amount.external()?), Zero::zero())?
 			}
 		}
 
@@ -434,8 +433,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let principal = amount.principal.external()?;
-				let when = min(T::Time::now(), self.schedule.maturity.date());
-				inner.adjust(Adjustment::Decrease(principal), amount.interest, when)?;
+				inner.adjust(Adjustment::Decrease(principal), amount.interest)?;
 			}
 		}
 

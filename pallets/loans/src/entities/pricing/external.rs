@@ -9,7 +9,7 @@ use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{cmp::min, collections::btree_map::BTreeMap};
 
 use crate::{
 	entities::interest::ActiveInterestRate,
@@ -143,10 +143,6 @@ impl<T: Config> ExternalActivePricing<T> {
 		self.info.price_id
 	}
 
-	pub fn settlement_price_updated(&self) -> Seconds {
-		self.settlement_price_updated
-	}
-
 	pub fn has_registered_price(&self, pool_id: T::PoolId) -> bool {
 		T::PriceRegistry::get(&self.info.price_id, &pool_id).is_ok()
 	}
@@ -166,9 +162,9 @@ impl<T: Config> ExternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		if self.info.with_linear_pricing {
 			Ok(cfg_utils::math::y_coord_in_rect(
-				(price_last_updated, price),
+				(min(price_last_updated, maturity), price),
 				(maturity, self.info.notional),
-				T::Time::now(),
+				min(T::Time::now(), maturity),
 			)?)
 		} else {
 			Ok(price)
@@ -302,7 +298,6 @@ impl<T: Config> ExternalActivePricing<T> {
 		&mut self,
 		amount_adj: Adjustment<ExternalAmount<T>>,
 		interest: T::Balance,
-		when: Seconds,
 	) -> DispatchResult {
 		self.outstanding_quantity = amount_adj
 			.clone()
@@ -318,7 +313,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.interest.adjust_debt(interest_adj)?;
 		self.latest_settlement_price = amount_adj.abs().settlement_price;
-		self.settlement_price_updated = when;
+		self.settlement_price_updated = T::Time::now();
 
 		Ok(())
 	}

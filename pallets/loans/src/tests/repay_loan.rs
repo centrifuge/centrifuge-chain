@@ -824,7 +824,7 @@ fn with_external_pricing_and_overdue() {
 		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
 		// The loan is overdue
-		advance_time(YEAR * 2);
+		advance_time(YEAR * DAY);
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
@@ -839,14 +839,12 @@ fn with_external_pricing_and_overdue() {
 			},
 		));
 
-		let active_loan = util::get_loan(loan_id);
-
-		let settlement_price_updated = match active_loan.pricing() {
-			ActivePricing::External(inner) => inner.settlement_price_updated(),
-			_ => unreachable!(),
-		};
-
-		// We must never overpass madurity date
-		assert_eq!(active_loan.maturity_date(), settlement_price_updated);
+		assert_eq!(
+			ActiveLoanInfo::try_from((POOL_A, util::get_loan(loan_id)))
+				.unwrap()
+				.current_price
+				.unwrap(),
+			NOTIONAL
+		);
 	});
 }
