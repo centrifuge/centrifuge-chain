@@ -297,7 +297,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	// Using AnyRelayNumber only for the development & demo environments,
 	// to be able to recover quickly from a relay chains issue
 	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::AnyRelayNumber;
-	type WeightInfo = (); //TODO-1.7 check weights
+	type WeightInfo = (); // Using weights for recomented hardware
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
@@ -316,7 +316,7 @@ parameter_types! {
 
 impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = (); //TODO-1.7 check weights
+	type WeightInfo = (); // Using weights for recomented hardware
 	#[cfg(feature = "runtime-benchmarks")]
 	type MessageProcessor =
 		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
