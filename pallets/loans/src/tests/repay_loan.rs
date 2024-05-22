@@ -824,7 +824,7 @@ fn with_external_pricing_and_overdue() {
 		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
 		// The loan is overdue
-		advance_time(YEAR * DAY);
+		advance_time(YEAR + DAY);
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
