@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-// TODO: Please fix deprecated issues before/during polkadot-v1.3.0 upgrade
-#![allow(deprecated)]
-
 use std::sync::Arc;
+use std::time::Duration;
 
-use cfg_primitives::{Block, BlockNumber};
+use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
-use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
+use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
+use cumulus_client_consensus_proposer::Proposer;
 use cumulus_primitives_core::ParaId;
+use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
 use fc_db::Backend as FrontierBackend;
+use polkadot_primitives::CollatorPair;
 use sc_executor::NativeElseWasmExecutor;
+use sc_network_sync::SyncingService;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
 use sp_core::U256;
+use sp_keystore::KeystorePtr;
+use substrate_prometheus_endpoint::Registry;
 
 use crate::rpc::{
 	self,
@@ -111,55 +115,8 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 	}
 }
 
-/// Build the import queue for the "altair" runtime.
-#[allow(clippy::type_complexity)]
-pub fn build_altair_import_queue(
-	client: Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
-	block_import: ParachainBlockImport<altair_runtime::RuntimeApi, AltairRuntimeExecutor>,
-	config: &Configuration,
-	telemetry: Option<TelemetryHandle>,
-	task_manager: &TaskManager,
-	frontier_backend: FrontierBackend<Block>,
-	first_evm_block: BlockNumber,
-) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
-	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let block_import = evm::BlockImport::new(
-		block_import,
-		first_evm_block,
-		client.clone(),
-		Arc::new(frontier_backend),
-	);
-
-	cumulus_client_consensus_aura::import_queue::<
-		sp_consensus_aura::sr25519::AuthorityPair,
-		_,
-		_,
-		_,
-		_,
-		_,
-	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import,
-		client,
-		create_inherent_data_providers: move |_, _| async move {
-			let time = sp_timestamp::InherentDataProvider::from_system_time();
-
-			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					*time,
-					slot_duration,
-				);
-
-			Ok((slot, time))
-		},
-		registry: config.prometheus_registry(),
-		spawner: &task_manager.spawn_essential_handle(),
-		telemetry,
-	})
-	.map_err(Into::into)
-}
-
-/// Start an altair parachain node.
-pub async fn start_altair_node(
+/// Start a generic parachain node.
+pub async fn start_node<RuntimeApi, Executor>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
@@ -167,13 +124,10 @@ pub async fn start_altair_node(
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
-)> {
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)> {
 	let is_authority = parachain_config.role.is_authority();
 
-	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
+	evm::start_node_impl::<RuntimeApi, Executor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -247,98 +201,18 @@ pub async fn start_altair_node(
 			)?;
 			Ok(module)
 		},
-		build_altair_import_queue,
-		|client,
-		 block_import,
-		 prometheus_registry,
-		 telemetry,
-		 task_manager,
-		 relay_chain_interface,
-		 transaction_pool,
-		 sync_oracle,
-		 keystore,
-		 force_authoring| {
-			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
-				task_manager.spawn_handle(),
-				client.clone(),
-				transaction_pool,
-				prometheus_registry,
-				telemetry.clone(),
-			);
-
-            /* // TODO in v1.3.0
-            let proposer = Proposer::new(proposer_factory);
-
-            let collator_service = CollatorService::new(
-                client.clone(),
-                Arc::new(task_manager.spawn_handle()),
-                announce_block,
-                client.clone()
-            );
-            */
-
-			Ok(AuraConsensus::build::<
-				sp_consensus_aura::sr25519::AuthorityPair,
-				_,
-				_,
-				_,
-				_,
-				_,
-				_,
-			>(BuildAuraConsensusParams {
-				proposer_factory,
-				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
-					let relay_chain_interface = relay_chain_interface.clone();
-					async move {
-						let parachain_inherent =
-							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-							relay_parent,
-							&relay_chain_interface,
-							&validation_data,
-							id,
-						).await;
-
-						let time = sp_timestamp::InherentDataProvider::from_system_time();
-
-						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-								*time,
-								slot_duration,
-							);
-
-						let parachain_inherent = parachain_inherent.ok_or_else(|| {
-							Box::<dyn std::error::Error + Send + Sync>::from(
-								"Failed to create parachain inherent",
-							)
-						})?;
-						Ok((slot, time, parachain_inherent))
-					}
-				},
-				block_import,
-				para_client: client,
-				backoff_authoring_blocks: Option::<()>::None,
-				sync_oracle,
-				keystore,
-				force_authoring,
-				slot_duration,
-				telemetry,
-				// We got around 500ms for proposing
-				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-				// And a maximum of 750ms if slots are skipped
-				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-			}))
-		},
+		build_import_queue::<RuntimeApi, Executor>,
 	)
 	.await
 }
 
-/// Build the import queue for the "centrifuge" runtime.
+/// Builds a generic import queue. The runtime is specified via the generics.
+///
+/// NOTE: Almost entirely taken from Polkadot SDK.
 #[allow(clippy::type_complexity)]
-pub fn build_centrifuge_import_queue(
-	client: Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
-	block_import: ParachainBlockImport<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
+pub fn build_import_queue<RuntimeApi, Executor>(
+	client: Arc<FullClient<RuntimeApi, Executor>>,
+	block_import: ParachainBlockImport<RuntimeApi, Executor>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
@@ -353,410 +227,99 @@ pub fn build_centrifuge_import_queue(
 		Arc::new(frontier_backend),
 	);
 
-	cumulus_client_consensus_aura::import_queue::<
-		sp_consensus_aura::sr25519::AuthorityPair,
-		_,
-		_,
-		_,
-		_,
-		_,
-	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import,
-		client,
-		create_inherent_data_providers: move |_, _| async move {
-			let time = sp_timestamp::InherentDataProvider::from_system_time();
-
-			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					*time,
-					slot_duration,
-				);
-
-			Ok((slot, time))
-		},
-		registry: config.prometheus_registry(),
-		spawner: &task_manager.spawn_essential_handle(),
-		telemetry,
-	})
-	.map_err(Into::into)
-}
-
-/// Start a centrifuge parachain node.
-pub async fn start_centrifuge_node(
-	parachain_config: Configuration,
-	polkadot_config: Configuration,
-	eth_config: EthConfiguration,
-	collator_options: CollatorOptions,
-	id: ParaId,
-	hwbench: Option<sc_sysinfo::HwBench>,
-	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
-)> {
-	let is_authority = parachain_config.role.is_authority();
-
-	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
-		parachain_config,
-		polkadot_config,
-		eth_config,
-		collator_options,
-		id,
-		hwbench,
-		first_evm_block,
-		move |client,
-		      pool,
-		      deny_unsafe,
-		      subscription_task_executor,
-		      network,
-		      sync_service,
-		      frontier_backend,
-		      filter_pool,
-		      fee_history_cache,
-		      overrides,
-		      block_data_cache| {
-
-            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
-            let target_gas_price = eth_config.target_gas_price;
-            let pending_create_inherent_data_providers = move |_, ()| async move {
-                let current = sp_timestamp::InherentDataProvider::from_system_time();
-                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
-                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
-                let slot =
-                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                        *timestamp,
-                        slot_duration,
-                    );
-                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
-                Ok((slot, timestamp, dynamic_fee))
-            };
-
-			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
-			module
-				.merge(Anchors::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Pools::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			let eth_deps = rpc::evm::Deps {
-				client,
-				pool: pool.clone(),
-				graph: pool.pool().clone(),
-				converter: Some(development_runtime::TransactionConverter),
-				is_authority,
-				enable_dev_signer: eth_config.enable_dev_signer,
-				network,
-				sync: sync_service.clone(),
-				frontier_backend: match frontier_backend.clone() {
-					fc_db::Backend::KeyValue(b) => Arc::new(b),
-					#[cfg(feature = "sql")]
-					fc_db::Backend::Sql(b) => Arc::new(b),
-				},
-				overrides,
-				block_data_cache,
-				filter_pool: Some(filter_pool),
-				max_past_logs: eth_config.max_past_logs,
-				fee_history_cache,
-				fee_history_cache_limit: eth_config.fee_history_limit,
-				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
-				forced_parent_hashes: None,
-				pending_create_inherent_data_providers,
-			};
-			let module = rpc::evm::create(
-				module,
-				eth_deps,
-				subscription_task_executor,
-				Arc::new(Default::default()),
-			)?;
-			Ok(module)
-		},
-		build_centrifuge_import_queue,
-		|client,
-		 block_import,
-		 prometheus_registry,
-		 telemetry,
-		 task_manager,
-		 relay_chain_interface,
-		 transaction_pool,
-		 sync_oracle,
-		 keystore,
-		 force_authoring| {
-			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
-				task_manager.spawn_handle(),
-				client.clone(),
-				transaction_pool,
-				prometheus_registry,
-				telemetry.clone(),
-			);
-
-			Ok(AuraConsensus::build::<
-				sp_consensus_aura::sr25519::AuthorityPair,
-				_,
-				_,
-				_,
-				_,
-				_,
-				_,
-			>(BuildAuraConsensusParams {
-				proposer_factory,
-				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
-					let relay_chain_interface = relay_chain_interface.clone();
-					async move {
-						let parachain_inherent =
-							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-								relay_parent,
-								&relay_chain_interface,
-								&validation_data,
-								id,
-							).await;
-
-						let time = sp_timestamp::InherentDataProvider::from_system_time();
-
-						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-								*time,
-								slot_duration,
-							);
-
-						let parachain_inherent = parachain_inherent.ok_or_else(|| {
-							Box::<dyn std::error::Error + Send + Sync>::from(
-								"Failed to create parachain inherent",
-							)
-						})?;
-						Ok((slot, time, parachain_inherent))
-					}
-				},
-				block_import,
-				para_client: client,
-				backoff_authoring_blocks: Option::<()>::None,
-				sync_oracle,
-				keystore,
-				force_authoring,
-				slot_duration,
-				// We got around 500ms for proposing
-				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-				// And a maximum of 750ms if slots are skipped
-				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-				telemetry,
-			}))
-		},
+	Ok(
+		cumulus_client_consensus_aura::equivocation_import_queue::fully_verifying_import_queue::<
+			sp_consensus_aura::sr25519::AuthorityPair,
+			_,
+			_,
+			_,
+			_,
+		>(
+			client,
+			block_import,
+			move |_, _| async move {
+				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+				Ok(timestamp)
+			},
+			slot_duration,
+			&task_manager.spawn_essential_handle(),
+			config.prometheus_registry(),
+			telemetry,
+		),
 	)
-	.await
 }
 
-/// Build the import queue for the "development" runtime.
-#[allow(clippy::type_complexity)]
-pub fn build_development_import_queue(
-	client: Arc<FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>>,
-	block_import: ParachainBlockImport<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
-	config: &Configuration,
+/// Starts the aura consensus.
+///
+/// NOTE: Taken from Polkadot SDK because Moonbeam uses their custom Nimbus consensus
+fn start_consensus<RuntimeApi, Executor>(
+	client: Arc<FullClient<RuntimeApi, Executor>>,
+	block_import: ParachainBlockImport<RuntimeApi, Executor>,
+	prometheus_registry: Option<&Registry>,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	frontier_backend: FrontierBackend<Block>,
-	first_evm_block: BlockNumber,
-) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
+	relay_chain_interface: Arc<dyn RelayChainInterface>,
+	transaction_pool: Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+	sync_oracle: Arc<SyncingService<Block>>,
+	keystore: KeystorePtr,
+	relay_chain_slot_duration: Duration,
+	para_id: ParaId,
+	collator_key: CollatorPair,
+	overseer_handle: OverseerHandle,
+	announce_block: Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
+) -> Result<(), sc_service::Error> {
+	use cumulus_client_consensus_aura::collators::basic::{
+		self as basic_aura, Params as BasicAuraParams,
+	};
+
+	// NOTE: because we use Aura here explicitly, we can use `CollatorSybilResistance::Resistant`
+	// when starting the network.
+
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let block_import = evm::BlockImport::new(
-		block_import,
-		first_evm_block,
+
+	let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+		task_manager.spawn_handle(),
 		client.clone(),
-		Arc::new(frontier_backend),
+		transaction_pool,
+		prometheus_registry,
+		telemetry.clone(),
 	);
 
-	cumulus_client_consensus_aura::import_queue::<
-		sp_consensus_aura::sr25519::AuthorityPair,
-		_,
-		_,
-		_,
-		_,
-		_,
-	>(cumulus_client_consensus_aura::ImportQueueParams {
+	let proposer = Proposer::new(proposer_factory);
+
+	let collator_service = CollatorService::new(
+		client.clone(),
+		Arc::new(task_manager.spawn_handle()),
+		announce_block,
+		client.clone(),
+	);
+
+	let params = BasicAuraParams {
+		create_inherent_data_providers: move |_, ()| async move { Ok(()) },
 		block_import,
-		client,
-		create_inherent_data_providers: move |_, _| async move {
-			let time = sp_timestamp::InherentDataProvider::from_system_time();
+		para_client: client,
+		relay_client: relay_chain_interface,
+		sync_oracle,
+		keystore,
+		collator_key,
+		para_id,
+		overseer_handle,
+		slot_duration,
+		relay_chain_slot_duration,
+		proposer,
+		collator_service,
+		// Very limited proposal time.
+		authoring_duration: Duration::from_millis(500),
+		collation_request_receiver: None,
+	};
 
-			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					*time,
-					slot_duration,
-				);
+	let fut =
+		basic_aura::run::<Block, sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _, _>(
+			params,
+		);
+	task_manager
+		.spawn_essential_handle()
+		.spawn("aura", None, fut);
 
-			Ok((slot, time))
-		},
-		registry: config.prometheus_registry(),
-		spawner: &task_manager.spawn_essential_handle(),
-		telemetry,
-	})
-	.map_err(Into::into)
-}
-
-/// Start a development parachain node.
-pub async fn start_development_node(
-	parachain_config: Configuration,
-	polkadot_config: Configuration,
-	eth_config: EthConfiguration,
-	collator_options: CollatorOptions,
-	id: ParaId,
-	hwbench: Option<sc_sysinfo::HwBench>,
-	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>>,
-)> {
-	let is_authority = parachain_config.role.is_authority();
-
-	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
-		parachain_config,
-		polkadot_config,
-		eth_config,
-		collator_options,
-		id,
-		hwbench,
-		first_evm_block,
-		move |client,
-		      pool,
-		      deny_unsafe,
-		      subscription_task_executor,
-		      network,
-		      sync_service,
-		      frontier_backend,
-		      filter_pool,
-		      fee_history_cache,
-		      overrides,
-		      block_data_cache| {
-
-            let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
-            let target_gas_price = eth_config.target_gas_price;
-            let pending_create_inherent_data_providers = move |_, ()| async move {
-                let current = sp_timestamp::InherentDataProvider::from_system_time();
-                let next_slot = current.timestamp().as_millis() + slot_duration.as_millis();
-                let timestamp = sp_timestamp::InherentDataProvider::new(next_slot.into());
-                let slot =
-                    sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                        *timestamp,
-                        slot_duration,
-                    );
-                let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
-                Ok((slot, timestamp, dynamic_fee))
-            };
-
-			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
-			module
-				.merge(Anchors::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Pools::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Rewards::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			let eth_deps = rpc::evm::Deps {
-				client,
-				pool: pool.clone(),
-				graph: pool.pool().clone(),
-				converter: Some(development_runtime::TransactionConverter),
-				is_authority,
-				enable_dev_signer: eth_config.enable_dev_signer,
-				network,
-				sync: sync_service.clone(),
-				frontier_backend: match frontier_backend.clone() {
-					fc_db::Backend::KeyValue(b) => Arc::new(b),
-					#[cfg(feature = "sql")]
-					fc_db::Backend::Sql(b) => Arc::new(b),
-				},
-				overrides,
-				block_data_cache,
-				filter_pool: Some(filter_pool),
-				max_past_logs: eth_config.max_past_logs,
-				fee_history_cache,
-				fee_history_cache_limit: eth_config.fee_history_limit,
-				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
-				forced_parent_hashes: None,
-				pending_create_inherent_data_providers,
-			};
-			let module = rpc::evm::create(
-				module,
-				eth_deps,
-				subscription_task_executor,
-				Arc::new(Default::default()),
-			)?;
-			Ok(module)
-		},
-		build_development_import_queue,
-		|client,
-		 block_import,
-		 prometheus_registry,
-		 telemetry,
-		 task_manager,
-		 relay_chain_interface,
-		 transaction_pool,
-		 sync_oracle,
-		 keystore,
-		 force_authoring| {
-			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
-				task_manager.spawn_handle(),
-				client.clone(),
-				transaction_pool,
-				prometheus_registry,
-				telemetry.clone(),
-			);
-
-			Ok(AuraConsensus::build::<
-				sp_consensus_aura::sr25519::AuthorityPair,
-				_,
-				_,
-				_,
-				_,
-				_,
-				_,
-			>(BuildAuraConsensusParams {
-				proposer_factory,
-				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
-					let relay_chain_interface = relay_chain_interface.clone();
-					async move {
-						let parachain_inherent =
-							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-								relay_parent,
-								&relay_chain_interface,
-								&validation_data,
-								id,
-							).await;
-
-						let time = sp_timestamp::InherentDataProvider::from_system_time();
-
-						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-								*time,
-								slot_duration,
-							);
-
-						let parachain_inherent = parachain_inherent.ok_or_else(|| {
-							Box::<dyn std::error::Error + Send + Sync>::from(
-								"Failed to create parachain inherent",
-							)
-						})?;
-						Ok((slot, time, parachain_inherent))
-					}
-				},
-				block_import,
-				para_client: client,
-				backoff_authoring_blocks: Option::<()>::None,
-				sync_oracle,
-				keystore,
-				force_authoring,
-				slot_duration,
-				// We got around 500ms for proposing
-				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-				// And a maximum of 750ms if slots are skipped
-				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-				telemetry,
-			}))
-		},
-	)
-	.await
+	Ok(())
 }

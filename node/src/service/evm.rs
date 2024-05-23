@@ -20,14 +20,16 @@ use std::{
 
 use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
+use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
+use cumulus_client_consensus_proposer::Proposer;
 use cumulus_client_service::{
-	build_network, build_relay_chain_interface, prepare_node_config, start_collator,
-	start_full_node, BuildNetworkParams, CollatorSybilResistance, StartCollatorParams,
-	StartFullNodeParams,
+	build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
+	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartCollatorParams,
+	StartFullNodeParams, StartRelayChainTasksParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::RelayChainInterface;
+use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
 use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
@@ -37,6 +39,7 @@ use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::{future, StreamExt};
+use polkadot_primitives::CollatorPair;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
@@ -45,7 +48,7 @@ use sc_network::{NetworkBlock, NetworkService};
 use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
 use sc_rpc_api::DenyUnsafe;
-use sc_service::{Configuration, PartialComponents, TFullBackend, TaskManager};
+use sc_service::{Configuration, PartialComponents, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
@@ -55,7 +58,7 @@ use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
-use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
+use super::{rpc, start_consensus, FullBackend, FullClient, ParachainBlockImport};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]
@@ -165,6 +168,25 @@ fn db_config_dir(config: &Configuration) -> PathBuf {
 	config.base_path.config_dir(config.chain_spec.id())
 }
 
+/// Assembly of PartialComponents (enough to run chain ops subcommands)
+///
+/// NOTE: Based on Polkadot SDK
+pub type Service<RuntimeApi, Executor> = PartialComponents<
+	FullClient<RuntimeApi, Executor>,
+	FullBackend,
+	(),
+	sc_consensus::DefaultImportQueue<Block>,
+	sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
+	(
+		ParachainBlockImport<RuntimeApi, Executor>,
+		Option<Telemetry>,
+		Option<TelemetryWorkerHandle>,
+		FrontierBackend<Block>,
+		FilterPool,
+		FeeHistoryCache,
+	),
+>;
+
 /// Starts a `ServiceBuilder` for a full service.
 ///
 /// Use this macro if you don't actually need the full service, but just the
@@ -174,24 +196,7 @@ pub fn new_partial<RuntimeApi, BIQ, Executor>(
 	config: &Configuration,
 	first_evm_block: BlockNumber,
 	build_import_queue: BIQ,
-) -> Result<
-	PartialComponents<
-		FullClient<RuntimeApi, Executor>,
-		FullBackend,
-		(),
-		sc_consensus::DefaultImportQueue<Block>,
-		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
-		(
-			ParachainBlockImport<RuntimeApi, Executor>,
-			Option<Telemetry>,
-			Option<TelemetryWorkerHandle>,
-			FrontierBackend<Block>,
-			FilterPool,
-			FeeHistoryCache,
-		),
-	>,
-	sc_service::Error,
->
+) -> Result<Service<RuntimeApi, Executor>, sc_service::Error>
 where
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RuntimeApi:
@@ -322,12 +327,11 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
-	id: ParaId,
+	para_id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
-	build_consensus: BIC,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
 	RuntimeApi:
@@ -410,7 +414,6 @@ where
 	.await
 	.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
 
-	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
@@ -423,7 +426,7 @@ where
 			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
-			para_id: id,
+			para_id,
 			spawn_handle: task_manager.spawn_handle(),
 			relay_chain_interface: relay_chain_interface.clone(),
 			import_queue: params.import_queue,
@@ -482,7 +485,6 @@ where
 		telemetry: telemetry.as_mut(),
 	})?;
 
-	// do we need this at all?
 	spawn_frontier_tasks::<RuntimeApi, Executor>(
 		&task_manager,
 		client.clone(),
@@ -502,10 +504,14 @@ where
 		// Putting a link in there and swapping out the requirements for your own are
 		// probably a good idea. The requirements for a para-chain are dictated by its
 		// relay-chain.
-		if !SUBSTRATE_REFERENCE_HARDWARE.check_hardware(&hwbench) && validator {
-			log::warn!(
-				"⚠️  The hardware does not meet the minimal requirements for role 'Authority'."
+		match SUBSTRATE_REFERENCE_HARDWARE.check_hardware(&hwbench) {
+			Err(err) if validator => {
+				log::warn!(
+				"⚠️  The hardware does not meet the minimal requirements {} for role 'Authority'.",
+				err
 			);
+			}
+			_ => {}
 		}
 
 		if let Some(ref mut telemetry) = telemetry {
@@ -527,10 +533,27 @@ where
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
 
-	let recovery_handle = Box::new(overseer_handle);
+	// Follows Polkadot SDK
+	start_relay_chain_tasks(StartRelayChainTasksParams {
+		client: client.clone(),
+		announce_block: announce_block.clone(),
+		para_id,
+		relay_chain_interface: relay_chain_interface.clone(),
+		task_manager: &mut task_manager,
+		da_recovery_profile: if validator {
+			DARecoveryProfile::Collator
+		} else {
+			DARecoveryProfile::FullNode
+		},
+		import_queue: import_queue_service,
+		relay_chain_slot_duration,
+		recovery_handle: Box::new(overseer_handle.clone()),
+		sync_service: sync_service.clone(),
+	})?;
 
+	// Follows Polkadot SDK
 	if validator {
-		let parachain_consensus = build_consensus(
+		start_consensus::<RuntimeApi, Executor>(
 			client.clone(),
 			block_import,
 			prometheus_registry.as_ref(),
@@ -540,46 +563,13 @@ where
 			transaction_pool,
 			sync_service.clone(),
 			params.keystore_container.keystore(),
-			force_authoring,
+			relay_chain_slot_duration,
+			para_id,
+			collator_key.expect("Command line arguments do not allow this. qed"),
+			overseer_handle,
+			announce_block,
 		)?;
-
-		let spawner = task_manager.spawn_handle();
-
-		let params = StartCollatorParams {
-			para_id: id,
-			block_status: client.clone(),
-			announce_block,
-			client: client.clone(),
-			task_manager: &mut task_manager,
-			relay_chain_interface,
-			spawner,
-			parachain_consensus,
-			import_queue: import_queue_service,
-			collator_key: collator_key.ok_or_else(|| {
-				sc_service::error::Error::Other("Collator Key is None".to_string())
-			})?,
-			relay_chain_slot_duration,
-			recovery_handle,
-			sync_service,
-		};
-
-		#[allow(deprecated)] // TODO fix before v1.3.0
-		start_collator(params).await?;
 	} else {
-		let params = StartFullNodeParams {
-			client: client.clone(),
-			announce_block,
-			task_manager: &mut task_manager,
-			para_id: id,
-			relay_chain_interface,
-			relay_chain_slot_duration,
-			import_queue: import_queue_service,
-			recovery_handle,
-			sync_service,
-		};
-
-		#[allow(deprecated)] // TODO fix before v1.3.0
-		start_full_node(params)?;
 	}
 
 	start_network.start_network();
@@ -592,7 +582,7 @@ where
 fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	client: Arc<FullClient<RuntimeApi, Executor>>,
-	backend: Arc<TFullBackend<Block>>,
+	backend: Arc<FullBackend>,
 	frontier_backend: FrontierBackend<Block>,
 	filter_pool: FilterPool,
 	overrides: Arc<OverrideHandle<Block>>,
@@ -621,7 +611,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 		FrontierBackend::KeyValue(fb) => {
 			task_manager.spawn_essential_handle().spawn(
 				"frontier-mapping-sync-worker",
-				None,
+				Some("frontier"),
 				MappingSyncWorker::new(
 					client.import_notification_stream(),
 					Duration::new(6, 0),
@@ -665,14 +655,14 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	const FILTER_RETAIN_THRESHOLD: u64 = 100;
 	task_manager.spawn_essential_handle().spawn(
 		"frontier-filter-pool",
-		None,
+		Some("frontier"),
 		EthTask::filter_pool_task(client.clone(), filter_pool, FILTER_RETAIN_THRESHOLD),
 	);
 
 	// Spawn Frontier FeeHistory cache maintenance task.
 	task_manager.spawn_essential_handle().spawn(
 		"frontier-fee-history",
-		None,
+		Some("frontier"),
 		EthTask::fee_history_task(
 			client,
 			overrides,

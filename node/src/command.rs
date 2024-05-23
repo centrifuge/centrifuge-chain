@@ -67,7 +67,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, St
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"altair-local" => Ok(Box::new(chain_spec::altair_local(LOCAL_PARA_ID))),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
-		"demo" => Ok(Box::new(chain_spec::demo(LOCAL_PARA_ID))),
+		"demo" => Ok(Box::new(chain_spec::demo_config())),
 		"development" => Ok(Box::new(chain_spec::development(LOCAL_PARA_ID))),
 		"" => Err(String::from("No Chain-id provided")),
 
@@ -253,9 +253,9 @@ pub fn run() -> Result<()> {
 			});
 			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))
 		}),
-		Some(Subcommand::ExportGenesisState(cmd)) => {
+		Some(Subcommand::ExportGenesisHead(cmd)) => {
 			construct_async_run!(|components, cli, cmd, config| {
-				Ok(async move { cmd.run(&*config.chain_spec, &*components.client) })
+				Ok(async move { cmd.run(components.client) })
 			})
 		}
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
@@ -352,7 +352,10 @@ pub fn run() -> Result<()> {
 				);
 
 				match config.chain_spec.identify() {
-					ChainIdentity::Altair => crate::service::start_altair_node(
+					ChainIdentity::Altair => crate::service::start_node::<
+						altair_runtime::RuntimeApi,
+						AltairRuntimeExecutor,
+					>(
 						config,
 						polkadot_config,
 						cli.eth,
@@ -360,11 +363,11 @@ pub fn run() -> Result<()> {
 						id,
 						hwbench,
 						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
-					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
+					),
+					ChainIdentity::Centrifuge => crate::service::start_node::<
+						centrifuge_runtime::RuntimeApi,
+						CentrifugeRuntimeExecutor,
+					>(
 						config,
 						polkadot_config,
 						cli.eth,
@@ -372,11 +375,11 @@ pub fn run() -> Result<()> {
 						id,
 						hwbench,
 						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
-					ChainIdentity::Development => crate::service::start_development_node(
+					),
+					ChainIdentity::Development => crate::service::start_node::<
+						development_runtime::RuntimeApi,
+						DevelopmentRuntimeExecutor,
+					>(
 						config,
 						polkadot_config,
 						cli.eth,
@@ -384,11 +387,11 @@ pub fn run() -> Result<()> {
 						id,
 						hwbench,
 						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
+					),
 				}
+				.await
+				.map(|r| r.0)
+				.map_err(Into::into)
 			})
 		}
 	}

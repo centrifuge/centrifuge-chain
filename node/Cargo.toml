@@ -31,6 +31,7 @@ jsonrpsee = { workspace = true, default-features = true }
 log = { workspace = true, default-features = true }
 parity-scale-codec = { default-features = true, workspace = true }
 serde = { workspace = true, default-features = true }
+serde_json = { workspace = true, default-features = true }
 url = { workspace = true, default-features = true }
 
 # client dependencies
