@@ -1,48 +1,48 @@
 [workspace]
 resolver = "2"
 members = [
-  #"node",
-  "libs/mocks",
-  "libs/primitives",
-  "libs/test-utils",
-  "libs/traits",
-  "libs/types",
-  "libs/utils",
-  "pallets/anchors",
-  "pallets/bridge",
-  "pallets/block-rewards",
-  "pallets/collator-allowlist",
-  "pallets/ethereum-transaction",
-  "pallets/fees",
-  "pallets/foreign-investments",
-  "pallets/interest-accrual",
-  "pallets/investments",
-  "pallets/keystore",
-  "pallets/liquidity-pools",
-  "pallets/liquidity-pools-gateway",
-  "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
-  "pallets/liquidity-pools-gateway/routers",
-  "pallets/liquidity-rewards",
-  "pallets/loans",
-  "pallets/oracle-feed",
-  "pallets/oracle-collection",
-  "pallets/order-book",
-  "pallets/permissions",
-  "pallets/pool-fees",
-  "pallets/pool-system",
-  "pallets/pool-registry",
-  "pallets/restricted-tokens",
-  "pallets/restricted-xtokens",
-  "pallets/rewards",
-  "pallets/swaps",
-  "pallets/token-mux",
-  "pallets/transfer-allowlist",
-  #"runtime/altair",
-  #"runtime/centrifuge",
-  "runtime/development",
-  "runtime/common",
-  #"runtime/integration-tests",
-  #"runtime/integration-tests/procedural",
+    "node",
+    "libs/mocks",
+    "libs/primitives",
+    "libs/test-utils",
+    "libs/traits",
+    "libs/types",
+    "libs/utils",
+    "pallets/anchors",
+    "pallets/bridge",
+    "pallets/block-rewards",
+    "pallets/collator-allowlist",
+    "pallets/ethereum-transaction",
+    "pallets/fees",
+    "pallets/foreign-investments",
+    "pallets/interest-accrual",
+    "pallets/investments",
+    "pallets/keystore",
+    "pallets/liquidity-pools",
+    "pallets/liquidity-pools-gateway",
+    "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
+    "pallets/liquidity-pools-gateway/routers",
+    "pallets/liquidity-rewards",
+    "pallets/loans",
+    "pallets/oracle-feed",
+    "pallets/oracle-collection",
+    "pallets/order-book",
+    "pallets/permissions",
+    "pallets/pool-fees",
+    "pallets/pool-system",
+    "pallets/pool-registry",
+    "pallets/restricted-tokens",
+    "pallets/restricted-xtokens",
+    "pallets/rewards",
+    "pallets/swaps",
+    "pallets/token-mux",
+    "pallets/transfer-allowlist",
+    #"runtime/altair",
+    #"runtime/centrifuge",
+    "runtime/development",
+    "runtime/common",
+    #"runtime/integration-tests",
+    #"runtime/integration-tests/procedural",
 ]
 
 [workspace.package]
@@ -54,33 +54,34 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
 
 [workspace.dependencies]
-hex-literal = { version = "0.3.4" }
+hex-literal = { version = "0.4.1" }
 hex = { version = "0.4.3", default-features = false }
-smallvec = "1.6.1"
-serde = { version = "1.0.119", default-features = false, features = ["derive"] }
-parity-scale-codec = { version = "3.2.2", default-features = false, features = ["derive"] }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-log = { version = "0.4", default-features = false }
+smallvec = "1.11.0"
+serde = { version = "1.0.195", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.111" }
+parity-scale-codec = { version = "3.6.1", default-features = false, features = ["derive"] }
+scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+log = { version = "0.4.20", default-features = false }
 getrandom = { version = "0.2", features = ["js"] }
 static_assertions = "1.1.0"
 lazy_static = "1.4.0"
 thiserror = "1.0.30"
-tokio = { version = "1.15", features = ["macros"] }
-tracing-subscriber = "0.2"
+tokio = { version = "1.32.0", features = ["macros"] }
+tracing-subscriber = "0.2.25"
 ethabi = { version = "18.0", default-features = false }
 ethereum = { version = "0.15.0", default-features = false }
-async-trait = "0.1"
-clap = { version = "4.0.9", features = ["derive"] }
-futures = "0.3.25"
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-url = "2.2.2"
+async-trait = "0.1.74"
+clap = { version = "4.4.18", features = ["derive"] }
+futures = "0.3.28"
+jsonrpsee = { version = "0.20.3", features = ["server", "macros"] }
+url = "2.4.0"
 tempfile = "3.1.0"
-strum = { version = "0.24", default-features = false, features = ["derive"] }
-bitflags = { version = "1.3" }
+strum = { version = "0.24.1", default-features = false, features = ["derive"] }
+bitflags = { version = "1.3.2" }
 rand = { version = "0.8.5", default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
-impl-trait-for-tuples = "0.2.1"
-num-traits = { version = "0.2", default-features = false }
+impl-trait-for-tuples = "0.2.2"
+num-traits = { version = "0.2.17", default-features = false }
 num_enum = { version = "0.5.3", default-features = false }
 
 # Cumulus
@@ -171,7 +172,7 @@ sp-trie = { git = "https://github.com/paritytech/polkadot-sdk", default-features
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, features = [
-  "tuples-96",
+    "tuples-96",
 ], branch = "release-polkadot-v1.7.2" } # Check when tuples-96 can be removed
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -281,10 +282,10 @@ fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-feat
 fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = ["serde"] }
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
 pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = [
-  "forbid-evm-reentrancy",
+    "forbid-evm-reentrancy",
 ] }
 pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = [
-  "forbid-evm-reentrancy",
+    "forbid-evm-reentrancy",
 ] }
 pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
 pallet-evm-precompile-blake2 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
