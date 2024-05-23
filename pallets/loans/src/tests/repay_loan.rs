@@ -814,9 +814,13 @@ fn with_unregister_price_id_and_oracle_not_required() {
 }
 
 #[test]
-fn with_external_pricing_and_overdue() {
+fn with_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
 			..util::base_external_loan()
 		});
 
@@ -839,8 +843,21 @@ fn with_external_pricing_and_overdue() {
 				.unwrap()
 		};
 
+		// Repay and check time without advance time
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), PRICE_VALUE);
+
+		// In the middle of the line
+		advance_time(YEAR / 2);
+		assert_eq!(current_price(), PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2);
+
 		// BEFORE: the loan not yet overdue
-		advance_time(YEAR - DAY);
+		advance_time(YEAR / 2 - DAY);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,

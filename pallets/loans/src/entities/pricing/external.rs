@@ -161,6 +161,12 @@ impl<T: Config> ExternalActivePricing<T> {
 		price_last_updated: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		if self.info.with_linear_pricing {
+			if min(price_last_updated, maturity) == maturity {
+				// We can not have 2 'xs' with different 'y' in a rect.
+				// That only happens at maturity
+				return Ok(self.info.notional);
+			}
+
 			Ok(cfg_utils::math::y_coord_in_rect(
 				(min(price_last_updated, maturity), price),
 				(maturity, self.info.notional),
