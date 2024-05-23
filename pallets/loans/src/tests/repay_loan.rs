@@ -814,37 +814,78 @@ fn with_unregister_price_id_and_oracle_not_required() {
 }
 
 #[test]
-fn with_external_pricing_and_overdue() {
+fn with_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
 			..util::base_external_loan()
 		});
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
-		// The loan is overdue
-		advance_time(YEAR + DAY);
-
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		let amount = ExternalAmount::new(Quantity::one(), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
+
+		let repay_amount = RepaidInput {
+			principal: PrincipalInput::External(amount),
+			interest: 0,
+			unscheduled: 0,
+		};
+
+		let current_price = || {
+			ActiveLoanInfo::try_from((POOL_A, util::get_loan(loan_id)))
+				.unwrap()
+				.current_price
+				.unwrap()
+		};
+
+		// Repay and check time without advance time
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidInput {
-				principal: PrincipalInput::External(amount),
-				interest: 0,
-				unscheduled: 0,
-			},
+			repay_amount.clone()
 		));
+		assert_eq!(current_price(), PRICE_VALUE);
 
-		assert_eq!(
-			ActiveLoanInfo::try_from((POOL_A, util::get_loan(loan_id)))
-				.unwrap()
-				.current_price
-				.unwrap(),
-			NOTIONAL
-		);
+		// In the middle of the line
+		advance_time(YEAR / 2);
+		assert_eq!(current_price(), PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2);
+
+		// BEFORE: the loan not yet overdue
+		advance_time(YEAR / 2 - DAY);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert!(current_price() < NOTIONAL);
+
+		// EXACT: the loan is just at matuyrity date
+		advance_time(DAY);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), NOTIONAL);
+
+		// AFTER: the loan overpassing maturity date
+		advance_time(DAY);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), NOTIONAL);
 	});
 }
