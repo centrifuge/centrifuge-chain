@@ -329,7 +329,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 /// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
 pub mod v3 {
-	use cfg_traits::{interest::InterestRate, Seconds};
+	use cfg_traits::Seconds;
 	use parity_scale_codec::{Decode, Encode};
 
 	use crate::{
@@ -337,30 +337,24 @@ pub mod v3 {
 			interest::ActiveInterestRate,
 			pricing::{external::MaxBorrowAmount, internal, internal::InternalActivePricing},
 		},
-		pallet::AssetOf,
-		types::{LoanRestrictions, RepaymentSchedule},
 		Config,
 	};
-
-	#[derive(Encode, Decode)]
-	pub struct CreatedLoan<T: Config> {
-		info: LoanInfo<T>,
-		borrower: T::AccountId,
-	}
-
-	#[derive(Encode, Decode)]
-	pub struct LoanInfo<T: Config> {
-		pub schedule: RepaymentSchedule,
-		pub collateral: AssetOf<T>,
-		pub interest_rate: InterestRate<T::Rate>,
-		pub pricing: Pricing<T>,
-		pub restrictions: LoanRestrictions,
-	}
 
 	#[derive(Encode, Decode)]
 	pub enum Pricing<T: Config> {
 		Internal(internal::InternalPricing<T>),
 		External(ExternalPricing<T>),
+	}
+
+	impl<T: Config> Pricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> crate::entities::pricing::Pricing<T> {
+			match self {
+				Pricing::Internal(i) => crate::entities::pricing::Pricing::Internal(i),
+				Pricing::External(e) => {
+					crate::entities::pricing::Pricing::External(e.migrate(with_linear_pricing))
+				}
+			}
+		}
 	}
 
 	#[derive(Encode, Decode)]
@@ -371,30 +365,24 @@ pub mod v3 {
 		pub max_price_variation: T::Rate,
 	}
 
-	impl<T: Config> CreatedLoan<T> {
-		pub fn migrate(self, with_linear_pricing: bool) -> crate::entities::loans::CreatedLoan<T> {
-			let pricing = match self.info.pricing {
-				Pricing::Internal(i) => crate::entities::pricing::Pricing::Internal(i),
-				Pricing::External(e) => {
-					crate::entities::pricing::Pricing::External(e.migrate(with_linear_pricing))
-				}
-			};
-			let info = crate::entities::loans::LoanInfo::<T> {
-				pricing,
-				schedule: self.info.schedule,
-				collateral: self.info.collateral,
-				interest_rate: self.info.interest_rate,
-				restrictions: self.info.restrictions,
-			};
-
-			crate::entities::loans::CreatedLoan::<T>::new(info, self.borrower)
-		}
-	}
-
 	#[derive(Encode, Decode)]
 	pub enum ActivePricing<T: Config> {
 		Internal(InternalActivePricing<T>),
 		External(ExternalActivePricing<T>),
+	}
+
+	impl<T: Config> ActivePricing<T> {
+		pub fn migrate(
+			self,
+			with_linear_pricing: bool,
+		) -> crate::entities::pricing::ActivePricing<T> {
+			match self {
+				ActivePricing::Internal(i) => crate::entities::pricing::ActivePricing::Internal(i),
+				ActivePricing::External(e) => crate::entities::pricing::ActivePricing::External(
+					e.migrate(with_linear_pricing),
+				),
+			}
+		}
 	}
 
 	#[derive(Encode, Decode)]
@@ -419,11 +407,8 @@ pub mod v3 {
 	}
 
 	impl<T: Config> ExternalPricing<T> {
-		pub fn migrate(
-			self,
-			with_linear_pricing: bool,
-		) -> crate::entities::pricing::external::ExternalPricing<T> {
-			crate::entities::pricing::external::ExternalPricing {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ExternalPricing<T> {
+			super::ExternalPricing {
 				price_id: self.price_id,
 				max_borrow_amount: self.max_borrow_amount,
 				notional: self.notional,

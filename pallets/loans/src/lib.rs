@@ -259,7 +259,7 @@ pub mod pallet {
 	/// No mutations are expected in this storage.
 	/// Loans are stored here for historical purposes.
 	#[pallet::storage]
-	pub(crate) type ClosedLoan<T: Config> = StorageDoubleMap<
+	pub type ClosedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,

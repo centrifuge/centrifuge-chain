@@ -32,8 +32,8 @@ mod v3 {
 		pallet_prelude::{OptionQuery, ValueQuery},
 		storage_alias, Blake2_128Concat, BoundedVec,
 	};
-	pub use pallet_loans::entities::{
-		loans::v3::ActiveLoan, pricing::external::v3::CreatedLoan as CreatedLoanStruct,
+	pub use pallet_loans::entities::loans::v3::{
+		ActiveLoan, ClosedLoan as ClosedLoanV3, CreatedLoan as CreatedLoanV3,
 	};
 	use pallet_loans::Config;
 
@@ -58,7 +58,18 @@ mod v3 {
 		<T as Config>::PoolId,
 		Blake2_128Concat,
 		<T as Config>::LoanId,
-		CreatedLoanStruct<T>,
+		CreatedLoanV3<T>,
+		OptionQuery,
+	>;
+
+	#[storage_alias]
+	pub type ClosedLoan<T: Config> = StorageDoubleMap<
+		Loans<T>,
+		Blake2_128Concat,
+		<T as Config>::PoolId,
+		Blake2_128Concat,
+		<T as Config>::LoanId,
+		ClosedLoanV3<T>,
 		OptionQuery,
 	>;
 }
@@ -76,6 +87,7 @@ where
 		);
 
 		let created_loans: u64 = v3::CreatedLoan::<T>::iter_keys().count().saturated_into();
+		let closed_loans: u64 = v3::ClosedLoan::<T>::iter_keys().count().saturated_into();
 		let active_loans: u64 = v3::ActiveLoans::<T>::iter_values()
 			.map(|v| v.len())
 			.sum::<usize>()
@@ -83,7 +95,7 @@ where
 
 		log::info!("{LOG_PREFIX} Pre checks done!");
 
-		Ok((created_loans, active_loans).encode())
+		Ok((created_loans, active_loans, closed_loans).encode())
 	}
 
 	fn on_runtime_upgrade() -> Weight {
@@ -91,12 +103,15 @@ where
 		if Loans::<T>::on_chain_storage_version() == StorageVersion::new(3) {
 			log::info!("{LOG_PREFIX} Starting migration v3 -> v4");
 
-			pallet_loans::CreatedLoan::<T>::translate::<v3::CreatedLoanStruct<T>, _>(
-				|_, _, loan| {
-					weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
-					Some(loan.migrate(true))
-				},
-			);
+			pallet_loans::CreatedLoan::<T>::translate::<v3::CreatedLoanV3<T>, _>(|_, _, loan| {
+				weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
+				Some(loan.migrate(true))
+			});
+
+			pallet_loans::ClosedLoan::<T>::translate::<v3::ClosedLoanV3<T>, _>(|_, _, loan| {
+				weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
+				Some(loan.migrate(true))
+			});
 
 			let mut changed_pools = Vec::new();
 			pallet_loans::ActiveLoans::<T>::translate::<v3::ActiveLoansVec<T>, _>(
@@ -147,9 +162,12 @@ where
 			StorageVersion::new(4)
 		);
 
-		let (pre_created, pre_active) =
-			<(u64, u64)>::decode(&mut pre_state.as_slice()).expect("Pre state valid; qed");
+		let (pre_created, pre_active, pre_closed) =
+			<(u64, u64, u64)>::decode(&mut pre_state.as_slice()).expect("Pre state valid; qed");
 		let post_created: u64 = pallet_loans::CreatedLoan::<T>::iter_keys()
+			.count()
+			.saturated_into();
+		let post_closed: u64 = pallet_loans::ClosedLoan::<T>::iter_keys()
 			.count()
 			.saturated_into();
 		let post_active: u64 = pallet_loans::ActiveLoans::<T>::iter_values()
@@ -159,6 +177,10 @@ where
 		assert_eq!(
 			pre_created, post_created,
 			"Number of CreatedLoans mismatches: pre {pre_created} vs post {post_created}"
+		);
+		assert_eq!(
+			pre_closed, post_closed,
+			"Number of ClosedLoans mismatches: pre {pre_closed} vs post {post_closed}"
 		);
 		assert_eq!(
 			pre_active, post_active,
