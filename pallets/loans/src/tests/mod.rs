@@ -11,7 +11,7 @@ use super::{
 	entities::{
 		changes::{Change, InternalMutation, LoanMutation},
 		input::{PrincipalInput, RepaidInput},
-		loans::{ActiveLoan, LoanInfo},
+		loans::{ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},

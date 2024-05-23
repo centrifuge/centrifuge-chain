@@ -9,7 +9,7 @@ use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{cmp::min, collections::btree_map::BTreeMap};
 
 use crate::{
 	entities::interest::ActiveInterestRate,
@@ -162,9 +162,9 @@ impl<T: Config> ExternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		if self.info.with_linear_pricing {
 			Ok(cfg_utils::math::y_coord_in_rect(
-				(price_last_updated, price),
+				(min(price_last_updated, maturity), price),
 				(maturity, self.info.notional),
-				T::Time::now(),
+				min(T::Time::now(), maturity),
 			)?)
 		} else {
 			Ok(price)
