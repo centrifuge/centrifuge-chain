@@ -49,6 +49,7 @@ pub type UpgradeDevelopment1047 = (
 		CollatorReward,
 		AnnualTreasuryInflationPercent,
 	>,
+	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 );
 
 mod cleanup_foreign_investments {

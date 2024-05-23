@@ -324,3 +324,95 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(())
 	}
 }
+
+/// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
+pub mod v3 {
+	use cfg_traits::Seconds;
+	use parity_scale_codec::{Decode, Encode};
+
+	use crate::{
+		entities::{
+			interest::ActiveInterestRate,
+			pricing::{external::MaxBorrowAmount, internal, internal::InternalActivePricing},
+		},
+		Config,
+	};
+
+	#[derive(Encode, Decode)]
+	pub enum Pricing<T: Config> {
+		Internal(internal::InternalPricing<T>),
+		External(ExternalPricing<T>),
+	}
+
+	impl<T: Config> Pricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> crate::entities::pricing::Pricing<T> {
+			match self {
+				Pricing::Internal(i) => crate::entities::pricing::Pricing::Internal(i),
+				Pricing::External(e) => {
+					crate::entities::pricing::Pricing::External(e.migrate(with_linear_pricing))
+				}
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct ExternalPricing<T: Config> {
+		pub price_id: T::PriceId,
+		pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
+		pub notional: T::Balance,
+		pub max_price_variation: T::Rate,
+	}
+
+	#[derive(Encode, Decode)]
+	pub enum ActivePricing<T: Config> {
+		Internal(InternalActivePricing<T>),
+		External(ExternalActivePricing<T>),
+	}
+
+	impl<T: Config> ActivePricing<T> {
+		pub fn migrate(
+			self,
+			with_linear_pricing: bool,
+		) -> crate::entities::pricing::ActivePricing<T> {
+			match self {
+				ActivePricing::Internal(i) => crate::entities::pricing::ActivePricing::Internal(i),
+				ActivePricing::External(e) => crate::entities::pricing::ActivePricing::External(
+					e.migrate(with_linear_pricing),
+				),
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct ExternalActivePricing<T: Config> {
+		info: ExternalPricing<T>,
+		outstanding_quantity: T::Quantity,
+		pub interest: ActiveInterestRate<T>,
+		latest_settlement_price: T::Balance,
+		settlement_price_updated: Seconds,
+	}
+
+	impl<T: Config> ExternalActivePricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ExternalActivePricing<T> {
+			super::ExternalActivePricing {
+				info: self.info.migrate(with_linear_pricing),
+				outstanding_quantity: self.outstanding_quantity,
+				interest: self.interest,
+				latest_settlement_price: self.latest_settlement_price,
+				settlement_price_updated: self.settlement_price_updated,
+			}
+		}
+	}
+
+	impl<T: Config> ExternalPricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ExternalPricing<T> {
+			super::ExternalPricing {
+				price_id: self.price_id,
+				max_borrow_amount: self.max_borrow_amount,
+				notional: self.notional,
+				max_price_variation: self.max_price_variation,
+				with_linear_pricing,
+			}
+		}
+	}
+}

@@ -582,3 +582,101 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 		})
 	}
 }
+
+/// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
+pub mod v3 {
+	use cfg_traits::{interest::InterestRate, Seconds};
+	use parity_scale_codec::{Decode, Encode};
+
+	use crate::{
+		entities::{
+			loans::BlockNumberFor,
+			pricing::external::v3::{ActivePricing, Pricing},
+		},
+		types::{LoanRestrictions, RepaidAmount, RepaymentSchedule},
+		AssetOf, Config,
+	};
+
+	#[derive(Encode, Decode)]
+	pub struct ActiveLoan<T: Config> {
+		schedule: RepaymentSchedule,
+		collateral: AssetOf<T>,
+		restrictions: LoanRestrictions,
+		borrower: T::AccountId,
+		write_off_percentage: T::Rate,
+		origination_date: Seconds,
+		pricing: ActivePricing<T>,
+		total_borrowed: T::Balance,
+		total_repaid: RepaidAmount<T::Balance>,
+		repayments_on_schedule_until: Seconds,
+	}
+
+	impl<T: Config> ActiveLoan<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ActiveLoan<T> {
+			super::ActiveLoan {
+				schedule: self.schedule,
+				collateral: self.collateral,
+				restrictions: self.restrictions,
+				borrower: self.borrower,
+				write_off_percentage: self.write_off_percentage,
+				origination_date: self.origination_date,
+				pricing: self.pricing.migrate(with_linear_pricing),
+				total_borrowed: self.total_borrowed,
+				total_repaid: self.total_repaid,
+				repayments_on_schedule_until: self.repayments_on_schedule_until,
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct CreatedLoan<T: Config> {
+		info: LoanInfo<T>,
+		borrower: T::AccountId,
+	}
+
+	impl<T: Config> CreatedLoan<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::CreatedLoan<T> {
+			super::CreatedLoan::<T>::new(self.info.migrate(with_linear_pricing), self.borrower)
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct ClosedLoan<T: Config> {
+		closed_at: BlockNumberFor<T>,
+		info: LoanInfo<T>,
+		total_borrowed: T::Balance,
+		total_repaid: RepaidAmount<T::Balance>,
+	}
+
+	impl<T: Config> ClosedLoan<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ClosedLoan<T> {
+			super::ClosedLoan::<T> {
+				closed_at: self.closed_at,
+				info: self.info.migrate(with_linear_pricing),
+				total_borrowed: self.total_borrowed,
+				total_repaid: self.total_repaid,
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct LoanInfo<T: Config> {
+		pub schedule: RepaymentSchedule,
+		pub collateral: AssetOf<T>,
+		pub interest_rate: InterestRate<T::Rate>,
+		pub pricing: Pricing<T>,
+		pub restrictions: LoanRestrictions,
+	}
+
+	impl<T: Config> LoanInfo<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::LoanInfo<T> {
+			super::LoanInfo::<T> {
+				pricing: self.pricing.migrate(with_linear_pricing),
+				schedule: self.schedule,
+				collateral: self.collateral,
+				interest_rate: self.interest_rate,
+				restrictions: self.restrictions,
+			}
+		}
+	}
+}
