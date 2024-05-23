@@ -16,7 +16,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex = { workspace = true }
-log = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-timestamp = { workspace = true }
 parity-scale-codec = { workspace = true }
@@ -40,7 +39,6 @@ std = [
   "scale-info/std",
   "sp-consensus-aura/std",
   "hex/std",
-  "log/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

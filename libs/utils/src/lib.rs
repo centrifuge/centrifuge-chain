@@ -128,8 +128,8 @@ pub mod math {
 		x: X,
 	) -> Result<Y, ArithmeticError>
 	where
-		X: BaseArithmetic + FixedPointOperand + sp_std::fmt::Debug,
-		Y: BaseArithmetic + FixedPointOperand + sp_std::fmt::Debug,
+		X: BaseArithmetic + FixedPointOperand,
+		Y: BaseArithmetic + FixedPointOperand,
 	{
 		// From the equation: (x - x1) / (x2 - x1) == (y - y1) / (y2 - y1) we solve y:
 		//
@@ -137,7 +137,6 @@ pub mod math {
 		// symmetry in those axis to avoid unsigned underflows in substractions. It
 		// means, we first "convert" the rect into an increasing rect, and in such rect,
 		// we find the y coordinate.
-		log::warn!("y_coord_in_rect: x1 {x1:?}, x2 {x2:?}, y1 {y1:?}, y2 {y2:?}, x: {x:?}");
 
 		let left = if x1 <= x2 {
 			FixedU128::ensure_from_rational(x.ensure_sub(x1)?, x2.ensure_sub(x1)?)?
@@ -145,8 +144,6 @@ pub mod math {
 			// X symmetry emulation
 			FixedU128::ensure_from_rational(x1.ensure_sub(x)?, x1.ensure_sub(x2)?)?
 		};
-
-		log::warn!("y_coord_in_rect: left {left:?}");
 
 		if y1 <= y2 {
 			left.ensure_mul_int(y2.ensure_sub(y1)?)?.ensure_add(y1)
