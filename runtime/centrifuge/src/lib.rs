@@ -305,7 +305,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
-	type WeightInfo = (); // Using weights for recomented hardware
+	type WeightInfo = (); // Using weights for recomended hardware
 	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
 	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
 }
@@ -314,7 +314,7 @@ impl staging_parachain_info::Config for Runtime {}
 
 impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = (); // Using weights for recomented hardware
+	type WeightInfo = (); // Using weights for recomended hardware
 	#[cfg(feature = "runtime-benchmarks")]
 	type MessageProcessor =
 		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
@@ -2774,8 +2774,6 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_loans, Loans]
 		[pallet_collator_selection, CollatorSelection]
-		[pallet_message_queue, MessageQueue]
-		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_order_book, OrderBook]
 		[pallet_investments, Investments]

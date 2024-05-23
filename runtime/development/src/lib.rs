@@ -2815,8 +2815,6 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_loans, Loans]
 		[pallet_collator_selection, CollatorSelection]
-		[pallet_message_queue, MessageQueue]
-		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_transfer_allowlist, TransferAllowList]
 		[pallet_order_book, OrderBook]
