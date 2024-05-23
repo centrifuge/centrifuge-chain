@@ -260,7 +260,7 @@ parameter_types! {
 parameter_types! {
 	/// The `Location` identifying this very parachain
 	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
-	pub UniversalLocation: InteriorMultiLocation = [
+	pub UniversalLocation: InteriorLocation = [
 		GlobalConsensus(RelayNetwork::get()),
 		Parachain(ParachainInfo::parachain_id().into())
 	].into();

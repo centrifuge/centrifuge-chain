@@ -37,7 +37,7 @@ use cfg_types::{
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
@@ -48,6 +48,8 @@ use cfg_types::{
 	},
 };
 use constants::currency::*;
+use cumulus_primitives_core::AggregateMessageOrigin;
+use cumulus_primitives_core::ParaId;
 use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
@@ -59,7 +61,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOfDiverse,
 		EqualPrivilegeOnly, Get, InstanceFilter, LinearStoragePrice, LockIdentifier, OnFinalize,
-		PalletInfoAccess, UnixTime, WithdrawReasons,
+		PalletInfoAccess, TransformOrigin, UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -302,7 +304,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
-	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
 	type WeightInfo = (); // Using weights for recomended hardware
 	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
@@ -310,6 +311,10 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 }
 
 impl staging_parachain_info::Config for Runtime {}
+
+parameter_types! {
+	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+}
 
 impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
