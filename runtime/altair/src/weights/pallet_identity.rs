@@ -51,7 +51,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// Proof: Identity IdentityOf (max_values: None, max_size: Some(7538), added: 10013, mode: MaxEncodedLen)
 	/// The range of component `r` is `[1, 20]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn set_identity(r: u32, x: u32, ) -> Weight {
+	fn set_identity(r: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `441 + r * (5 ±0)`
 		//  Estimated: `11003`
@@ -116,7 +116,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// The range of component `r` is `[1, 20]`.
 	/// The range of component `s` is `[0, 100]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn clear_identity(r: u32, s: u32, x: u32, ) -> Weight {
+	fn clear_identity(r: u32, s: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `468 + r * (5 ±0) + s * (32 ±0) + x * (66 ±0)`
 		//  Estimated: `11003`
@@ -139,7 +139,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// Proof: Identity IdentityOf (max_values: None, max_size: Some(7538), added: 10013, mode: MaxEncodedLen)
 	/// The range of component `r` is `[1, 20]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn request_judgement(r: u32, x: u32, ) -> Weight {
+	fn request_judgement(r: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `366 + r * (57 ±0) + x * (66 ±0)`
 		//  Estimated: `11003`
@@ -157,7 +157,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// Proof: Identity IdentityOf (max_values: None, max_size: Some(7538), added: 10013, mode: MaxEncodedLen)
 	/// The range of component `r` is `[1, 20]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn cancel_request(r: u32, x: u32, ) -> Weight {
+	fn cancel_request(r: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `397 + x * (66 ±0)`
 		//  Estimated: `11003`
@@ -222,7 +222,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// Proof: Identity IdentityOf (max_values: None, max_size: Some(7538), added: 10013, mode: MaxEncodedLen)
 	/// The range of component `r` is `[1, 19]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn provide_judgement(r: u32, x: u32, ) -> Weight {
+	fn provide_judgement(r: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `444 + r * (57 ±0) + x * (66 ±0)`
 		//  Estimated: `11003`
@@ -247,7 +247,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 	/// The range of component `r` is `[1, 20]`.
 	/// The range of component `s` is `[0, 100]`.
 	/// The range of component `x` is `[0, 100]`.
-	fn kill_identity(r: u32, s: u32, x: u32, ) -> Weight {
+	fn kill_identity(r: u32, s: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `797 + r * (15 ±0) + s * (32 ±0) + x * (66 ±0)`
 		//  Estimated: `11003`
@@ -338,4 +338,32 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+
+    fn add_username_authority() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn remove_username_authority() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn set_username_for() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn accept_username() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn remove_expired_approval() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn set_primary_username() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn remove_dangling_username() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
 }

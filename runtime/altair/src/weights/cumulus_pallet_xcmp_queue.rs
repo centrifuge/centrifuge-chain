@@ -56,4 +56,28 @@ impl<T: frame_system::Config> cumulus_pallet_xcmp_queue::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+
+	fn enqueue_xcmp_message() -> Weight {
+        Weight::zero()
+	}
+
+	fn suspend_channel() -> Weight {
+        Weight::zero()
+	}
+
+	fn resume_channel() -> Weight {
+        Weight::zero()
+	}
+
+	fn take_first_concatenated_xcm() -> Weight {
+        Weight::zero()
+	}
+
+	fn on_idle_good_msg() -> Weight {
+        Weight::from_parts(1, 1)
+	}
+
+    fn on_idle_large_msg() -> Weight {
+        Weight::from_parts(1, 1)
+	}
 }

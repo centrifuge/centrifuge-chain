@@ -134,6 +134,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
+pallet-message-queue = { workspace = true }
 staging-parachain-info = { workspace = true }
 
 [build-dependencies]
@@ -260,6 +261,7 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
+  "pallet-message-queue/std",
   "staging-parachain-info/std",
 ]
 
@@ -345,6 +347,7 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
+  "pallet-message-queue/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -432,6 +435,7 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
+  "pallet-message-queue/try-runtime",
   "staging-parachain-info/try-runtime",
 ]
 
