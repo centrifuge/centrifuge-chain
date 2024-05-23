@@ -5,7 +5,10 @@ use cfg_primitives::SECONDS_PER_DAY;
 use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok, storage::bounded_vec::BoundedVec};
-use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
+use sp_runtime::{
+	traits::{BadOrigin, One},
+	DispatchError, FixedPointNumber,
+};
 
 use super::{
 	entities::{
