@@ -11,13 +11,17 @@
 // GNU General Public License for more details.
 
 use cfg_traits::PoolNAV;
+#[cfg(feature = "try-runtime")]
+use frame_support::pallet_prelude::{Decode, Encode};
 use frame_support::{
-	pallet_prelude::{Decode, Encode, StorageVersion},
+	pallet_prelude::StorageVersion,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade},
 	weights::Weight,
 };
 use pallet_loans::{pallet::Pallet as Loans, Config};
+#[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::SaturatedConversion;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_std::vec::Vec;
 
