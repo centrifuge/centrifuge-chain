@@ -73,12 +73,10 @@ benchmarks! {
 		let m in 0..T::PoolFees::get_max_fees_per_bucket();
 
 		let admin: T::AccountId = create_admin::<T>(0);
-		let caller: T::AccountId = create_admin::<T>(1);
 		let max_reserve = MAX_RESERVE / 2;
 		prepare_asset_registry::<T>();
 		create_pool::<T>(1, m, admin.clone())?;
-		set_liquidity_admin::<T>(caller.clone())?;
-	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
+	}: set_max_reserve(RawOrigin::Signed(admin), POOL, max_reserve)
 	verify {
 		assert_eq!(get_pool::<T>().reserve.max, max_reserve);
 	}
@@ -125,9 +123,9 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, m, admin.clone())?;
-
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
+
 		let investment = MAX_RESERVE / 2;
 		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
@@ -176,7 +174,6 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, m, admin.clone())?;
-
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 
@@ -293,13 +290,14 @@ where
 
 fn set_liquidity_admin<T: Config<PoolId = u64>>(target: T::AccountId) -> DispatchResult
 where
-	T::Permission: Permissions<T::AccountId, Ok = ()>,
+	T::Permission: Permissions<T::AccountId>,
 {
 	T::Permission::add(
 		PermissionScope::Pool(POOL),
 		target,
 		Role::PoolRole(PoolRole::LiquidityAdmin),
 	)
+	.map(|_| ())
 }
 
 pub fn create_pool<T>(num_tranches: u32, num_pool_fees: u32, caller: T::AccountId) -> DispatchResult
@@ -314,7 +312,7 @@ where
 	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
 		caller.clone(),
-		caller,
+		caller.clone(),
 		POOL,
 		tranches,
 		AUSD_CURRENCY_ID,
@@ -323,7 +321,8 @@ where
 			.into_iter()
 			.map(|fee| (PoolFeeBucket::Top, fee))
 			.collect(),
-	)
+	)?;
+	set_liquidity_admin::<T>(caller)
 }
 
 pub fn update_pool<T: Config<PoolId = u64>>(

@@ -23,6 +23,7 @@ pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod pool;
 pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
@@ -112,12 +113,9 @@ where
 		>,
 {
 	let input_prices: PriceCollectionInput<T> =
-		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
-			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
-				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
-			})?)
-		} else {
-			PriceCollectionInput::Empty
+		match pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			Ok(_) => PriceCollectionInput::FromRegistry,
+			Err(_) => PriceCollectionInput::Empty,
 		};
 
 	update_nav_with_input::<T>(pool_id, input_prices)
