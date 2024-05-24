@@ -118,7 +118,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -169,7 +169,7 @@ pub mod pallet {
 		type Time: TimeAsSecs;
 
 		/// Generic time type
-		type Moment: Parameter + Member + IntoSeconds;
+		type Moment: Parameter + Member + Copy + IntoSeconds;
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
@@ -232,7 +232,7 @@ pub mod pallet {
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
-	pub(crate) type CreatedLoan<T: Config> = StorageDoubleMap<
+	pub type CreatedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -259,7 +259,7 @@ pub mod pallet {
 	/// No mutations are expected in this storage.
 	/// Loans are stored here for historical purposes.
 	#[pallet::storage]
-	pub(crate) type ClosedLoan<T: Config> = StorageDoubleMap<
+	pub type ClosedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -1054,7 +1054,7 @@ pub mod pallet {
 
 		pub fn registered_prices(
 			pool_id: T::PoolId,
-		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
+		) -> Result<BTreeMap<T::PriceId, PriceOf<T>>, DispatchError> {
 			let collection = T::PriceRegistry::collection(&pool_id)?;
 			Ok(ActiveLoans::<T>::get(pool_id)
 				.iter()
@@ -1062,7 +1062,7 @@ pub mod pallet {
 				.filter_map(|price_id| {
 					collection
 						.get(&price_id)
-						.map(|price| (price_id, price.0))
+						.map(|price| (price_id, (price.0, price.1)))
 						.ok()
 				})
 				.collect::<BTreeMap<_, _>>())

@@ -18,4 +18,5 @@ pub type UpgradeCentrifuge1029 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 );

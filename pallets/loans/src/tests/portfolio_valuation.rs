@@ -198,14 +198,16 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		expected_portfolio(QUANTITY.saturating_mul_int(price_value_after_half_year));
 
 		// Suddenty, the oracle set a value
+		const MARKET_PRICE_VALUE: Balance = 999;
 		MockPrices::mock_collection(|_| {
 			Ok(MockDataCollection::new(|_| {
-				Ok((PRICE_VALUE * 8, BLOCK_TIME_MS))
+				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
 			}))
 		});
+		let price_value_after_half_year = MARKET_PRICE_VALUE + (NOTIONAL - MARKET_PRICE_VALUE) / 2;
 
 		update_portfolio();
-		expected_portfolio(QUANTITY.saturating_mul_int(PRICE_VALUE * 8));
+		expected_portfolio(QUANTITY.saturating_mul_int(price_value_after_half_year));
 	});
 }
 
@@ -216,6 +218,56 @@ fn empty_portfolio_with_current_timestamp() {
 			PortfolioValuation::<Runtime>::get(POOL_A).last_updated(),
 			now().as_secs()
 		);
+	});
+}
+
+#[test]
+fn no_linear_pricing_either_settlement_or_oracle() {
+	new_test_ext().execute_with(|| {
+		let mut external_pricing = util::base_external_pricing();
+		external_pricing.with_linear_pricing = false;
+		external_pricing.max_price_variation = Rate::one();
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..external_pricing
+			}),
+			..util::base_external_loan()
+		};
+		let loan_1 = util::create_loan(loan);
+		const SETTLEMENT_PRICE: Balance = 970;
+		let amount = ExternalAmount::new(QUANTITY, SETTLEMENT_PRICE);
+		config_mocks();
+
+		util::borrow_loan(loan_1, PrincipalInput::External(amount.clone()));
+
+		advance_time(YEAR / 2);
+
+		const MARKET_PRICE_VALUE: Balance = 999;
+		MockPrices::mock_collection(|_| {
+			Ok(MockDataCollection::new(|_| {
+				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
+			}))
+		});
+
+		update_portfolio();
+		expected_portfolio(QUANTITY.saturating_mul_int(MARKET_PRICE_VALUE));
+
+		MockPrices::mock_collection(|pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			Ok(MockDataCollection::new(|_| Err(PRICE_ID_NO_FOUND)))
+		});
+
+		update_portfolio();
+		expected_portfolio(QUANTITY.saturating_mul_int(SETTLEMENT_PRICE));
+
+		MockPrices::mock_collection(|_| {
+			Ok(MockDataCollection::new(|_| {
+				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
+			}))
+		});
+		update_portfolio();
+		expected_portfolio(QUANTITY.saturating_mul_int(MARKET_PRICE_VALUE));
 	});
 }
 

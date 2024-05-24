@@ -148,6 +148,7 @@ pub fn base_external_pricing() -> ExternalPricing<Runtime> {
 		max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
 		notional: NOTIONAL,
 		max_price_variation: MAX_PRICE_VARIATION,
+		with_linear_pricing: true,
 	}
 }
 
