@@ -6,7 +6,6 @@ use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_anchors::AnchorData;
 pub use runtime_common::apis::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
-use sp_block_builder::BlockBuilder;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;
 

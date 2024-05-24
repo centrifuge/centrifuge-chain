@@ -20,26 +20,22 @@ use std::{
 
 use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
-use cumulus_client_collator::service::CollatorService;
-use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
-use cumulus_client_consensus_proposer::Proposer;
+use cumulus_client_consensus_common::ParachainBlockImportMarker;
 use cumulus_client_service::{
 	build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
-	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartCollatorParams,
-	StartFullNodeParams, StartRelayChainTasksParams,
+	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartRelayChainTasksParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
+use cumulus_relay_chain_interface::RelayChainInterface;
 use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_consensus::ensure_log;
-use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
+use fp_rpc::EthereumRuntimeRPCApi;
 use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::{future, StreamExt};
-use polkadot_primitives::CollatorPair;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
@@ -54,9 +50,7 @@ use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::HeaderBackend;
 use sp_consensus::Error as ConsensusError;
-use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
-use substrate_prometheus_endpoint::Registry;
 
 use super::{
 	rpc, start_consensus, FullBackend, FullClient, ParachainBlockImport, RuntimeApiCollection,

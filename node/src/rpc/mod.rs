@@ -12,14 +12,11 @@
 
 //! Centrifuge RPC endpoints (common endpoints across all environments)
 
-use std::{fmt::Debug, sync::Arc};
+use std::sync::Arc;
 
 use crate::rpc::anchors::{AnchorApiServer, Anchors};
 use cfg_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Nonce};
-use jsonrpsee::{
-	core::Error as JsonRpseeError,
-	types::error::{ErrorCode, ErrorObject},
-};
+use jsonrpsee::types::error::{ErrorCode, ErrorObject};
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use runtime_common::apis::AnchorApi;
 use sc_rpc_api::DenyUnsafe;
@@ -61,24 +58,6 @@ where
 	module.merge(Anchors::new(client.clone()).into_rpc())?;
 
 	Ok(module)
-}
-
-/// Our custom error type for RPC server errors
-#[repr(i32)]
-pub enum CustomServerError {
-	/// The call failed on the Runtime level
-	RuntimeError = 1,
-}
-
-pub fn runtime_error<InnerError: Debug>(
-	message: &'static str,
-	inner_error: InnerError,
-) -> JsonRpseeError {
-	JsonRpseeError::Call(ErrorObject::owned(
-		ErrorCode::ServerError(CustomServerError::RuntimeError as i32).code(),
-		message,
-		Some(format!("{inner_error:?}")),
-	))
 }
 
 pub fn invalid_params_error(msg: &'static str) -> ErrorObject {

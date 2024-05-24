@@ -36,10 +36,7 @@ use sp_core::U256;
 use sp_keystore::KeystorePtr;
 use substrate_prometheus_endpoint::Registry;
 
-use crate::rpc::{
-	self,
-	anchors::{AnchorApiServer, Anchors},
-};
+use crate::rpc::{self};
 
 pub(crate) mod evm;
 use evm::EthConfiguration;
@@ -87,46 +84,46 @@ impl<Api> RuntimeApiCollection for Api where
 }
 
 // Native Altair executor instance.
-// pub struct AltairRuntimeExecutor;
-//
-// impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-// 	/// Only enable the benchmarking host functions when we actually want to
-// 	/// benchmark.
-// 	#[cfg(feature = "runtime-benchmarks")]
-// 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-// 	/// Otherwise we only use the default Substrate host functions.
-// 	#[cfg(not(feature = "runtime-benchmarks"))]
-// 	type ExtendHostFunctions = ();
-//
-// 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-// 		altair_runtime::api::dispatch(method, data)
-// 	}
-//
-// 	fn native_version() -> sc_executor::NativeVersion {
-// 		altair_runtime::native_version()
-// 	}
-// }
+pub struct AltairRuntimeExecutor;
+
+impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
+	/// Only enable the benchmarking host functions when we actually want to
+	/// benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		altair_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		altair_runtime::native_version()
+	}
+}
 
 // Native Centrifuge executor instance.
-// pub struct CentrifugeRuntimeExecutor;
-//
-// impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-// 	/// Only enable the benchmarking host functions when we actually want to
-// 	/// benchmark.
-// 	#[cfg(feature = "runtime-benchmarks")]
-// 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-// 	/// Otherwise we only use the default Substrate host functions.
-// 	#[cfg(not(feature = "runtime-benchmarks"))]
-// 	type ExtendHostFunctions = ();
-//
-// 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-// 		centrifuge_runtime::api::dispatch(method, data)
-// 	}
-//
-// 	fn native_version() -> sc_executor::NativeVersion {
-// 		centrifuge_runtime::native_version()
-// 	}
-// }
+pub struct CentrifugeRuntimeExecutor;
+
+impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
+	/// Only enable the benchmarking host functions when we actually want to
+	/// benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		centrifuge_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		centrifuge_runtime::native_version()
+	}
+}
 
 // Native Development executor instance.
 pub struct DevelopmentRuntimeExecutor;
