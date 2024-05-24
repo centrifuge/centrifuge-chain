@@ -23,8 +23,9 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use altair_runtime::constants::currency::{AIR, MILLI_AIR};
+// use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
 	currency_decimals, parachains, AccountId, AuraId, Balance, BlockNumber, CFG, MILLI_CFG,
 	SAFE_XCM_VERSION,
@@ -52,15 +53,15 @@ use staging_xcm::{
 };
 
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type AltairChainSpec =
-	sc_service::GenericChainSpec<altair_runtime::RuntimeGenesisConfig, Extensions>;
-pub type CentrifugeChainSpec =
-	sc_service::GenericChainSpec<centrifuge_runtime::RuntimeGenesisConfig, Extensions>;
+// pub type AltairChainSpec =
+// 	sc_service::GenericChainSpec<altair_runtime::RuntimeGenesisConfig, Extensions>;
+// pub type CentrifugeChainSpec =
+// 	sc_service::GenericChainSpec<centrifuge_runtime::RuntimeGenesisConfig, Extensions>;
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::RuntimeGenesisConfig, Extensions>;
 
-use altair_runtime::AltairPrecompiles;
-use centrifuge_runtime::CentrifugePrecompiles;
+// use altair_runtime::AltairPrecompiles;
+// use centrifuge_runtime::CentrifugePrecompiles;
 use cfg_types::fixed_point::Rate;
 use development_runtime::DevelopmentPrecompiles;
 
@@ -102,19 +103,19 @@ fn development_extensions(para_id: u32) -> Extensions {
 	}
 }
 
-pub fn get_altair_session_keys(keys: AuraId) -> altair_runtime::SessionKeys {
-	altair_runtime::SessionKeys {
-		aura: keys.clone(),
-		block_rewards: keys,
-	}
-}
-
-pub fn get_centrifuge_session_keys(keys: AuraId) -> centrifuge_runtime::SessionKeys {
-	centrifuge_runtime::SessionKeys {
-		aura: keys.clone(),
-		block_rewards: keys,
-	}
-}
+// pub fn get_altair_session_keys(keys: AuraId) -> altair_runtime::SessionKeys {
+// 	altair_runtime::SessionKeys {
+// 		aura: keys.clone(),
+// 		block_rewards: keys,
+// 	}
+// }
+//
+// pub fn get_centrifuge_session_keys(keys: AuraId) -> centrifuge_runtime::SessionKeys {
+// 	centrifuge_runtime::SessionKeys {
+// 		aura: keys.clone(),
+// 		block_rewards: keys,
+// 	}
+// }
 
 pub fn get_development_session_keys(keys: AuraId) -> development_runtime::SessionKeys {
 	development_runtime::SessionKeys {
@@ -133,82 +134,82 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-pub fn centrifuge_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(
-		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
-	)
-	.unwrap()
-}
+// pub fn centrifuge_config() -> CentrifugeChainSpec {
+// 	CentrifugeChainSpec::from_json_bytes(
+// 		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
+// 	)
+// 	.unwrap()
+// }
+//
+// pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
+// 	let mut properties = Properties::new();
+// 	properties.insert("tokenSymbol".into(), "DCFG".into());
+// 	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
+//
+// 	CentrifugeChainSpec::builder(
+// 		centrifuge_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
+// 		development_extensions(para_id.into()),
+// 	)
+// 	.with_name("Centrifuge Local")
+// 	.with_id("centrifuge_local")
+// 	.with_chain_type(ChainType::Local)
+// 	.with_genesis_config_patch(centrifuge_genesis(
+// 		vec![(
+// 			get_account_id_from_seed::<sr25519::Public>("Alice"),
+// 			get_from_seed::<AuraId>("Alice"),
+// 		)],
+// 		endowed_accounts(),
+// 		endowed_evm_accounts(),
+// 		Some(100000000 * CFG),
+// 		para_id,
+// 		council_members_bootstrap(),
+// 	))
+// 	.with_properties(properties)
+// 	.build()
+// }
 
-pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	CentrifugeChainSpec::builder(
-		centrifuge_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
-		development_extensions(para_id.into()),
-	)
-	.with_name("Centrifuge Local")
-	.with_id("centrifuge_local")
-	.with_chain_type(ChainType::Local)
-	.with_genesis_config_patch(centrifuge_genesis(
-		vec![(
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_from_seed::<AuraId>("Alice"),
-		)],
-		endowed_accounts(),
-		endowed_evm_accounts(),
-		Some(100000000 * CFG),
-		para_id,
-		council_members_bootstrap(),
-	))
-	.with_properties(properties)
-	.build()
-}
-
-pub fn catalyst_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
-		.unwrap()
-}
-
-pub fn altair_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(
-		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
-	)
-	.unwrap()
-}
+// pub fn catalyst_config() -> CentrifugeChainSpec {
+// 	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
+// 		.unwrap()
+// }
+//
+// pub fn altair_config() -> AltairChainSpec {
+// 	AltairChainSpec::from_json_bytes(
+// 		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
+// 	)
+// 	.unwrap()
+// }
 
 pub fn demo_config() -> DevelopmentChainSpec {
 	DevelopmentChainSpec::from_json_bytes(&include_bytes!("../res/demo-spec-raw.json")[..]).unwrap()
 }
 
-pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::builder(
-		altair_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
-		development_extensions(para_id.into()),
-	)
-	.with_name("Altair Local")
-	.with_id("altair_local")
-	.with_chain_type(ChainType::Local)
-	.with_genesis_config_patch(altair_genesis(
-		vec![(
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_from_seed::<AuraId>("Alice"),
-		)],
-		endowed_accounts(),
-		endowed_evm_accounts(),
-		Some(100000000 * AIR),
-		para_id,
-		council_members_bootstrap(),
-	))
-	.with_properties(properties)
-	.build()
-}
+// pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
+// 	let mut properties = Properties::new();
+// 	properties.insert("tokenSymbol".into(), "DAIR".into());
+// 	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
+//
+// 	AltairChainSpec::builder(
+// 		altair_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
+// 		development_extensions(para_id.into()),
+// 	)
+// 	.with_name("Altair Local")
+// 	.with_id("altair_local")
+// 	.with_chain_type(ChainType::Local)
+// 	.with_genesis_config_patch(altair_genesis(
+// 		vec![(
+// 			get_account_id_from_seed::<sr25519::Public>("Alice"),
+// 			get_from_seed::<AuraId>("Alice"),
+// 		)],
+// 		endowed_accounts(),
+// 		endowed_evm_accounts(),
+// 		Some(100000000 * AIR),
+// 		para_id,
+// 		council_members_bootstrap(),
+// 	))
+// 	.with_properties(properties)
+// 	.build()
+// }
 
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
@@ -287,254 +288,254 @@ fn council_members_bootstrap() -> Vec<AccountId> {
 	endowed_accounts().into_iter().take(4).collect()
 }
 
-fn centrifuge_genesis(
-	initial_authorities: Vec<(AccountId, AuraId)>,
-	mut endowed_accounts: Vec<AccountId>,
-	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
-	total_issuance: Option<Balance>,
-	id: ParaId,
-	council_members: Vec<AccountId>,
-) -> serde_json::Value {
-	let chain_id: u32 = id.into();
-
-	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
-		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::convert_evm_address(chain_id, addr)
-	}));
-
-	let num_endowed_accounts = endowed_accounts.len();
-	let balances = match total_issuance {
-		Some(total_issuance) => {
-			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as Balance)
-				.unwrap_or(0 as Balance);
-			endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_endowed))
-				.collect()
-		}
-		None => vec![],
-	};
-
-	serde_json::json!({
-		"balances": centrifuge_runtime::BalancesConfig { balances },
-		"ormlAssetRegistry": Default::default(),
-		"ormlTokens": centrifuge_runtime::OrmlTokensConfig { "balances": vec![] },
-		"elections": centrifuge_runtime::ElectionsConfig { "members": vec![] },
-		"council": centrifuge_runtime::CouncilConfig {
-			"members": council_members,
-			"phantom": Default::default(),
-		},
-		"fees": centrifuge_runtime::FeesConfig {
-			"initialFees": vec![(
-				// Anchoring state rent fee per day
-				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
-				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD
-				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
-				// duration. The other fee components for anchors amount to about 0.00041.. RAD
-				// (410_000_000_000_000), such that the total anchor price for 3 years will be
-				// 0.003.. RAD
-				2_365_296_803_653,
-			)],
-		},
-		"vesting": Default::default(),
-		"stagingParachainInfo": centrifuge_runtime::ParachainInfoConfig {
-			"parachainId": id,
-			..Default::default()
-		},
-		"collatorSelection": centrifuge_runtime::CollatorSelectionConfig {
-			"invulnerables": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"candidacyBond": 1 * CFG,
-			..Default::default()
-		},
-		"collatorAllowlist": Default::default(),
-		"session": centrifuge_runtime::SessionConfig {
-			"keys": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                       // account id
-						acc,                               // validator id
-						get_centrifuge_session_keys(aura), // session keys
-					)
-				})
-				.collect(),
-		},
-		"auraExt": Default::default(),
-		"aura": Default::default(),
-		"democracy": Default::default(),
-		"parachainSystem": Default::default(),
-		"bridge": centrifuge_runtime::BridgeConfig {
-			// Whitelist chains Ethereum - 0
-			"chains": vec![0],
-			// Register resourceIDs
-			"resources": vec![
-				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
-				(
-					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
-					hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
-				),
-			],
-			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
-			"relayers": vec![
-				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
-				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-			],
-			"threshold": 1,
-		},
-		"treasury": Default::default(),
-		"blockRewards": centrifuge_runtime::BlockRewardsConfig {
-			"collators": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"collatorReward": 8_325 * MILLI_CFG,
-			"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
-			"lastUpdate": Default::default(),
-		},
-		"blockRewardsBase": Default::default(),
-		"baseFee": Default::default(),
-		"evmChainId": centrifuge_runtime::EVMChainIdConfig {
-			"chainId": chain_id.into(),
-			..Default::default()
-		},
-		"ethereum": Default::default(),
-		"evm": centrifuge_runtime::EVMConfig {
-			"accounts": precompile_account_genesis::<CentrifugePrecompiles>(),
-			..Default::default()
-		},
-		"liquidityRewardsBase": Default::default(),
-		"polkadotXcm": centrifuge_runtime::PolkadotXcmConfig {
-			"safeXcmVersion": Some(SAFE_XCM_VERSION),
-			..Default::default()
-		},
-	})
-}
-
-fn altair_genesis(
-	initial_authorities: Vec<(AccountId, AuraId)>,
-	mut endowed_accounts: Vec<AccountId>,
-	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
-	total_issuance: Option<Balance>,
-	id: ParaId,
-	council_members: Vec<AccountId>,
-) -> serde_json::Value {
-	let chain_id: u32 = id.into();
-
-	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
-		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::convert_evm_address(chain_id, addr)
-	}));
-
-	let num_endowed_accounts = endowed_accounts.len();
-	let balances = match total_issuance {
-		Some(total_issuance) => {
-			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as Balance)
-				.unwrap_or(0 as Balance);
-			endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_endowed))
-				.collect()
-		}
-		None => vec![],
-	};
-
-	serde_json::json!({
-		"balances": altair_runtime::BalancesConfig { balances },
-		"ormlAssetRegistry": Default::default(),
-		"ormlTokens": altair_runtime::OrmlTokensConfig { "balances": vec![] },
-		"elections": altair_runtime::ElectionsConfig { "members": vec![] },
-		"council": altair_runtime::CouncilConfig {
-			"members": council_members,
-			"phantom": Default::default(),
-		},
-		"fees": altair_runtime::FeesConfig {
-			"initialFees": vec![(
-				// Anchoring state rent fee per day
-				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
-				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD
-				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
-				// duration. The other fee components for anchors amount to about 0.00041.. RAD
-				// (410_000_000_000_000), such that the total anchor price for 3 years will be
-				// 0.003.. RAD
-				2_365_296_803_653,
-			)],
-		},
-		"vesting": Default::default(),
-		"stagingParachainInfo": altair_runtime::ParachainInfoConfig {
-			"parachainId": id,
-			..Default::default()
-		},
-		"collatorSelection": altair_runtime::CollatorSelectionConfig {
-			"invulnerables": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"candidacyBond": 1 * AIR,
-			..Default::default()
-		},
-		"blockRewards": altair_runtime::BlockRewardsConfig {
-			"collators": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"collatorReward": 98_630 * MILLI_AIR,
-			"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
-			"lastUpdate": Default::default(),
-		},
-		"blockRewardsBase": Default::default(),
-		"collatorAllowlist": Default::default(),
-		"session": altair_runtime::SessionConfig {
-			"keys": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                   // account id
-						acc,                           // validator id
-						get_altair_session_keys(aura), // session keys
-					)
-				})
-				.collect(),
-		},
-		"auraExt": Default::default(),
-		"aura": Default::default(),
-		"democracy": Default::default(),
-		"parachainSystem": Default::default(),
-		"treasury": Default::default(),
-		"baseFee": Default::default(),
-		"evmChainId": altair_runtime::EVMChainIdConfig {
-			"chainId": chain_id.into(),
-			..Default::default()
-		},
-		"ethereum": Default::default(),
-		"evm": altair_runtime::EVMConfig {
-			"accounts": precompile_account_genesis::<AltairPrecompiles>(),
-			..Default::default()
-		},
-		"liquidityRewardsBase": Default::default(),
-		"polkadotXcm": altair_runtime::PolkadotXcmConfig {
-			"safeXcmVersion": Some(SAFE_XCM_VERSION),
-			..Default::default()
-		},
-	})
-}
+// fn centrifuge_genesis(
+// 	initial_authorities: Vec<(AccountId, AuraId)>,
+// 	mut endowed_accounts: Vec<AccountId>,
+// 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
+// 	total_issuance: Option<Balance>,
+// 	id: ParaId,
+// 	council_members: Vec<AccountId>,
+// ) -> serde_json::Value {
+// 	let chain_id: u32 = id.into();
+//
+// 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
+// 		let chain_id = id.unwrap_or_else(|| chain_id.into());
+// 		AccountConverter::convert_evm_address(chain_id, addr)
+// 	}));
+//
+// 	let num_endowed_accounts = endowed_accounts.len();
+// 	let balances = match total_issuance {
+// 		Some(total_issuance) => {
+// 			let balance_per_endowed = total_issuance
+// 				.checked_div(num_endowed_accounts as Balance)
+// 				.unwrap_or(0 as Balance);
+// 			endowed_accounts
+// 				.iter()
+// 				.cloned()
+// 				.map(|k| (k, balance_per_endowed))
+// 				.collect()
+// 		}
+// 		None => vec![],
+// 	};
+//
+// 	serde_json::json!({
+// 		"balances": { balances },
+// 		"ormlAssetRegistry": Default::default(),
+// 		"ormlTokens": { "balances": vec![] },
+// 		"elections": { "members": vec![] },
+// 		"council": {
+// 			"members": council_members,
+// 			"phantom": Default::default(),
+// 		},
+// 		"fees": {
+// 			"initialFees": vec![(
+// 				// Anchoring state rent fee per day
+// 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+// 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+// 				FeeKey::AnchorsCommit,
+// 				// Daily state rent, defined such that it will amount to 0.00259.. RAD
+// 				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+// 				// duration. The other fee components for anchors amount to about 0.00041.. RAD
+// 				// (410_000_000_000_000), such that the total anchor price for 3 years will be
+// 				// 0.003.. RAD
+// 				2_365_296_803_653,
+// 			)],
+// 		},
+// 		"vesting": Default::default(),
+// 		"stagingParachainInfo": {
+// 			"parachainId": id,
+// 			..Default::default()
+// 		},
+// 		"collatorSelection": {
+// 			"invulnerables": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, _)| acc)
+// 				.collect(),
+// 			"candidacyBond": 1 * CFG,
+// 			..Default::default()
+// 		},
+// 		"collatorAllowlist": Default::default(),
+// 		"session": {
+// 			"keys": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, aura)| {
+// 					(
+// 						acc.clone(),                       // account id
+// 						acc,                               // validator id
+// 						get_centrifuge_session_keys(aura), // session keys
+// 					)
+// 				})
+// 				.collect(),
+// 		},
+// 		"auraExt": Default::default(),
+// 		"aura": Default::default(),
+// 		"democracy": Default::default(),
+// 		"parachainSystem": Default::default(),
+// 		"bridge": {
+// 			// Whitelist chains Ethereum - 0
+// 			"chains": vec![0],
+// 			// Register resourceIDs
+// 			"resources": vec![
+// 				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
+// 				(
+// 					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
+// 					hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
+// 				),
+// 			],
+// 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+// 			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+// 			"relayers": vec![
+// 				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+// 				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+// 			],
+// 			"threshold": 1,
+// 		},
+// 		"treasury": Default::default(),
+// 		"blockRewards": {
+// 			"collators": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, _)| acc)
+// 				.collect(),
+// 			"collatorReward": 8_325 * MILLI_CFG,
+// 			"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
+// 			"lastUpdate": Default::default(),
+// 		},
+// 		"blockRewardsBase": Default::default(),
+// 		"baseFee": Default::default(),
+// 		"evmChainId": {
+// 			"chainId": chain_id.into(),
+// 			..Default::default()
+// 		},
+// 		"ethereum": Default::default(),
+// 		"evm": {
+// 			"accounts": precompile_account_genesis::<CentrifugePrecompiles>(),
+// 			..Default::default()
+// 		},
+// 		"liquidityRewardsBase": Default::default(),
+// 		"polkadotXcm": {
+// 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
+// 			..Default::default()
+// 		},
+// 	})
+// }
+//
+// fn altair_genesis(
+// 	initial_authorities: Vec<(AccountId, AuraId)>,
+// 	mut endowed_accounts: Vec<AccountId>,
+// 	endowed_evm_accounts: Vec<([u8; 20], Option<u64>)>,
+// 	total_issuance: Option<Balance>,
+// 	id: ParaId,
+// 	council_members: Vec<AccountId>,
+// ) -> serde_json::Value {
+// 	let chain_id: u32 = id.into();
+//
+// 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
+// 		let chain_id = id.unwrap_or_else(|| chain_id.into());
+// 		AccountConverter::convert_evm_address(chain_id, addr)
+// 	}));
+//
+// 	let num_endowed_accounts = endowed_accounts.len();
+// 	let balances = match total_issuance {
+// 		Some(total_issuance) => {
+// 			let balance_per_endowed = total_issuance
+// 				.checked_div(num_endowed_accounts as Balance)
+// 				.unwrap_or(0 as Balance);
+// 			endowed_accounts
+// 				.iter()
+// 				.cloned()
+// 				.map(|k| (k, balance_per_endowed))
+// 				.collect()
+// 		}
+// 		None => vec![],
+// 	};
+//
+// 	serde_json::json!({
+// 		"balances": { balances },
+// 		"ormlAssetRegistry": Default::default(),
+// 		"ormlTokens": { "balances": vec![] },
+// 		"elections": { "members": vec![] },
+// 		"council": {
+// 			"members": council_members,
+// 			"phantom": Default::default(),
+// 		},
+// 		"fees": {
+// 			"initialFees": vec![(
+// 				// Anchoring state rent fee per day
+// 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+// 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+// 				FeeKey::AnchorsCommit,
+// 				// Daily state rent, defined such that it will amount to 0.00259.. RAD
+// 				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+// 				// duration. The other fee components for anchors amount to about 0.00041.. RAD
+// 				// (410_000_000_000_000), such that the total anchor price for 3 years will be
+// 				// 0.003.. RAD
+// 				2_365_296_803_653,
+// 			)],
+// 		},
+// 		"vesting": Default::default(),
+// 		"stagingParachainInfo": {
+// 			"parachainId": id,
+// 			..Default::default()
+// 		},
+// 		"collatorSelection": {
+// 			"invulnerables": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, _)| acc)
+// 				.collect(),
+// 			"candidacyBond": 1 * AIR,
+// 			..Default::default()
+// 		},
+// 		"blockRewards": {
+// 			"collators": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, _)| acc)
+// 				.collect(),
+// 			"collatorReward": 98_630 * MILLI_AIR,
+// 			"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
+// 			"lastUpdate": Default::default(),
+// 		},
+// 		"blockRewardsBase": Default::default(),
+// 		"collatorAllowlist": Default::default(),
+// 		"session": {
+// 			"keys": initial_authorities
+// 				.iter()
+// 				.cloned()
+// 				.map(|(acc, aura)| {
+// 					(
+// 						acc.clone(),                   // account id
+// 						acc,                           // validator id
+// 						get_altair_session_keys(aura), // session keys
+// 					)
+// 				})
+// 				.collect(),
+// 		},
+// 		"auraExt": Default::default(),
+// 		"aura": Default::default(),
+// 		"democracy": Default::default(),
+// 		"parachainSystem": Default::default(),
+// 		"treasury": Default::default(),
+// 		"baseFee": Default::default(),
+// 		"evmChainId": {
+// 			"chainId": chain_id.into(),
+// 			..Default::default()
+// 		},
+// 		"ethereum": Default::default(),
+// 		"evm": {
+// 			"accounts": precompile_account_genesis::<AltairPrecompiles>(),
+// 			..Default::default()
+// 		},
+// 		"liquidityRewardsBase": Default::default(),
+// 		"polkadotXcm": {
+// 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
+// 			..Default::default()
+// 		},
+// 	})
+// }
 
 /// The CurrencyId for the USDT asset on the development runtime
 const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
@@ -578,9 +579,9 @@ fn development_genesis(
 						// NOTE: We can only mint these foreign assets on development
 						vec![
 							// USDT is a 6-decimal asset, so 1 million + 6 zeros
-							(x.clone(), DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+							(x.clone(), DEV_USDT_CURRENCY_ID, 1_000_000_000_000u128),
 							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
-							(x, DEV_AUSD_CURRENCY_ID, 1_000_000_000_000_000_000),
+							(x, DEV_AUSD_CURRENCY_ID, 1_000_000_000_000_000_000u128),
 						]
 					})
 					.collect(),
@@ -591,120 +592,114 @@ fn development_genesis(
 	let chain_id: u32 = id.into();
 
 	serde_json::json!({
-		"system": development_runtime::SystemConfig {
-			"code": development_runtime::WASM_BINARY
-				.expect("WASM binary was not build, please build it!")
-				.to_vec(),
-			..Default::default()
-		},
-		"balances": development_runtime::BalancesConfig { balances },
-		"ormlAssetRegistry": development_runtime::OrmlAssetRegistryConfig {
-			"assets": asset_registry_assets(),
-			"lastAssetId": Default::default(),
-		},
-		"ormlTokens": development_runtime::OrmlTokensConfig {
-			"balances": token_balances,
-		},
-		"elections": development_runtime::ElectionsConfig { "members": vec![] },
-		"council": development_runtime::CouncilConfig {
-			"members": Default::default(),
-			"phantom": Default::default(),
-		},
-		"fees": development_runtime::FeesConfig {
-			"initialFees": vec![(
-				// Anchoring state rent fee per day
-				// pre-"image": 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
-				// "hash   ": 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD
-				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
-				// duration. The other fee components for anchors amount to about 0.00041.. RAD
-				// (410_000_000_000_000), such that the total anchor price for 3 years will be
-				// 0.003.. RAD
-				2_365_296_803_653,
-			)],
-		},
-		"vesting": Default::default(),
-		"sudo": development_runtime::SudoConfig {
-			"key": Some(root_key),
-		},
-		"stagingParachainInfo": development_runtime::ParachainInfoConfig {
-			"parachainId": id,
-			..Default::default()
-		},
-		"collatorSelection": development_runtime::CollatorSelectionConfig {
-			"invulnerables": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"candidacyBond": 1 * CFG,
-			..Default::default()
-		},
-		"collatorAllowlist": Default::default(),
-		"session": development_runtime::SessionConfig {
-			"keys": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                        // account id
-						acc,                                // validator id
-						get_development_session_keys(aura), // session keys
-					)
-				})
-				.collect(),
-		},
-		"bridge": development_runtime::BridgeConfig {
-			// Whitelist chains Ethereum - 0
-			"chains": vec![0],
-			// Register resourceIDs
-			"resources": vec![
-				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
-				(
-					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
-					hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
-				),
-			],
-			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
-			"relayers": vec![
-				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
-				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-			],
-			"threshold": 1,
-		},
-		"auraExt": Default::default(),
-		"aura": Default::default(),
-		"democracy": Default::default(),
-		"parachainSystem": Default::default(),
-		"treasury": Default::default(),
-		"blockRewards": development_runtime::BlockRewardsConfig {
-			"collators": initial_authorities
-				.iter()
-				.cloned()
-				.map(|(acc, _)| acc)
-				.collect(),
-			"collatorReward": 8_325 * MILLI_CFG,
-			"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
-			"lastUpdate": Default::default(),
-		},
-		"baseFee": Default::default(),
-		"evmChainId": development_runtime::EVMChainIdConfig {
-			"chainId": chain_id.into(),
-			..Default::default()
-		},
-		"ethereum": Default::default(),
-		"evm": development_runtime::EVMConfig {
-			"accounts": precompile_account_genesis::<DevelopmentPrecompiles>(),
-			..Default::default()
-		},
-		"blockRewardsBase": Default::default(),
-		"liquidityRewardsBase": Default::default(),
-		"polkadotXcm": development_runtime::PolkadotXcmConfig {
-			"safeXcmVersion": Some(SAFE_XCM_VERSION),
-			..Default::default()
-		},
+		"balances": { "balances": balances },
+		// "ormlAssetRegistry": {
+		// 	"assets": asset_registry_assets(),
+		// 	"lastAssetId": Default::default(),
+		// },
+		// "ormlTokens": {
+		// 	"balances": token_balances,
+		// },
+		// "elections": { "members": vec![] },
+		// "council": {
+		// 	"members": Default::default(),
+		// 	"phantom": Default::default(),
+		// },
+		// "fees": {
+		// 	"initialFees": vec![(
+		// 		// Anchoring state rent fee per day
+		// 		// pre-"image": 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+		// 		// "hash   ": 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+		// 		FeeKey::AnchorsCommit,
+		// 		// Daily state rent, defined such that it will amount to 0.00259.. RAD
+		// 		// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+		// 		// duration. The other fee components for anchors amount to about 0.00041.. RAD
+		// 		// (410_000_000_000_000), such that the total anchor price for 3 years will be
+		// 		// 0.003.. RAD
+		// 		2_365_296_803_653,
+		// 	)],
+		// },
+		// "vesting": Default::default(),
+		// "sudo": {
+		// 	"key": Some(root_key),
+		// },
+		// "stagingParachainInfo": {
+		// 	"parachainId": id,
+		// 	..Default::default()
+		// },
+		// "collatorSelection": {
+		// 	"invulnerables": initial_authorities
+		// 		.iter()
+		// 		.cloned()
+		// 		.map(|(acc, _)| acc)
+		// 		.collect(),
+		// 	"candidacyBond": 1 * CFG,
+		// 	..Default::default()
+		// },
+		// "collatorAllowlist": Default::default(),
+		// "session": {
+		// 	"keys": initial_authorities
+		// 		.iter()
+		// 		.cloned()
+		// 		.map(|(acc, aura)| {
+		// 			(
+		// 				acc.clone(),                        // account id
+	// 				acc,                                // validator id
+		// 				get_development_session_keys(aura), // session keys
+		// 			)
+		// 		})
+		// 		.collect(),
+		// },
+		// "bridge": {
+		// 	// Whitelist chains Ethereum - 0
+		// 	"chains": vec![0],
+		// 	// Register resourceIDs
+		// 	"resources": vec![
+		// 		// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
+		// 		(
+		// 			hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
+		// 			hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
+		// 		),
+		// 	],
+		// 	// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+		// 	// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+		// 	"relayers": vec![
+		// 		hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+		// 		hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+		// 	],
+		// 	"threshold": 1,
+		// },
+		// "auraExt": Default::default(),
+		// "aura": Default::default(),
+		// "democracy": Default::default(),
+		// "parachainSystem": Default::default(),
+		// "treasury": Default::default(),
+		// "blockRewards": {
+		// 	"collators": initial_authorities
+		// 		.iter()
+		// 		.cloned()
+		// 		.map(|(acc, _)| acc)
+		// 		.collect(),
+		// 	"collatorReward": 8_325 * MILLI_CFG,
+		// 	"treasuryInflationRate": Rate::saturating_from_rational(3, 100),
+		// 	"lastUpdate": Default::default(),
+		// },
+		// "baseFee": Default::default(),
+		// "evmChainId": {
+		// 	"chainId": chain_id.into(),
+		// 	..Default::default()
+		// },
+		// "ethereum": Default::default(),
+		// "evm": {
+		// 	"accounts": precompile_account_genesis::<DevelopmentPrecompiles>(),
+		// 	..Default::default()
+		// },
+		// "blockRewardsBase": Default::default(),
+		// "liquidityRewardsBase": Default::default(),
+		// "polkadotXcm": {
+		// 	"safeXcmVersion": Some(SAFE_XCM_VERSION),
+		// 	..Default::default()
+		// },
 	})
 }
 
@@ -722,11 +717,11 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: 0u128,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 1,
-					interior: X3(
+					interior: X3(Arc::new([
 						Parachain(parachains::rococo::rocksmine::ID),
 						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
 						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
-					),
+					])),
 				})),
 				additional: CustomMetadata {
 					mintable: false,
@@ -750,13 +745,13 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: 0u128,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 1,
-					interior: X2(
+					interior: X2(Arc::new([
 						Parachain(parachains::rococo::acala::ID),
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
 							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
 						},
-					),
+					])),
 				})),
 				additional: CustomMetadata {
 					mintable: false,
@@ -807,7 +802,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: usdc::EXISTENTIAL_DEPOSIT,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 0,
-					interior: X3(
+					interior: X3(Arc::new([
 						PalletInstance(development_runtime::LiquidityPoolsPalletIndex::get()),
 						GlobalConsensus(NetworkId::Ethereum {
 							chain_id: usdc::CHAIN_ID_ETH_GOERLI_TESTNET,
@@ -816,7 +811,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 							network: None,
 							key: usdc::CONTRACT_ETH_GOERLI,
 						},
-					),
+					])),
 				})),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::LiquidityPools,

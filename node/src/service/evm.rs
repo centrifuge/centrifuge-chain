@@ -58,7 +58,9 @@ use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
-use super::{rpc, start_consensus, FullBackend, FullClient, ParachainBlockImport};
+use super::{
+	rpc, start_consensus, FullBackend, FullClient, ParachainBlockImport, RuntimeApiCollection,
+};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]
@@ -201,13 +203,8 @@ where
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RuntimeApi:
 		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>,
-	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
+	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
 	BIQ: FnOnce(
 		Arc<FullClient<RuntimeApi, Executor>>,
 		ParachainBlockImport<RuntimeApi, Executor>,
@@ -322,7 +319,7 @@ where
 /// runtime api.
 #[allow(clippy::too_many_arguments)]
 #[sc_tracing::logging::prefix_logs_with("🌀Parachain")]
-pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
+pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
@@ -336,16 +333,8 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 where
 	RuntimeApi:
 		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ EthereumRuntimeRPCApi<Block>
-		+ ConvertTransactionRuntimeApi<Block>,
-	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
+	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
 			Arc<FullClient<RuntimeApi, Executor>>,
@@ -370,18 +359,6 @@ where
 		FrontierBackend<Block>,
 		BlockNumber,
 	) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>,
-	BIC: FnOnce(
-		Arc<FullClient<RuntimeApi, Executor>>,
-		ParachainBlockImport<RuntimeApi, Executor>,
-		Option<&Registry>,
-		Option<TelemetryHandle>,
-		&TaskManager,
-		Arc<dyn RelayChainInterface>,
-		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
-		Arc<SyncingService<Block>>,
-		KeystorePtr,
-		bool,
-	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
@@ -597,14 +574,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 ) where
 	RuntimeApi:
 		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	match frontier_backend {

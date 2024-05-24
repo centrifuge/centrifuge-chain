@@ -36,6 +36,7 @@ url = { workspace = true, default-features = true }
 
 # client dependencies
 pallet-transaction-payment-rpc = { workspace = true, default-features = true }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = true }
 sc-basic-authorship = { workspace = true, default-features = true }
 sc-chain-spec = { workspace = true, default-features = true }
 sc-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
@@ -96,8 +97,8 @@ polkadot-service = { workspace = true, default-features = true }
 staging-xcm = { workspace = true, default-features = true }
 
 # Local
-altair-runtime = { workspace = true, default-features = true }
-centrifuge-runtime = { workspace = true, default-features = true }
+#altair-runtime = { workspace = true, default-features = true }
+#centrifuge-runtime = { workspace = true, default-features = true }
 cfg-primitives = { workspace = true, default-features = true }
 cfg-types = { workspace = true, default-features = true }
 cfg-utils = { workspace = true, default-features = true }
@@ -107,6 +108,7 @@ pallet-pool-system = { workspace = true, default-features = true }
 runtime-common = { workspace = true, default-features = true }
 
 # frontier
+fc-api = { workspace = true, default-features = true }
 fc-consensus = { workspace = true, default-features = true }
 fc-db = { workspace = true, default-features = true, features = ["rocksdb"] }
 fc-mapping-sync = { workspace = true, default-features = true }
@@ -126,8 +128,8 @@ substrate-build-script-utils = { workspace = true, default-features = true }
 [features]
 default = []
 runtime-benchmarks = [
-  "altair-runtime/runtime-benchmarks",
-  "centrifuge-runtime/runtime-benchmarks",
+  #    "altair-runtime/runtime-benchmarks",
+  #    "centrifuge-runtime/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
@@ -147,8 +149,8 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-  "altair-runtime/try-runtime",
-  "centrifuge-runtime/try-runtime",
+  #    "altair-runtime/try-runtime",
+  #    "centrifuge-runtime/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
@@ -163,7 +165,7 @@ try-runtime = [
   "sp-runtime/try-runtime",
 ]
 fast-runtime = [
-  "altair-runtime/fast-runtime",
-  "centrifuge-runtime/fast-runtime",
+  #    "altair-runtime/fast-runtime",
+  #    "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
 ]

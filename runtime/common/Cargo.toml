@@ -27,8 +27,8 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
-polkadot-parachain-primitives = { workspace = true }
 cumulus-primitives-core = { workspace = true }
+polkadot-parachain-primitives = { workspace = true }
 staging-xcm = { workspace = true }
 staging-xcm-builder = { workspace = true }
 staging-xcm-executor = { workspace = true }
@@ -90,6 +90,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-message-queue = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
@@ -116,7 +117,6 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
-pallet-message-queue = { workspace = true }
 staging-parachain-info = { workspace = true }
 
 # Optionals for benchmarking

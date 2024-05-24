@@ -27,7 +27,8 @@ use sp_runtime::traits::AccountIdConversion;
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
+	// service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
+	service::{evm, DevelopmentRuntimeExecutor},
 };
 
 pub const LOCAL_PARA_ID: ParaId = ParaId::new(2000u32);
@@ -62,29 +63,31 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
-		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(LOCAL_PARA_ID))),
-		"altair" => Ok(Box::new(chain_spec::altair_config())),
-		"altair-local" => Ok(Box::new(chain_spec::altair_local(LOCAL_PARA_ID))),
-		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
+		// "centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
+		// "centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(LOCAL_PARA_ID))),
+		// "altair" => Ok(Box::new(chain_spec::altair_config())),
+		// "altair-local" => Ok(Box::new(chain_spec::altair_local(LOCAL_PARA_ID))),
+		// "catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
 		"demo" => Ok(Box::new(chain_spec::demo_config())),
 		"development" => Ok(Box::new(chain_spec::development(LOCAL_PARA_ID))),
 		"" => Err(String::from("No Chain-id provided")),
-
-		path => {
-			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
-			Ok(match chain_spec.identify() {
-				ChainIdentity::Altair => {
-					Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
-				}
-				ChainIdentity::Centrifuge => Box::new(
-					chain_spec::CentrifugeChainSpec::from_json_file(path.into())?,
-				),
-				ChainIdentity::Development => Box::new(
-					chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
-				),
-			})
-		}
+		// path => {
+		// 	let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
+		// 	Ok(match chain_spec.identify() {
+		// 		ChainIdentity::Altair => {
+		// 			Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
+		// 		}
+		// 		ChainIdentity::Centrifuge => Box::new(
+		// 			chain_spec::CentrifugeChainSpec::from_json_file(path.into())?,
+		// 		),
+		// 		ChainIdentity::Development => Box::new(
+		// 			chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
+		// 		),
+		// 	})
+		// }
+		path => Ok(Box::new(chain_spec::DevelopmentChainSpec::from_json_file(
+			path.into(),
+		)?)),
 	}
 }
 
@@ -165,33 +168,34 @@ macro_rules! construct_async_run {
 	        .map(|e| e.first_evm_block).unwrap_or(1);
 
         match runner.config().chain_spec.identify() {
-            ChainIdentity::Altair => runner.async_run(|$config| {
-                let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
-                    &$config,
-                    first_evm_block,
-                    crate::service::build_altair_import_queue,
-                )?;
-                let task_manager = $components.task_manager;
-                { $( $code )* }.map(|v| (v, task_manager))
-            }),
-            ChainIdentity::Centrifuge => runner.async_run(|$config| {
-                let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
-                    &$config,
-                    first_evm_block,
-                    crate::service::build_centrifuge_import_queue,
-                )?;
-                let task_manager = $components.task_manager;
-                { $( $code )* }.map(|v| (v, task_manager))
-            }),
+            // ChainIdentity::Altair => runner.async_run(|$config| {
+            //     let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
+            //         &$config,
+            //         first_evm_block,
+            //         crate::service::build_import_queue::<altair_runtime::RuntimeApi, AltairRuntimeExecutor>
+            //     )?;
+            //     let task_manager = $components.task_manager;
+            //     { $( $code )* }.map(|v| (v, task_manager))
+            // }),
+            // ChainIdentity::Centrifuge => runner.async_run(|$config| {
+            //     let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
+            //         &$config,
+            //         first_evm_block,
+            //         crate::service::build_import_queue::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
+            //     )?;
+            //     let task_manager = $components.task_manager;
+            //     { $( $code )* }.map(|v| (v, task_manager))
+            // }),
             ChainIdentity::Development => runner.async_run(|$config| {
                 let $components = evm::new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
                     &$config,
                     first_evm_block,
-                    crate::service::build_development_import_queue,
+                    crate::service::build_import_queue::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
                 )?;
                 let task_manager = $components.task_manager;
                 { $( $code )* }.map(|v| (v, task_manager))
-            })
+            }),
+			_ => unimplemented!(),
         }
 	}}
 }
@@ -272,13 +276,14 @@ pub fn run() -> Result<()> {
 				// Handle the exact benchmark sub-command accordingly
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) => match runner.config().chain_spec.identify() {
-						ChainIdentity::Altair => {
-							runner.sync_run(|config| cmd.run::<altair_runtime::Block, ()>(config))
-						}
-						ChainIdentity::Centrifuge => runner
-							.sync_run(|config| cmd.run::<centrifuge_runtime::Block, ()>(config)),
+						// ChainIdentity::Altair => {
+						// 	runner.sync_run(|config| cmd.run::<altair_runtime::Block, ()>(config))
+						// }
+						// ChainIdentity::Centrifuge => runner
+						// 	.sync_run(|config| cmd.run::<centrifuge_runtime::Block, ()>(config)),
 						ChainIdentity::Development => runner
 							.sync_run(|config| cmd.run::<development_runtime::Block, ()>(config)),
+						_ => unimplemented!(""),
 					},
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
@@ -351,44 +356,56 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				match config.chain_spec.identify() {
-					ChainIdentity::Altair => crate::service::start_node::<
-						altair_runtime::RuntimeApi,
-						AltairRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					),
-					ChainIdentity::Centrifuge => crate::service::start_node::<
-						centrifuge_runtime::RuntimeApi,
-						CentrifugeRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					),
-					ChainIdentity::Development => crate::service::start_node::<
-						development_runtime::RuntimeApi,
-						DevelopmentRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					),
-				}
+				// match config.chain_spec.identify() {
+				// 	ChainIdentity::Altair => crate::service::start_node::<
+				// 		altair_runtime::RuntimeApi,
+				// 		AltairRuntimeExecutor,
+				// 	>(
+				// 		config,
+				// 		polkadot_config,
+				// 		cli.eth,
+				// 		collator_options,
+				// 		id,
+				// 		hwbench,
+				// 		first_evm_block,
+				// 	),
+				// 	ChainIdentity::Centrifuge => crate::service::start_node::<
+				// 		centrifuge_runtime::RuntimeApi,
+				// 		CentrifugeRuntimeExecutor,
+				// 	>(
+				// 		config,
+				// 		polkadot_config,
+				// 		cli.eth,
+				// 		collator_options,
+				// 		id,
+				// 		hwbench,
+				// 		first_evm_block,
+				// 	),
+				// 	ChainIdentity::Development => crate::service::start_node::<
+				// 		development_runtime::RuntimeApi,
+				// 		DevelopmentRuntimeExecutor,
+				// 	>(
+				// 		config,
+				// 		polkadot_config,
+				// 		cli.eth,
+				// 		collator_options,
+				// 		id,
+				// 		hwbench,
+				// 		first_evm_block,
+				// 	),
+				// }
+				crate::service::start_node::<
+					development_runtime::RuntimeApi,
+					DevelopmentRuntimeExecutor,
+				>(
+					config,
+					polkadot_config,
+					cli.eth,
+					collator_options,
+					id,
+					hwbench,
+					first_evm_block,
+				)
 				.await
 				.map(|r| r.0)
 				.map_err(Into::into)

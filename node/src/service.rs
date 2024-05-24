@@ -17,7 +17,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use cfg_primitives::{Block, BlockNumber, Hash};
+use cfg_primitives::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Nonce};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
@@ -25,11 +25,13 @@ use cumulus_client_consensus_proposer::Proposer;
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
 use fc_db::Backend as FrontierBackend;
+use fc_rpc::pending::{AuraConsensusDataProvider, ConsensusDataProvider};
 use polkadot_primitives::CollatorPair;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network_sync::SyncingService;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
+use sp_api::ConstructRuntimeApi;
 use sp_core::U256;
 use sp_keystore::KeystorePtr;
 use substrate_prometheus_endpoint::Registry;
@@ -37,8 +39,6 @@ use substrate_prometheus_endpoint::Registry;
 use crate::rpc::{
 	self,
 	anchors::{AnchorApiServer, Anchors},
-	pools::{Pools, PoolsApiServer},
-	rewards::{Rewards, RewardsApiServer},
 };
 
 pub(crate) mod evm;
@@ -52,47 +52,81 @@ type FullBackend = TFullBackend<Block>;
 type ParachainBlockImport<RuntimeApi, Executor> =
 	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi, Executor>>, FullBackend>;
 
-// Native Altair executor instance.
-pub struct AltairRuntimeExecutor;
-
-impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		altair_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		altair_runtime::native_version()
-	}
+pub trait RuntimeApiCollection:
+	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	+ sp_api::ApiExt<Block>
+	+ sp_block_builder::BlockBuilder<Block>
+	+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+	+ sp_api::Metadata<Block>
+	+ sp_offchain::OffchainWorkerApi<Block>
+	+ sp_session::SessionKeys<Block>
+	+ fp_rpc::ConvertTransactionRuntimeApi<Block>
+	+ fp_rpc::EthereumRuntimeRPCApi<Block>
+	+ sp_consensus_aura::AuraApi<Block, AuraId>
+	+ runtime_common::apis::AnchorApi<Block, Hash, BlockNumber>
+	+ cumulus_primitives_core::CollectCollationInfo<Block>
+{
 }
+
+impl<Api> RuntimeApiCollection for Api where
+	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ sp_api::Metadata<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_session::SessionKeys<Block>
+		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
+		+ fp_rpc::EthereumRuntimeRPCApi<Block>
+		+ sp_consensus_aura::AuraApi<Block, AuraId>
+		+ runtime_common::apis::AnchorApi<Block, Hash, BlockNumber>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>
+{
+}
+
+// Native Altair executor instance.
+// pub struct AltairRuntimeExecutor;
+//
+// impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
+// 	/// Only enable the benchmarking host functions when we actually want to
+// 	/// benchmark.
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+// 	/// Otherwise we only use the default Substrate host functions.
+// 	#[cfg(not(feature = "runtime-benchmarks"))]
+// 	type ExtendHostFunctions = ();
+//
+// 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+// 		altair_runtime::api::dispatch(method, data)
+// 	}
+//
+// 	fn native_version() -> sc_executor::NativeVersion {
+// 		altair_runtime::native_version()
+// 	}
+// }
 
 // Native Centrifuge executor instance.
-pub struct CentrifugeRuntimeExecutor;
-
-impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		centrifuge_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		centrifuge_runtime::native_version()
-	}
-}
+// pub struct CentrifugeRuntimeExecutor;
+//
+// impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
+// 	/// Only enable the benchmarking host functions when we actually want to
+// 	/// benchmark.
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+// 	/// Otherwise we only use the default Substrate host functions.
+// 	#[cfg(not(feature = "runtime-benchmarks"))]
+// 	type ExtendHostFunctions = ();
+//
+// 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+// 		centrifuge_runtime::api::dispatch(method, data)
+// 	}
+//
+// 	fn native_version() -> sc_executor::NativeVersion {
+// 		centrifuge_runtime::native_version()
+// 	}
+// }
 
 // Native Development executor instance.
 pub struct DevelopmentRuntimeExecutor;
@@ -124,10 +158,16 @@ pub async fn start_node<RuntimeApi, Executor>(
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)> {
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+where
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	let is_authority = parachain_config.role.is_authority();
 
-	evm::start_node_impl::<RuntimeApi, Executor, _, _, _>(
+	evm::start_node_impl::<RuntimeApi, Executor, _, _>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -135,6 +175,7 @@ pub async fn start_node<RuntimeApi, Executor>(
 		id,
 		hwbench,
 		first_evm_block,
+		// follows Moonbeam's create_full
 		move |client,
 		      pool,
 		      deny_unsafe,
@@ -161,15 +202,10 @@ pub async fn start_node<RuntimeApi, Executor>(
                 let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(target_gas_price));
                 Ok((slot, timestamp, dynamic_fee))
             };
+			let pending_consensus_data_provider = Some(Box::new(AuraConsensusDataProvider::new(client.clone())) as Box<dyn ConsensusDataProvider<_>>);
 
-			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
-			module
-				.merge(Anchors::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Pools::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			let eth_deps = rpc::evm::Deps {
+			let module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
+			let eth_deps = rpc::evm::EvmDeps {
 				client,
 				pool: pool.clone(),
 				graph: pool.pool().clone(),
@@ -192,6 +228,7 @@ pub async fn start_node<RuntimeApi, Executor>(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 				pending_create_inherent_data_providers,
+				pending_consensus_data_provider
 			};
 			let module = rpc::evm::create(
 				module,
@@ -218,7 +255,13 @@ pub fn build_import_queue<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
-) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
+) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
+where
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
 		block_import,
@@ -267,7 +310,13 @@ fn start_consensus<RuntimeApi, Executor>(
 	collator_key: CollatorPair,
 	overseer_handle: OverseerHandle,
 	announce_block: Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
-) -> Result<(), sc_service::Error> {
+) -> Result<(), sc_service::Error>
+where
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	use cumulus_client_consensus_aura::collators::basic::{
 		self as basic_aura, Params as BasicAuraParams,
 	};
