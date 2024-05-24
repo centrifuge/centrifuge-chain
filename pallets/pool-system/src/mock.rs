@@ -384,40 +384,22 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
-pub struct LiquidityAndPoolAdmin;
-impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for LiquidityAndPoolAdmin {
+pub struct All;
+impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
 	type Success = ();
 
-	#[cfg(feature = "runtime-benchmarks")]
 	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
 		Ok(())
 	}
 
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	fn try_origin(o: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
-		<RuntimeOrigin as Into<Result<RawOrigin<AccountId>, RuntimeOrigin>>>::into(o).and_then(
-			|r| match r {
-				RawOrigin::Root => Ok(()),
-				RawOrigin::Signed(account) => {
-					if account == DEFAULT_POOL_OWNER {
-						Ok(())
-					} else {
-						Err(RawOrigin::Signed(account).into())
-					}
-				}
-				RawOrigin::None => Err(RawOrigin::None.into()),
-			},
-		)
-	}
-
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
-		Ok(RawOrigin::Signed(DEFAULT_POOL_OWNER).into())
+		Ok(RawOrigin::Root.into())
 	}
 }
 
 impl Config for Runtime {
-	type AdminOrigin = LiquidityAndPoolAdmin;
+	type AdminOrigin = All;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
