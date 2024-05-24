@@ -161,8 +161,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn current_price(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
+		let maturity = maturity.unwrap_or(T::Time::now());
+
 		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
 			Ok(data) => data.0,
 			Err(_) => self.linear_accrual_price(maturity)?,
@@ -172,7 +174,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn outstanding_principal(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		let price = self.current_price(pool_id, maturity)?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
@@ -190,7 +192,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn present_value(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		self.outstanding_principal(pool_id, maturity)
 	}
@@ -198,11 +200,14 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn present_value_cached(
 		&self,
 		cache: &BTreeMap<T::PriceId, T::Balance>,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		let price = match cache.get(&self.info.price_id) {
 			Some(data) => *data,
-			None => self.linear_accrual_price(maturity)?,
+			None => {
+				let maturity = maturity.unwrap_or(T::Time::now());
+				self.linear_accrual_price(maturity)?
+			}
 		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}

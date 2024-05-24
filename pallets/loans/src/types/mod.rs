@@ -95,6 +95,8 @@ pub enum Maturity {
 		/// Extension in secs, without special permissions
 		extension: Seconds,
 	},
+	/// No Maturity date
+	None,
 }
 
 impl Maturity {
@@ -102,15 +104,17 @@ impl Maturity {
 		Self::Fixed { date, extension: 0 }
 	}
 
-	pub fn date(&self) -> Seconds {
+	pub fn date(&self) -> Option<Seconds> {
 		match self {
-			Maturity::Fixed { date, .. } => *date,
+			Maturity::Fixed { date, .. } => Some(*date),
+			Maturity::None => None,
 		}
 	}
 
 	pub fn is_valid(&self, now: Seconds) -> bool {
 		match self {
 			Maturity::Fixed { date, .. } => *date > now,
+			Maturity::None => true,
 		}
 	}
 
@@ -120,6 +124,7 @@ impl Maturity {
 				date.ensure_add_assign(value)?;
 				extension.ensure_sub_assign(value)
 			}
+			Maturity::None => Err(ArithmeticError::Overflow),
 		}
 	}
 }
