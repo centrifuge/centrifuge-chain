@@ -564,6 +564,12 @@ macro_rules! implement_base_math {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Seconds(u64);
 
+impl Seconds {
+	pub const fn const_from(value: u64) -> Self {
+		Seconds(value)
+	}
+}
+
 implement_base_math!(Seconds, u64);
 
 impl IntoSeconds for Seconds {

@@ -186,7 +186,7 @@ where
 /// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
 /// Seconds) variant. This UNION shall reflect that and explain to the reader
 /// why it is passed here.
-pub const UNION: Seconds = Seconds::from(0u32);
+pub const UNION: Seconds = Seconds::const_from(0u64);
 
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
@@ -460,7 +460,7 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: Seconds = Seconds::from(4u64);
+		pub const MinDelay: Seconds = Seconds::const_from(4u64);
 		pub const MaxTranches: u32 = 5;
 	}
 
@@ -489,7 +489,7 @@ mod tests {
 
 	/// The exists call does not care what is passed as moment. This type shall
 	/// reflect that
-	const UNION: Seconds = Seconds::from(0u64);
+	const UNION: Seconds = Seconds::const_from(0u64);
 
 	/// The tranceh id type we use in our runtime-common. But we don't want a
 	/// dependency here.

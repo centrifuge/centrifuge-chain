@@ -43,113 +43,294 @@ impl<T> TypeInfo for TimeProvider<T> {
 
 mod date {
 	use cfg_traits::{IntoSeconds, Seconds};
-	use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeDelta, TimeZone};
+	use chrono::{
+		DateTime, Datelike, Days, Months, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Timelike,
+	};
 	use sp_arithmetic::{
-		traits::{EnsureInto, EnsureSub},
-		ArithmeticError,
+		traits::{EnsureAdd, EnsureInto, EnsureSub},
+		ArithmeticError, Perquintill,
 	};
 	use sp_runtime::DispatchError;
+	use sp_std::ops::Add;
+
+	const QUARTER_1_START: u32 = 1;
+	const QUARTER_1_END: u32 = 3;
+	const QUARTER_2_START: u32 = 4;
+	const QUARTER_2_END: u32 = 6;
+	const QUARTER_3_START: u32 = 7;
+	const QUARTER_3_END: u32 = 9;
+	const QUARTER_4_START: u32 = 10;
+	const QUARTER_4_END: u32 = 12;
 
 	pub enum TimePeriod {
 		Seconds,
 		Minutes,
 		Hours,
 		Days,
-		Weeks,
 		Months,
 		Quarters,
 		HalfYears,
 		Years,
 	}
 
+	pub struct PassedPeriods {
+		front: Perquintill,
+		full: u64,
+		back: Perquintill,
+	}
+
 	fn into_date_time<T: IntoSeconds>(t: T) -> Result<NaiveDateTime, DispatchError> {
-		Ok(DateTime::from_timestamp(t.into_seconds().ensure_into()?, 0)
-			.ok_or("Invalid date in seconds, qed")?
-			.naive_utc())
-	}
-
-	fn into_date<T: IntoSeconds>(t: T) -> Result<NaiveDate, DispatchError> {
-		DateTime::from_timestamp(t.into_seconds().ensure_into()?, 0)
-			.ok_or("Invalid date in seconds, qed")?
-			.date_naive()
-	}
-
-	pub fn last_full_second<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		Ok(now.into_seconds())
-	}
-
-	pub fn last_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
-		let date = into_date(now)?;
-		let date_time = into_date_time(now)?;
-		Ok(date
-			.and_hms(date_time.hour(), date_time.minute(), 0)
-			.and_utc()
-			.timestamp()
-			.ensure_into()?)
-	}
-
-	pub fn last_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
-		let date = into_date(now)?;
-		let date_time = into_date_time(now)?;
-
-		Ok(date
-			.and_hms(date_time.hour(), 0, 0)
-			.and_utc()
-			.timestamp()
-			.ensure_into()?)
-	}
-
-	pub fn last_full_day<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		let date = into_date(now)?;
-		Ok(date.and_utc().timestamp().ensure_into()?)
-	}
-
-	pub fn last_full_week<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		let date = into_date(now)?;
 		Ok(
-			NaiveDate::from_ymd(date.year(), date.month(), date.iso_week().week())
-				.and_hms(0, 0, 0)
-				.and_utc()
-				.timestamp()
-				.ensure_into()?,
+			DateTime::from_timestamp(t.into_seconds().inner().ensure_into()?, 0)
+				.ok_or("Invalid date in seconds, qed")?
+				.naive_utc(),
 		)
 	}
 
-	pub fn last_full_month<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn into_date<T: IntoSeconds>(t: T) -> Result<NaiveDate, DispatchError> {
+		Ok(
+			DateTime::from_timestamp(t.into_seconds().inner().ensure_into()?, 0)
+				.ok_or("Invalid date in seconds, qed")?
+				.date_naive(),
+		)
+	}
+
+	pub fn start_last_full_second<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		Ok(now.into_seconds())
+	}
+
+	pub fn start_last_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
-		Ok(NaiveDate::from_ymd(date.year(), date.month(), 1)
-			.and_hms(0, 0, 0)
-			.and_utc()
-			.timestamp()
-			.ensure_into()?)
+		let date_time = into_date_time(now)?;
+
+		Ok(From::<u64>::from(
+			date.and_hms_opt(date_time.hour(), date_time.minute(), 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
 	}
 
-	pub fn last_full_quarter<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		todo!()
+	pub fn start_last_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+		let date_time = into_date_time(now)?;
+
+		Ok(From::<u64>::from(
+			date.and_hms_opt(date_time.hour(), 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
 	}
 
-	pub fn last_full_half_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		todo!()
+	pub fn start_last_full_day<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+
+		Ok(From::<u64>::from(
+			date.and_hms_opt(0, 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
 	}
 
-	pub fn last_full_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
-		todo!()
+	pub fn start_last_full_month<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+
+		Ok(From::<u64>::from(
+			NaiveDate::from_ymd_opt(date.year(), date.month(), 1)
+				.ok_or("Invalid date, qed")?
+				.and_hms_opt(0, 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
 	}
 
-	pub fn last_period_start<T: IntoSeconds>(
+	pub fn start_last_full_quarter<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+
+		let month = match date.month() {
+			x if x <= QUARTER_1_END => 1,
+			x if x <= QUARTER_2_END => 4,
+			x if x <= QUARTER_3_END => 7,
+			x if x <= QUARTER_4_END => 10,
+			_ => return Err("Invalid date, qed".into()),
+		};
+
+		Ok(From::<u64>::from(
+			NaiveDate::from_ymd_opt(date.year(), month, 1)
+				.ok_or("Invalid date, qed")?
+				.and_hms_opt(0, 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
+	}
+
+	pub fn start_last_full_half_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+
+		let month = if date.month() <= QUARTER_2_END { 1 } else { 6 };
+
+		Ok(From::<u64>::from(
+			NaiveDate::from_ymd_opt(date.year(), month, 1)
+				.ok_or("Invalid date, qed")?
+				.and_hms_opt(0, 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
+	}
+
+	pub fn start_last_full_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+		let date = into_date(now)?;
+
+		Ok(From::<u64>::from(
+			NaiveDate::from_ymd_opt(date.year(), 1, 1)
+				.ok_or("Invalid date, qed")?
+				.and_hms_opt(0, 0, 0)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		))
+	}
+
+	pub fn start_next_full_second<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		Ok(now.into_seconds().ensure_add(Seconds::from(1u64))?)
+	}
+
+	pub fn start_next_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date_time: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_signed(TimeDelta::try_minutes(1).ok_or("Invalid date, qed")?)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_minute(date_time)
+	}
+
+	pub fn start_next_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date_time: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_signed(TimeDelta::try_hours(1).ok_or("Invalid date, qed")?)
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_hour(date_time)
+	}
+
+	pub fn start_next_full_day<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date_time: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_days(Days::new(1))
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_day(date_time)
+	}
+
+	pub fn start_next_full_month<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_months(Months::new(1))
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_month(date)
+	}
+
+	pub fn start_next_full_quarter<T: IntoSeconds + Copy>(
+		now: T,
+	) -> Result<Seconds, DispatchError> {
+		let date: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_months(Months::new(3))
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_quarter(date)
+	}
+
+	pub fn start_next_full_half_year<T: IntoSeconds + Copy>(
+		now: T,
+	) -> Result<Seconds, DispatchError> {
+		let date: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_months(Months::new(6))
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_half_year(date)
+	}
+
+	pub fn start_next_full_year<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+		let date: Seconds = From::<u64>::from(
+			into_date_time(now)?
+				.checked_add_months(Months::new(12))
+				.ok_or("Invalid date, qed")?
+				.and_utc()
+				.timestamp()
+				.ensure_into()?,
+		);
+
+		start_last_full_year(date)
+	}
+
+	pub fn last_period_start<T: IntoSeconds + Copy>(
 		span: TimePeriod,
 		t: T,
 	) -> Result<Seconds, DispatchError> {
 		match span {
-			TimePeriod::Seconds => last_full_second(t),
-			TimePeriod::Minutes => last_full_minute(t),
-			TimePeriod::Hours => last_full_hour(t),
-			TimePeriod::Days => last_full_day(t),
-			TimePeriod::Weeks => last_full_week(t),
-			TimePeriod::Months => last_full_month(t),
-			TimePeriod::Quarters => last_full_quarter(t),
-			TimePeriod::HalfYears => last_full_half_year(t),
-			TimePeriod::Years => last_full_year(t),
+			TimePeriod::Seconds => start_last_full_second(t),
+			TimePeriod::Minutes => start_last_full_minute(t),
+			TimePeriod::Hours => start_last_full_hour(t),
+			TimePeriod::Days => start_last_full_day(t),
+			TimePeriod::Months => start_last_full_month(t),
+			TimePeriod::Quarters => start_last_full_quarter(t),
+			TimePeriod::HalfYears => start_last_full_half_year(t),
+			TimePeriod::Years => start_last_full_year(t),
+		}
+	}
+
+	pub fn next_period_start<T: IntoSeconds + Copy>(
+		span: TimePeriod,
+		t: T,
+	) -> Result<Seconds, DispatchError> {
+		match span {
+			TimePeriod::Seconds => start_next_full_second(t),
+			TimePeriod::Minutes => start_next_full_minute(t),
+			TimePeriod::Hours => start_next_full_hour(t),
+			TimePeriod::Days => start_next_full_day(t),
+			TimePeriod::Months => start_next_full_month(t),
+			TimePeriod::Quarters => start_next_full_quarter(t),
+			TimePeriod::HalfYears => start_next_full_half_year(t),
+			TimePeriod::Years => start_next_full_year(t),
 		}
 	}
 
@@ -157,32 +338,27 @@ mod date {
 		span: TimePeriod,
 		since: T,
 		now: T,
-	) -> Result<u64, DispatchError> {
-		let start = i64::try_from(since.into_milliseconds())
+	) -> Result<PassedPeriods, DispatchError> {
+		let start = i64::try_from(since.into_seconds().inner())
 			.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Overflow))?;
-		let end = i64::try_from(now.into_milliseconds())
+		let end = i64::try_from(now.into_seconds().inner())
 			.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
-		let delta = TimeDelta::try_miliseconds(start.ensure_sub(end)?)
-			.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Overflow))?;
+		let delta =
+			TimeDelta::try_milliseconds(start.ensure_sub(end)?).ok_or("Invalid date, qed")?;
 
 		let num = match span {
 			TimePeriod::Seconds => delta.num_seconds(),
 			TimePeriod::Minutes => delta.num_minutes(),
 			TimePeriod::Hours => delta.num_hours(),
 			TimePeriod::Days => delta.num_days(),
-			TimePeriod::Weeks => delta.num_weeks(),
-			TimePeriod::Months => delta.num_months(),
-			TimePeriod::Quarters => delta.num_quarters(),
-			TimePeriod::HalfYears => delta.num_half_years(),
-			TimePeriod::Years => delta.num_years(),
+			TimePeriod::Months => todo!(),
+			TimePeriod::Quarters => todo!(),
+			TimePeriod::HalfYears => todo!(),
+			TimePeriod::Years => todo!(),
 		};
 
-		if num.is_negative() {
-			Ok(0)
-		} else {
-			Ok(u64::from_ne_bytes(num.to_ne_bytes()))
-		}
+		todo!("Implement the rest of the periods")
 	}
 
 	pub fn in_period<T: IntoSeconds>(
@@ -190,17 +366,196 @@ mod date {
 		since: T,
 		now: T,
 	) -> Result<u64, DispatchError> {
-		todo!("Gives the n-th period that now is in since")
+		let passed = periods_passed(span, since, now)?;
+
+		let front = if passed.front.is_zero() {
+			0
+		} else {
+		};
+
+		if passed.back.is_zero() {
+			passed.full.ensure_add(front).map_err(Into::into)
+		} else {
+			passed
+				.full
+				.ensure_add(1)?
+				.ensure_add(front)
+				.map_err(Into::into)
+		}
 	}
 
 	#[cfg(test)]
 	mod tests {
+		use cfg_traits::{Millis, Seconds};
+		use chrono::NaiveDate;
+		use sp_runtime::traits::EnsureInto;
+
+		fn date(year: i32, month: u32, day: u32) -> Seconds {
+			From::<u64>::from(
+				NaiveDate::from_ymd_opt(year, month, day)
+					.unwrap()
+					.and_hms_opt(12, 35, 12)
+					.unwrap()
+					.and_utc()
+					.timestamp()
+					.ensure_into()
+					.unwrap(),
+			)
+		}
+
+		fn date_time(hours: u32, minute: u32, seconds: u32) -> Seconds {
+			From::<u64>::from(
+				NaiveDate::from_ymd_opt(2023, 2, 28)
+					.unwrap()
+					.and_hms_opt(hours, minute, seconds)
+					.unwrap()
+					.and_utc()
+					.timestamp()
+					.ensure_into()
+					.unwrap(),
+			)
+		}
+
 		#[test]
-		fn test_last_full_second() {
+		fn last_full_second() {
 			use super::*;
-			let now = 1_123u64;
-			let expected = 1_000u64;
-			assert_eq!(last_full_second(now).unwrap(), expected.into());
+			let now = Millis::from(1_123u64);
+			let expected = 1u64;
+			assert_eq!(start_last_full_second(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_second() {
+			use super::*;
+			let now = Millis::from(1_123u64);
+			let expected = 2u64;
+			assert_eq!(start_next_full_second(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_minute() {
+			use super::*;
+			let now = date_time(12, 00, 59);
+			// Compare with unixtimestamp.com
+			let expected = 1677585600u64;
+			assert_eq!(start_last_full_minute(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_minute() {
+			use super::*;
+			let now = date_time(23, 59, 00);
+			// Compare with unixtimestamp.com
+			let expected = 1677628800u64;
+			assert_eq!(start_next_full_minute(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_hour() {
+			use super::*;
+			let now = date_time(12, 00, 12);
+			// Compare with unixtimestamp.com
+			let expected = 1677585600u64;
+			assert_eq!(start_last_full_hour(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_hour() {
+			use super::*;
+			let now = date_time(23, 00, 12);
+			// Compare with unixtimestamp.com
+			let expected = 1677628800u64;
+			assert_eq!(start_next_full_hour(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_day() {
+			use super::*;
+			let now = date(2023, 03, 01);
+			// Compare with unixtimestamp.com
+			let expected = 1677628800u64;
+			assert_eq!(start_last_full_day(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_day() {
+			use super::*;
+			let now = date(2023, 12, 31);
+			// Compare with unixtimestamp.com
+			let expected = 1704067200u64;
+			assert_eq!(start_next_full_day(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_month() {
+			use super::*;
+			let now = date(2023, 1, 12);
+			// Compare with unixtimestamp.com
+			let expected = 1672531200u64;
+			assert_eq!(start_last_full_month(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_month() {
+			use super::*;
+			let now = date(2023, 12, 12);
+			// Compare with unixtimestamp.com
+			let expected = 1704067200u64;
+			assert_eq!(start_next_full_month(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_quarter() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1688169600u64;
+			assert_eq!(start_last_full_quarter(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_quarter() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1696118400u64;
+			assert_eq!(start_next_full_quarter(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_half_year() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1685577600u64;
+			assert_eq!(start_last_full_half_year(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_half_year() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1704067200u64;
+			assert_eq!(start_next_full_half_year(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn last_full_year() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1672531200u64;
+			assert_eq!(start_last_full_year(now).unwrap(), expected.into());
+		}
+
+		#[test]
+		fn next_full_year() {
+			use super::*;
+			let now = date(2023, 8, 3);
+			// Compare with unixtimestamp.com
+			let expected = 1704067200u64;
+			assert_eq!(start_next_full_year(now).unwrap(), expected.into());
 		}
 	}
 }
