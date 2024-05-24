@@ -1,3 +1,4 @@
+use cfg_primitives::{LoanId, PoolId};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -26,10 +27,18 @@ pub type Isin = [u8; 12];
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OracleKey {
 	/// Identify a Isin price
+	#[codec(index = 0)]
 	Isin(Isin),
 
 	/// Identify a conversion from the first currency to the second one
+	#[codec(index = 1)]
 	ConversionRatio(CurrencyId, CurrencyId),
+
+	/// Identifies a single pool-loan-id combination.
+	/// This key is a fallback solution if no other keys are applicable for the
+	/// given oracle.
+	#[codec(index = 2)]
+	PoolLoanId(PoolId, LoanId),
 }
 
 impl From<(CurrencyId, CurrencyId)> for OracleKey {

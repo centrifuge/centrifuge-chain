@@ -162,18 +162,29 @@ fn with_success_half_amount() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
 
+		let amount = RepaidInput {
+			principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
+			interest: 1234, /* Will not be used */
+			unscheduled: 0,
+		};
+
 		config_mocks(COLLATERAL_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidInput {
-				principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
-				interest: 0,
-				unscheduled: 0,
-			},
+			amount.clone()
 		));
 		assert_eq!(0, util::current_loan_debt(loan_id));
+
+		System::assert_last_event(RuntimeEvent::Loans(Event::Repaid {
+			pool_id: POOL_A,
+			loan_id: loan_id,
+			amount: RepaidInput {
+				interest: 0,
+				..amount
+			},
+		}));
 	});
 }
 
