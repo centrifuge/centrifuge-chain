@@ -24,9 +24,6 @@ impl<
 				Role = Role<T::TrancheId>,
 			> + pallet_pool_system::Config,
 	> EnsureOriginWithArg<T::RuntimeOrigin, T::PoolId> for LiquidityAndPoolAdminOrRoot<T>
-where
-	<T as frame_system::Config>::RuntimeOrigin: From<RawOrigin<<T as frame_system::Config>::AccountId>>
-		+ Into<Result<RawOrigin<<T as frame_system::Config>::AccountId>, T::RuntimeOrigin>>,
 {
 	type Success = ();
 
