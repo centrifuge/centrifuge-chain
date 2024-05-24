@@ -164,7 +164,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			if min(price_last_updated, maturity) == maturity {
 				// We can not have 2 'xs' with different 'y' in a rect.
 				// That only happens at maturity
-				return Ok(self.info.notional);
+				return Ok(price);
 			}
 
 			Ok(cfg_utils::math::y_coord_in_rect(
