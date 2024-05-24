@@ -63,9 +63,6 @@ impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
 	}
 }
 
-/// To be used with the transfer-allowlist pallet across runtimes
-pub type HoldIdentifier = ();
-
 #[macro_export]
 macro_rules! production_or_benchmark {
 	($production:expr, $benchmark:expr) => {{

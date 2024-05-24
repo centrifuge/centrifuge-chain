@@ -42,9 +42,10 @@ use cfg_types::{
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
+	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
-		AssetStringLimit, CurrencyId, CustomMetadata,
+		AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, LocalAssetId,
 		StakingCurrency::BlockRewards as BlockRewardsCurrency, TrancheCurrency,
 	},
 };
@@ -85,6 +86,7 @@ use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
+pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -119,6 +121,7 @@ use runtime_common::{
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
 };
+use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
@@ -297,7 +300,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	// Using AnyRelayNumber only for the development & demo environments,
 	// to be able to recover quickly from a relay chains issue
 	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::AnyRelayNumber;
-	type WeightInfo = (); // Using weights for recomented hardware
+	type WeightInfo = (); // Using weights for recomended hardware
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
@@ -316,7 +319,7 @@ parameter_types! {
 
 impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = (); // Using weights for recomented hardware
+	type WeightInfo = (); // Using weights for recomended hardware
 	#[cfg(feature = "runtime-benchmarks")]
 	type MessageProcessor =
 		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
@@ -2227,13 +2230,6 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 	}
 }
 
-use cfg_types::{
-	pools::PoolNav,
-	tokens::{FilterCurrency, LocalAssetId},
-};
-pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
-use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
-
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -2819,8 +2815,6 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_loans, Loans]
 		[pallet_collator_selection, CollatorSelection]
-		[pallet_message_queue, MessageQueue]
-		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_transfer_allowlist, TransferAllowList]
 		[pallet_order_book, OrderBook]
