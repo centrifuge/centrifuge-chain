@@ -308,7 +308,7 @@ fn centrifuge_genesis(
 				2_365_296_803_653u128,
 			)],
 		},
-		"stagingParachainInfo": {
+		"parachainInfo": {
 			"parachainId": id,
 		},
 		"collatorSelection": {
@@ -416,7 +416,7 @@ fn altair_genesis(
 				2_365_296_803_653u128,
 			)],
 		},
-		"stagingParachainInfo": {
+		"parachainInfo": {
 			"parachainId": id,
 		},
 		"collatorSelection": {
@@ -540,7 +540,7 @@ fn development_genesis(
 		"sudo": {
 			"key": Some(root_key),
 		},
-		"stagingParachainInfo":  {
+		"parachainInfo":  {
 			"parachainId": id,
 		},
 		"collatorSelection": {
