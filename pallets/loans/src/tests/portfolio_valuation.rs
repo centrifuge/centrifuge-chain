@@ -226,7 +226,7 @@ fn no_linear_pricing_either_settlement_or_oracle() {
 	new_test_ext().execute_with(|| {
 		let mut external_pricing = util::base_external_pricing();
 		external_pricing.with_linear_pricing = false;
-
+		external_pricing.max_price_variation = Rate::one();
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
@@ -236,20 +236,10 @@ fn no_linear_pricing_either_settlement_or_oracle() {
 		};
 		let loan_1 = util::create_loan(loan);
 		const SETTLEMENT_PRICE: Balance = 970;
-
 		let amount = ExternalAmount::new(QUANTITY, SETTLEMENT_PRICE);
+		config_mocks();
 
-		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
-		MockPools::mock_withdraw(|_, _, _| Ok(()));
-		MockPrices::mock_get(|_, _| Err(PRICE_ID_NO_FOUND));
-		MockPrices::mock_register_id(|_, _| Ok(()));
-		Loans::borrow(
-			RuntimeOrigin::signed(util::borrower(loan_1)),
-			POOL_A,
-			loan_1,
-			PrincipalInput::External(amount.clone()),
-		)
-		.expect("successful borrowing");
+		util::borrow_loan(loan_1, PrincipalInput::External(amount.clone()));
 
 		advance_time(YEAR / 2);
 
