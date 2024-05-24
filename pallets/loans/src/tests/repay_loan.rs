@@ -1,3 +1,5 @@
+use sp_arithmetic::traits::Saturating;
+
 use super::*;
 
 pub fn config_mocks(deposit_amount: Balance) {
@@ -898,5 +900,81 @@ fn with_external_pricing() {
 			repay_amount.clone()
 		));
 		assert_eq!(current_price(), NOTIONAL);
+	});
+}
+
+#[test]
+fn with_more_than_required_external() {
+	new_test_ext().execute_with(|| {
+		let variation = Rate::from_inner(1_000_000_000_000_000_000);
+		let mut pricing = util::base_external_pricing();
+		pricing.max_price_variation = variation;
+		let mut info = util::base_external_loan();
+		info.pricing = Pricing::External(pricing);
+
+		let loan_id = util::create_loan(info);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
+
+		let amount = ExternalAmount::new(
+			QUANTITY.saturating_mul(Quantity::from_rational(2, 1)),
+			PRICE_VALUE + variation.checked_mul_int(PRICE_VALUE).unwrap(),
+		);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount.clone()),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		config_mocks_with_price(0, PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				}
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		MockPrices::mock_unregister_id(move |id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok(())
+		});
+
+		assert_ok!(Loans::close(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+		));
 	});
 }
