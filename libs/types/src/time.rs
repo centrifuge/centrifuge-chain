@@ -95,11 +95,11 @@ mod date {
 		)
 	}
 
-	pub fn start_last_full_second<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_second<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		Ok(now.into_seconds())
 	}
 
-	pub fn start_last_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 		let date_time = into_date_time(now)?;
 
@@ -112,7 +112,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 		let date_time = into_date_time(now)?;
 
@@ -125,7 +125,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_day<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_day<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 
 		Ok(From::<u64>::from(
@@ -137,7 +137,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_month<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_month<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 
 		Ok(From::<u64>::from(
@@ -151,7 +151,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_quarter<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_quarter<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 
 		let month = match date.month() {
@@ -173,7 +173,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_half_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_half_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 
 		let month = if date.month() <= QUARTER_2_END { 1 } else { 6 };
@@ -189,7 +189,7 @@ mod date {
 		))
 	}
 
-	pub fn start_last_full_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_last_full_year<T: IntoSeconds>(now: T) -> Result<Seconds, DispatchError> {
 		let date = into_date(now)?;
 
 		Ok(From::<u64>::from(
@@ -203,11 +203,11 @@ mod date {
 		))
 	}
 
-	pub fn start_next_full_second<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_second<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		Ok(now.into_seconds().ensure_add(Seconds::from(1u64))?)
 	}
 
-	pub fn start_next_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_minute<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date_time: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_signed(TimeDelta::try_minutes(1).ok_or("Invalid date, qed")?)
@@ -220,7 +220,7 @@ mod date {
 		start_last_full_minute(date_time)
 	}
 
-	pub fn start_next_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_hour<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date_time: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_signed(TimeDelta::try_hours(1).ok_or("Invalid date, qed")?)
@@ -233,7 +233,7 @@ mod date {
 		start_last_full_hour(date_time)
 	}
 
-	pub fn start_next_full_day<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_day<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date_time: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_days(Days::new(1))
@@ -246,7 +246,7 @@ mod date {
 		start_last_full_day(date_time)
 	}
 
-	pub fn start_next_full_month<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_month<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_months(Months::new(1))
@@ -259,9 +259,7 @@ mod date {
 		start_last_full_month(date)
 	}
 
-	pub fn start_next_full_quarter<T: IntoSeconds + Copy>(
-		now: T,
-	) -> Result<Seconds, DispatchError> {
+	fn start_next_full_quarter<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_months(Months::new(3))
@@ -274,9 +272,7 @@ mod date {
 		start_last_full_quarter(date)
 	}
 
-	pub fn start_next_full_half_year<T: IntoSeconds + Copy>(
-		now: T,
-	) -> Result<Seconds, DispatchError> {
+	fn start_next_full_half_year<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_months(Months::new(6))
@@ -289,7 +285,7 @@ mod date {
 		start_last_full_half_year(date)
 	}
 
-	pub fn start_next_full_year<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
+	fn start_next_full_year<T: IntoSeconds + Copy>(now: T) -> Result<Seconds, DispatchError> {
 		let date: Seconds = From::<u64>::from(
 			into_date_time(now)?
 				.checked_add_months(Months::new(12))
@@ -336,12 +332,12 @@ mod date {
 
 	pub fn periods_passed<T: IntoSeconds>(
 		span: TimePeriod,
-		since: T,
-		now: T,
+		from: T,
+		to: T,
 	) -> Result<PassedPeriods, DispatchError> {
-		let start = i64::try_from(since.into_seconds().inner())
+		let start = i64::try_from(from.into_seconds().inner())
 			.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Overflow))?;
-		let end = i64::try_from(now.into_seconds().inner())
+		let end = i64::try_from(to.into_seconds().inner())
 			.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
 		let delta =
@@ -359,29 +355,6 @@ mod date {
 		};
 
 		todo!("Implement the rest of the periods")
-	}
-
-	pub fn in_period<T: IntoSeconds>(
-		span: TimePeriod,
-		since: T,
-		now: T,
-	) -> Result<u64, DispatchError> {
-		let passed = periods_passed(span, since, now)?;
-
-		let front = if passed.front.is_zero() {
-			0
-		} else {
-		};
-
-		if passed.back.is_zero() {
-			passed.full.ensure_add(front).map_err(Into::into)
-		} else {
-			passed
-				.full
-				.ensure_add(1)?
-				.ensure_add(front)
-				.map_err(Into::into)
-		}
 	}
 
 	#[cfg(test)]
