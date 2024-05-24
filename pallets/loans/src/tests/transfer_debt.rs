@@ -361,7 +361,7 @@ fn with_success_internals() {
 
 		let repay_amount = RepaidInput {
 			principal: PrincipalInput::Internal(COLLATERAL_VALUE),
-			interest: 0,
+			interest: 1234, /* Will not be used */
 			unscheduled: 0,
 		};
 		let borrow_amount = PrincipalInput::Internal(COLLATERAL_VALUE);
@@ -372,8 +372,8 @@ fn with_success_internals() {
 			POOL_A,
 			loan_1,
 			loan_2,
-			repay_amount,
-			borrow_amount,
+			repay_amount.clone(),
+			borrow_amount.clone(),
 		));
 
 		assert_ok!(Loans::apply_transfer_debt(
@@ -384,6 +384,17 @@ fn with_success_internals() {
 
 		assert_eq!(0, util::current_loan_debt(loan_1));
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_2));
+
+		System::assert_last_event(RuntimeEvent::Loans(Event::DebtTransferred {
+			pool_id: POOL_A,
+			from_loan_id: loan_1,
+			to_loan_id: loan_2,
+			repaid_amount: RepaidInput {
+				interest: 0,
+				..repay_amount
+			},
+			borrow_amount,
+		}));
 	});
 }
 

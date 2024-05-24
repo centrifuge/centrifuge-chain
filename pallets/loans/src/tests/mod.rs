@@ -18,7 +18,7 @@ use super::{
 			ActivePricing, Pricing,
 		},
 	},
-	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
+	pallet::{ActiveLoans, CreatedLoan, Error, Event, LastLoanId, PortfolioValuation},
 	types::{
 		cashflow::{
 			tests::{last_secs_from_ymd, secs_from_ymdhms},
