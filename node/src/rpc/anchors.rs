@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::sync::Arc;
 
 use cfg_primitives::BlockNumber;
@@ -5,6 +6,7 @@ use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_anchors::AnchorData;
 pub use runtime_common::apis::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
+use sp_block_builder::BlockBuilder;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;
 
@@ -14,7 +16,7 @@ use crate::rpc::invalid_params_error;
 pub trait AnchorApi<IdHash, BlockHash> {
 	/// Returns an anchor given an anchor id from the runtime storage
 	#[method(name = "anchor_getAnchorById")]
-	fn get_anchor_by_id(
+	async fn get_anchor_by_id(
 		&self,
 		id: IdHash,
 		at: Option<BlockHash>,
@@ -37,13 +39,14 @@ impl<C, P> Anchors<C, P> {
 	}
 }
 
+#[async_trait]
 impl<C, Block> AnchorApiServer<cfg_primitives::Hash, Block::Hash> for Anchors<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: AnchorRuntimeApi<Block, cfg_primitives::Hash, BlockNumber>,
 {
-	fn get_anchor_by_id(
+	async fn get_anchor_by_id(
 		&self,
 		id: cfg_primitives::Hash,
 		at: Option<Block::Hash>,
