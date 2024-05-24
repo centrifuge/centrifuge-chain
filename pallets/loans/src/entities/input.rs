@@ -7,6 +7,7 @@ use crate::{
 	entities::pricing::external::ExternalAmount,
 	pallet::{Config, Error},
 	types::RepaidAmount,
+	PriceOf,
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
@@ -61,6 +62,6 @@ impl<T: Config> RepaidInput<T> {
 #[scale_info(skip_type_params(T))]
 pub enum PriceCollectionInput<T: Config> {
 	Empty,
-	Custom(BoundedBTreeMap<T::PriceId, T::Balance, T::MaxActiveLoansPerPool>),
+	Custom(BoundedBTreeMap<T::PriceId, PriceOf<T>, T::MaxActiveLoansPerPool>),
 	FromRegistry,
 }
