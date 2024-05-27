@@ -23,7 +23,6 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
@@ -618,11 +617,12 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: 0u128,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 1,
-					interior: X3(Arc::new([
+					interior: X3([
 						Parachain(parachains::rococo::rocksmine::ID),
 						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
 						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
-					])),
+					]
+					.into()),
 				})),
 				additional: CustomMetadata {
 					mintable: false,
@@ -646,13 +646,14 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: 0u128,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 1,
-					interior: X2(Arc::new([
+					interior: X2([
 						Parachain(parachains::rococo::acala::ID),
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
 							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
 						},
-					])),
+					]
+					.into()),
 				})),
 				additional: CustomMetadata {
 					mintable: false,
@@ -703,7 +704,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				existential_deposit: usdc::EXISTENTIAL_DEPOSIT,
 				location: Some(staging_xcm::VersionedLocation::V4(Location {
 					parents: 0,
-					interior: X3(Arc::new([
+					interior: X3([
 						PalletInstance(development_runtime::LiquidityPoolsPalletIndex::get()),
 						GlobalConsensus(NetworkId::Ethereum {
 							chain_id: usdc::CHAIN_ID_ETH_GOERLI_TESTNET,
@@ -712,7 +713,8 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 							network: None,
 							key: usdc::CONTRACT_ETH_GOERLI,
 						},
-					])),
+					]
+					.into()),
 				})),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::LiquidityPools,
