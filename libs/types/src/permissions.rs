@@ -10,7 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{Properties, Seconds, TimeAsSecs};
+use cfg_traits::{
+	time::{Seconds, TimeAsSecs},
+	Properties,
+};
 use frame_support::{traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

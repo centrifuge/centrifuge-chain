@@ -10,41 +10,22 @@ use sp_arithmetic::{
 };
 use sp_runtime::{
 	traits::{Get, Member, Zero},
-	DispatchError,
+	BoundedBTreeSet, DispatchError,
 };
+use strum::EnumCount;
 
-use crate::Seconds;
+use super::time::{Period, Seconds};
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum CompoundingSchedule {
-	/// Interest compounds every second
-	Secondly,
-	/// Interest compounds every minute
-	Minutely,
-	/// Interest compounds every hour
-	Hourly,
-	/// Interest compounds every day
-	Daily,
-	/// Interest compounds every week
-	Weekly,
-	/// Interest compounds every month
-	Monthly,
-	/// Interest compounds every quarter
-	Quarterly,
-	/// Interest compounds every half year
-	SemiAnnually,
-	/// Interest compounds every year
-	Annually,
+pub struct Interest<Rate> {
+	rate: InterestRate<Rate>,
+	compounding: Option<Period>,
 }
 
 /// Interest rate method with compounding schedule information
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestRate<Rate> {
 	/// Interest accrues at a fixed rate
-	Fixed {
-		rate_per_year: Rate,
-		compounding: CompoundingSchedule,
-	},
+	Fixed { rate_per_year: Rate },
 }
 
 impl<Rate: FixedPointNumber> InterestRate<Rate> {
@@ -74,12 +55,8 @@ impl<Rate> InterestRate<Rate> {
 		F: FnOnce(Rate) -> Result<Rate, E>,
 	{
 		Ok(match self {
-			Self::Fixed {
-				rate_per_year,
-				compounding,
-			} => Self::Fixed {
+			Self::Fixed { rate_per_year } => Self::Fixed {
 				rate_per_year: f(rate_per_year)?,
-				compounding,
 			},
 		})
 	}

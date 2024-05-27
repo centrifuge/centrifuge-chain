@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{interest::InterestRate, Seconds};
-use chrono::{DateTime, Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate, Weekday};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -71,18 +71,14 @@ impl Maturity {
 }
 
 /// Interest payment periods
+///
+/// All interest payments are due at 12.00pm UTC.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
 
-	/// Interest is expected to be paid monthly
-	/// The associated value correspond to the paydown day in the month,
-	/// from 1-31.
-	/// The day will be adjusted to the month.
-	///
-	/// NOTE: Only day 1 is supported by now
-	Monthly(u8),
+	Defined(Periods),
 }
 
 /// Specify the paydown schedules of the loan
@@ -134,7 +130,8 @@ impl RepaymentSchedule {
 
 	pub fn generate_cashflows<Balance, Rate>(
 		&self,
-		origination_date: Seconds,
+		from: Seconds,
+		to: Seconds,
 		principal: Balance,
 		interest_rate: &InterestRate<Rate>,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
@@ -142,8 +139,8 @@ impl RepaymentSchedule {
 		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
 		Rate: FixedPointNumber + EnsureDiv,
 	{
-		let start_date = date::from_seconds(origination_date)?;
-		let end_date = date::from_seconds(self.maturity.date())?;
+		let start_date = date::from_seconds(from)?;
+		let end_date = date::from_seconds(to)?;
 
 		let (timeflow, periods_per_year) = match &self.interest_payments {
 			InterestPayments::None => (vec![], 1),

@@ -1,6 +1,6 @@
 use cfg_traits::{
 	self,
-	interest::{InterestAccrual, InterestRate, RateCollection},
+	interest::{Interest, InterestAccrual, InterestRate, RateCollection},
 	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
@@ -47,7 +47,7 @@ pub struct LoanInfo<T: Config> {
 	pub collateral: AssetOf<T>,
 
 	/// Interest rate per year
-	pub interest_rate: InterestRate<T::Rate>,
+	pub interest: Interest<T::Rate, T::Balance>,
 
 	/// Pricing properties for this loan
 	pub pricing: Pricing<T>,

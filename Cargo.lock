@@ -1604,6 +1604,7 @@ version = "0.1.0"
 dependencies = [
  "cfg-mocks",
  "cfg-primitives",
+ "chrono",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -1627,7 +1628,6 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-utils",
- "chrono",
  "frame-support",
  "hex",
  "hex-literal 0.3.4",

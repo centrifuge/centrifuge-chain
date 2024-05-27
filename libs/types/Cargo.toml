@@ -18,7 +18,6 @@ hex-literal = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
-chrono = { workspace = true }
 
 # substrate dependencies
 frame-support = { workspace = true }

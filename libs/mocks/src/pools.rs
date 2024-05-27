@@ -1,7 +1,7 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::{
-		investments::InvestmentAccountant, PoolInspect, PoolReserve, PriceValue, Seconds,
+		investments::InvestmentAccountant, time::Seconds, PoolInspect, PoolReserve, PriceValue,
 		TrancheTokenPrice,
 	};
 	use cfg_types::investments::InvestmentInfo;
