@@ -14,7 +14,7 @@ mod cases {
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
-	//mod liquidity_pools;
+	mod liquidity_pools;
 	mod loans;
 	mod oracles;
 	mod precompile;
