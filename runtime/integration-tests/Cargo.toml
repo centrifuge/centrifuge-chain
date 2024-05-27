@@ -54,11 +54,9 @@ polkadot-core-primitives = { workspace = true, features = ["std"] }
 polkadot-node-primitives = { workspace = true }
 polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
-polkadot-runtime = { workspace = true, features = ["std"] }
+polkadot-test-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
 polkadot-runtime-parachains = { workspace = true, features = ["std"] }
-rococo-runtime = { workspace = true, features = ["std"] }
-staging-kusama-runtime = { workspace = true, features = ["std"] }
 
 pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }
@@ -87,7 +85,6 @@ runtime-integration-tests-proc-macro = { workspace = true }
 axelar-gateway-precompile = { workspace = true, features = ["std"] }
 chainbridge = { workspace = true, features = ["std"] }
 cumulus-pallet-aura-ext = { workspace = true, features = ["std"] }
-cumulus-pallet-dmp-queue = { workspace = true, features = ["std"] }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-pallet-xcm = { workspace = true, features = ["std"] }
 cumulus-pallet-xcmp-queue = { workspace = true, features = ["std"] }

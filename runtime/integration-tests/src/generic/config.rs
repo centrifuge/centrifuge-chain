@@ -9,7 +9,7 @@ use cfg_types::{
 	domain_address::Domain,
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
@@ -92,7 +92,7 @@ pub trait Runtime:
 		Quantity = Quantity,
 		PriceId = OracleKey,
 	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
-	+ orml_asset_registry::Config<
+	+ orml_asset_registry::module::Config<
 		AssetId = CurrencyId,
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
@@ -122,7 +122,7 @@ pub trait Runtime:
 	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
-	+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
+	+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = RestrictedTransferLocation>
 	+ pallet_liquidity_pools::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
