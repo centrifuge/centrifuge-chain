@@ -8,21 +8,19 @@ mod impls;
 pub mod utils;
 
 // Test cases
-/*
 mod cases {
 	mod account_derivation;
 	mod block_rewards;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
-	mod liquidity_pools;
+	//mod liquidity_pools;
 	mod loans;
 	mod oracles;
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
 }
-*/
 
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage

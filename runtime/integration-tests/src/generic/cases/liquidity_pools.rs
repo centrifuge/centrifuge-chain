@@ -10,7 +10,7 @@ use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::{Quantity, Ratio},
 	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
@@ -61,10 +61,10 @@ use staging_xcm::{
 	latest::NetworkId,
 	prelude::XCM_VERSION,
 	v3::{
-		AssetId, Fungibility, Junction, Junction::*, Junctions, Junctions::*, MultiAsset,
-		MultiAssets, MultiLocation, WeightLimit,
+		AssetId, Fungibility, Junction, Junction::*, Junctions, Junctions::*, Asset,
+		Assets, MultiLocation, WeightLimit,
 	},
-	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
+	VersionedAsset, VersionedAssets, VersionedLocation,
 };
 
 use crate::{
@@ -75,10 +75,17 @@ use crate::{
 		utils::{
 			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
 			genesis::Genesis,
+            xcm::setup_xcm,
 		},
 	},
 	utils::accounts::Keyring,
 };
+
+mod orml_asset_registry {
+    // orml_asset_registry has remove the reexport of all pallet stuff,
+    // we reexport it again here
+    pub use orml_asset_registry::module;
+}
 
 /// The AUSD asset id
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
@@ -100,63 +107,6 @@ pub mod utils {
 			CrossChainTransferability::Xcm(x) => Some(x),
 			_ => None,
 		}
-	}
-
-	pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
-		env.parachain_state_mut(|| {
-			// Set the XCM version used when sending XCM messages to sibling.
-			assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Box::new(MultiLocation::new(
-					1,
-					Junctions::X1(Junction::Parachain(T::FudgeHandle::SIBLING_ID)),
-				)),
-				XCM_VERSION,
-			));
-		});
-
-		env.sibling_state_mut(|| {
-			// Set the XCM version used when sending XCM messages to parachain.
-			assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Box::new(MultiLocation::new(
-					1,
-					Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
-				)),
-				XCM_VERSION,
-			));
-		});
-
-		env.relay_state_mut(|| {
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_open_hrmp_channel(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				Id::from(T::FudgeHandle::PARA_ID),
-				Id::from(T::FudgeHandle::SIBLING_ID),
-				10,
-				1024,
-			));
-
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_open_hrmp_channel(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				Id::from(T::FudgeHandle::SIBLING_ID),
-				Id::from(T::FudgeHandle::PARA_ID),
-				10,
-				1024,
-			));
-
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_process_hrmp_open(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				0,
-			));
-		});
-
-		env.pass(Blocks::ByNumber(1));
 	}
 
 	pub fn setup_usdc_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
@@ -200,7 +150,7 @@ pub mod utils {
 			name: BoundedVec::default(),
 			symbol: BoundedVec::default(),
 			existential_deposit: 1_000_000_000,
-			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			location: Some(VersionedLocation::V3(MultiLocation::new(
 				1,
 				X2(
 					Parachain(T::FudgeHandle::SIBLING_ID),
@@ -366,7 +316,7 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: GLMR_ED,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
 				))),
@@ -385,7 +335,7 @@ mod development {
 
 		pub fn set_test_domain_router<T: Runtime + FudgeSupport>(
 			evm_chain_id: u64,
-			xcm_domain_location: VersionedMultiLocation,
+			xcm_domain_location: VersionedLocation,
 			currency_id: CurrencyId,
 		) {
 			let ethereum_xcm_router = EthereumXCMRouter::<T> {
@@ -430,14 +380,14 @@ mod development {
 				.expect("Tranche at index 0 exists")
 		}
 
-		/// Returns a `VersionedMultiLocation` that can be converted into
+		/// Returns a `VersionedLocation` that can be converted into
 		/// `LiquidityPoolsWrappedToken` which is required for cross chain asset
 		/// registration and transfer.
 		pub fn liquidity_pools_transferable_multilocation<T: Runtime + FudgeSupport>(
 			chain_id: u64,
 			address: [u8; 20],
-		) -> VersionedMultiLocation {
-			VersionedMultiLocation::V3(MultiLocation {
+		) -> VersionedLocation {
+			VersionedLocation::V3(MultiLocation {
 				parents: 0,
 				interior: X3(
 					PalletInstance(
@@ -788,7 +738,7 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: USDT_ED,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
 				))),
@@ -1482,7 +1432,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedMultiLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V3(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
@@ -1675,7 +1625,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedMultiLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V3(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
@@ -4572,7 +4522,7 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X2(
 						Parachain(T::FudgeHandle::PARA_ID),
@@ -5002,12 +4952,12 @@ mod development {
 				}
 
 				type RouterCreationFn<T> =
-					Box<dyn Fn(VersionedMultiLocation, CurrencyId) -> DomainRouter<T>>;
+					Box<dyn Fn(VersionedLocation, CurrencyId) -> DomainRouter<T>>;
 
 				pub fn get_axelar_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
 				{
 					Box::new(
-						|location: VersionedMultiLocation,
+						|location: VersionedLocation,
 						 currency_id: CurrencyId|
 						 -> DomainRouter<T> {
 							let router = AxelarXCMRouter::<T> {
@@ -5045,7 +4995,7 @@ mod development {
 				pub fn get_ethereum_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
 				{
 					Box::new(
-						|location: VersionedMultiLocation,
+						|location: VersionedLocation,
 						 currency_id: CurrencyId|
 						 -> DomainRouter<T> {
 							let router = EthereumXCMRouter::<T> {
@@ -5297,7 +5247,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X2(
 						Parachain(parachains::kusama::altair::ID),
@@ -5323,7 +5273,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
+				location: Some(VersionedLocation::V3(MultiLocation::new(1, Here))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -5387,7 +5337,7 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(
 							Parachain(T::FudgeHandle::PARA_ID),
@@ -5418,7 +5368,7 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(
 							Parachain(T::FudgeHandle::PARA_ID),
@@ -5736,7 +5686,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
+				location: Some(VersionedLocation::V3(MultiLocation::new(1, Here))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -5804,7 +5754,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V3(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						// We specify a custom fee_per_second and verify below that this value is
@@ -5916,7 +5866,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V3(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -6013,7 +5963,7 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						0,
 						X1(general_key(parachains::kusama::altair::AIR_KEY)),
 					))),
@@ -6040,7 +5990,7 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(
 							Parachain(T::FudgeHandle::SIBLING_ID),
@@ -6071,7 +6021,7 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(Parachain(2000), general_key(&[42])),
 					))),
@@ -6284,7 +6234,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 100_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
+				location: Some(VersionedLocation::V3(MultiLocation::parent())),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -6303,7 +6253,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					0,
 					X3(
 						PalletInstance(103),
@@ -6333,7 +6283,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X3(
 						Junction::Parachain(1000),
@@ -6361,7 +6311,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X2(
 						Parachain(para_id),
@@ -6390,7 +6340,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V2(
+				location: Some(VersionedLocation::V2(
 					staging_xcm::v2::MultiLocation::new(
 						1,
 						staging_xcm::v2::Junctions::X2(
@@ -6549,7 +6499,7 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						0,
 						X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 					))),
@@ -6576,7 +6526,7 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(
 							Parachain(parachains::polkadot::acala::ID),
@@ -6607,7 +6557,7 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V3(MultiLocation::new(
 						1,
 						X2(Parachain(2000), general_key(&[42])),
 					))),
@@ -6804,11 +6754,11 @@ mod centrifuge {
 			)
 		}
 
-		fn allowed_xcm_location() -> Location {
-			Location::XCM(BlakeTwo256::hash(&xcm_location().encode()))
+		fn allowed_xcm_location() -> RestrictedTransferLocation {
+			RestrictedTransferLocation::XCM(BlakeTwo256::hash(&xcm_location().encode()))
 		}
 
-		fn add_allowance<T: Runtime>(account: Keyring, asset: CurrencyId, location: Location) {
+		fn add_allowance<T: Runtime>(account: Keyring, asset: CurrencyId, location: RestrictedTransferLocation) {
 			assert_ok!(
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(account.into()).into(),
@@ -6841,7 +6791,7 @@ mod centrifuge {
 						pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 							RawOrigin::Signed(Keyring::Alice.into()).into(),
 							FilterCurrency::All,
-							Location::Local(Keyring::Bob.to_account_id())
+							RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
 						)
 					);
 
@@ -6904,7 +6854,7 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::All,
-						Location::Local(Keyring::Bob.to_account_id())
+						RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
 					)
 				);
 			});
@@ -7046,7 +6996,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					LP_ETH_USDC,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7172,7 +7122,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					LP_ETH_USDC,
-					Location::Address(domain_address.clone()),
+					RestrictedTransferLocation::Address(domain_address.clone()),
 				);
 
 				assert_noop!(
@@ -7228,7 +7178,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					USDC,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7316,7 +7266,7 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::Specific(USDC),
-						Location::XCM(BlakeTwo256::hash(
+						RestrictedTransferLocation::XCM(BlakeTwo256::hash(
 							&MultiLocation::new(
 								1,
 								X2(
@@ -7423,7 +7373,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					DOT_ASSET_ID,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7583,7 +7533,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V3(MultiLocation::new(
 					1,
 					X2(
 						Parachain(T::FudgeHandle::PARA_ID),
@@ -7919,7 +7869,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V3(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						// We specify a custom fee_per_second and verify below that this value is
@@ -8032,7 +7982,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V3(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -8168,7 +8118,7 @@ mod all {
 					},
 				),
 			};
-			let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
+			let tranche_asset = VersionedAsset::from(Asset::from((
 				AssetId::Concrete(tranche_location),
 				Fungibility::Fungible(42),
 			)));
@@ -8177,7 +8127,7 @@ mod all {
 				assert_noop!(
 					orml_xtokens::Pallet::<T>::transfer_multiasset(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(tranche_multi_asset),
+						Box::new(tranche_asset),
 						Box::new(
 							MultiLocation::new(
 								1,
@@ -8215,7 +8165,7 @@ mod all {
 					},
 				),
 			};
-			let tranche_multi_asset = MultiAsset::from((
+			let tranche_asset = Asset::from((
 				AssetId::Concrete(tranche_location),
 				Fungibility::Fungible(42),
 			));
@@ -8224,8 +8174,8 @@ mod all {
 				assert_noop!(
 					orml_xtokens::Pallet::<T>::transfer_multiassets(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
-							tranche_multi_asset
+						Box::new(VersionedAssets::from(Assets::from(vec![
+							tranche_asset
 						]))),
 						0,
 						Box::new(

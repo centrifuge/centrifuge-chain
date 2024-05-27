@@ -39,7 +39,7 @@ fn transfer_balance<T: Runtime>() {
 	let fee = env
 		.submit_now(
 			Keyring::Alice,
-			pallet_balances::Call::transfer {
+			pallet_balances::Call::transfer_allow_death {
 				dest: Keyring::Bob.into(),
 				value: TRANSFER,
 			},
@@ -89,7 +89,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 
 	env.submit_later(
 		Keyring::Alice,
-		pallet_balances::Call::transfer {
+		pallet_balances::Call::transfer_allow_death {
 			dest: Keyring::Bob.into(),
 			value: TRANSFER,
 		},
