@@ -41,7 +41,7 @@ members = [
   "runtime/centrifuge",
   "runtime/development",
   "runtime/common",
-  #"runtime/integration-tests",
+  "runtime/integration-tests",
   "runtime/integration-tests/procedural",
 ]
 
@@ -112,9 +112,7 @@ pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-featu
 staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 staging-xcm-builder = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 staging-xcm-executor = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-rococo-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-staging-kusama-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+polkadot-test-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 polkadot-parachain-primitives = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -268,8 +266,8 @@ orml-xcm-support = { git = "https://github.com/moonbeam-foundation/open-runtime-
 orml-xtokens = { git = "https://github.com/moonbeam-foundation/open-runtime-module-library", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
 
 # Centrifuge organization
-#fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.7.2" }
-#fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.7.2" }
+fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.7.2" }
+fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v1.7.2" }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.7.2" }
 
 # Foss3

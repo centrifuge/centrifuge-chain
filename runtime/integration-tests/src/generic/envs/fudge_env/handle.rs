@@ -23,7 +23,7 @@ use sp_consensus_aura::{sr25519::AuthorityId, AuraApi};
 use sp_consensus_babe::BabeApi;
 use sp_consensus_slots::SlotDuration;
 use sp_core::{crypto::AccountId32, ByteArray, H256};
-use sp_runtime::{traits::AccountIdLookup, BuildStorage, Storage};
+use sp_runtime::{BuildStorage, Storage};
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
@@ -78,7 +78,7 @@ pub type RelayClient<ConstructApi> = TFullClient<RelayBlock, ConstructApi, TWasm
 pub type ParachainClient<Block, ConstructApi> = TFullClient<Block, ConstructApi, TWasmExecutor>;
 
 pub trait FudgeHandle<T: Runtime> {
-	type RelayRuntime: frame_system::Config<AccountId = AccountId32, Lookup = AccountIdLookup<AccountId32, ()>>
+	type RelayRuntime: frame_system::Config<AccountId = AccountId32>
 		+ polkadot_runtime_parachains::paras::Config
 		+ polkadot_runtime_parachains::session_info::Config
 		+ polkadot_runtime_parachains::initializer::Config
@@ -185,7 +185,6 @@ pub trait FudgeHandle<T: Runtime> {
 		state
 			.insert_storage(
 				frame_system::GenesisConfig::<T> {
-					code: code.to_vec(),
 					_config: Default::default(),
 				}
 				.build_storage()
@@ -250,8 +249,14 @@ pub trait FudgeHandle<T: Runtime> {
 			Ok(digest)
 		});
 
-		RelaychainBuilder::new(init, |client| (cidp(client), dp))
-			.expect("ESSENTIAL: Relaychain Builder can be created.")
+		let mut runtime = RelaychainBuilder::new(init, |client| (cidp(client), dp))
+			.expect("ESSENTIAL: Relaychain Builder can be created.");
+
+        runtime.with_mut_state(|| {
+            frame_system::Pallet::<T>::update_code_in_storage(code);
+        }).unwrap();
+
+        runtime
 	}
 
 	fn new_parachain_builder(
@@ -269,7 +274,6 @@ pub trait FudgeHandle<T: Runtime> {
 		state
 			.insert_storage(
 				frame_system::GenesisConfig::<T> {
-					code: code.to_vec(),
 					_config: Default::default(),
 				}
 				.build_storage()
@@ -345,7 +349,13 @@ pub trait FudgeHandle<T: Runtime> {
 			})
 		};
 
-		ParachainBuilder::new(para_id, init, |client| (cidp, dp(client)))
-			.expect("ESSENTIAL: Parachain Builder can be created.")
+		let mut runtime = ParachainBuilder::new(para_id, init, |client| (cidp, dp(client)))
+			.expect("ESSENTIAL: Parachain Builder can be created.");
+
+        runtime.with_mut_state(|| {
+            frame_system::Pallet::<T>::update_code_in_storage(code);
+        }).unwrap();
+
+        runtime
 	}
 }

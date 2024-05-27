@@ -8,6 +8,7 @@ mod impls;
 pub mod utils;
 
 // Test cases
+/*
 mod cases {
 	mod account_derivation;
 	mod block_rewards;
@@ -21,6 +22,7 @@ mod cases {
 	mod proxy;
 	mod restricted_transfers;
 }
+*/
 
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage
