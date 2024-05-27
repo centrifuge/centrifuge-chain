@@ -45,7 +45,6 @@ use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
 };
-use staging_xcm::v4::Junctions::{X2, X3};
 use staging_xcm::{
 	latest::{Location, NetworkId},
 	prelude::{AccountKey20, GeneralIndex, GeneralKey, GlobalConsensus, PalletInstance, Parachain},
@@ -615,15 +614,14 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					.expect("fit in the BoundedVec"),
 				symbol: b"USDT".to_vec().try_into().expect("fit in the BoundedVec"),
 				existential_deposit: 0u128,
-				location: Some(staging_xcm::VersionedLocation::V4(Location {
-					parents: 1,
-					interior: X3([
+				location: Some(staging_xcm::VersionedLocation::V4(Location::new(
+					1,
+					[
 						Parachain(parachains::rococo::rocksmine::ID),
 						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
 						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
-					]
-					.into()),
-				})),
+					],
+				))),
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: false,
@@ -644,17 +642,16 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					.expect("fit in the BoundedVec"),
 				symbol: b"AUSD".to_vec().try_into().expect("fit in the BoundedVec"),
 				existential_deposit: 0u128,
-				location: Some(staging_xcm::VersionedLocation::V4(Location {
-					parents: 1,
-					interior: X2([
+				location: Some(staging_xcm::VersionedLocation::V4(Location::new(
+					1,
+					[
 						Parachain(parachains::rococo::acala::ID),
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
 							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
 						},
-					]
-					.into()),
-				})),
+					],
+				))),
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: false,
@@ -702,9 +699,9 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					.try_into()
 					.expect("fit in the BoundedVec"),
 				existential_deposit: usdc::EXISTENTIAL_DEPOSIT,
-				location: Some(staging_xcm::VersionedLocation::V4(Location {
-					parents: 0,
-					interior: X3([
+				location: Some(staging_xcm::VersionedLocation::V4(Location::new(
+					0,
+					[
 						PalletInstance(development_runtime::LiquidityPoolsPalletIndex::get()),
 						GlobalConsensus(NetworkId::Ethereum {
 							chain_id: usdc::CHAIN_ID_ETH_GOERLI_TESTNET,
@@ -713,9 +710,8 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 							network: None,
 							key: usdc::CONTRACT_ETH_GOERLI,
 						},
-					]
-					.into()),
-				})),
+					],
+				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::LiquidityPools,
 					mintable: false,
