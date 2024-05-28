@@ -252,6 +252,7 @@ fn set_balance_native_works() {
 				1,
 				CurrencyId::Cfg,
 				200,
+				100,
 			));
 			assert_eq!(System::account(1).data.free, 200);
 		})
@@ -267,26 +268,35 @@ fn set_balance_foreign_works() {
 				1,
 				CurrencyId::AUSD,
 				200,
+				100,
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 200);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 100);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
 				RuntimeOrigin::root(),
 				1,
 				CurrencyId::AUSD,
 				400,
+				200,
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 400);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 200);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
 				RuntimeOrigin::root(),
 				1111,
 				CurrencyId::RestrictedCoin,
 				999,
+				80
 			));
 			assert!(
 				orml_tokens::Pallet::<Runtime>::accounts(1111, CurrencyId::RestrictedCoin).free
 					== 999
+			);
+			assert!(
+				orml_tokens::Pallet::<Runtime>::accounts(1111, CurrencyId::RestrictedCoin).reserved
+					== 80
 			);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
@@ -294,9 +304,14 @@ fn set_balance_foreign_works() {
 				101,
 				CurrencyId::RestrictedCoin,
 				0,
+				100
 			));
 			assert!(
 				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).free == 0
+			);
+			assert!(
+				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).reserved
+					== 100
 			);
 		})
 }
