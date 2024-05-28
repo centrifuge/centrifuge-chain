@@ -305,6 +305,7 @@ pub mod investment_portfolios {
 		T: frame_system::Config<AccountId = AccountId>
 			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
 			+ orml_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
+			+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 			+ pallet_pool_system::Config<PoolId = PoolId, CurrencyId = CurrencyId>,
 	{
 		let mut portfolio =
@@ -316,14 +317,17 @@ pub mod investment_portfolios {
 				let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(pool_id)
 					.expect("Pool must exist; qed");
 
-				let free_balance = orml_tokens::Pallet::<T>::reducible_balance(
+				let free_balance = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 					currency,
 					&investor,
 					Preservation::Preserve,
 					Fortitude::Polite,
 				);
-				let reserved_balance =
-					orml_tokens::Pallet::<T>::balance_on_hold(currency, &(), &investor);
+				let reserved_balance = pallet_restricted_tokens::Pallet::<T>::balance_on_hold(
+					currency,
+					&(),
+					&investor,
+				);
 
 				portfolio
 					.entry(TrancheCurrency::generate(pool_id, tranche_id))
@@ -351,7 +355,7 @@ pub mod investment_portfolios {
 			let amount = pallet_investments::InvestOrders::<T>::get(&investor, invest_id)
 				.map(|order| order.amount())
 				.unwrap_or_default();
-			let free_tranche_tokens_new = orml_tokens::Pallet::<T>::reducible_balance(
+			let free_tranche_tokens_new = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 				invest_id.into(),
 				&investor,
 				Preservation::Preserve,
@@ -379,7 +383,7 @@ pub mod investment_portfolios {
 			let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(invest_id.of_pool())
 				.expect("Pool must exist; qed");
 
-			let balance_before = orml_tokens::Pallet::<T>::reducible_balance(
+			let balance_before = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 				pool_currency,
 				&investor,
 				Preservation::Preserve,
@@ -393,7 +397,7 @@ pub mod investment_portfolios {
 			let amount = pallet_investments::RedeemOrders::<T>::get(&investor, invest_id)
 				.map(|order| order.amount())
 				.unwrap_or_default();
-			let balance_after = orml_tokens::Pallet::<T>::reducible_balance(
+			let balance_after = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 				pool_currency,
 				&investor,
 				Preservation::Preserve,
