@@ -7392,7 +7392,6 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-restricted-tokens",
  "parity-scale-codec",
  "scale-info",
  "serde",
