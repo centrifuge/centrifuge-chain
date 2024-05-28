@@ -13,6 +13,7 @@
 //! Centrifuge Runtime-Common Migrations
 
 pub mod increase_storage_version;
+pub mod loans;
 pub mod nuke;
 pub mod precompile_account_codes;
 

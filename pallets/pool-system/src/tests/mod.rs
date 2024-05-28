@@ -506,7 +506,7 @@ fn pool_constraints_pass() {
 #[test]
 fn epoch() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 		let borrower = 3;
 
@@ -744,7 +744,7 @@ fn epoch() {
 #[test]
 fn submission_period() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -932,7 +932,7 @@ fn submission_period() {
 #[test]
 fn execute_info_removed_after_epoch_execute() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -1021,7 +1021,7 @@ fn execute_info_removed_after_epoch_execute() {
 #[test]
 fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 0_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 		let pool_id = 0;
 
@@ -1556,7 +1556,7 @@ fn valid_tranche_structure_is_enforced() {
 #[test]
 fn triger_challange_period_with_zero_solution() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -1650,7 +1650,7 @@ fn triger_challange_period_with_zero_solution() {
 #[test]
 fn min_challenge_time_is_respected() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -1747,7 +1747,7 @@ fn min_challenge_time_is_respected() {
 #[test]
 fn only_zero_solution_is_accepted_max_reserve_violated() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -1948,7 +1948,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 #[test]
 fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
@@ -2138,7 +2138,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 #[test]
 fn only_usd_as_pool_currency_allowed() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 
 		// Initialize pool with initial investments
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
@@ -2331,7 +2331,7 @@ fn creation_takes_deposit() {
 		// Pool creation one:
 		// Owner 2, first deposit
 		// total deposit for this owner is 1
-		let pool_owner = 2_u64;
+		let pool_owner = DEFAULT_POOL_OWNER;
 
 		assert_ok!(PoolSystem::create(
 			pool_owner.clone(),
@@ -2742,7 +2742,6 @@ mod pool_fees {
 	use super::*;
 	use crate::{mock::default_pool_fees, Event};
 
-	const POOL_OWNER: AccountId = 2;
 	const INVESTMENT_AMOUNT: Balance = DEFAULT_POOL_MAX_RESERVE / 10;
 	const NAV_AMOUNT: Balance = INVESTMENT_AMOUNT / 2 + 2_345_000;
 	const FEE_AMOUNT_FIXED: Balance = NAV_AMOUNT / 10;
@@ -2761,8 +2760,8 @@ mod pool_fees {
 		let senior_interest_rate =
 			interest_rate / Rate::saturating_from_integer(SECONDS_PER_YEAR) + One::one();
 		assert_ok!(PoolSystem::create(
-			POOL_OWNER,
-			POOL_OWNER,
+			DEFAULT_POOL_OWNER,
+			DEFAULT_POOL_OWNER,
 			DEFAULT_POOL_ID,
 			vec![
 				TrancheInput {
@@ -2872,11 +2871,11 @@ mod pool_fees {
 				INVESTMENT_AMOUNT
 			));
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			assert_ok!(PoolSystem::submit_solution(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID,
 				vec![
 					TrancheSolution {
@@ -2892,7 +2891,7 @@ mod pool_fees {
 
 			// Execute epoch 1 should reduce reserve due to redemption
 			assert_ok!(PoolSystem::execute_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID
 			));
 			assert!(!EpochExecution::<Runtime>::contains_key(DEFAULT_POOL_ID));
@@ -2920,7 +2919,7 @@ mod pool_fees {
 			// Closing epoch 2 should not change anything but reserve.available
 			next_block();
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			assert_eq!(
@@ -3003,7 +3002,7 @@ mod pool_fees {
 			));
 			next_block();
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			assert_eq!(
@@ -3056,7 +3055,7 @@ mod pool_fees {
 			// Executing epoch should reduce FeeNav by disbursement and transfer from
 			// PoolFees account to destination
 			assert_ok!(PoolSystem::submit_solution(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID,
 				vec![
 					TrancheSolution {
@@ -3070,7 +3069,7 @@ mod pool_fees {
 				]
 			));
 			assert_ok!(PoolSystem::execute_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID
 			));
 			assert!(!EpochExecution::<Runtime>::contains_key(DEFAULT_POOL_ID));
@@ -3105,7 +3104,7 @@ mod pool_fees {
 			next_block();
 			test_nav_up(DEFAULT_POOL_ID, new_nav_amount - NAV_AMOUNT);
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 
@@ -3158,7 +3157,7 @@ mod pool_fees {
 
 			// NAV = 0 + AUM - PoolFeesNAV = -AUM
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			assert!(System::events().iter().any(|e| match e.event {
@@ -3227,7 +3226,7 @@ mod pool_fees {
 			// Closing should update fee nav
 			next_block();
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			let fee_amount_from_charge =
@@ -3259,7 +3258,7 @@ mod pool_fees {
 
 			// Executin should reduce fee_nav by disbursement and transfer
 			assert_ok!(PoolSystem::submit_solution(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID,
 				vec![
 					TrancheSolution {
@@ -3273,7 +3272,7 @@ mod pool_fees {
 				]
 			));
 			assert_ok!(PoolSystem::execute_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID
 			));
 			assert_eq!(
@@ -3345,7 +3344,7 @@ mod pool_fees {
 			// Closing should update fee nav
 			next_block();
 			assert_ok!(PoolSystem::close_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				0
 			));
 			assert_eq!(
@@ -3362,7 +3361,7 @@ mod pool_fees {
 			// by fees
 			assert_noop!(
 				PoolSystem::submit_solution(
-					RuntimeOrigin::signed(POOL_OWNER),
+					RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 					DEFAULT_POOL_ID,
 					vec![
 						TrancheSolution {
@@ -3378,7 +3377,7 @@ mod pool_fees {
 				Error::<Runtime>::InsufficientCurrency
 			);
 			assert_ok!(PoolSystem::submit_solution(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID,
 				vec![
 					TrancheSolution {
@@ -3392,7 +3391,7 @@ mod pool_fees {
 				]
 			));
 			assert_ok!(PoolSystem::execute_epoch(
-				RuntimeOrigin::signed(POOL_OWNER),
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
 				DEFAULT_POOL_ID
 			));
 			assert_pending_fees(DEFAULT_POOL_ID, fees.clone(), vec![(fee_nav, 0, None)]);

@@ -52,7 +52,7 @@ pub fn test_runtimes(args: TokenStream, input: TokenStream) -> TokenStream {
 	let func_name = &func.sig.ident;
 
 	quote! {
-		crate::test_for_runtimes!(#args, #func_name);
+		crate::__test_for_runtimes!(#args, #func_name);
 		#func
 	}
 	.into()

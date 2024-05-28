@@ -27,8 +27,10 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
-	assert_ok, derive_impl, parameter_types,
-	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	assert_ok, derive_impl,
+	dispatch::RawOrigin,
+	parameter_types,
+	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, PalletId, StorageHasher,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -37,11 +39,8 @@ use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
 use parity_scale_codec::Encode;
 use sp_arithmetic::FixedPointNumber;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{ConstU128, Zero},
-	BuildStorage,
-};
+use sp_core::{ConstU128, H256};
+use sp_runtime::{traits::Zero, BuildStorage};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -383,7 +382,22 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
+pub struct All;
+impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
+	type Success = ();
+
+	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
+		Ok(())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		Ok(RawOrigin::Root.into())
+	}
+}
+
 impl Config for Runtime {
+	type AdminOrigin = All;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
