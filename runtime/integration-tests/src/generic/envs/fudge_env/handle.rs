@@ -252,11 +252,13 @@ pub trait FudgeHandle<T: Runtime> {
 		let mut runtime = RelaychainBuilder::new(init, |client| (cidp(client), dp))
 			.expect("ESSENTIAL: Relaychain Builder can be created.");
 
-        runtime.with_mut_state(|| {
-            frame_system::Pallet::<T>::update_code_in_storage(code);
-        }).unwrap();
+		runtime
+			.with_mut_state(|| {
+				frame_system::Pallet::<T>::update_code_in_storage(code);
+			})
+			.unwrap();
 
-        runtime
+		runtime
 	}
 
 	fn new_parachain_builder(
@@ -352,10 +354,12 @@ pub trait FudgeHandle<T: Runtime> {
 		let mut runtime = ParachainBuilder::new(para_id, init, |client| (cidp, dp(client)))
 			.expect("ESSENTIAL: Parachain Builder can be created.");
 
-        runtime.with_mut_state(|| {
-            frame_system::Pallet::<T>::update_code_in_storage(code);
-        }).unwrap();
+		runtime
+			.with_mut_state(|| {
+				frame_system::Pallet::<T>::update_code_in_storage(code);
+			})
+			.unwrap();
 
-        runtime
+		runtime
 	}
 }

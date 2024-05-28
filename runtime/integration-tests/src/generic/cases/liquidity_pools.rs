@@ -52,7 +52,7 @@ use sp_core::{Get, H160, U256};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, BadOrigin, ConstU32, Convert as C1, Convert as C2, EnsureAdd, Hash,
-		One, Zero,
+		One, StaticLookup, Zero,
 	},
 	BoundedVec, BuildStorage, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 	WeakBoundedVec,
@@ -70,7 +70,7 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
+		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
 		utils::{
 			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
 			genesis::Genesis, xcm::setup_xcm,
@@ -213,8 +213,6 @@ pub mod utils {
 		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
 	}
 }
-
-type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
 
 use utils::*;
 
@@ -5616,7 +5614,9 @@ mod altair {
 				assert_ok!(
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
+						<FudgeRelayRuntime<T> as frame_system::Config>::Lookup::unlookup(
+							Keyring::Alice.id()
+						),
 						transfer_amount * 2,
 					)
 				);
@@ -6142,7 +6142,7 @@ mod altair {
 				register_ksm::<T>();
 
 				assert_eq!(
-					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
+					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
 					Some(KSM_ASSET_ID),
 				);
 
@@ -6411,7 +6411,9 @@ mod centrifuge {
 				assert_ok!(
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
+						<FudgeRelayRuntime<T> as frame_system::Config>::Lookup::unlookup(
+							Keyring::Alice.id()
+						),
 						alice_initial_dot,
 					)
 				);
@@ -6660,7 +6662,7 @@ mod centrifuge {
 				register_dot::<T>();
 
 				assert_eq!(
-					<CurrencyIdConvert as C1<_, _>>::convert(dot_location),
+					<CurrencyIdConvert as C1<_, _>>::convert(dot_location.clone()),
 					Some(DOT_ASSET_ID),
 				);
 

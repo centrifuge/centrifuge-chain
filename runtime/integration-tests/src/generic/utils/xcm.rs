@@ -8,10 +8,8 @@ use staging_xcm::{
 use crate::generic::{
 	config::Runtime,
 	env::{Blocks, Env},
-	envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
+	envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
 };
-
-type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
 
 pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 	env.parachain_state_mut(|| {
