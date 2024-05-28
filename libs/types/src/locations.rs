@@ -45,8 +45,9 @@ impl From<VersionedLocation> for RestrictedTransferLocation {
 		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&vml.encode()))
 
-		// TODO-1.7: I'm afraid of locations translated from v3 to v4 will generate a different hash here.
-		// How this affect our current chain state?
+		// TODO-1.7: I'm afraid of locations translated from v3 to v4 will
+		// generate a different hash here. How this affect our current chain
+		// state?
 	}
 }
 

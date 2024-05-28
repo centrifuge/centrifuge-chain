@@ -123,8 +123,10 @@ pub trait Runtime:
 	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
-	+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = RestrictedTransferLocation>
-	+ pallet_liquidity_pools::Config<
+	+ pallet_transfer_allowlist::Config<
+		CurrencyId = FilterCurrency,
+		Location = RestrictedTransferLocation,
+	> + pallet_liquidity_pools::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		PoolId = PoolId,

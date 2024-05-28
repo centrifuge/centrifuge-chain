@@ -21,7 +21,7 @@ use crate::{
 			self,
 			currency::{cfg, register_currency, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
-            xcm::setup_xcm,
+			xcm::setup_xcm,
 		},
 	},
 	utils::accounts::Keyring,
@@ -86,7 +86,7 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 		dest: Box::new(
 			Location::new(
 				1,
-			    [
+				[
 					Parachain(T::FudgeHandle::SIBLING_ID),
 					Junction::AccountId32 {
 						id: TO.into(),

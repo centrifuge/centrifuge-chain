@@ -143,8 +143,10 @@ mod test {
 	use cfg_types::ids::TREASURY_PALLET_ID;
 	use frame_support::{
 		derive_impl, parameter_types,
-		traits::tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		traits::{Currency, FindAuthor},
+		traits::{
+			tokens::{PayFromAccount, UnityAssetBalanceConversion},
+			Currency, FindAuthor,
+		},
 		PalletId,
 	};
 	use sp_core::ConstU64;
@@ -192,12 +194,20 @@ mod test {
 
 	impl pallet_treasury::Config for Runtime {
 		type ApproveOrigin = frame_system::EnsureRoot<AccountId>;
+		type AssetKind = ();
+		type BalanceConverter = UnityAssetBalanceConversion;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper = ();
+		type Beneficiary = Self::AccountId;
+		type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 		type Burn = ();
 		type BurnDestination = ();
 		type Currency = pallet_balances::Pallet<Runtime>;
 		type MaxApprovals = MaxApprovals;
 		type OnSlash = ();
 		type PalletId = TreasuryPalletId;
+		type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+		type PayoutPeriod = ConstU64<10>;
 		type ProposalBond = ();
 		type ProposalBondMaximum = ();
 		type ProposalBondMinimum = ();
@@ -207,14 +217,6 @@ mod test {
 		type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
 		type SpendPeriod = ();
 		type WeightInfo = ();
-		type AssetKind = ();
-		type Beneficiary = Self::AccountId;
-		type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-		type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
-		type BalanceConverter = UnityAssetBalanceConversion;
-		type PayoutPeriod = ConstU64<10>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type BenchmarkHelper = ();
 	}
 
 	pub struct OneAuthor;

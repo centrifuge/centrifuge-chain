@@ -61,12 +61,20 @@ parameter_types! {
 
 impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
+	type AssetKind = ();
+	type BalanceConverter = UnityAssetBalanceConversion;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type Beneficiary = Self::AccountId;
+	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 	type Burn = ();
 	type BurnDestination = ();
 	type Currency = Balances;
 	type MaxApprovals = ();
 	type OnSlash = Treasury;
 	type PalletId = TreasuryPalletId;
+	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+	type PayoutPeriod = ConstU64<10>;
 	type ProposalBond = ();
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();
@@ -76,14 +84,6 @@ impl pallet_treasury::Config for Runtime {
 	type SpendOrigin = EnsureSignedBy<Admin, u64>;
 	type SpendPeriod = ();
 	type WeightInfo = ();
-	type AssetKind = ();
-	type Beneficiary = Self::AccountId;
-	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
-	type BalanceConverter = UnityAssetBalanceConversion;
-	type PayoutPeriod = ConstU64<10>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
 }
 
 parameter_types! {

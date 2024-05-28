@@ -181,7 +181,7 @@ impl_fudge_support!(
 	FudgeDevelopment,
 	polkadot_test_runtime,
 	default_relay_session_keys(),
-    development_runtime,
+	development_runtime,
 	2000,
 	2001
 );
@@ -190,7 +190,7 @@ impl_fudge_support!(
 	FudgeAltair,
 	polkadot_test_runtime,
 	default_relay_session_keys(),
-    altair_runtime,
+	altair_runtime,
 	2088,
 	2089
 );
@@ -199,7 +199,7 @@ impl_fudge_support!(
 	FudgeCentrifuge,
 	polkadot_test_runtime,
 	default_relay_session_keys(),
-    centrifuge_runtime,
+	centrifuge_runtime,
 	2031,
 	2032
 );
