@@ -276,7 +276,9 @@ pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", bran
 
 # Moonbeam fork of polkadot-evm/frontier
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
-fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = ["serde"] }
+fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = [
+  "serde",
+] }
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2" }
 pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v1.7.2", features = [
   "forbid-evm-reentrancy",
@@ -380,4 +382,3 @@ polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot-sdk", 
 # Check issue: https://github.com/paritytech/arkworks-substrate/issues/9
 [patch."https://github.com/paritytech/polkadot-sdk"]
 sp-crypto-ec-utils = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.7.2" }
-
