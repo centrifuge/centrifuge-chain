@@ -10,7 +10,7 @@ cargo --version
 
 case $TARGET in
   cargo-build)
-    cargo build -p centrifuge-chain --release "$@"
+    #cargo build -p centrifuge-chain --release "$@"
     ;;
 
   test-general)

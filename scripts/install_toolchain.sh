@@ -14,6 +14,7 @@ rustup toolchain install $RUST_TOOLCHAIN
 rustup toolchain install nightly
 rustup default $RUST_TOOLCHAIN
 rustup component add rustfmt
+rustup component add rust-src
 rustup component add --toolchain nightly rustfmt
 
 rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
