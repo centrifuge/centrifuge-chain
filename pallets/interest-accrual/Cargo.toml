@@ -32,6 +32,7 @@ cfg-types = { workspace = true }
 
 [dev-dependencies]
 bitflags = { workspace = true }
+cfg-mocks = { workspace = true, default_features = true }
 
 [features]
 default = ["std"]

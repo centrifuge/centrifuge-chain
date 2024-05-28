@@ -16,7 +16,7 @@ use strum::EnumCount;
 
 use super::time::{Period, Seconds};
 
-pub struct Interest<Rate> {
+pub struct InterestModel<Rate> {
 	rate: InterestRate<Rate>,
 	compounding: Option<Period>,
 }
@@ -72,56 +72,36 @@ impl<Rate: EnsureAdd + EnsureSub> InterestRate<Rate> {
 	}
 }
 
-/// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<Rate, Balance, Adjustment> {
-	/// The maximum number of rates this `InterestAccrual` can
-	/// contain. It is necessary for rate calculations in consumers of
-	/// this pallet, but is otherwise unused in this interface.
-	type MaxRateCount: Get<u32>;
-	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
-	type Rates: RateCollection<Rate, Balance, Self::NormalizedDebt>;
-
-	/// Calculate the debt at an specific moment
-	fn calculate_debt(
-		interest_rate: &InterestRate<Rate>,
-		normalized_debt: Self::NormalizedDebt,
-		when: Seconds,
-	) -> Result<Balance, DispatchError>;
-
-	/// Increase or decrease the normalized debt
-	fn adjust_normalized_debt(
-		interest_rate: &InterestRate<Rate>,
-		normalized_debt: Self::NormalizedDebt,
-		adjustment: Adjustment,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Re-normalize a debt for a new interest rate
-	fn renormalize_debt(
-		old_interest_rate: &InterestRate<Rate>,
-		new_interest_rate: &InterestRate<Rate>,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Validate and indicate that a yearly rate is in use
-	fn reference_rate(interest_rate: &InterestRate<Rate>) -> DispatchResult;
-
-	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate: &InterestRate<Rate>) -> DispatchResult;
-
-	/// Ask if the rate is valid to use by the implementation
-	fn validate_rate(interest_rate: &InterestRate<Rate>) -> DispatchResult;
-
-	/// Returns a collection of pre-computed rates to perform multiple
-	/// operations with
-	fn rates() -> Self::Rates;
+pub struct InterestPayment<Balance> {
+	from: Seconds,
+	to: Seconds,
+	amount: Balance,
 }
 
-/// A collection of pre-computed interest rates for performing interest accrual
-pub trait RateCollection<Rate, Balance, NormalizedDebt> {
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		&self,
-		interest_rate: &InterestRate<Rate>,
-		normalized_debt: NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
+pub struct Interest<Balance> {
+	partial_front_period: InterestPayment<Balance>,
+	full_periods: InterestPayment<Balance>,
+	partial_back_period: InterestPayment<Balance>,
+}
+
+impl<Balance> Interest<Balance> {
+	pub fn total(&self) -> Balance {
+		todo!()
+	}
+}
+
+/// A trait that can be used to calculate interest accrual for debt
+pub trait InterestAccrual<Rate, Balance, Adjustment> {
+	/// Calculate the debt at an specific moment
+	fn calculate_debt(
+		interest_rate: &InterestModel<Rate>,
+		debt: Balance,
+		when: Seconds,
+	) -> Result<Interest<Balance>, DispatchError>;
+
+	fn accumulate_rate(
+		interest_rate: &InterestModel<Rate>,
+		acc_rate: Rate,
+		when: Seconds,
+	) -> Result<Rate, DispatchError>;
 }

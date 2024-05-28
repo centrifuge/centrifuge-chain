@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use chrono::{DateTime, Datelike, Days, Months, NaiveDate, NaiveDateTime, TimeDelta, Timelike};
 use frame_support::traits::UnixTime;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -9,29 +11,162 @@ use sp_arithmetic::{
 use sp_runtime::DispatchError;
 use sp_std::ops::Add;
 
+impl num_traits::Num for Seconds {
+	type FromStrRadixErr = ParseIntError;
+
+	fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+		Ok(Self(u64::from_str_radix(str, radix)?))
+	}
+}
+
+impl core::ops::Not for Seconds {
+	type Output = Self;
+
+	fn not(self) -> Self::Output {
+		Self(!self.0)
+	}
+}
+
+impl num_traits::NumCast for Seconds {
+	fn from<T: num_traits::ToPrimitive>(n: T) -> Option<Self> {
+		n.to_u64().map(Self)
+	}
+}
+
+impl num_traits::ToPrimitive for Seconds {
+	fn to_i64(&self) -> Option<i64> {
+		self.0.to_i64()
+	}
+
+	fn to_u64(&self) -> Option<u64> {
+		Some(self.0)
+	}
+}
+
 macro_rules! implement_base_math {
 	(
-		$name:ident,
-		$inner_type:ty
+		$name:ident
 	) => {
 		impl $name {
 			/// Get the inner value.
-			pub fn inner(&self) -> $inner_type {
+			pub fn inner(&self) -> u64 {
 				self.0
 			}
 		}
 
-		impl From<$inner_type> for $name {
-			fn from(int: $inner_type) -> Self {
+		impl Default for $name {
+			fn default() -> Self {
+				Self(<u64>::default())
+			}
+		}
+
+		impl From<u64> for $name {
+			fn from(int: u64) -> Self {
 				$name(int)
 			}
 		}
 
-		impl From<u32> for $name {
-			fn from(t: u32) -> $name {
-				$name(t.into())
+		impl From<u8> for $name {
+			fn from(int: u8) -> Self {
+				$name(int.into())
 			}
 		}
+
+		impl From<u16> for $name {
+			fn from(int: u16) -> Self {
+				$name(int.into())
+			}
+		}
+
+		impl From<u32> for $name {
+			fn from(int: u32) -> Self {
+				$name(int.into())
+			}
+		}
+
+		/*
+		impl TryFrom<u8> for $name {
+			type Error = DispatchError;
+
+			fn try_from(value: u8) -> Result<Self, Self::Error> {
+				u64::ensure_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u8> for $name {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<Self, Self::Error> {
+				u8::ensure_from(self).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryFrom<u16> for $name {
+			type Error = DispatchError;
+
+			fn try_from(value: u16) -> Result<Self, Self::Error> {
+				Self::ensure_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u16> for $name {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<Self, Self::Error> {
+				$name::try_from(self).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryFrom<u32> for $name {
+			type Error = DispatchError;
+
+			fn try_from(value: u32) -> Result<Self, Self::Error> {
+				Self::ensure_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u32> for $name {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<Self, Self::Error> {
+				$name::try_from(self).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryFrom<u64> for $name {
+			type Error = DispatchError;
+
+			fn try_from(value: u64) -> Result<Self, Self::Error> {
+				Self::ensure_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u64> for $name {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<Self, Self::Error> {
+				$name::try_from(self).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryFrom<u128> for $name {
+			type Error = DispatchError;
+
+			fn try_from(value: u128) -> Result<Self, Self::Error> {
+				Self::ensure_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u128> for $name {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<Self, Self::Error> {
+				$name::try_from(self).map($name).map_err(Into::into)
+			}
+		}
+
+		 */
+
 		impl core::ops::Add for $name {
 			type Output = Self;
 
@@ -88,6 +223,168 @@ macro_rules! implement_base_math {
 			}
 		}
 
+		impl core::ops::Rem for $name {
+			type Output = Self;
+
+			fn rem(self, rhs: Self) -> Self::Output {
+				$name(self.0 % rhs.0)
+			}
+		}
+
+		impl core::ops::RemAssign for $name {
+			fn rem_assign(&mut self, rhs: Self) {
+				self.0 = self.0 % rhs.0;
+			}
+		}
+
+		impl core::ops::Shl<u32> for $name {
+			type Output = Self;
+
+			fn shl(self, rhs: u32) -> Self::Output {
+				$name(self.0 << rhs)
+			}
+		}
+
+		impl core::ops::ShlAssign<u32> for $name {
+			fn shl_assign(&mut self, rhs: u32) {
+				self.0 = self.0 << rhs;
+			}
+		}
+
+		impl core::ops::Shr<u32> for $name {
+			type Output = Self;
+
+			fn shr(self, rhs: u32) -> Self::Output {
+				$name(self.0 >> rhs)
+			}
+		}
+
+		impl core::ops::ShrAssign<u32> for $name {
+			fn shr_assign(&mut self, rhs: u32) {
+				self.0 = self.0 >> rhs;
+			}
+		}
+
+		/// ------------------------------- ///
+		impl core::ops::Shl<usize> for $name {
+			type Output = Self;
+
+			fn shl(self, rhs: usize) -> Self::Output {
+				$name(self.0 << rhs)
+			}
+		}
+
+		impl core::ops::ShlAssign<usize> for $name {
+			fn shl_assign(&mut self, rhs: usize) {
+				self.0 = self.0 << rhs;
+			}
+		}
+
+		impl core::ops::Shr<usize> for $name {
+			type Output = Self;
+
+			fn shr(self, rhs: usize) -> Self::Output {
+				$name(self.0 >> rhs)
+			}
+		}
+
+		impl core::ops::ShrAssign<usize> for $name {
+			fn shr_assign(&mut self, rhs: usize) {
+				self.0 = self.0 >> rhs;
+			}
+		}
+		/// ------------------------------- ///
+
+		impl num_traits::CheckedNeg for $name {
+			fn checked_neg(&self) -> Option<Self> {
+				self.0.checked_neg().map($name)
+			}
+		}
+
+		impl num_traits::CheckedRem for $name {
+			fn checked_rem(&self, rhs: &Self) -> Option<Self> {
+				self.0.checked_rem(rhs.0).map($name)
+			}
+		}
+
+		impl num_traits::CheckedShl for $name {
+			fn checked_shl(&self, rhs: u32) -> Option<Self> {
+				self.0.checked_shl(rhs).map($name)
+			}
+		}
+
+		impl num_traits::CheckedShr for $name {
+			fn checked_shr(&self, rhs: u32) -> Option<Self> {
+				self.0.checked_shr(rhs).map($name)
+			}
+		}
+
+		impl num_traits::PrimInt for $name {
+			fn count_ones(self) -> u32 {
+				self.0.count_ones()
+			}
+
+			fn count_zeros(self) -> u32 {
+				self.0.count_zeros()
+			}
+
+			fn leading_zeros(self) -> u32 {
+				self.0.leading_zeros()
+			}
+
+			fn trailing_zeros(self) -> u32 {
+				self.0.trailing_zeros()
+			}
+
+			fn rotate_left(self, n: u32) -> Self {
+				Self(self.0.rotate_left(n))
+			}
+
+			fn rotate_right(self, n: u32) -> Self {
+				Self(self.0.rotate_right(n))
+			}
+
+			fn signed_shl(self, n: u32) -> Self {
+				Self(self.0.signed_shl(n))
+			}
+
+			fn signed_shr(self, n: u32) -> Self {
+				Self(self.0.signed_shr(n))
+			}
+
+			fn unsigned_shl(self, n: u32) -> Self {
+				Self(self.0.unsigned_shl(n))
+			}
+
+			fn unsigned_shr(self, n: u32) -> Self {
+				Self(self.0.unsigned_shr(n))
+			}
+
+			fn swap_bytes(self) -> Self {
+				Self(self.0.swap_bytes())
+			}
+
+			fn from_be(x: Self) -> Self {
+				Self(u64::from_be(x.0))
+			}
+
+			fn from_le(x: Self) -> Self {
+				Self(u64::from_le(x.0))
+			}
+
+			fn to_be(self) -> Self {
+				Self(self.0.to_be())
+			}
+
+			fn to_le(self) -> Self {
+				Self(self.0.to_le())
+			}
+
+			fn pow(self, exp: u32) -> Self {
+				Self(num_traits::pow(self.0, exp))
+			}
+		}
+
 		impl core::cmp::PartialOrd for $name {
 			fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 				self.0.partial_cmp(&other.0)
@@ -126,11 +423,11 @@ macro_rules! implement_base_math {
 
 		impl sp_arithmetic::traits::Bounded for $name {
 			fn min_value() -> Self {
-				$name(<$inner_type>::min_value())
+				$name(<u64>::min_value())
 			}
 
 			fn max_value() -> Self {
-				$name(<$inner_type>::max_value())
+				$name(<u64>::max_value())
 			}
 		}
 
@@ -146,13 +443,13 @@ macro_rules! implement_base_math {
 
 		impl sp_runtime::traits::One for $name {
 			fn one() -> Self {
-				$name(<$inner_type>::one())
+				$name(<u64>::one())
 			}
 		}
 
 		impl sp_runtime::traits::Zero for $name {
 			fn zero() -> Self {
-				$name(<$inner_type>::zero())
+				$name(<u64>::zero())
 			}
 
 			fn is_zero(&self) -> bool {
@@ -174,7 +471,7 @@ impl Seconds {
 	}
 }
 
-implement_base_math!(Seconds, u64);
+implement_base_math!(Seconds);
 
 impl IntoSeconds for Seconds {
 	fn into_seconds(self) -> Seconds {
@@ -186,7 +483,7 @@ impl IntoSeconds for Seconds {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Millis(u64);
 
-implement_base_math!(Millis, u64);
+implement_base_math!(Millis);
 
 impl IntoSeconds for Millis {
 	fn into_seconds(self) -> Seconds {
@@ -195,6 +492,16 @@ impl IntoSeconds for Millis {
 		} else {
 			Seconds(self.0 / 1000)
 		}
+	}
+}
+
+impl Millis {
+	pub const fn const_from(value: u64) -> Self {
+		Millis(value)
+	}
+
+	pub fn new(value: impl Into<u64>) -> Self {
+		Millis(value.into())
 	}
 }
 
