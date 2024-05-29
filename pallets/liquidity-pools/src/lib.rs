@@ -63,7 +63,11 @@ use sp_runtime::{
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
-use staging_xcm::{v3, v3::Junctions::X3, VersionedLocation};
+use staging_xcm::{
+	v3,
+	v4::{self, Junction::*, Location, NetworkId},
+	VersionedLocation,
+};
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
@@ -883,22 +887,32 @@ pub mod pallet {
 				Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 
-			// TODO-1.7.2, should be v4?
-			match meta.location {
-				Some(VersionedLocation::V3(v3::Location {
-					parents: 0,
-					interior:
-						X3(
-							v3::Junction::PalletInstance(pallet_instance),
-							v3::Junction::GlobalConsensus(v3::NetworkId::Ethereum { chain_id }),
-							v3::Junction::AccountKey20 {
-								network: None,
-								key: address,
-							},
-						),
-				})) if Some(pallet_instance.into())
-					== <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>() =>
-				{
+			// We need to still support v3 until orml_asset_registry migrates to the last
+			// version.
+			let location = match meta.location {
+				Some(VersionedLocation::V3(location)) => location.try_into().map_err(|_| {
+					DispatchError::Other("v3 is isometric to v4 and should not fail")
+				})?,
+				Some(VersionedLocation::V4(location)) => location,
+				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken)?,
+			};
+
+			let pallet_index = <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>();
+
+            // There are formating issues with the long pattern matching
+            #[cfg_attr(rustfmt, rustfmt_skip)]
+			match location.unpack() {
+				(
+					0,
+					&[
+                        PalletInstance(pallet_instance),
+                        GlobalConsensus(NetworkId::Ethereum { chain_id }),
+                        AccountKey20 {
+                            network: None,
+                            key: address,
+                        }
+                    ],
+				) if Some(pallet_instance.into()) == pallet_index => {
 					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
 				}
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
