@@ -19,7 +19,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign},
-	ArithmeticError,
+	ArithmeticError, DispatchError,
 };
 
 pub mod policy;
@@ -118,13 +118,15 @@ impl Maturity {
 		}
 	}
 
-	pub fn extends(&mut self, value: Seconds) -> Result<(), ArithmeticError> {
+	pub fn extends(&mut self, value: Seconds) -> Result<(), DispatchError> {
 		match self {
 			Maturity::Fixed { date, extension } => {
 				date.ensure_add_assign(value)?;
-				extension.ensure_sub_assign(value)
+				extension.ensure_sub_assign(value).map_err(Into::into)
 			}
-			Maturity::None => Err(ArithmeticError::Overflow),
+			Maturity::None => Err(DispatchError::Other(
+				"No maturity date that could be extended.",
+			)),
 		}
 	}
 }
