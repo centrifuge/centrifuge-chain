@@ -98,24 +98,8 @@ pub fn dcf_internal_pricing() -> InternalPricing<Runtime> {
 
 pub fn dcf_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
-		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed {
-				date: (now() + YEAR).as_secs(),
-				extension: (YEAR / 2).as_secs(),
-			},
-			interest_payments: InterestPayments::None,
-			pay_down_schedule: PayDownSchedule::None,
-		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
-			compounding: CompoundingSchedule::Secondly,
-		},
-		collateral: ASSET_AA,
 		pricing: Pricing::Internal(dcf_internal_pricing()),
-		restrictions: LoanRestrictions {
-			borrows: BorrowRestrictions::NotWrittenOff,
-			repayments: RepayRestrictions::None,
-		},
+		..base_internal_loan()
 	}
 }
 
