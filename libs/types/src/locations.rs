@@ -61,14 +61,13 @@ impl From<DomainAddress> for RestrictedTransferLocation {
 mod test {
 
 	use hex::FromHex;
-	use staging_xcm::v3::MultiLocation;
+	use staging_xcm::v4::Location;
 
 	use super::*;
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
-		// TODO-1.7: Must be changed to V4?
-		let xa = VersionedLocation::V3(MultiLocation::default());
+		let xa = VersionedLocation::V4(Location::default());
 		let l = RestrictedTransferLocation::from(xa.clone());
 		assert_eq!(
 			l,

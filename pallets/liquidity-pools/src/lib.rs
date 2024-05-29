@@ -899,19 +899,13 @@ pub mod pallet {
 
 			let pallet_index = <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>();
 
-            // There are formating issues with the long pattern matching
-            #[cfg_attr(rustfmt, rustfmt_skip)]
 			match location.unpack() {
 				(
 					0,
-					&[
-                        PalletInstance(pallet_instance),
-                        GlobalConsensus(NetworkId::Ethereum { chain_id }),
-                        AccountKey20 {
-                            network: None,
-                            key: address,
-                        }
-                    ],
+					&[PalletInstance(pallet_instance), GlobalConsensus(NetworkId::Ethereum { chain_id }), AccountKey20 {
+						network: None,
+						key: address,
+					}],
 				) if Some(pallet_instance.into()) == pallet_index => {
 					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
 				}

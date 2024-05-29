@@ -1429,7 +1429,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V4(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
@@ -1624,7 +1624,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V4(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
