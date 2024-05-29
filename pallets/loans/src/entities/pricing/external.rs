@@ -156,31 +156,31 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	fn maybe_with_linear_accrual_price(
 		&self,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 		price: T::Balance,
 		price_last_updated: Seconds,
 	) -> Result<T::Balance, DispatchError> {
-		if self.info.with_linear_pricing {
+		if let (Some(maturity), true) = (maturity, self.info.with_linear_pricing) {
 			if min(price_last_updated, maturity) == maturity {
 				// We can not have 2 'xs' with different 'y' in a rect.
 				// That only happens at maturity
 				return Ok(self.info.notional);
 			}
 
-			Ok(cfg_utils::math::y_coord_in_rect(
+			return Ok(cfg_utils::math::y_coord_in_rect(
 				(min(price_last_updated, maturity), price),
 				(maturity, self.info.notional),
 				min(T::Time::now(), maturity),
-			)?)
-		} else {
-			Ok(price)
+			)?);
 		}
+
+		Ok(price)
 	}
 
 	pub fn current_price(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		self.current_price_inner(
 			maturity,
@@ -190,7 +190,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	fn current_price_inner(
 		&self,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 		oracle: Option<PriceOf<T>>,
 	) -> Result<T::Balance, DispatchError> {
 		if let Some((oracle_price, oracle_provided_at)) = oracle {
@@ -211,7 +211,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn outstanding_principal(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		let price = self.current_price(pool_id, maturity)?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
@@ -229,7 +229,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn present_value(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		self.outstanding_principal(pool_id, maturity)
 	}
@@ -237,7 +237,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn present_value_cached(
 		&self,
 		cache: &BTreeMap<T::PriceId, PriceOf<T>>,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		let price = self.current_price_inner(maturity, cache.get(&self.info.price_id).copied())?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)

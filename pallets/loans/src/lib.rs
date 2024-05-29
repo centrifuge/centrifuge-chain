@@ -398,6 +398,10 @@ pub mod pallet {
 		TransferDebtToSameLoan,
 		/// Emits when debt is transfered with different repaid/borrow amounts
 		TransferDebtAmountMismatched,
+		/// Emits when the loan has no maturity date set, but the valuation
+		/// method needs one. Making valuation and maturity settings
+		/// incompatible.
+		MaturityDateNeededForValuationMethod,
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {

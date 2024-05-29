@@ -64,6 +64,9 @@ pub const POOL_OTHER_ACCOUNT: AccountId = 100;
 
 pub const COLLATERAL_VALUE: Balance = 10000;
 pub const DEFAULT_INTEREST_RATE: f64 = 0.5;
+pub const DEFAULT_DISCOUNT_RATE: f64 = 0.02;
+pub const DEFAULT_PROBABILITY_OF_DEFAULT: f64 = 0.1;
+pub const DEFAULT_LOSS_GIVEN_DEFAULT: f64 = 0.5;
 pub const POLICY_PERCENTAGE: f64 = 0.5;
 pub const POLICY_PENALTY: f64 = 0.5;
 pub const REGISTER_PRICE_ID: PriceId = 42;

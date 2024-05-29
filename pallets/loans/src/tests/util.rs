@@ -81,6 +81,28 @@ pub fn base_internal_pricing() -> InternalPricing<Runtime> {
 	}
 }
 
+pub fn dcf_internal_pricing() -> InternalPricing<Runtime> {
+	InternalPricing {
+		collateral_value: COLLATERAL_VALUE,
+		max_borrow_amount: util::total_borrowed_rate(1.0),
+		valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
+			probability_of_default: Rate::from_float(DEFAULT_PROBABILITY_OF_DEFAULT),
+			loss_given_default: Rate::from_float(DEFAULT_LOSS_GIVEN_DEFAULT),
+			discount_rate: InterestRate::Fixed {
+				rate_per_year: Rate::from_float(DEFAULT_DISCOUNT_RATE),
+				compounding: CompoundingSchedule::Secondly,
+			},
+		}),
+	}
+}
+
+pub fn dcf_internal_loan() -> LoanInfo<Runtime> {
+	LoanInfo {
+		pricing: Pricing::Internal(dcf_internal_pricing()),
+		..base_internal_loan()
+	}
+}
+
 pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {

@@ -19,7 +19,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign},
-	ArithmeticError,
+	ArithmeticError, DispatchError,
 };
 
 pub mod policy;
@@ -95,6 +95,8 @@ pub enum Maturity {
 		/// Extension in secs, without special permissions
 		extension: Seconds,
 	},
+	/// No Maturity date
+	None,
 }
 
 impl Maturity {
@@ -102,24 +104,29 @@ impl Maturity {
 		Self::Fixed { date, extension: 0 }
 	}
 
-	pub fn date(&self) -> Seconds {
+	pub fn date(&self) -> Option<Seconds> {
 		match self {
-			Maturity::Fixed { date, .. } => *date,
+			Maturity::Fixed { date, .. } => Some(*date),
+			Maturity::None => None,
 		}
 	}
 
 	pub fn is_valid(&self, now: Seconds) -> bool {
 		match self {
 			Maturity::Fixed { date, .. } => *date > now,
+			Maturity::None => true,
 		}
 	}
 
-	pub fn extends(&mut self, value: Seconds) -> Result<(), ArithmeticError> {
+	pub fn extends(&mut self, value: Seconds) -> Result<(), DispatchError> {
 		match self {
 			Maturity::Fixed { date, extension } => {
 				date.ensure_add_assign(value)?;
-				extension.ensure_sub_assign(value)
+				extension.ensure_sub_assign(value).map_err(Into::into)
 			}
+			Maturity::None => Err(DispatchError::Other(
+				"No maturity date that could be extended.",
+			)),
 		}
 	}
 }
