@@ -28,7 +28,7 @@ use cfg_types::{
 };
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
-	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, PalletId, StorageHasher,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -37,11 +37,8 @@ use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
 use parity_scale_codec::Encode;
 use sp_arithmetic::FixedPointNumber;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{ConstU128, Zero},
-	BuildStorage,
-};
+use sp_core::{ConstU128, H256};
+use sp_runtime::{traits::Zero, BuildStorage};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -153,7 +150,7 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {
@@ -249,6 +246,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = ();
 }
 
@@ -383,7 +381,23 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
+pub struct All;
+impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
+	type Success = ();
+
+	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
+		Ok(())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
+		Ok(RawOrigin::Root.into())
+	}
+}
+
 impl Config for Runtime {
+	type AdminOrigin = All;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;

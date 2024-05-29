@@ -67,7 +67,7 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::TypeInfo,
 		sp_runtime::{
-			traits::{AtLeast32BitUnsigned, StaticLookup},
+			traits::{AtLeast32BitUnsigned, EnsureAdd, StaticLookup},
 			FixedPointOperand,
 		},
 		traits::tokens::{Fortitude, Precision, Preservation},
@@ -238,6 +238,7 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 			who: T::AccountId,
 			free: T::Balance,
+			reserved: T::Balance,
 		},
 	}
 
@@ -501,11 +502,24 @@ pub mod pallet {
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] new_free: T::Balance,
+			#[pallet::compact] new_reserved: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
+			let new_total = new_free.ensure_add(new_reserved)?;
 
 			let token = if T::NativeToken::get() == currency_id {
+				let old_reserved = <Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(
+					&HoldReason::NativeIndex.into(),
+					&who,
+				);
+
+				<Self as fungible::MutateHold<T::AccountId>>::release(
+					&HoldReason::NativeIndex.into(),
+					&who,
+					old_reserved,
+					Precision::Exact,
+				)?;
 				let to_burn = <Self as fungible::Inspect<T::AccountId>>::balance(&who);
 				<Self as fungible::Mutate<T::AccountId>>::burn_from(
 					&who,
@@ -513,10 +527,28 @@ pub mod pallet {
 					Precision::Exact,
 					Fortitude::Force,
 				)?;
-				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_free)?;
+				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
+				<Self as fungible::MutateHold<T::AccountId>>::hold(
+					&HoldReason::NativeIndex.into(),
+					&who,
+					new_reserved,
+				)?;
 
 				TokenType::Native
 			} else {
+				let old_reserved =
+					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
+						currency_id,
+						&(),
+						&who,
+					);
+				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::release(
+					currency_id,
+					&(),
+					&who,
+					old_reserved,
+					Precision::Exact,
+				)?;
 				let to_burn =
 					<T::Fungibles as fungibles::Inspect<T::AccountId>>::balance(currency_id, &who);
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::burn_from(
@@ -529,7 +561,13 @@ pub mod pallet {
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
 					currency_id,
 					&who,
-					new_free,
+					new_total,
+				)?;
+				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::hold(
+					currency_id,
+					&(),
+					&who,
+					new_reserved,
 				)?;
 
 				TokenType::Other
@@ -539,6 +577,7 @@ pub mod pallet {
 				currency_id,
 				who,
 				free: new_free,
+				reserved: new_reserved,
 			});
 
 			match token {

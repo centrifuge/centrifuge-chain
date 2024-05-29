@@ -206,7 +206,7 @@ fn is_staked<T: Runtime>(collator: &AccountId) -> bool {
 }
 
 fn is_candidate<T: Runtime>(collator: &AccountId) -> bool {
-	pallet_collator_selection::Pallet::<T>::candidates()
+	pallet_collator_selection::Pallet::<T>::candidate_list()
 		.into_iter()
 		.find(|c| c.who == *collator)
 		.is_some()

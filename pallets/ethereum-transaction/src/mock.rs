@@ -143,11 +143,11 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = MockPrecompiles;
 	type Runner = Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
+	type SuicideQuickClearLimit = ConstU32<0>;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
-	type SuicideQuickClearLimit = ConstU32<0>;
 }
 
 parameter_types! {

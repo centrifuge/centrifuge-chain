@@ -72,10 +72,10 @@ impl pallet_balances::Config for Runtime {
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = ConstU64<10>;
-	type RuntimeHoldReason = RuntimeHoldReason;
 	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = ();
 }
 

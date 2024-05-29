@@ -54,9 +54,9 @@ polkadot-core-primitives = { workspace = true, features = ["std"] }
 polkadot-node-primitives = { workspace = true }
 polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
-polkadot-test-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
 polkadot-runtime-parachains = { workspace = true, features = ["std"] }
+polkadot-test-runtime = { workspace = true, features = ["std"] }
 
 pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }

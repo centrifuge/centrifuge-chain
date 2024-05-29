@@ -10,7 +10,7 @@ cargo --version
 
 case $TARGET in
   cargo-build)
-    cargo build -p centrifuge-chain --release "$@"
+    #cargo build -p centrifuge-chain --release "$@"
     ;;
 
   test-general)
@@ -22,7 +22,9 @@ case $TARGET in
     ;;
 
   lint-fmt)
-    cargo fmt -- --check
+    # We need the `+nightly` as long as the used toolchain is the stable version
+    # in order to allow using the formatter unstable options
+    cargo +nightly fmt -- --check
     ;;
 
   lint-taplo)

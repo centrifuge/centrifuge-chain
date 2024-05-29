@@ -281,6 +281,7 @@ mod tests {
 	use super::*;
 	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
+	#[test_runtimes(all)]
 	fn correct_nonce_for_submit_now<T: Runtime>() {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
@@ -303,6 +304,7 @@ mod tests {
 		.unwrap();
 	}
 
+	#[test_runtimes(all)]
 	fn correct_nonce_for_submit_later<T: Runtime>() {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
@@ -332,7 +334,4 @@ mod tests {
 		)
 		.unwrap();
 	}
-
-	crate::test_for_runtimes!(all, correct_nonce_for_submit_now);
-	crate::test_for_runtimes!(all, correct_nonce_for_submit_later);
 }

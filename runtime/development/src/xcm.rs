@@ -107,11 +107,11 @@ impl staging_xcm_executor::Config for XcmConfig {
 	type SafeCallFilter = SafeCallFilter;
 	type SubscriptionService = PolkadotXcm;
 	type Trader = Trader;
+	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmSender = XcmRouter;
-	type TransactionalProcessor = FrameTransactionalProcessor;
 }
 
 /// Trader - The means of purchasing weight credit for XCM execution.
@@ -278,9 +278,9 @@ impl orml_xtokens::Config for Runtime {
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
+	type LocationsFilter = Everything;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type LocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;

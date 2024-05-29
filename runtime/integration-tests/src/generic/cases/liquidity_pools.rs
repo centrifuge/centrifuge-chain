@@ -10,7 +10,7 @@ use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::{Quantity, Ratio},
 	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
@@ -52,33 +52,38 @@ use sp_core::{Get, H160, U256};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, BadOrigin, ConstU32, Convert as C1, Convert as C2, EnsureAdd, Hash,
-		One, Zero,
+		One, StaticLookup, Zero,
 	},
 	BoundedVec, BuildStorage, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 	WeakBoundedVec,
 };
 use staging_xcm::{
-	latest::NetworkId,
 	prelude::XCM_VERSION,
-	v3::{
-		AssetId, Fungibility, Junction, Junction::*, Junctions, Junctions::*, MultiAsset,
-		MultiAssets, MultiLocation, WeightLimit,
+	v4::{
+		Asset, AssetId, Assets, Fungibility, Junction, Junction::*, Junctions, Junctions::*,
+		Location, NetworkId, WeightLimit,
 	},
-	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
+	VersionedAsset, VersionedAssets, VersionedLocation,
 };
 
 use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
+		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
 		utils::{
 			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
-			genesis::Genesis,
+			genesis::Genesis, xcm::setup_xcm,
 		},
 	},
 	utils::accounts::Keyring,
 };
+
+mod orml_asset_registry {
+	// orml_asset_registry has remove the reexport of all pallet stuff,
+	// we reexport it again here
+	pub use orml_asset_registry::module::*;
+}
 
 /// The AUSD asset id
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
@@ -102,72 +107,12 @@ pub mod utils {
 		}
 	}
 
-	pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
-		env.parachain_state_mut(|| {
-			// Set the XCM version used when sending XCM messages to sibling.
-			assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Box::new(MultiLocation::new(
-					1,
-					Junctions::X1(Junction::Parachain(T::FudgeHandle::SIBLING_ID)),
-				)),
-				XCM_VERSION,
-			));
-		});
-
-		env.sibling_state_mut(|| {
-			// Set the XCM version used when sending XCM messages to parachain.
-			assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Box::new(MultiLocation::new(
-					1,
-					Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
-				)),
-				XCM_VERSION,
-			));
-		});
-
-		env.relay_state_mut(|| {
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_open_hrmp_channel(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				Id::from(T::FudgeHandle::PARA_ID),
-				Id::from(T::FudgeHandle::SIBLING_ID),
-				10,
-				1024,
-			));
-
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_open_hrmp_channel(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				Id::from(T::FudgeHandle::SIBLING_ID),
-				Id::from(T::FudgeHandle::PARA_ID),
-				10,
-				1024,
-			));
-
-			assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-				FudgeRelayRuntime<T>,
-			>::force_process_hrmp_open(
-				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				0,
-			));
-		});
-
-		env.pass(Blocks::ByNumber(1));
-	}
-
 	pub fn setup_usdc_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 		env.parachain_state_mut(|| {
 			// Set the XCM version used when sending XCM messages to USDC parachain.
 			assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Box::new(MultiLocation::new(
-					1,
-					Junctions::X1(Junction::Parachain(1000)),
-				)),
+				Box::new(Location::new(1, Junction::Parachain(1000))),
 				XCM_VERSION,
 			));
 		});
@@ -187,7 +132,7 @@ pub mod utils {
 				FudgeRelayRuntime<T>,
 			>::force_process_hrmp_open(
 				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				0,
+				2,
 			));
 		});
 
@@ -200,12 +145,12 @@ pub mod utils {
 			name: BoundedVec::default(),
 			symbol: BoundedVec::default(),
 			existential_deposit: 1_000_000_000,
-			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			location: Some(VersionedLocation::V4(Location::new(
 				1,
-				X2(
+				[
 					Parachain(T::FudgeHandle::SIBLING_ID),
 					general_key(parachains::kusama::karura::AUSD_KEY),
-				),
+				],
 			))),
 			additional: CustomMetadata {
 				transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -268,8 +213,6 @@ pub mod utils {
 		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
 	}
 }
-
-type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
 
 use utils::*;
 
@@ -366,9 +309,9 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: GLMR_ED,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
+					[Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -385,7 +328,7 @@ mod development {
 
 		pub fn set_test_domain_router<T: Runtime + FudgeSupport>(
 			evm_chain_id: u64,
-			xcm_domain_location: VersionedMultiLocation,
+			xcm_domain_location: VersionedLocation,
 			currency_id: CurrencyId,
 		) {
 			let ethereum_xcm_router = EthereumXCMRouter::<T> {
@@ -430,16 +373,16 @@ mod development {
 				.expect("Tranche at index 0 exists")
 		}
 
-		/// Returns a `VersionedMultiLocation` that can be converted into
+		/// Returns a `VersionedLocation` that can be converted into
 		/// `LiquidityPoolsWrappedToken` which is required for cross chain asset
 		/// registration and transfer.
 		pub fn liquidity_pools_transferable_multilocation<T: Runtime + FudgeSupport>(
 			chain_id: u64,
 			address: [u8; 20],
-		) -> VersionedMultiLocation {
-			VersionedMultiLocation::V3(MultiLocation {
-				parents: 0,
-				interior: X3(
+		) -> VersionedLocation {
+			VersionedLocation::V4(Location::new(
+				0,
+				[
 					PalletInstance(
 						<T as frame_system::Config>::PalletInfo::index::<
 							pallet_liquidity_pools::Pallet<T>,
@@ -452,8 +395,8 @@ mod development {
 						network: None,
 						key: address,
 					},
-				),
-			})
+				],
+			))
 		}
 
 		/// Enables `LiquidityPoolsTransferable` in the custom asset metadata
@@ -506,11 +449,7 @@ mod development {
 
 				set_test_domain_router::<T>(
 					MOONBEAM_EVM_CHAIN_ID,
-					MultiLocation::new(
-						1,
-						Junctions::X1(Junction::Parachain(T::FudgeHandle::SIBLING_ID)),
-					)
-					.into(),
+					Location::new(1, Junction::Parachain(T::FudgeHandle::SIBLING_ID)).into(),
 					GLMR_CURRENCY_ID,
 				);
 			});
@@ -788,9 +727,9 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: USDT_ED,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
+					[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::LiquidityPools,
@@ -867,6 +806,7 @@ mod development {
 
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn add_pool<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -916,6 +856,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_tranche<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -987,6 +928,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_member<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1071,6 +1013,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_token_price<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1102,6 +1045,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1176,6 +1120,7 @@ mod development {
 				.expect("expected RouterExecutionSuccess event");
 		}
 
+		#[test_runtimes([development])]
 		fn add_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1220,7 +1165,7 @@ mod development {
 				);
 
 				// Should fail to add currency_id which is missing a registered
-				// MultiLocation
+				// Location
 				let currency_id = CurrencyId::ForeignAsset(100);
 
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
@@ -1250,7 +1195,7 @@ mod development {
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
 				);
 
-				// Add convertable MultiLocation to metadata but remove transferability
+				// Add convertable Location to metadata but remove transferability
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					currency_id,
@@ -1305,6 +1250,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn allow_investment_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1369,6 +1315,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn allow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1445,7 +1392,7 @@ mod development {
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
 				);
 
-				// Should fail if currency does not have any MultiLocation in metadata
+				// Should fail if currency does not have any Location in metadata
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					currency_id,
@@ -1482,7 +1429,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedMultiLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V3(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
@@ -1498,6 +1445,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn disallow_investment_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1562,6 +1510,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn disallow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1638,7 +1587,7 @@ mod development {
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
 				);
 
-				// Should fail if currency does not have any MultiLocation in metadata
+				// Should fail if currency does not have any Location in metadata
 				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					currency_id,
@@ -1675,7 +1624,7 @@ mod development {
 					None,
 					// Changed: Add some location which cannot be converted to
 					// LiquidityPoolsWrappedToken
-					Some(Some(VersionedMultiLocation::V3(Default::default()))),
+					Some(Some(VersionedLocation::V3(Default::default()))),
 					// No change for transferability required as it is already allowed for
 					// LiquidityPools
 					None,
@@ -1691,6 +1640,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn schedule_upgrade<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1724,6 +1674,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn cancel_upgrade<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1757,6 +1708,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_tranche_token_metadata<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1816,20 +1768,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], add_pool);
-		crate::test_for_runtimes!([development], add_tranche);
-		crate::test_for_runtimes!([development], update_member);
-		crate::test_for_runtimes!([development], update_token_price);
-		crate::test_for_runtimes!([development], add_currency);
-		crate::test_for_runtimes!([development], add_currency_should_fail);
-		crate::test_for_runtimes!([development], allow_investment_currency);
-		crate::test_for_runtimes!([development], allow_investment_currency_should_fail);
-		crate::test_for_runtimes!([development], disallow_investment_currency);
-		crate::test_for_runtimes!([development], disallow_investment_currency_should_fail);
-		crate::test_for_runtimes!([development], schedule_upgrade);
-		crate::test_for_runtimes!([development], cancel_upgrade);
-		crate::test_for_runtimes!([development], update_tranche_token_metadata);
 	}
 
 	mod foreign_investments {
@@ -1838,6 +1776,7 @@ mod development {
 		mod same_currencies {
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn increase_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -1894,6 +1833,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn decrease_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -1986,6 +1926,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn cancel_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2085,6 +2026,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn collect_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2236,6 +2178,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn partially_collect_investment_for_through_investments<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2468,6 +2411,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn increase_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2525,6 +2469,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn decrease_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2644,6 +2589,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn cancel_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2741,6 +2687,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn fully_collect_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2895,6 +2842,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn partially_collect_redemption_for_through_investments<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3098,29 +3046,13 @@ mod development {
 				});
 			}
 
-			crate::test_for_runtimes!([development], increase_invest_order);
-			crate::test_for_runtimes!([development], decrease_invest_order);
-			crate::test_for_runtimes!([development], cancel_invest_order);
-			crate::test_for_runtimes!([development], collect_invest_order);
-			crate::test_for_runtimes!(
-				[development],
-				partially_collect_investment_for_through_investments
-			);
-			crate::test_for_runtimes!([development], increase_redeem_order);
-			crate::test_for_runtimes!([development], decrease_redeem_order);
-			crate::test_for_runtimes!([development], cancel_redeem_order);
-			crate::test_for_runtimes!([development], fully_collect_redeem_order);
-			crate::test_for_runtimes!(
-				[development],
-				partially_collect_redemption_for_through_investments
-			);
-
 			mod should_fail {
 				use super::*;
 
 				mod decrease_should_underflow {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invest_decrease_underflow<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3170,6 +3102,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_decrease_underflow<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3217,14 +3150,12 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invest_decrease_underflow);
-					crate::test_for_runtimes!([development], redeem_decrease_underflow);
 				}
 
 				mod should_throw_requires_collect {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invest_requires_collect<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3308,6 +3239,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_requires_collect<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3397,14 +3329,12 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invest_requires_collect);
-					crate::test_for_runtimes!([development], redeem_requires_collect);
 				}
 
 				mod payment_payout_currency {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invalid_invest_payment_currency<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3484,6 +3414,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn invalid_redeem_payout_currency<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3567,6 +3498,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_payout_currency_not_found<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3636,10 +3568,6 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invalid_invest_payment_currency);
-					crate::test_for_runtimes!([development], invalid_redeem_payout_currency);
-					crate::test_for_runtimes!([development], redeem_payout_currency_not_found);
 				}
 			}
 		}
@@ -3647,6 +3575,7 @@ mod development {
 		mod mismatching_currencies {
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn collect_foreign_investment_for<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3764,6 +3693,7 @@ mod development {
 
 			/// Invest in pool currency, then increase in allowed foreign
 			/// currency, then decrease in same foreign currency multiple times.
+			#[test_runtimes([development])]
 			fn increase_fulfill_increase_decrease_decrease_partial<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3902,6 +3832,7 @@ mod development {
 			/// Propagate swaps only via OrderBook fulfillments.
 			///
 			/// Flow: Increase, fulfill, decrease, fulfill
+			#[test_runtimes([development])]
 			fn invest_swaps_happy_path<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4024,6 +3955,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn increase_fulfill_decrease_fulfill_partial_increase<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4123,23 +4055,13 @@ mod development {
 					}));
 				});
 			}
-
-			crate::test_for_runtimes!([development], collect_foreign_investment_for);
-			crate::test_for_runtimes!(
-				[development],
-				increase_fulfill_increase_decrease_decrease_partial
-			);
-			crate::test_for_runtimes!(
-				[development],
-				increase_fulfill_decrease_fulfill_partial_increase
-			);
-			crate::test_for_runtimes!([development], invest_swaps_happy_path);
 		}
 	}
 
 	mod transfers {
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4245,6 +4167,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_non_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4303,6 +4226,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4403,6 +4327,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4493,6 +4418,7 @@ mod development {
 
 		/// Try to transfer tranches for non-existing pools or invalid tranche
 		/// ids for existing pools.
+		#[test_runtimes([development])]
 		fn transferring_invalid_tranche_tokens_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4572,12 +4498,12 @@ mod development {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X2(
+					[
 						Parachain(T::FudgeHandle::PARA_ID),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -4623,15 +4549,15 @@ mod development {
 					CurrencyId::Native,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::SIBLING_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								},
-							),
+							],
 						)
 						.into()
 					),
@@ -4667,6 +4593,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_cfg_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4718,15 +4645,15 @@ mod development {
 					cfg_in_sibling,
 					sibling_to_para_transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Charlie.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -4752,16 +4679,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_from_local);
-		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_to_local);
-		crate::test_for_runtimes!([development], transfer_tranche_tokens_from_local);
-		crate::test_for_runtimes!([development], transfer_tranche_tokens_to_local);
-		crate::test_for_runtimes!(
-			[development],
-			transferring_invalid_tranche_tokens_should_fail
-		);
-		crate::test_for_runtimes!([development], transfer_cfg_to_and_from_sibling);
 	}
 
 	mod routers {
@@ -4772,6 +4689,7 @@ mod development {
 
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4925,8 +4843,6 @@ mod development {
 					);
 				});
 			}
-
-			crate::test_for_runtimes!([development], test_via_outbound_queue);
 		}
 
 		mod ethereum_xcm {
@@ -4955,11 +4871,7 @@ mod development {
 
 					env.parachain_state_mut(|| {
 						let domain_router = router_creation_fn(
-							MultiLocation {
-								parents: 1,
-								interior: X1(Parachain(T::FudgeHandle::SIBLING_ID)),
-							}
-							.into(),
+							Location::new(1, Parachain(T::FudgeHandle::SIBLING_ID)).into(),
 							GLMR_CURRENCY_ID,
 						);
 
@@ -5002,14 +4914,12 @@ mod development {
 				}
 
 				type RouterCreationFn<T> =
-					Box<dyn Fn(VersionedMultiLocation, CurrencyId) -> DomainRouter<T>>;
+					Box<dyn Fn(VersionedLocation, CurrencyId) -> DomainRouter<T>>;
 
 				pub fn get_axelar_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
 				{
 					Box::new(
-						|location: VersionedMultiLocation,
-						 currency_id: CurrencyId|
-						 -> DomainRouter<T> {
+						|location: VersionedLocation, currency_id: CurrencyId| -> DomainRouter<T> {
 							let router = AxelarXCMRouter::<T> {
 								router: XCMRouter {
 									xcm_domain: XcmDomain {
@@ -5045,9 +4955,7 @@ mod development {
 				pub fn get_ethereum_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
 				{
 					Box::new(
-						|location: VersionedMultiLocation,
-						 currency_id: CurrencyId|
-						 -> DomainRouter<T> {
+						|location: VersionedLocation, currency_id: CurrencyId| -> DomainRouter<T> {
 							let router = EthereumXCMRouter::<T> {
 								router: XCMRouter {
 									xcm_domain: XcmDomain {
@@ -5079,22 +4987,22 @@ mod development {
 
 			const TEST_DOMAIN: Domain = Domain::EVM(1);
 
+			#[test_runtimes([development])]
 			fn submit_ethereum_xcm<T: Runtime + FudgeSupport>() {
 				submit_test_fn::<T>(get_ethereum_xcm_router_fn::<T>());
 			}
 
+			#[test_runtimes([development])]
 			fn submit_axelar_xcm<T: Runtime + FudgeSupport>() {
 				submit_test_fn::<T>(get_axelar_xcm_router_fn::<T>());
 			}
-
-			crate::test_for_runtimes!([development], submit_ethereum_xcm);
-			crate::test_for_runtimes!([development], submit_axelar_xcm);
 		}
 	}
 
 	mod gateway {
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn set_domain_router<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5164,6 +5072,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_remove_instances<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5220,6 +5129,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn process_msg<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5274,10 +5184,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], set_domain_router);
-		crate::test_for_runtimes!([development], add_remove_instances);
-		crate::test_for_runtimes!([development], process_msg);
 	}
 }
 
@@ -5297,12 +5203,12 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X2(
+					[
 						Parachain(parachains::kusama::altair::ID),
 						general_key(parachains::kusama::altair::AIR_KEY),
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -5323,7 +5229,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
+				location: Some(VersionedLocation::V4(Location::new(1, Here))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -5387,12 +5293,12 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(
+						[
 							Parachain(T::FudgeHandle::PARA_ID),
 							general_key(parachains::kusama::altair::AIR_KEY),
-						),
+						],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -5418,12 +5324,12 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(
+						[
 							Parachain(T::FudgeHandle::PARA_ID),
 							general_key(parachains::kusama::altair::AIR_KEY),
-						),
+						],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -5445,15 +5351,15 @@ mod altair {
 					CurrencyId::Native,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::SIBLING_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -5489,6 +5395,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn test_air_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5534,15 +5441,15 @@ mod altair {
 					air_in_sibling,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Alice.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -5567,6 +5474,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_ausd_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -5615,15 +5523,15 @@ mod altair {
 					AUSD_CURRENCY_ID,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -5683,7 +5591,9 @@ mod altair {
 				assert_ok!(
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
+						<FudgeRelayRuntime<T> as frame_system::Config>::Lookup::unlookup(
+							Keyring::Alice.id()
+						),
 						transfer_amount * 2,
 					)
 				);
@@ -5691,9 +5601,9 @@ mod altair {
 				assert_ok!(
 					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Box::new(MultiLocation::new(
+						Box::new(Location::new(
 							0,
-							Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
+							Junction::Parachain(T::FudgeHandle::PARA_ID),
 						)),
 						XCM_VERSION,
 					)
@@ -5726,6 +5636,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_ksm_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -5736,7 +5647,7 @@ mod altair {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
+				location: Some(VersionedLocation::V4(Location::new(1, Here))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -5751,7 +5662,7 @@ mod altair {
 			env.parachain_state_mut(|| {
 				assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Box::new(MultiLocation::new(1, Junctions::Here)),
+					Box::new(Location::new(1, Junctions::Here)),
 					XCM_VERSION,
 				));
 
@@ -5760,12 +5671,12 @@ mod altair {
 					currency_id,
 					ksm(1),
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X1(Junction::AccountId32 {
+							Junction::AccountId32 {
 								id: Keyring::Bob.into(),
 								network: None,
-							})
+							}
 						)
 						.into()
 					),
@@ -5785,6 +5696,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_foreign_sibling_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5795,16 +5707,16 @@ mod altair {
 			setup_xcm(&mut env);
 
 			let sibling_asset_id = CurrencyId::ForeignAsset(1);
-			let asset_location = MultiLocation::new(
+			let asset_location = Location::new(
 				1,
-				X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
+				[Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])],
 			);
 			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V4(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						// We specify a custom fee_per_second and verify below that this value is
@@ -5848,15 +5760,15 @@ mod altair {
 					CurrencyId::Native,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -5892,6 +5804,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_wormhole_usdc_karura_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				Default::default(),
@@ -5904,19 +5817,19 @@ mod altair {
 			setup_xcm(&mut env);
 
 			let usdc_asset_id = CurrencyId::ForeignAsset(39);
-			let asset_location = MultiLocation::new(
+			let asset_location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(T::FudgeHandle::SIBLING_ID),
 					general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
-				),
+				],
 			);
 			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V4(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -5961,15 +5874,15 @@ mod altair {
 					usdc_asset_id,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -5993,17 +5906,12 @@ mod altair {
 				assert_eq!(bob_balance, 11993571);
 			});
 		}
-
-		crate::test_for_runtimes!([altair], test_air_transfers_to_and_from_sibling);
-		crate::test_for_runtimes!([altair], transfer_ausd_to_altair);
-		crate::test_for_runtimes!([altair], transfer_ksm_to_and_from_relay_chain);
-		crate::test_for_runtimes!([altair], transfer_foreign_sibling_to_altair);
-		crate::test_for_runtimes!([altair], transfer_wormhole_usdc_karura_to_altair);
 	}
 
 	mod asset_registry {
 		use super::*;
 
+		#[test_runtimes([altair])]
 		fn register_air_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6013,9 +5921,9 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						0,
-						X1(general_key(parachains::kusama::altair::AIR_KEY)),
+						general_key(parachains::kusama::altair::AIR_KEY),
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6031,6 +5939,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6040,12 +5949,12 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(
+						[
 							Parachain(T::FudgeHandle::SIBLING_ID),
 							general_key(parachains::kusama::karura::AUSD_KEY),
-						),
+						],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6062,6 +5971,7 @@ mod altair {
 		}
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
+		#[test_runtimes([altair])]
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6071,9 +5981,9 @@ mod altair {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(Parachain(2000), general_key(&[42])),
+						[Parachain(2000), general_key(&[42])],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6094,15 +6004,12 @@ mod altair {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([altair], register_air_works);
-		crate::test_for_runtimes!([altair], register_foreign_asset_works);
-		crate::test_for_runtimes!([altair], register_tranche_asset_blocked);
 	}
 
 	mod currency_id_convert {
 		use super::*;
 
+		#[test_runtimes([altair])]
 		fn convert_air<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6110,8 +6017,8 @@ mod altair {
 
 			env.parachain_state_mut(|| {
 				// The way AIR is represented relative within the Altair runtime
-				let air_location_inner: MultiLocation =
-					MultiLocation::new(0, X1(general_key(parachains::kusama::altair::AIR_KEY)));
+				let air_location_inner: Location =
+					Location::new(0, general_key(parachains::kusama::altair::AIR_KEY));
 
 				// register air
 				register_air::<T>();
@@ -6122,12 +6029,12 @@ mod altair {
 				);
 
 				// The canonical way AIR is represented out in the wild
-				let air_location_canonical: MultiLocation = MultiLocation::new(
+				let air_location_canonical: Location = Location::new(
 					1,
-					X2(
+					[
 						Parachain(T::FudgeHandle::PARA_ID),
 						general_key(parachains::kusama::altair::AIR_KEY),
-					),
+					],
 				);
 
 				assert_eq!(
@@ -6139,23 +6046,24 @@ mod altair {
 
 		/// Verify that Tranche tokens are not handled by the CurrencyIdConvert
 		/// since we don't allow Tranche tokens to be transferable through XCM.
+		#[test_runtimes([altair])]
 		fn convert_tranche<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
 				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_multilocation = MultiLocation {
-				parents: 1,
-				interior: X3(
+			let tranche_multilocation = Location::new(
+				1,
+				[
 					Parachain(T::FudgeHandle::PARA_ID),
 					PalletInstance(PoolPalletIndex::get()),
 					GeneralKey {
 						length: tranche_id.len() as u8,
 						data: vec_to_fixed_array(tranche_id.to_vec()),
 					},
-				),
-			};
+				],
+			);
 
 			env.parachain_state_mut(|| {
 				assert_eq!(
@@ -6172,18 +6080,19 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_ausd<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				assert_eq!(parachains::kusama::karura::AUSD_KEY, &[0, 129]);
 
-				let ausd_location: MultiLocation = MultiLocation::new(
+				let ausd_location: Location = Location::new(
 					1,
-					X2(
+					[
 						Parachain(T::FudgeHandle::SIBLING_ID),
 						general_key(parachains::kusama::karura::AUSD_KEY),
-					),
+					],
 				);
 
 				register_ausd::<T>();
@@ -6200,16 +6109,17 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_ksm<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
-			let ksm_location: MultiLocation = MultiLocation::parent().into();
+			let ksm_location: Location = Location::parent().into();
 
 			env.parachain_state_mut(|| {
 				register_ksm::<T>();
 
 				assert_eq!(
-					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
+					<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
 					Some(KSM_ASSET_ID),
 				);
 
@@ -6220,19 +6130,19 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_unkown_multilocation<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
-			let unknown_location: MultiLocation = MultiLocation::new(
-				1,
-				X2(Parachain(T::FudgeHandle::PARA_ID), general_key(&[42])),
-			);
+			let unknown_location: Location =
+				Location::new(1, [Parachain(T::FudgeHandle::PARA_ID), general_key(&[42])]);
 
 			env.parachain_state_mut(|| {
 				assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_none());
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6246,13 +6156,6 @@ mod altair {
 				)
 			});
 		}
-
-		crate::test_for_runtimes!([altair], convert_air);
-		crate::test_for_runtimes!([altair], convert_tranche);
-		crate::test_for_runtimes!([altair], convert_ausd);
-		crate::test_for_runtimes!([altair], convert_ksm);
-		crate::test_for_runtimes!([altair], convert_unkown_multilocation);
-		crate::test_for_runtimes!([altair], convert_unsupported_currency);
 	}
 }
 
@@ -6262,8 +6165,6 @@ mod centrifuge {
 	use super::*;
 
 	mod utils {
-		use staging_xcm::v3::NetworkId;
-
 		use super::*;
 
 		/// The test asset id attributed to DOT
@@ -6284,7 +6185,7 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 100_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
+				location: Some(VersionedLocation::V4(Location::parent())),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -6303,16 +6204,16 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					0,
-					X3(
+					[
 						PalletInstance(103),
 						GlobalConsensus(NetworkId::Ethereum { chain_id: 1 }),
 						AccountKey20 {
 							network: None,
 							key: hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
 						},
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::LiquidityPools,
@@ -6333,13 +6234,13 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X3(
+					[
 						Junction::Parachain(1000),
 						Junction::PalletInstance(50),
 						Junction::GeneralIndex(1337),
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6361,12 +6262,12 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X2(
+					[
 						Parachain(para_id),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6390,20 +6291,18 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V2(
-					staging_xcm::v2::MultiLocation::new(
-						1,
-						staging_xcm::v2::Junctions::X2(
-							staging_xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
-							staging_xcm::v2::Junction::GeneralKey(
-								WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-									parachains::polkadot::centrifuge::CFG_KEY.into(),
-									None,
-								),
+				location: Some(VersionedLocation::V2(staging_xcm::v2::MultiLocation::new(
+					1,
+					staging_xcm::v2::Junctions::X2(
+						staging_xcm::v2::Junction::Parachain(T::FudgeHandle::PARA_ID),
+						staging_xcm::v2::Junction::GeneralKey(
+							WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+								parachains::polkadot::centrifuge::CFG_KEY.into(),
+								None,
 							),
 						),
 					),
-				)),
+				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -6484,7 +6383,9 @@ mod centrifuge {
 				assert_ok!(
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
+						<FudgeRelayRuntime<T> as frame_system::Config>::Lookup::unlookup(
+							Keyring::Alice.id()
+						),
 						alice_initial_dot,
 					)
 				);
@@ -6492,9 +6393,9 @@ mod centrifuge {
 				assert_ok!(
 					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
 						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Box::new(MultiLocation::new(
+						Box::new(Location::new(
 							0,
-							Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
+							Junction::Parachain(T::FudgeHandle::PARA_ID),
 						)),
 						XCM_VERSION,
 					)
@@ -6540,6 +6441,7 @@ mod centrifuge {
 	mod asset_registry {
 		use super::*;
 
+		#[test_runtimes([centrifuge])]
 		fn register_cfg_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6549,9 +6451,9 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						0,
-						X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
+						general_key(parachains::polkadot::centrifuge::CFG_KEY),
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6567,6 +6469,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6576,12 +6479,12 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(
+						[
 							Parachain(parachains::polkadot::acala::ID),
 							general_key(parachains::polkadot::acala::AUSD_KEY),
-						),
+						],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6598,6 +6501,7 @@ mod centrifuge {
 		}
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
+		#[test_runtimes([centrifuge])]
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6607,9 +6511,9 @@ mod centrifuge {
 					name: BoundedVec::default(),
 					symbol: BoundedVec::default(),
 					existential_deposit: 1_000_000_000_000,
-					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					location: Some(VersionedLocation::V4(Location::new(
 						1,
-						X2(Parachain(2000), general_key(&[42])),
+						[Parachain(2000), general_key(&[42])],
 					))),
 					additional: CustomMetadata {
 						transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -6630,15 +6534,12 @@ mod centrifuge {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], register_cfg_works);
-		crate::test_for_runtimes!([centrifuge], register_foreign_asset_works);
-		crate::test_for_runtimes!([centrifuge], register_tranche_asset_blocked);
 	}
 
 	mod currency_id_convert {
 		use super::*;
 
+		#[test_runtimes([centrifuge])]
 		fn convert_cfg<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6646,10 +6547,8 @@ mod centrifuge {
 
 			env.parachain_state_mut(|| {
 				// The way CFG is represented relative within the Centrifuge runtime
-				let cfg_location_inner: MultiLocation = MultiLocation::new(
-					0,
-					X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
-				);
+				let cfg_location_inner: Location =
+					Location::new(0, general_key(parachains::polkadot::centrifuge::CFG_KEY));
 
 				register_cfg::<T>(T::FudgeHandle::PARA_ID);
 
@@ -6659,12 +6558,12 @@ mod centrifuge {
 				);
 
 				// The canonical way CFG is represented out in the wild
-				let cfg_location_canonical: MultiLocation = MultiLocation::new(
+				let cfg_location_canonical: Location = Location::new(
 					1,
-					X2(
+					[
 						Parachain(parachains::polkadot::centrifuge::ID),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
-					),
+					],
 				);
 
 				assert_eq!(
@@ -6675,8 +6574,9 @@ mod centrifuge {
 		}
 
 		/// Verify that even with CFG registered in the AssetRegistry with a XCM
-		/// v2 MultiLocation, that `CurrencyIdConvert` can look it up given an
+		/// v2 Location, that `CurrencyIdConvert` can look it up given an
 		/// identical location in XCM v3.
+		#[test_runtimes([centrifuge])]
 		fn convert_cfg_xcm_v2<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6687,10 +6587,8 @@ mod centrifuge {
 				register_cfg_v2::<T>();
 
 				// The way CFG is represented relative within the Centrifuge runtime in xcm v3
-				let cfg_location_inner: MultiLocation = MultiLocation::new(
-					0,
-					X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
-				);
+				let cfg_location_inner: Location =
+					Location::new(0, general_key(parachains::polkadot::centrifuge::CFG_KEY));
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
@@ -6698,12 +6596,12 @@ mod centrifuge {
 				);
 
 				// The canonical way CFG is represented out in the wild
-				let cfg_location_canonical: MultiLocation = MultiLocation::new(
+				let cfg_location_canonical: Location = Location::new(
 					1,
-					X2(
+					[
 						Parachain(parachains::polkadot::centrifuge::ID),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
-					),
+					],
 				);
 
 				assert_eq!(
@@ -6715,6 +6613,7 @@ mod centrifuge {
 
 		/// Verify that a registered token that is NOT XCM transferable is
 		/// filtered out by CurrencyIdConvert as expected.
+		#[test_runtimes([centrifuge])]
 		fn convert_no_xcm_token<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6728,16 +6627,17 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_dot<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
-			let dot_location: MultiLocation = MultiLocation::parent();
+			let dot_location: Location = Location::parent();
 
 			env.parachain_state_mut(|| {
 				register_dot::<T>();
 
 				assert_eq!(
-					<CurrencyIdConvert as C1<_, _>>::convert(dot_location),
+					<CurrencyIdConvert as C1<_, _>>::convert(dot_location.clone()),
 					Some(DOT_ASSET_ID),
 				);
 
@@ -6748,15 +6648,16 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_unknown_multilocation<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
-			let unknown_location: MultiLocation = MultiLocation::new(
+			let unknown_location: Location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(T::FudgeHandle::PARA_ID),
 					general_key([42].as_ref()),
-				),
+				],
 			);
 
 			env.parachain_state_mut(|| {
@@ -6764,6 +6665,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6777,13 +6679,6 @@ mod centrifuge {
 				)
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], convert_cfg);
-		crate::test_for_runtimes!([centrifuge], convert_cfg_xcm_v2);
-		crate::test_for_runtimes!([centrifuge], convert_no_xcm_token);
-		crate::test_for_runtimes!([centrifuge], convert_dot);
-		crate::test_for_runtimes!([centrifuge], convert_unknown_multilocation);
-		crate::test_for_runtimes!([centrifuge], convert_unsupported_currency);
 	}
 
 	mod restricted_transfers {
@@ -6794,21 +6689,25 @@ mod centrifuge {
 
 		const TRANSFER_AMOUNT: u128 = 10;
 
-		fn xcm_location() -> MultiLocation {
-			MultiLocation::new(
+		fn xcm_location() -> Location {
+			Location::new(
 				1,
-				X1(AccountId32 {
+				AccountId32 {
 					id: Keyring::Alice.into(),
 					network: None,
-				}),
+				},
 			)
 		}
 
-		fn allowed_xcm_location() -> Location {
-			Location::XCM(BlakeTwo256::hash(&xcm_location().encode()))
+		fn allowed_xcm_location() -> RestrictedTransferLocation {
+			RestrictedTransferLocation::XCM(BlakeTwo256::hash(&xcm_location().encode()))
 		}
 
-		fn add_allowance<T: Runtime>(account: Keyring, asset: CurrencyId, location: Location) {
+		fn add_allowance<T: Runtime>(
+			account: Keyring,
+			asset: CurrencyId,
+			location: RestrictedTransferLocation,
+		) {
 			assert_ok!(
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(account.into()).into(),
@@ -6818,6 +6717,7 @@ mod centrifuge {
 			);
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_cfg_extrinsic<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -6841,7 +6741,7 @@ mod centrifuge {
 						pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 							RawOrigin::Signed(Keyring::Alice.into()).into(),
 							FilterCurrency::All,
-							Location::Local(Keyring::Bob.to_account_id())
+							RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
 						)
 					);
 
@@ -6854,13 +6754,13 @@ mod centrifuge {
 					)
 				});
 
-			let call = pallet_balances::Call::<T>::transfer {
+			let call = pallet_balances::Call::<T>::transfer_allow_death {
 				dest: Keyring::Charlie.into(),
 				value: cfg(TRANSFER_AMOUNT),
 			};
 			env.submit_now(Keyring::Alice, call).unwrap();
 
-			let call = pallet_balances::Call::<T>::transfer {
+			let call = pallet_balances::Call::<T>::transfer_allow_death {
 				dest: Keyring::Bob.into(),
 				value: cfg(TRANSFER_AMOUNT),
 			};
@@ -6884,6 +6784,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_all<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -6904,7 +6805,7 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::All,
-						Location::Local(Keyring::Bob.to_account_id())
+						RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
 					)
 				);
 			});
@@ -7013,6 +6914,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_lp_eth_usdc_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7046,7 +6948,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					LP_ETH_USDC,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7103,6 +7005,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_lp_eth_usdc_lp_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7135,8 +7038,7 @@ mod centrifuge {
 					router: XCMRouter {
 						xcm_domain: XcmDomain {
 							location: Box::new(
-								MultiLocation::new(1, X1(Parachain(T::FudgeHandle::SIBLING_ID)))
-									.into(),
+								Location::new(1, Parachain(T::FudgeHandle::SIBLING_ID)).into(),
 							),
 							ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![
 								38, 0,
@@ -7172,7 +7074,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					LP_ETH_USDC,
-					Location::Address(domain_address.clone()),
+					RestrictedTransferLocation::Address(domain_address.clone()),
 				);
 
 				assert_noop!(
@@ -7201,6 +7103,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_usdc_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7228,7 +7131,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					USDC,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7272,6 +7175,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				paras::GenesisConfig::<FudgeRelayRuntime<T>> {
@@ -7316,16 +7220,16 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::Specific(USDC),
-						Location::XCM(BlakeTwo256::hash(
-							&MultiLocation::new(
+						RestrictedTransferLocation::XCM(BlakeTwo256::hash(
+							&Location::new(
 								1,
-								X2(
+								[
 									Parachain(T::FudgeHandle::SIBLING_ID),
 									Junction::AccountId32 {
 										id: Keyring::Alice.into(),
 										network: None,
 									}
-								)
+								]
 							)
 							.encode()
 						))
@@ -7338,15 +7242,15 @@ mod centrifuge {
 						USDC,
 						usdc(1_000),
 						Box::new(
-							MultiLocation::new(
+							Location::new(
 								1,
-								X2(
+								[
 									Parachain(T::FudgeHandle::SIBLING_ID),
 									Junction::AccountId32 {
 										id: Keyring::Bob.into(),
 										network: None,
 									}
-								)
+								]
 							)
 							.into()
 						),
@@ -7360,15 +7264,15 @@ mod centrifuge {
 					USDC,
 					usdc(1_000),
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::SIBLING_ID),
 								Junction::AccountId32 {
 									id: Keyring::Alice.into(),
 									network: None,
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -7390,6 +7294,7 @@ mod centrifuge {
 			// transfer does not take place.
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_dot_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7423,7 +7328,7 @@ mod centrifuge {
 				add_allowance::<T>(
 					Keyring::Alice,
 					DOT_ASSET_ID,
-					Location::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
 				);
 
 				assert_noop!(
@@ -7477,6 +7382,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_dot_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7492,7 +7398,7 @@ mod centrifuge {
 
 				assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Box::new(MultiLocation::new(1, Junctions::Here)),
+					Box::new(Location::new(1, Junctions::Here)),
 					XCM_VERSION,
 				));
 
@@ -7510,12 +7416,12 @@ mod centrifuge {
 						DOT_ASSET_ID,
 						dot(1),
 						Box::new(
-							MultiLocation::new(
+							Location::new(
 								1,
-								X1(Junction::AccountId32 {
+								Junction::AccountId32 {
 									id: Keyring::Bob.into(),
 									network: None,
-								})
+								}
 							)
 							.into()
 						),
@@ -7529,12 +7435,12 @@ mod centrifuge {
 					DOT_ASSET_ID,
 					dot(1),
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X1(Junction::AccountId32 {
+							Junction::AccountId32 {
 								id: Keyring::Alice.into(),
 								network: None,
-							})
+							}
 						)
 						.into()
 					),
@@ -7558,15 +7464,6 @@ mod centrifuge {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_lp_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_usdc_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_cfg_extrinsic);
-		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 
 	mod transfers {
@@ -7583,12 +7480,12 @@ mod centrifuge {
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					X2(
+					[
 						Parachain(T::FudgeHandle::PARA_ID),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
-					),
+					],
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -7634,15 +7531,15 @@ mod centrifuge {
 					CurrencyId::Native,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::SIBLING_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -7678,6 +7575,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn test_cfg_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7724,15 +7622,15 @@ mod centrifuge {
 					cfg_in_sibling,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Alice.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -7757,6 +7655,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_ausd_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -7805,15 +7704,15 @@ mod centrifuge {
 					AUSD_CURRENCY_ID,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -7850,6 +7749,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_dot_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -7861,7 +7761,7 @@ mod centrifuge {
 
 				assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Box::new(MultiLocation::new(1, Junctions::Here)),
+					Box::new(Location::new(1, Junctions::Here)),
 					XCM_VERSION,
 				));
 
@@ -7870,12 +7770,12 @@ mod centrifuge {
 					DOT_ASSET_ID,
 					dot(1),
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X1(Junction::AccountId32 {
+							Junction::AccountId32 {
 								id: Keyring::Alice.into(),
 								network: None,
-							})
+							}
 						)
 						.into()
 					),
@@ -7900,6 +7800,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_foreign_sibling_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7910,16 +7811,16 @@ mod centrifuge {
 			setup_xcm(&mut env);
 
 			let sibling_asset_id = CurrencyId::ForeignAsset(1);
-			let asset_location = MultiLocation::new(
+			let asset_location = Location::new(
 				1,
-				X2(Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])),
+				[Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])],
 			);
 			let meta: AssetMetadata = AssetMetadata {
 				decimals: 18,
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V4(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						// We specify a custom fee_per_second and verify below that this value is
@@ -7964,15 +7865,15 @@ mod centrifuge {
 					CurrencyId::Native,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -8008,6 +7909,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_wormhole_usdc_acala_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				Default::default(),
@@ -8020,19 +7922,19 @@ mod centrifuge {
 			setup_xcm(&mut env);
 
 			let usdc_asset_id = CurrencyId::ForeignAsset(39);
-			let asset_location = MultiLocation::new(
+			let asset_location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(T::FudgeHandle::SIBLING_ID),
 					general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
-				),
+				],
 			);
 			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
 				name: BoundedVec::default(),
 				symbol: BoundedVec::default(),
 				existential_deposit: 1,
-				location: Some(VersionedMultiLocation::V3(asset_location)),
+				location: Some(VersionedLocation::V4(asset_location)),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 					..CustomMetadata::default()
@@ -8076,15 +7978,15 @@ mod centrifuge {
 					usdc_asset_id,
 					transfer_amount,
 					Box::new(
-						MultiLocation::new(
+						Location::new(
 							1,
-							X2(
+							[
 								Parachain(T::FudgeHandle::PARA_ID),
 								Junction::AccountId32 {
 									network: None,
 									id: Keyring::Bob.into(),
 								}
-							)
+							]
 						)
 						.into()
 					),
@@ -8107,12 +8009,6 @@ mod centrifuge {
 				assert_eq!(bob_balance, 11993571);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], test_cfg_transfers_to_and_from_sibling);
-		crate::test_for_runtimes!([centrifuge], transfer_ausd_to_centrifuge);
-		crate::test_for_runtimes!([centrifuge], transfer_dot_to_and_from_relay_chain);
-		crate::test_for_runtimes!([centrifuge], transfer_foreign_sibling_to_centrifuge);
-		crate::test_for_runtimes!([centrifuge], transfer_wormhole_usdc_acala_to_centrifuge);
 	}
 }
 
@@ -8122,6 +8018,7 @@ mod all {
 	mod restricted_calls {
 		use super::*;
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -8132,15 +8029,15 @@ mod all {
 						CurrencyId::Tranche(401, [0; 16]),
 						42,
 						Box::new(
-							MultiLocation::new(
+							Location::new(
 								1,
-								X2(
+								[
 									Parachain(T::FudgeHandle::SIBLING_ID),
 									Junction::AccountId32 {
 										network: None,
 										id: Keyring::Bob.into(),
 									}
-								)
+								]
 							)
 							.into()
 						),
@@ -8151,25 +8048,26 @@ mod all {
 			});
 		}
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
 				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
+			let tranche_location = Location::new(
+				1,
+				[
 					Parachain(123),
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
 						data: vec_to_fixed_array(tranche_id.to_vec()),
 					},
-				),
-			};
-			let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
-				AssetId::Concrete(tranche_location),
+				],
+			);
+			let tranche_asset = VersionedAsset::from(Asset::from((
+				AssetId(tranche_location),
 				Fungibility::Fungible(42),
 			)));
 
@@ -8177,17 +8075,17 @@ mod all {
 				assert_noop!(
 					orml_xtokens::Pallet::<T>::transfer_multiasset(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(tranche_multi_asset),
+						Box::new(tranche_asset),
 						Box::new(
-							MultiLocation::new(
+							Location::new(
 								1,
-								X2(
+								[
 									Parachain(T::FudgeHandle::SIBLING_ID),
 									Junction::AccountId32 {
 										network: None,
 										id: Keyring::Bob.into(),
 									}
-								)
+								]
 							)
 							.into()
 						),
@@ -8198,46 +8096,42 @@ mod all {
 			});
 		}
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
 				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
+			let tranche_location = Location::new(
+				1,
+				[
 					Parachain(123),
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
 						data: vec_to_fixed_array(tranche_id.to_vec()),
 					},
-				),
-			};
-			let tranche_multi_asset = MultiAsset::from((
-				AssetId::Concrete(tranche_location),
-				Fungibility::Fungible(42),
-			));
+				],
+			);
+			let tranche_asset = Asset::from((AssetId(tranche_location), Fungibility::Fungible(42)));
 
 			env.parachain_state_mut(|| {
 				assert_noop!(
 					orml_xtokens::Pallet::<T>::transfer_multiassets(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
-							tranche_multi_asset
-						]))),
+						Box::new(VersionedAssets::from(Assets::from(vec![tranche_asset]))),
 						0,
 						Box::new(
-							MultiLocation::new(
+							Location::new(
 								1,
-								X2(
+								[
 									Parachain(T::FudgeHandle::SIBLING_ID),
 									Junction::AccountId32 {
 										network: None,
 										id: Keyring::Bob.into(),
 									}
-								)
+								]
 							)
 							.into()
 						),
@@ -8247,9 +8141,5 @@ mod all {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!(all, xtokens_transfer);
-		crate::test_for_runtimes!(all, xtokens_transfer_multiasset);
-		crate::test_for_runtimes!(all, xtokens_transfer_multiassets);
 	}
 }
