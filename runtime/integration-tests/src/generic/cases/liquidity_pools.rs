@@ -132,7 +132,7 @@ pub mod utils {
 				FudgeRelayRuntime<T>,
 			>::force_process_hrmp_open(
 				<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-				0,
+				2,
 			));
 		});
 

@@ -61,7 +61,7 @@ pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 			FudgeRelayRuntime<T>,
 		>::force_process_hrmp_open(
 			<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-			0,
+			2,
 		));
 	});
 
