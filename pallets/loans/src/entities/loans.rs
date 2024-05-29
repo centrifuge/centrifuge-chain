@@ -261,7 +261,7 @@ impl<T: Config> ActiveLoan<T> {
 		let now = T::Time::now();
 		match trigger {
 			WriteOffTrigger::PrincipalOverdue(overdue_secs) => match self.maturity_date() {
-				Some(maturity) => Ok(now > maturity.ensure_add(*overdue_secs)?),
+				Some(maturity) => Ok(now >= maturity.ensure_add(*overdue_secs)?),
 				None => Ok(false),
 			},
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
