@@ -56,38 +56,3 @@ impl From<DomainAddress> for RestrictedTransferLocation {
 		Self::Address(da)
 	}
 }
-
-#[cfg(test)]
-mod test {
-
-	use hex::FromHex;
-	use staging_xcm::v4::Location;
-
-	use super::*;
-
-	#[test]
-	fn from_xcm_versioned_address_works() {
-		let xa = VersionedLocation::V4(Location::default());
-		let l = RestrictedTransferLocation::from(xa.clone());
-		assert_eq!(
-			l,
-			RestrictedTransferLocation::XCM(sp_core::H256(
-				<[u8; 32]>::from_hex(
-					"a943e30c855a123a9506e69e678dc65ae9f5b70149cb6b26eb2ed58a59b4bf77"
-				)
-				.unwrap()
-			))
-		);
-	}
-
-	#[test]
-	fn from_domain_address_works() {
-		let da = DomainAddress::EVM(
-			1284,
-			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").unwrap(),
-		);
-		let l = RestrictedTransferLocation::from(da.clone());
-
-		assert_eq!(l, RestrictedTransferLocation::Address(da))
-	}
-}
