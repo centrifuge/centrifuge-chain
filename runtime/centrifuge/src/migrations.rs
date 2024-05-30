@@ -12,6 +12,9 @@
 
 use crate::{OraclePriceCollection, OraclePriceFeed};
 
+// Number of identities on Centrifuge Chain on 29.05.2024 was 34
+const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
+
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeCentrifuge1029 = (
@@ -19,4 +22,13 @@ pub type UpgradeCentrifuge1029 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
 	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
+	runtime_common::migrations::hold_reason::MigrateTransferAllowListHolds<
+		crate::Runtime,
+		crate::RuntimeHoldReason,
+	>,
+	// Migrations below this comment originate from Polkadot SDK
+	pallet_xcm::migration::MigrateToLatestXcmVersion<crate::Runtime>,
+	cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<crate::Runtime>,
+	pallet_identity::migration::versioned::V0ToV1<crate::Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
+	pallet_uniques::migration::MigrateV0ToV1<crate::Runtime, ()>,
 );
