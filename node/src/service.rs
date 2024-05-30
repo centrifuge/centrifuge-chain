@@ -292,6 +292,7 @@ where
 ///
 /// NOTE: Taken from Polkadot SDK because Moonbeam uses their custom Nimbus
 /// consensus
+#[allow(clippy::too_many_arguments)]
 fn start_consensus<RuntimeApi, Executor>(
 	client: Arc<FullClient<RuntimeApi, Executor>>,
 	block_import: ParachainBlockImport<RuntimeApi, Executor>,

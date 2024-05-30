@@ -540,9 +540,7 @@ where
 			overseer_handle,
 			announce_block,
 		)?;
-	} else {
 	}
-
 	start_network.start_network();
 
 	Ok((task_manager, client))
