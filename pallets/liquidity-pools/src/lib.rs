@@ -64,8 +64,7 @@ use sp_runtime::{
 };
 use sp_std::{convert::TryInto, vec};
 use staging_xcm::{
-	v3,
-	v4::{self, Junction::*, Location, NetworkId},
+	v4::{Junction::*, NetworkId},
 	VersionedLocation,
 };
 
