@@ -74,10 +74,10 @@ onboard-parachain)
 
    wasm_location="$onboard_dir/${parachain}-${para_id}.wasm"
     if [ "$docker_onboard" == "true" ]; then
-      genesis=$(docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
+      genesis=$(docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-head --chain="${parachain}")
       docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-wasm --chain="${parachain}" > $wasm_location
     else
-      genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
+      genesis=$(./target/release/centrifuge-chain export-genesis-head --chain="${parachain}")
       ./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}" > $wasm_location
     fi
 

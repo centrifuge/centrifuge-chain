@@ -12,7 +12,7 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use fc_rpc::pending::AuraConsensusDataProvider;
+use fc_rpc::pending;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,
@@ -39,8 +39,24 @@ use sp_core::H256;
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 
+pub struct CentrifugeEthConfig<B, C, BE>(std::marker::PhantomData<(B, C, BE)>);
+impl<B, C, BE> fc_rpc::EthConfig<B, C> for CentrifugeEthConfig<B, C, BE>
+where
+	B: BlockT,
+	C: sc_client_api::StorageProvider<B, BE> + Sync + Send + 'static,
+	BE: Backend<B> + 'static,
+{
+	// This type is intended to override (i.e. adapt) evm calls to precompiles for proper gas estimation.
+	//
+	// NOTE: Not used by our precompiles right now. Therefore, no need to provide impl.
+	type EstimateGasAdapter = ();
+	// Assumes the use of HashedMapping<BlakeTwo256> for address mapping
+	type RuntimeStorageOverride =
+		fc_rpc::frontier_backend_client::SystemAccountId32StorageOverride<B, C, BE>;
+}
+
 /// Extra dependencies for Ethereum compatibility.
-pub struct Deps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
+pub struct EvmDeps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
 	/// The client instance to use.
 	pub client: Arc<C>,
 	/// Transaction pool instance.
@@ -58,7 +74,7 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
 	/// Chain syncing service
 	pub sync: Arc<SyncingService<B>>,
 	/// Frontier Backend.
-	pub frontier_backend: Arc<dyn fc_db::BackendReader<B> + Send + Sync>,
+	pub frontier_backend: Arc<dyn fc_api::Backend<B>>,
 	/// Ethereum data access overrides.
 	pub overrides: Arc<OverrideHandle<B>>,
 	/// Cache for Ethereum block data.
@@ -78,6 +94,8 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
 	pub forced_parent_hashes: Option<BTreeMap<H256, H256>>,
 	/// Something that can create the inherent data providers for pending state
 	pub pending_create_inherent_data_providers: CIDP,
+	/// Something that can create the consensus data providers for pending state
+	pub pending_consensus_data_provider: Option<Box<dyn pending::ConsensusDataProvider<B>>>,
 }
 
 pub fn overrides_handle<B: BlockT<Hash = H256>, C, BE>(client: Arc<C>) -> Arc<OverrideHandle<B>>
@@ -113,7 +131,7 @@ where
 
 pub fn create<C, BE, P, A, CT, B, CIDP>(
 	mut io: RpcModule<()>,
-	deps: Deps<C, P, A, CT, B, CIDP>,
+	deps: EvmDeps<C, P, A, CT, B, CIDP>,
 	subscription_task_executor: SubscriptionTaskExecutor,
 	pubsub_notification_sinks: Arc<
 		fc_mapping_sync::EthereumBlockNotificationSinks<
@@ -149,25 +167,26 @@ where
 		EthPubSubApiServer, EthSigner, Net, NetApiServer, Web3, Web3ApiServer,
 	};
 
-	let Deps {
+	let EvmDeps {
 		client,
 		pool,
 		graph,
 		converter: _converter,
+		sync,
 		is_authority,
 		enable_dev_signer,
 		network,
-		sync,
-		frontier_backend,
 		overrides,
+		frontier_backend,
 		block_data_cache,
-		filter_pool,
-		max_past_logs,
 		fee_history_cache,
 		fee_history_cache_limit,
 		execute_gas_limit_multiplier,
+		filter_pool,
+		max_past_logs,
 		forced_parent_hashes,
 		pending_create_inherent_data_providers,
+		pending_consensus_data_provider,
 	} = deps;
 
 	let mut signers = Vec::new();
@@ -187,7 +206,7 @@ where
 	let convert_transaction: Option<Never> = None;
 
 	io.merge(
-		Eth::new(
+		Eth::<_, _, _, _, _, _, _, ()>::new(
 			Arc::clone(&client),
 			Arc::clone(&pool),
 			graph.clone(),
@@ -203,8 +222,9 @@ where
 			execute_gas_limit_multiplier,
 			forced_parent_hashes,
 			pending_create_inherent_data_providers,
-			Some(Box::new(AuraConsensusDataProvider::new(client.clone()))),
+			pending_consensus_data_provider,
 		)
+		.replace_config::<CentrifugeEthConfig<B, C, BE>>()
 		.into_rpc(),
 	)?;
 

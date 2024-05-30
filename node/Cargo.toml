@@ -31,10 +31,12 @@ jsonrpsee = { workspace = true, default-features = true }
 log = { workspace = true, default-features = true }
 parity-scale-codec = { default-features = true, workspace = true }
 serde = { workspace = true, default-features = true }
+serde_json = { workspace = true, default-features = true }
 url = { workspace = true, default-features = true }
 
 # client dependencies
 pallet-transaction-payment-rpc = { workspace = true, default-features = true }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = true }
 sc-basic-authorship = { workspace = true, default-features = true }
 sc-chain-spec = { workspace = true, default-features = true }
 sc-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
@@ -106,6 +108,7 @@ pallet-pool-system = { workspace = true, default-features = true }
 runtime-common = { workspace = true, default-features = true }
 
 # frontier
+fc-api = { workspace = true, default-features = true }
 fc-consensus = { workspace = true, default-features = true }
 fc-db = { workspace = true, default-features = true, features = ["rocksdb"] }
 fc-mapping-sync = { workspace = true, default-features = true }
