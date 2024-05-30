@@ -12,6 +12,7 @@
 
 //! Centrifuge Runtime-Common Migrations
 
+pub mod hold_reason;
 pub mod increase_storage_version;
 pub mod loans;
 pub mod nuke;
