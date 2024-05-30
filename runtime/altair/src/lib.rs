@@ -50,11 +50,10 @@ use cfg_types::{
 use constants::currency::*;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use fp_rpc::TransactionStatus;
-use frame_support::genesis_builder_helper::{build_config, create_default_config};
-
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
+	genesis_builder_helper::{build_config, create_default_config},
 	pallet_prelude::RuntimeDebug,
 	parameter_types,
 	traits::{

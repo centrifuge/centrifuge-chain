@@ -14,7 +14,6 @@
 
 use std::sync::Arc;
 
-use crate::rpc::anchors::{AnchorApiServer, Anchors};
 use cfg_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Nonce};
 use jsonrpsee::types::error::{ErrorCode, ErrorObject};
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
@@ -25,6 +24,8 @@ use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use substrate_frame_rpc_system::{System, SystemApiServer};
+
+use crate::rpc::anchors::{AnchorApiServer, Anchors};
 
 pub mod anchors;
 pub mod evm;

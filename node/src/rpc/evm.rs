@@ -46,9 +46,11 @@ where
 	C: sc_client_api::StorageProvider<B, BE> + Sync + Send + 'static,
 	BE: Backend<B> + 'static,
 {
-	// This type is intended to override (i.e. adapt) evm calls to precompiles for proper gas estimation.
+	// This type is intended to override (i.e. adapt) evm calls to precompiles for
+	// proper gas estimation.
 	//
-	// NOTE: Not used by our precompiles right now. Therefore, no need to provide impl.
+	// NOTE: Not used by our precompiles right now. Therefore, no need to provide
+	// impl.
 	type EstimateGasAdapter = ();
 	// Assumes the use of HashedMapping<BlakeTwo256> for address mapping
 	type RuntimeStorageOverride =

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use cfg_primitives::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Nonce};
 use cumulus_client_cli::CollatorOptions;
@@ -291,7 +290,8 @@ where
 
 /// Starts the aura consensus.
 ///
-/// NOTE: Taken from Polkadot SDK because Moonbeam uses their custom Nimbus consensus
+/// NOTE: Taken from Polkadot SDK because Moonbeam uses their custom Nimbus
+/// consensus
 fn start_consensus<RuntimeApi, Executor>(
 	client: Arc<FullClient<RuntimeApi, Executor>>,
 	block_import: ParachainBlockImport<RuntimeApi, Executor>,
@@ -318,8 +318,8 @@ where
 		self as basic_aura, Params as BasicAuraParams,
 	};
 
-	// NOTE: because we use Aura here explicitly, we can use `CollatorSybilResistance::Resistant`
-	// when starting the network.
+	// NOTE: because we use Aura here explicitly, we can use
+	// `CollatorSybilResistance::Resistant` when starting the network.
 
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 

@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use cfg_primitives::BlockNumber;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_anchors::AnchorData;
