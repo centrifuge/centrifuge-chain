@@ -134,14 +134,14 @@ where
 		+ pallet_transfer_allowlist::Config
 		+ frame_system::Config<AccountId = AccountId>,
 {
-	fn account_can_be_migrated(who: &AccountId, whitelist: &Vec<AccountId>) -> bool {
+	fn account_can_be_migrated(who: &AccountId, whitelist: &[AccountId]) -> bool {
 		if !whitelist.iter().any(|a| a == who) {
 			log::warn!("{LOG_PREFIX} Account {who:?} is skipped due to missing AccountCurrencyTransferAllowance storage entry");
 			return false;
 		}
 
 		match Holds::<T>::get(who) {
-			holds if holds.len() == 1 => holds.into_inner()[0].id == (),
+			holds if holds.len() == 1 => true,
 			_ => {
 				log::warn!("{LOG_PREFIX} Account {who:?} does not meet Hold storage assumptions");
 				false
