@@ -91,7 +91,7 @@ where
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-		let transfer_allowlist_accounts =
+		let transfer_allowlist_accounts: Vec<AccountId> =
 			pallet_transfer_allowlist::AccountCurrencyTransferAllowance::<T>::iter_keys()
 				.map(|(a, _, _)| a)
 				.collect();
