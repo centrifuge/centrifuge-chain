@@ -10,25 +10,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::pallet_prelude::ValueQuery;
-use frame_support::{storage_alias, Blake2_128Concat, BoundedVec, Parameter};
-
 use cfg_primitives::{AccountId, Balance};
-use frame_support::traits::{ConstU32, Get, Len, OnRuntimeUpgrade, VariantCountOf};
+use frame_support::{
+	pallet_prelude::ValueQuery,
+	storage_alias,
+	traits::{ConstU32, Get, Len, OnRuntimeUpgrade, VariantCountOf},
+	Blake2_128Concat, BoundedVec, Parameter,
+};
 use pallet_balances::IdAmount;
 use pallet_order_book::weights::Weight;
 use pallet_transfer_allowlist::HoldReason;
 #[cfg(feature = "try-runtime")]
 use parity_scale_codec::{Decode, Encode};
 use parity_scale_codec::{FullCodec, FullEncode};
-use sp_runtime::traits::Member;
-use sp_runtime::SaturatedConversion;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::Saturating;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
-use sp_std::vec;
-use sp_std::vec::Vec;
+use sp_runtime::{traits::Member, SaturatedConversion};
+use sp_std::{vec, vec::Vec};
 
 const LOG_PREFIX: &str = "MigrateTransferAllowList HoldReason:";
 
