@@ -9,6 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
+hex = { workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }

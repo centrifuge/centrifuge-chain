@@ -18,6 +18,9 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeCentrifuge1029 = (
+	runtime_common::migrations::restricted_location::MigrateRestrictedTransferLocation<
+		crate::Runtime,
+	>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
