@@ -996,7 +996,7 @@ parameter_types! {
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
 	pub const BasicDeposit: Balance = 100 * CFG;
-	pub const ByteDeposit: Balance = deposit(0, 1); //TODO-1.7
+	pub const ByteDeposit: Balance = deposit(0, 1);
 	pub const SubAccountDeposit: Balance = 20 * CFG;
 	pub const MaxRegistrars: u32 = 20;
 }
@@ -1054,6 +1054,7 @@ parameter_types! {
 
 	// periods between treasury spends
 	pub const SpendPeriod: BlockNumber = 14 * DAYS;
+	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
 
 	// percentage of treasury we burn per Spend period if there is a surplus
 	// If the treasury is able to spend on all the approved proposals and didn't miss any
@@ -1083,7 +1084,7 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = Treasury;
 	type PalletId = TreasuryPalletId;
 	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
-	type PayoutPeriod = ConstU32<10>;
+	type PayoutPeriod = PayoutPeriod;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type ProposalBondMinimum = ProposalBondMinimum;

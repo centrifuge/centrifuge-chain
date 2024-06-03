@@ -361,7 +361,7 @@ benchmarks! {
 		reserve_balance::<T>(currency, &recv, reserved + reserved);
 	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
 	verify {
-		assert!(<pallet_balances::Pallet<T> as fungible::InspectHold<T::AccountId>>::total_balance_on_hold(&recv) == reserved);
+		assert!(<orml_tokens::Pallet<T> as fungibles::InspectHold<T::AccountId>>::total_balance_on_hold(currency, &recv) == reserved);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == free - <orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::minimum_balance(currency));
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free));
 	}
