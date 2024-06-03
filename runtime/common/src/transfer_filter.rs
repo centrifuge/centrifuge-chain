@@ -22,9 +22,8 @@ use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_core::Hasher;
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
+	traits::{Convert, DispatchInfoOf, SignedExtension, StaticLookup},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
@@ -49,12 +48,12 @@ impl<
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::XCM(destination.clone()),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::XCM(destination),
 					FilterCurrency::All,
 				),
 			)
