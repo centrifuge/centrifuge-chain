@@ -14,6 +14,7 @@ use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_core::crypto::AccountId32;
 // Please note that if this version change,
 // a migration could be required in those places where
 // RestrictedTransferLocation is stored
@@ -29,4 +30,10 @@ pub enum RestrictedTransferLocation {
 	Xcm(Location),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
+}
+
+impl From<AccountId32> for RestrictedTransferLocation {
+	fn from(value: AccountId32) -> Self {
+		Self::Local(value)
+	}
 }
