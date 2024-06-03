@@ -559,7 +559,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				// Borrowers should be able to swap back and forth between local currencies and their variants
 				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
 				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
-				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
+				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..}) |
+				ProxyType::PodOperation.filter(c)
 			),
 			ProxyType::Invest => matches!(
 				c,
@@ -587,7 +588,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Uniques(..)
 					| RuntimeCall::Anchor(..)
 					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
-					| ProxyType::Borrow.filter(c)
 			),
 			// This type of proxy is used only for authenticating with the centrifuge POD,
 			// having it here also allows us to validate authentication with on-chain data.
