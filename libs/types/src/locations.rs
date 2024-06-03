@@ -26,7 +26,7 @@ pub enum RestrictedTransferLocation {
 	/// Local chain account sending destination.
 	Local(AccountId),
 	/// XCM Location sending destinations.
-	XCM(Location),
+	Xcm(Location),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }

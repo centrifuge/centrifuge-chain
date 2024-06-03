@@ -8,6 +8,7 @@ use pallet_transfer_allowlist::AccountCurrencyTransferAllowance;
 use parity_scale_codec::Encode;
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
+use sp_std::vec::Vec;
 use staging_xcm::v4;
 
 mod old {
@@ -25,7 +26,7 @@ mod old {
 	)]
 	pub enum RestrictedTransferLocation {
 		Local(AccountId),
-		XCM(H256),
+		Xcm(H256),
 		Address(DomainAddress),
 	}
 
@@ -69,7 +70,7 @@ fn migrate_location_key(account_id: &AccountId, hash: H256) -> Option<Restricted
 		match v4::Location::try_from(old_location) {
 			Ok(location) => {
 				log::info!("{LOG_PREFIX} Hash: '{hash}' migrated!");
-				let new_restricted_location = RestrictedTransferLocation::XCM(location);
+				let new_restricted_location = RestrictedTransferLocation::Xcm(location);
 
 				Some(new_restricted_location)
 			}
@@ -102,7 +103,7 @@ where
 			.filter_map(|(account_id, currency_id, old_restricted_location)| {
 				weight.saturating_accrue(T::DbWeight::get().reads(1));
 				match old_restricted_location {
-					old::RestrictedTransferLocation::XCM(hash) => {
+					old::RestrictedTransferLocation::Xcm(hash) => {
 						migrate_location_key(&account_id, hash).map(|new_restricted_location| {
 							(
 								(account_id.clone(), currency_id, old_restricted_location),
@@ -129,12 +130,12 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::TryRuntimeError> {
+	fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 		Ok(Vec::new())
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_pre_state: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
+	fn post_upgrade(_pre_state: Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
 		Ok(())
 	}
 }

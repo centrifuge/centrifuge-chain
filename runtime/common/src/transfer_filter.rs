@@ -48,12 +48,12 @@ impl<
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					RestrictedTransferLocation::XCM(destination.clone()),
+					RestrictedTransferLocation::Xcm(destination.clone()),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					RestrictedTransferLocation::XCM(destination),
+					RestrictedTransferLocation::Xcm(destination),
 					FilterCurrency::All,
 				),
 			)
