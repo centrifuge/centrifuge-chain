@@ -42,6 +42,8 @@ use crate::{
 	UnhealthyState,
 };
 
+mod ratios;
+
 const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 pub mod util {

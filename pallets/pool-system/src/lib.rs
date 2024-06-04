@@ -187,6 +187,7 @@ pub mod pallet {
 		traits::{tokens::Preservation, Contains, EnsureOriginWithArg},
 		PalletId,
 	};
+	use rev_slice::SliceExt;
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 	use super::*;
@@ -1245,7 +1246,11 @@ pub mod pallet {
 				.map(|tranches| {
 					tranches
 						.iter()
-						.zip(&executed_amounts)
+						// NOTE: Reversing amounts, as residual amount is on top.
+						// NOTE: Iterator of executed amounts is one time larger than the
+						//       non_residual_tranche-iterator, but we anyways push all reamaining
+						//       ratio to the residual tranche.
+						.zip(executed_amounts.rev())
 						.map(|(tranche, &(invest, redeem))| {
 							Ok(Perquintill::from_rational(
 								tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
@@ -1260,7 +1265,12 @@ pub mod pallet {
 				.iter()
 				.try_fold(Perquintill::zero(), |acc, ratio| acc.ensure_add(*ratio))?;
 
+			// Pushing all remaining ratio to the residual tranche
 			tranche_ratios.push(Perquintill::one().ensure_sub(non_residual_tranche_ratio_sum)?);
+
+			// NOTE: We need to reverse the ratios here, as the residual tranche is on top
+			// all the time
+			tranche_ratios.reverse();
 
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
