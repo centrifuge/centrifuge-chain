@@ -1239,15 +1239,28 @@ pub mod pallet {
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
 			let total_assets = epoch.nav.total(pool.reserve.total)?;
-			let tranche_ratios = epoch.tranches.combine_with_residual_top(
-				&executed_amounts,
-				|tranche, &(invest, redeem)| {
-					Ok(Perquintill::from_rational(
-						tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
-						total_assets,
-					))
-				},
-			)?;
+			let mut tranche_ratios = epoch
+				.tranches
+				.non_residual_tranches()
+				.map(|tranches| {
+					tranches
+						.iter()
+						.zip(&executed_amounts)
+						.map(|(tranche, &(invest, redeem))| {
+							Ok(Perquintill::from_rational(
+								tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+								total_assets,
+							))
+						})
+						.collect::<Result<Vec<_>, ArithmeticError>>()
+				})
+				.unwrap_or(Ok(Vec::new()))?;
+
+			let non_residual_tranche_ratio_sum = tranche_ratios
+				.iter()
+				.try_fold(Perquintill::zero(), |acc, ratio| acc.ensure_add(*ratio))?;
+
+			tranche_ratios.push(Perquintill::one().ensure_sub(non_residual_tranche_ratio_sum)?);
 
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
