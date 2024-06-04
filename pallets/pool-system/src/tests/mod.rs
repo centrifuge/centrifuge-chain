@@ -75,7 +75,7 @@ pub mod util {
 					TrancheInput {
 						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: Rate::default(),
-							min_risk_buffer: Perquintill::default(),
+							min_risk_buffer: Perquintill::from_percent(50),
 						},
 						seniority: None,
 						metadata: TrancheMetadata {
@@ -85,7 +85,7 @@ pub mod util {
 					},
 				],
 				AUSD_CURRENCY_ID,
-				0,
+				10_000 * CURRENCY,
 				vec![],
 			)
 			.unwrap();
@@ -97,7 +97,7 @@ pub mod util {
 			// forcing to call `execute_epoch()` later.
 			Investments::update_invest_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(0, JuniorTrancheId::get()),
+				TrancheCurrency::generate(0, SeniorTrancheId::get()),
 				500 * CURRENCY,
 			)
 			.unwrap();

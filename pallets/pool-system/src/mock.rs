@@ -27,9 +27,7 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
-	assert_ok, derive_impl,
-	dispatch::RawOrigin,
-	parameter_types,
+	assert_ok, derive_impl, parameter_types,
 	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, PalletId, StorageHasher,
 };
