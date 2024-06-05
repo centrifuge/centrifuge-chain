@@ -7390,6 +7390,8 @@ mod centrifuge {
 					.storage(),
 			);
 
+			setup_xcm(&mut env);
+
 			transfer_dot_from_relay_chain(&mut env);
 
 			env.parachain_state_mut(|| {
