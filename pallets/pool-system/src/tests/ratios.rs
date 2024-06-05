@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use sp_arithmetic::traits::EnsureSub;
+use sp_arithmetic::{traits::EnsureSub, PerThing, Rounding};
 
 use super::*;
 
@@ -224,6 +224,181 @@ fn ensure_ratios_are_distributed_correctly_1_tranche() {
 			.iter()
 			.for_each(|tranche| {
 				assert_eq!(tranche.ratio, Perquintill::from_percent(100));
+			});
+	});
+}
+
+#[test]
+fn ensure_ratios_are_distributed_correctly_3_tranches() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = DEFAULT_POOL_OWNER;
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
+
+		util::default_pool::create_with_tranche_input(util::default_pool::three_tranche_input());
+
+		// Assert ratios are all zero
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(0));
+			});
+
+		// Force min_epoch_time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(0, JuniorTrancheId::get(), 500 * CURRENCY),
+				(0, SeniorTrancheId::get(), 500 * CURRENCY),
+				(0, SecondSeniorTrancheId::get(), 500 * CURRENCY),
+			],
+		);
+
+		let check_ratios = [
+			Perquintill::from_rational_with_rounding(1u64, 3, Rounding::Up).unwrap(),
+			Perquintill::from_rational(1u64, 3),
+			Perquintill::from_rational(1u64, 3),
+		];
+
+		// Ensure ratios are 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.zip(check_ratios.into_iter())
+			.for_each(|(tranche, check)| {
+				assert_eq!(tranche.ratio, check);
+			});
+
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			250 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+		));
+
+		let check_ratios = [
+			Perquintill::from_rational(1u64, 5),
+			Perquintill::from_rational(2u64, 5),
+		];
+
+		// Ensure ratios are 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.zip(check_ratios.into_iter())
+			.for_each(|(tranche, check)| {
+				assert_eq!(tranche.ratio, check);
+			});
+
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			250 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+		));
+
+		let check_ratios = [
+			Perquintill::from_rational(1u64, 4),
+			Perquintill::from_rational(2u64, 4),
+			Perquintill::from_rational(1u64, 4),
+		];
+
+		// Ensure ratios are 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.zip(check_ratios.into_iter())
+			.for_each(|(tranche, check)| {
+				assert_eq!(tranche.ratio, check);
+			});
+
+		// Ensure ratio goes up again
+		invest_close_and_collect(0, vec![(0, JuniorTrancheId::get(), 250 * CURRENCY)]);
+
+		let check_ratios = [
+			Perquintill::from_rational(2u64, 5),
+			Perquintill::from_rational(2u64, 5),
+			Perquintill::from_rational(1u64, 5),
+		];
+
+		// Ensure ratios are 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.zip(check_ratios.into_iter())
+			.for_each(|(tranche, check)| {
+				assert_eq!(tranche.ratio, check);
+			});
+
+		// Redeem everything
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			250 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+		));
+
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+		));
+
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+		));
+
+		// Ensure ratios are 0
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::zero());
 			});
 	});
 }
