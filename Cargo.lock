@@ -11772,6 +11772,7 @@ dependencies = [
  "hex-literal",
  "lazy_static",
  "liquidity-pools-gateway-routers",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",

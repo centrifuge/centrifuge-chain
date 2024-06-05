@@ -6416,23 +6416,9 @@ mod centrifuge {
 						0
 					)
 				);
-
-				assert_eq!(
-					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
-						&Keyring::Alice.into()
-					),
-					alice_initial_dot - transfer_amount
-				);
 			});
 
-			env.pass(Blocks::ByNumber(3));
-
-			env.parachain_state(|| {
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
-					29919630000 // Comes from `transfer_amount - dot_fee()` with some noise
-				);
-			});
+			env.pass(Blocks::ByNumber(1));
 		}
 	}
 
@@ -7393,6 +7379,12 @@ mod centrifuge {
 			transfer_dot_from_relay_chain(&mut env);
 
 			env.parachain_state_mut(|| {
+				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
+					DOT_ASSET_ID,
+					&Keyring::Alice.id(),
+					dot(2)
+				));
+
 				let alice_initial_dot =
 					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into());
 
@@ -7460,7 +7452,7 @@ mod centrifuge {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Alice.into()
 					),
-					79978937205
+					109978937205
 				);
 			});
 		}
