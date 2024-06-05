@@ -77,6 +77,19 @@ impl Convert<DomainAddress, AccountId> for AccountConverter {
 	}
 }
 
+impl Convert<(Domain, [u8; 32]), DomainAddress> for AccountConverter {
+	fn convert((domain, account): (Domain, [u8; 32])) -> DomainAddress {
+		match domain {
+			Domain::Centrifuge => DomainAddress::Centrifuge(account),
+			Domain::EVM(chain_id) => {
+				let mut bytes20 = [0; 20];
+				bytes20.copy_from_slice(&account[..20]);
+				DomainAddress::EVM(chain_id, bytes20)
+			}
+		}
+	}
+}
+
 impl Convert<(Domain, [u8; 32]), AccountId> for AccountConverter {
 	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId {
 		match domain {
