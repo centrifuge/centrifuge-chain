@@ -7452,7 +7452,7 @@ mod centrifuge {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Alice.into()
 					),
-					109978937205
+					79598796739
 				);
 			});
 		}

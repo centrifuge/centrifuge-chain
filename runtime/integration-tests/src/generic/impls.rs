@@ -179,7 +179,7 @@ macro_rules! impl_fudge_support {
 
 impl_fudge_support!(
 	FudgeDevelopment,
-	polkadot_test_runtime,
+	fudge_test_relay,
 	default_relay_session_keys(),
 	development_runtime,
 	2000,
@@ -188,7 +188,7 @@ impl_fudge_support!(
 
 impl_fudge_support!(
 	FudgeAltair,
-	polkadot_test_runtime,
+	fudge_test_relay,
 	default_relay_session_keys(),
 	altair_runtime,
 	2088,
@@ -197,15 +197,15 @@ impl_fudge_support!(
 
 impl_fudge_support!(
 	FudgeCentrifuge,
-	polkadot_test_runtime,
+	fudge_test_relay,
 	default_relay_session_keys(),
 	centrifuge_runtime,
 	2031,
 	2032
 );
 
-pub fn default_relay_session_keys() -> polkadot_test_runtime::SessionKeys {
-	polkadot_test_runtime::SessionKeys {
+pub fn default_relay_session_keys() -> fudge_test_relay::SessionKeys {
+	fudge_test_relay::SessionKeys {
 		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
 		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
 		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
