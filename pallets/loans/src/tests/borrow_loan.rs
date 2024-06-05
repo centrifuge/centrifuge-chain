@@ -648,7 +648,10 @@ mod cashflow {
 				loan.origination_date(),
 				secs_from_ymdhms(1970, 1, 1, 0, 0, 10)
 			);
-			assert_eq!(loan.maturity_date(), secs_from_ymdhms(1971, 1, 1, 0, 0, 10));
+			assert_eq!(
+				loan.maturity_date(),
+				Some(secs_from_ymdhms(1971, 1, 1, 0, 0, 10))
+			);
 
 			let principal = (COLLATERAL_VALUE / 2) / 12;
 			let interest_rate_per_month = DEFAULT_INTEREST_RATE / 12.0;

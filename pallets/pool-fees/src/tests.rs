@@ -16,9 +16,10 @@ mod extrinsics {
 
 	mod should_work {
 		use super::*;
+		use crate::mock::{default_chargeable_fee, root_editor_fee};
 
 		#[test]
-		fn propose_new_fee_works() {
+		fn propose_new_fee_works_signed() {
 			ExtBuilder::default().build().execute_with(|| {
 				let fees = default_fees();
 
@@ -50,6 +51,29 @@ mod extrinsics {
 		}
 
 		#[test]
+		fn propose_new_fee_works_root() {
+			ExtBuilder::default().build().execute_with(|| {
+				let fee = default_chargeable_fee();
+
+				assert_ok!(PoolFees::propose_new_fee(
+					RuntimeOrigin::root(),
+					POOL,
+					BUCKET,
+					fee.clone()
+				));
+				System::assert_last_event(
+					Event::<Runtime>::Proposed {
+						fee_id: 1u64,
+						pool_id: POOL,
+						bucket: BUCKET,
+						fee,
+					}
+					.into(),
+				);
+			})
+		}
+
+		#[test]
 		fn apply_new_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
 				config_change_mocks(&default_fixed_fee());
@@ -73,11 +97,29 @@ mod extrinsics {
 		}
 
 		#[test]
-		fn remove_only_fee_works() {
+		fn remove_single_account_editor_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
 				add_fees(vec![default_fixed_fee()]);
 
 				assert_ok!(PoolFees::remove_fee(RuntimeOrigin::signed(EDITOR), 1));
+
+				System::assert_last_event(
+					Event::<Runtime>::Removed {
+						pool_id: POOL,
+						bucket: BUCKET,
+						fee_id: 1,
+					}
+					.into(),
+				);
+			})
+		}
+
+		#[test]
+		fn remove_single_root_editor_fee_works() {
+			ExtBuilder::default().build().execute_with(|| {
+				add_fees(vec![root_editor_fee()]);
+
+				assert_ok!(PoolFees::remove_fee(RuntimeOrigin::root(), 1));
 
 				System::assert_last_event(
 					Event::<Runtime>::Removed {
@@ -258,6 +300,19 @@ mod extrinsics {
 		}
 
 		#[test]
+		fn apply_new_fee_from_root() {
+			ExtBuilder::default().build().execute_with(|| {
+				config_change_mocks(&default_fixed_fee());
+
+				// Cannot be called from root
+				assert_noop!(
+					PoolFees::apply_new_fee(RuntimeOrigin::root(), POOL, CHANGE_ID),
+					DispatchError::BadOrigin
+				);
+			})
+		}
+
+		#[test]
 		fn apply_new_fee_missing_pool() {
 			ExtBuilder::default().build().execute_with(|| {
 				MockPools::mock_pool_exists(|_| false);
@@ -280,6 +335,10 @@ mod extrinsics {
 						Error::<Runtime>::UnauthorizedEdit
 					);
 				}
+				assert_noop!(
+					PoolFees::remove_fee(RuntimeOrigin::root(), 1),
+					Error::<Runtime>::UnauthorizedEdit
+				);
 			})
 		}
 
@@ -312,6 +371,10 @@ mod extrinsics {
 					assert_noop!(
 						PoolFees::charge_fee(RuntimeOrigin::signed(account), 1, 1000),
 						Error::<Runtime>::UnauthorizedCharge
+					);
+					assert_noop!(
+						PoolFees::charge_fee(RuntimeOrigin::root(), 1, 1000),
+						DispatchError::BadOrigin
 					);
 				}
 			})
@@ -363,6 +426,10 @@ mod extrinsics {
 					assert_noop!(
 						PoolFees::uncharge_fee(RuntimeOrigin::signed(account), 1, 1000),
 						Error::<Runtime>::UnauthorizedCharge
+					);
+					assert_noop!(
+						PoolFees::uncharge_fee(RuntimeOrigin::root(), 1, 1000),
+						DispatchError::BadOrigin
 					);
 				}
 			})

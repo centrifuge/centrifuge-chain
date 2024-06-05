@@ -60,7 +60,7 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 fn config_mocks() {
 	use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 
-	use crate::tests::mock::{MockChangeGuard, MockPermissions, MockPools, MockPrices};
+	use crate::tests::mock::{MockChangeGuard, MockPermissions, MockPools, MockPrices, MockTimer};
 
 	MockPermissions::mock_add(|_, _, _| Ok(()));
 	MockPermissions::mock_has(|_, _, _| true);
@@ -74,6 +74,7 @@ fn config_mocks() {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(sp_core::H256::default())
 	});
+	MockTimer::mock_now(|| 0);
 }
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);

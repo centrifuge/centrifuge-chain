@@ -219,6 +219,16 @@ pub fn default_fixed_fee() -> PoolFeeInfoOf<Runtime> {
 	})
 }
 
+pub fn root_editor_fee() -> PoolFeeInfoOf<Runtime> {
+	PoolFeeInfoOf::<Runtime> {
+		destination: DESTINATION,
+		editor: PoolFeeEditor::Root,
+		fee_type: PoolFeeType::Fixed {
+			limit: PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
+		},
+	}
+}
+
 pub fn default_chargeable_fee() -> PoolFeeInfoOf<Runtime> {
 	new_fee(PoolFeeType::ChargedUpTo {
 		limit: PoolFeeAmount::AmountPerSecond(1),

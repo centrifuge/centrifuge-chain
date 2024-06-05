@@ -867,6 +867,7 @@ mod development {
 
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn add_pool<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -916,6 +917,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_tranche<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -987,6 +989,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_member<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1071,6 +1074,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_token_price<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1102,6 +1106,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1176,6 +1181,7 @@ mod development {
 				.expect("expected RouterExecutionSuccess event");
 		}
 
+		#[test_runtimes([development])]
 		fn add_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1305,6 +1311,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn allow_investment_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1369,6 +1376,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn allow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1498,6 +1506,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn disallow_investment_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1562,6 +1571,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn disallow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1691,6 +1701,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn schedule_upgrade<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1724,6 +1735,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn cancel_upgrade<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1757,6 +1769,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn update_tranche_token_metadata<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1816,20 +1829,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], add_pool);
-		crate::test_for_runtimes!([development], add_tranche);
-		crate::test_for_runtimes!([development], update_member);
-		crate::test_for_runtimes!([development], update_token_price);
-		crate::test_for_runtimes!([development], add_currency);
-		crate::test_for_runtimes!([development], add_currency_should_fail);
-		crate::test_for_runtimes!([development], allow_investment_currency);
-		crate::test_for_runtimes!([development], allow_investment_currency_should_fail);
-		crate::test_for_runtimes!([development], disallow_investment_currency);
-		crate::test_for_runtimes!([development], disallow_investment_currency_should_fail);
-		crate::test_for_runtimes!([development], schedule_upgrade);
-		crate::test_for_runtimes!([development], cancel_upgrade);
-		crate::test_for_runtimes!([development], update_tranche_token_metadata);
 	}
 
 	mod foreign_investments {
@@ -1838,6 +1837,7 @@ mod development {
 		mod same_currencies {
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn increase_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -1894,6 +1894,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn decrease_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -1986,6 +1987,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn cancel_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2085,6 +2087,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn collect_invest_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2236,6 +2239,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn partially_collect_investment_for_through_investments<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2468,6 +2472,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn increase_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2525,6 +2530,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn decrease_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2644,6 +2650,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn cancel_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2741,6 +2748,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn fully_collect_redeem_order<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -2895,6 +2903,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn partially_collect_redemption_for_through_investments<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3098,29 +3107,13 @@ mod development {
 				});
 			}
 
-			crate::test_for_runtimes!([development], increase_invest_order);
-			crate::test_for_runtimes!([development], decrease_invest_order);
-			crate::test_for_runtimes!([development], cancel_invest_order);
-			crate::test_for_runtimes!([development], collect_invest_order);
-			crate::test_for_runtimes!(
-				[development],
-				partially_collect_investment_for_through_investments
-			);
-			crate::test_for_runtimes!([development], increase_redeem_order);
-			crate::test_for_runtimes!([development], decrease_redeem_order);
-			crate::test_for_runtimes!([development], cancel_redeem_order);
-			crate::test_for_runtimes!([development], fully_collect_redeem_order);
-			crate::test_for_runtimes!(
-				[development],
-				partially_collect_redemption_for_through_investments
-			);
-
 			mod should_fail {
 				use super::*;
 
 				mod decrease_should_underflow {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invest_decrease_underflow<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3170,6 +3163,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_decrease_underflow<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3217,14 +3211,12 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invest_decrease_underflow);
-					crate::test_for_runtimes!([development], redeem_decrease_underflow);
 				}
 
 				mod should_throw_requires_collect {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invest_requires_collect<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3308,6 +3300,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_requires_collect<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3397,14 +3390,12 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invest_requires_collect);
-					crate::test_for_runtimes!([development], redeem_requires_collect);
 				}
 
 				mod payment_payout_currency {
 					use super::*;
 
+					#[test_runtimes([development])]
 					fn invalid_invest_payment_currency<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3484,6 +3475,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn invalid_redeem_payout_currency<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3567,6 +3559,7 @@ mod development {
 						});
 					}
 
+					#[test_runtimes([development])]
 					fn redeem_payout_currency_not_found<T: Runtime + FudgeSupport>() {
 						let mut env = FudgeEnv::<T>::from_parachain_storage(
 							Genesis::default()
@@ -3636,10 +3629,6 @@ mod development {
 							);
 						});
 					}
-
-					crate::test_for_runtimes!([development], invalid_invest_payment_currency);
-					crate::test_for_runtimes!([development], invalid_redeem_payout_currency);
-					crate::test_for_runtimes!([development], redeem_payout_currency_not_found);
 				}
 			}
 		}
@@ -3647,6 +3636,7 @@ mod development {
 		mod mismatching_currencies {
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn collect_foreign_investment_for<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3764,6 +3754,7 @@ mod development {
 
 			/// Invest in pool currency, then increase in allowed foreign
 			/// currency, then decrease in same foreign currency multiple times.
+			#[test_runtimes([development])]
 			fn increase_fulfill_increase_decrease_decrease_partial<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -3902,6 +3893,7 @@ mod development {
 			/// Propagate swaps only via OrderBook fulfillments.
 			///
 			/// Flow: Increase, fulfill, decrease, fulfill
+			#[test_runtimes([development])]
 			fn invest_swaps_happy_path<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4024,6 +4016,7 @@ mod development {
 				});
 			}
 
+			#[test_runtimes([development])]
 			fn increase_fulfill_decrease_fulfill_partial_increase<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4123,23 +4116,13 @@ mod development {
 					}));
 				});
 			}
-
-			crate::test_for_runtimes!([development], collect_foreign_investment_for);
-			crate::test_for_runtimes!(
-				[development],
-				increase_fulfill_increase_decrease_decrease_partial
-			);
-			crate::test_for_runtimes!(
-				[development],
-				increase_fulfill_decrease_fulfill_partial_increase
-			);
-			crate::test_for_runtimes!([development], invest_swaps_happy_path);
 		}
 	}
 
 	mod transfers {
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4245,6 +4228,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_non_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4303,6 +4287,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4403,6 +4388,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4493,6 +4479,7 @@ mod development {
 
 		/// Try to transfer tranches for non-existing pools or invalid tranche
 		/// ids for existing pools.
+		#[test_runtimes([development])]
 		fn transferring_invalid_tranche_tokens_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4667,6 +4654,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn transfer_cfg_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -4752,16 +4740,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_from_local);
-		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_to_local);
-		crate::test_for_runtimes!([development], transfer_tranche_tokens_from_local);
-		crate::test_for_runtimes!([development], transfer_tranche_tokens_to_local);
-		crate::test_for_runtimes!(
-			[development],
-			transferring_invalid_tranche_tokens_should_fail
-		);
-		crate::test_for_runtimes!([development], transfer_cfg_to_and_from_sibling);
 	}
 
 	mod routers {
@@ -4772,6 +4750,7 @@ mod development {
 
 			use super::*;
 
+			#[test_runtimes([development])]
 			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
@@ -4925,8 +4904,6 @@ mod development {
 					);
 				});
 			}
-
-			crate::test_for_runtimes!([development], test_via_outbound_queue);
 		}
 
 		mod ethereum_xcm {
@@ -5079,22 +5056,22 @@ mod development {
 
 			const TEST_DOMAIN: Domain = Domain::EVM(1);
 
+			#[test_runtimes([development])]
 			fn submit_ethereum_xcm<T: Runtime + FudgeSupport>() {
 				submit_test_fn::<T>(get_ethereum_xcm_router_fn::<T>());
 			}
 
+			#[test_runtimes([development])]
 			fn submit_axelar_xcm<T: Runtime + FudgeSupport>() {
 				submit_test_fn::<T>(get_axelar_xcm_router_fn::<T>());
 			}
-
-			crate::test_for_runtimes!([development], submit_ethereum_xcm);
-			crate::test_for_runtimes!([development], submit_axelar_xcm);
 		}
 	}
 
 	mod gateway {
 		use super::*;
 
+		#[test_runtimes([development])]
 		fn set_domain_router<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5164,6 +5141,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn add_remove_instances<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5220,6 +5198,7 @@ mod development {
 			});
 		}
 
+		#[test_runtimes([development])]
 		fn process_msg<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5274,10 +5253,6 @@ mod development {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([development], set_domain_router);
-		crate::test_for_runtimes!([development], add_remove_instances);
-		crate::test_for_runtimes!([development], process_msg);
 	}
 }
 
@@ -5489,6 +5464,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn test_air_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5567,6 +5543,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_ausd_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -5726,6 +5703,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_ksm_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -5785,6 +5763,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_foreign_sibling_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -5892,6 +5871,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn transfer_wormhole_usdc_karura_to_altair<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				Default::default(),
@@ -5993,17 +5973,12 @@ mod altair {
 				assert_eq!(bob_balance, 11993571);
 			});
 		}
-
-		crate::test_for_runtimes!([altair], test_air_transfers_to_and_from_sibling);
-		crate::test_for_runtimes!([altair], transfer_ausd_to_altair);
-		crate::test_for_runtimes!([altair], transfer_ksm_to_and_from_relay_chain);
-		crate::test_for_runtimes!([altair], transfer_foreign_sibling_to_altair);
-		crate::test_for_runtimes!([altair], transfer_wormhole_usdc_karura_to_altair);
 	}
 
 	mod asset_registry {
 		use super::*;
 
+		#[test_runtimes([altair])]
 		fn register_air_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6031,6 +6006,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6062,6 +6038,7 @@ mod altair {
 		}
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
+		#[test_runtimes([altair])]
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6094,15 +6071,12 @@ mod altair {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([altair], register_air_works);
-		crate::test_for_runtimes!([altair], register_foreign_asset_works);
-		crate::test_for_runtimes!([altair], register_tranche_asset_blocked);
 	}
 
 	mod currency_id_convert {
 		use super::*;
 
+		#[test_runtimes([altair])]
 		fn convert_air<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6139,6 +6113,7 @@ mod altair {
 
 		/// Verify that Tranche tokens are not handled by the CurrencyIdConvert
 		/// since we don't allow Tranche tokens to be transferable through XCM.
+		#[test_runtimes([altair])]
 		fn convert_tranche<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6172,6 +6147,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_ausd<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6200,6 +6176,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_ksm<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6220,6 +6197,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_unkown_multilocation<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6233,6 +6211,7 @@ mod altair {
 			});
 		}
 
+		#[test_runtimes([altair])]
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6246,13 +6225,6 @@ mod altair {
 				)
 			});
 		}
-
-		crate::test_for_runtimes!([altair], convert_air);
-		crate::test_for_runtimes!([altair], convert_tranche);
-		crate::test_for_runtimes!([altair], convert_ausd);
-		crate::test_for_runtimes!([altair], convert_ksm);
-		crate::test_for_runtimes!([altair], convert_unkown_multilocation);
-		crate::test_for_runtimes!([altair], convert_unsupported_currency);
 	}
 }
 
@@ -6540,6 +6512,7 @@ mod centrifuge {
 	mod asset_registry {
 		use super::*;
 
+		#[test_runtimes([centrifuge])]
 		fn register_cfg_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6567,6 +6540,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6598,6 +6572,7 @@ mod centrifuge {
 		}
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
+		#[test_runtimes([centrifuge])]
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6630,15 +6605,12 @@ mod centrifuge {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], register_cfg_works);
-		crate::test_for_runtimes!([centrifuge], register_foreign_asset_works);
-		crate::test_for_runtimes!([centrifuge], register_tranche_asset_blocked);
 	}
 
 	mod currency_id_convert {
 		use super::*;
 
+		#[test_runtimes([centrifuge])]
 		fn convert_cfg<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6677,6 +6649,7 @@ mod centrifuge {
 		/// Verify that even with CFG registered in the AssetRegistry with a XCM
 		/// v2 MultiLocation, that `CurrencyIdConvert` can look it up given an
 		/// identical location in XCM v3.
+		#[test_runtimes([centrifuge])]
 		fn convert_cfg_xcm_v2<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6715,6 +6688,7 @@ mod centrifuge {
 
 		/// Verify that a registered token that is NOT XCM transferable is
 		/// filtered out by CurrencyIdConvert as expected.
+		#[test_runtimes([centrifuge])]
 		fn convert_no_xcm_token<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6728,6 +6702,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_dot<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6748,6 +6723,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_unknown_multilocation<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6764,6 +6740,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -6777,13 +6754,6 @@ mod centrifuge {
 				)
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], convert_cfg);
-		crate::test_for_runtimes!([centrifuge], convert_cfg_xcm_v2);
-		crate::test_for_runtimes!([centrifuge], convert_no_xcm_token);
-		crate::test_for_runtimes!([centrifuge], convert_dot);
-		crate::test_for_runtimes!([centrifuge], convert_unknown_multilocation);
-		crate::test_for_runtimes!([centrifuge], convert_unsupported_currency);
 	}
 
 	mod restricted_transfers {
@@ -6818,6 +6788,7 @@ mod centrifuge {
 			);
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_cfg_extrinsic<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -6884,6 +6855,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_all<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7013,6 +6985,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_lp_eth_usdc_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7103,6 +7076,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_lp_eth_usdc_lp_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7201,6 +7175,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_usdc_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7272,6 +7247,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				paras::GenesisConfig::<FudgeRelayRuntime<T>> {
@@ -7390,6 +7366,7 @@ mod centrifuge {
 			// transfer does not take place.
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_dot_transfer<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7477,6 +7454,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn restrict_dot_xcm_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7558,15 +7536,6 @@ mod centrifuge {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_lp_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_usdc_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
-		crate::test_for_runtimes!([centrifuge], restrict_cfg_extrinsic);
-		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 
 	mod transfers {
@@ -7678,6 +7647,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn test_cfg_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -7757,6 +7727,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_ausd_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -7850,6 +7821,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_dot_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -7900,6 +7872,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_foreign_sibling_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -8008,6 +7981,7 @@ mod centrifuge {
 			});
 		}
 
+		#[test_runtimes([centrifuge])]
 		fn transfer_wormhole_usdc_acala_to_centrifuge<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(
 				Default::default(),
@@ -8107,12 +8081,6 @@ mod centrifuge {
 				assert_eq!(bob_balance, 11993571);
 			});
 		}
-
-		crate::test_for_runtimes!([centrifuge], test_cfg_transfers_to_and_from_sibling);
-		crate::test_for_runtimes!([centrifuge], transfer_ausd_to_centrifuge);
-		crate::test_for_runtimes!([centrifuge], transfer_dot_to_and_from_relay_chain);
-		crate::test_for_runtimes!([centrifuge], transfer_foreign_sibling_to_centrifuge);
-		crate::test_for_runtimes!([centrifuge], transfer_wormhole_usdc_acala_to_centrifuge);
 	}
 }
 
@@ -8122,6 +8090,7 @@ mod all {
 	mod restricted_calls {
 		use super::*;
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -8151,6 +8120,7 @@ mod all {
 			});
 		}
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -8198,6 +8168,7 @@ mod all {
 			});
 		}
 
+		#[test_runtimes(all)]
 		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::default();
 
@@ -8247,9 +8218,5 @@ mod all {
 				);
 			});
 		}
-
-		crate::test_for_runtimes!(all, xtokens_transfer);
-		crate::test_for_runtimes!(all, xtokens_transfer_multiasset);
-		crate::test_for_runtimes!(all, xtokens_transfer_multiassets);
 	}
 }

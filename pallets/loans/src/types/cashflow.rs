@@ -21,7 +21,7 @@ use sp_runtime::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub,
 		EnsureSubAssign,
 	},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand, FixedU128,
+	DispatchError, FixedPointNumber, FixedPointOperand, FixedU128,
 };
 use sp_std::{cmp::min, vec, vec::Vec};
 
@@ -41,6 +41,8 @@ pub enum Maturity {
 		/// Extension in secs, without special permissions
 		extension: Seconds,
 	},
+	/// No Maturity date
+	None,
 }
 
 impl Maturity {
@@ -48,24 +50,30 @@ impl Maturity {
 		Self::Fixed { date, extension: 0 }
 	}
 
-	pub fn date(&self) -> Seconds {
+	pub fn date(&self) -> Option<Seconds> {
 		match self {
-			Maturity::Fixed { date, .. } => *date,
+			Maturity::Fixed { date, .. } => Some(*date),
+			Maturity::None => None,
 		}
 	}
 
 	pub fn is_valid(&self, now: Seconds) -> bool {
 		match self {
 			Maturity::Fixed { date, .. } => *date > now,
+			Maturity::None => true,
 		}
 	}
 
-	pub fn extends(&mut self, value: Seconds) -> Result<(), ArithmeticError> {
+	pub fn extends(&mut self, value: Seconds) -> Result<(), DispatchError> {
 		match self {
 			Maturity::Fixed { date, extension } => {
 				date.ensure_add_assign(value)?;
-				extension.ensure_sub_assign(value)
+				extension.ensure_sub_assign(value)?;
+				Ok(())
 			}
+			Maturity::None => Err(DispatchError::Other(
+				"No maturity date that could be extended.",
+			)),
 		}
 	}
 }
@@ -115,21 +123,25 @@ pub struct RepaymentSchedule {
 
 impl RepaymentSchedule {
 	pub fn is_valid(&self, now: Seconds) -> Result<bool, DispatchError> {
-		match self.interest_payments {
-			InterestPayments::None => (),
+		let valid = match self.interest_payments {
+			InterestPayments::None => true,
 			InterestPayments::Monthly(_) => {
-				let start = date::from_seconds(now)?;
-				let end = date::from_seconds(self.maturity.date())?;
+				match self.maturity.date() {
+					Some(maturity) => {
+						let start = date::from_seconds(now)?;
+						let end = date::from_seconds(maturity)?;
 
-				// We want to avoid creating a loan with a cashflow consuming a lot of computing
-				// time Maximum 40 years, which means a cashflow list of 40 * 12 elements
-				if end.year() - start.year() > 40 {
-					return Ok(false);
+						// We want to avoid creating a loan with a cashflow consuming a lot of
+						// computing time Maximum 40 years, which means a cashflow list of 40 * 12
+						// elements
+						end.year() - start.year() <= 40
+					}
+					None => false,
 				}
 			}
-		}
+		};
 
-		Ok(self.maturity.is_valid(now))
+		Ok(valid && self.maturity.is_valid(now))
 	}
 
 	pub fn generate_cashflows<Balance, Rate>(
@@ -142,8 +154,12 @@ impl RepaymentSchedule {
 		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
 		Rate: FixedPointNumber + EnsureDiv,
 	{
+		let Some(maturity) = self.maturity.date() else {
+			return Ok(Vec::new());
+		};
+
 		let start_date = date::from_seconds(origination_date)?;
-		let end_date = date::from_seconds(self.maturity.date())?;
+		let end_date = date::from_seconds(maturity)?;
 
 		let (timeflow, periods_per_year) = match &self.interest_payments {
 			InterestPayments::None => (vec![], 1),
