@@ -1240,37 +1240,39 @@ pub mod pallet {
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
 			let total_assets = epoch.nav.total(pool.reserve.total)?;
-			let mut tranche_ratios = epoch
-				.tranches
-				.non_residual_tranches()
-				.map(|tranches| {
-					tranches
-						.iter()
-						// NOTE: Reversing amounts, as residual amount is on top.
-						// NOTE: Iterator of executed amounts is one time larger than the
-						//       non_residual_tranche-iterator, but we anyways push all reamaining
-						//       ratio to the residual tranche.
-						.zip(executed_amounts.rev())
-						.map(|(tranche, &(invest, redeem))| {
-							Ok(Perquintill::from_rational(
-								tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
-								total_assets,
-							))
-						})
-						.collect::<Result<Vec<_>, ArithmeticError>>()
-				})
-				.unwrap_or(Ok(Vec::new()))?;
 
-			let non_residual_tranche_ratio_sum = tranche_ratios
-				.iter()
-				.try_fold(Perquintill::zero(), |acc, ratio| acc.ensure_add(*ratio))?;
+			let tranche_ratios = {
+				let mut sum_non_residual_tranche_ratios = Perquintill::zero();
+				let num_tranches = pool.tranches.num_tranches();
+				let mut current_tranche = 1;
+				let mut ratios = epoch
+					.tranches
+					// NOTE: Reversing amounts, as residual amount is on top.
+					.combine_with_non_residual_top(
+						executed_amounts.rev(),
+						|tranche, &(invest, redeem)| {
+							let ratio = if current_tranche < num_tranches {
+								Perquintill::from_rational(
+									tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+									total_assets,
+								)
+							} else {
+								Perquintill::one().ensure_sub(sum_non_residual_tranche_ratios)?
+							};
 
-			// Pushing all remaining ratio to the residual tranche
-			tranche_ratios.push(Perquintill::one().ensure_sub(non_residual_tranche_ratio_sum)?);
+							sum_non_residual_tranche_ratios.ensure_add_assign(ratio)?;
+							current_tranche.ensure_add_assign(1)?;
 
-			// NOTE: We need to reverse the ratios here, as the residual tranche is on top
-			// all the time
-			tranche_ratios.reverse();
+							Ok(ratio)
+						},
+					)?;
+
+				// NOTE: We need to reverse the ratios here, as the residual tranche is on top
+				//       all the time
+				ratios.reverse();
+
+				ratios
+			};
 
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
