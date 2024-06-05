@@ -29,6 +29,7 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 use staging_xcm::v4::{Asset, Location};
+use staging_xcm::VersionedLocation;
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
@@ -44,7 +45,7 @@ impl<
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		let currency_based_check = |sender: AccountId, destination: Location, currency| {
+		let currency_based_check = |sender: AccountId, destination: VersionedLocation, currency| {
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
@@ -60,8 +61,8 @@ impl<
 		};
 
 		let asset_based_check = |sender, destination, asset: Asset| {
-			let currency =
-				C::convert(asset.id.0).ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
+			let currency = C::convert(asset.id.0.into())
+				.ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
 
 			currency_based_check(sender, destination, currency)
 		};

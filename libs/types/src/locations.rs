@@ -14,10 +14,7 @@ use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-// Please note that if this version change,
-// a migration could be required in those places where
-// RestrictedTransferLocation is stored
-use staging_xcm::v4::Location;
+use staging_xcm::VersionedLocation;
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
@@ -26,7 +23,7 @@ pub enum RestrictedTransferLocation {
 	/// Local chain account sending destination.
 	Local(AccountId),
 	/// XCM Location sending destinations.
-	Xcm(Location),
+	Xcm(VersionedLocation),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }
