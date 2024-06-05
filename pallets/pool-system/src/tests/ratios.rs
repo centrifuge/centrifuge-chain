@@ -14,7 +14,7 @@ use sp_arithmetic::traits::EnsureSub;
 use super::*;
 
 #[test]
-fn ensure_ratios_are_distributed_correctly() {
+fn ensure_ratios_are_distributed_correctly_2_tranches() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = DEFAULT_POOL_OWNER;
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
@@ -22,7 +22,7 @@ fn ensure_ratios_are_distributed_correctly() {
 		util::default_pool::create();
 
 		// Assert ratios are all zero
-		crate::Pool::<Runtime>::get(0)
+		Pool::<Runtime>::get(0)
 			.unwrap()
 			.tranches
 			.residual_top_slice()
@@ -125,6 +125,105 @@ fn ensure_ratios_are_distributed_correctly() {
 			.for_each(|tranche| {
 				assert_eq!(tranche.ratio, next_ratio);
 				next_ratio = Perquintill::one().ensure_sub(next_ratio).unwrap();
+			});
+	});
+}
+
+#[test]
+fn ensure_ratios_are_distributed_correctly_1_tranche() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = DEFAULT_POOL_OWNER;
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
+
+		util::default_pool::create_with_tranche_input(util::default_pool::one_tranche_input());
+
+		// Assert ratios are all zero
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(0));
+			});
+
+		// Force min_epoch_time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(0, vec![(0, JuniorTrancheId::get(), 500 * CURRENCY)]);
+
+		// Ensure ratios are 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(100));
+			});
+
+		// Attempt to redeem 40%
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			200 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+		));
+
+		// Ensure ratio is 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(100));
+			});
+
+		// Attempt to redeem everything
+		assert_ok!(Investments::update_redeem_order(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			300 * CURRENCY
+		));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(0),
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+		));
+
+		// Ensure ratio is 0
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(0));
+			});
+
+		// Ensure ratio goes up again
+		invest_close_and_collect(0, vec![(0, JuniorTrancheId::get(), 300 * CURRENCY)]);
+
+		// Ensure ratio 100
+		Pool::<Runtime>::get(0)
+			.unwrap()
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.for_each(|tranche| {
+				assert_eq!(tranche.ratio, Perquintill::from_percent(100));
 			});
 	});
 }

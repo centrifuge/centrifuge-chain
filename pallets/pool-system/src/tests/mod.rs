@@ -58,32 +58,86 @@ pub mod util {
 	pub mod default_pool {
 		use super::*;
 
+		pub fn one_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			}]
+		}
+
+		pub fn three_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(50),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(50),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+			]
+		}
+
+		pub fn two_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(50),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+			]
+		}
+
 		pub fn create() {
+			create_with_tranche_input(two_tranche_input())
+		}
+
+		pub fn create_with_tranche_input(input: Vec<TrancheInput<Rate, StringLimit>>) {
 			PoolSystem::create(
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_ID,
-				vec![
-					TrancheInput {
-						tranche_type: TrancheType::Residual,
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-					TrancheInput {
-						tranche_type: TrancheType::NonResidual {
-							interest_rate_per_sec: Rate::default(),
-							min_risk_buffer: Perquintill::from_percent(50),
-						},
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-				],
+				input,
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 				vec![],

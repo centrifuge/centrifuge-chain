@@ -1251,13 +1251,20 @@ pub mod pallet {
 					.combine_with_non_residual_top(
 						executed_amounts.rev(),
 						|tranche, &(invest, redeem)| {
-							let ratio = if current_tranche < num_tranches {
-								Perquintill::from_rational(
-									tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
-									total_assets,
-								)
+							// NOTE: Need to have this clause as the current Perquintill
+							//       implementation defaults to 100% if the denominator is zero
+							let ratio = if total_assets.is_zero() {
+								Perquintill::zero()
 							} else {
-								Perquintill::one().ensure_sub(sum_non_residual_tranche_ratios)?
+								if current_tranche < num_tranches {
+									Perquintill::from_rational(
+										tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+										total_assets,
+									)
+								} else {
+									Perquintill::one()
+										.ensure_sub(sum_non_residual_tranche_ratios)?
+								}
 							};
 
 							sum_non_residual_tranche_ratios.ensure_add_assign(ratio)?;

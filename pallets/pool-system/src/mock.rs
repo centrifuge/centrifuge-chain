@@ -506,6 +506,7 @@ fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+	pub SecondSeniorTrancheId: [u8; 16] = create_tranche_id(0, 2);
 }
 
 // Build genesis storage according to the mock runtime.

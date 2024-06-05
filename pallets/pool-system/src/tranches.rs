@@ -1352,7 +1352,11 @@ where
 		.map(|tranche_value| {
 			remaining_subordinate_value =
 				remaining_subordinate_value.saturating_sub(*tranche_value);
-			Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			if pool_value.is_zero() {
+				Perquintill::zero()
+			} else {
+				Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			}
 		})
 		.collect::<Vec<Perquintill>>();
 
