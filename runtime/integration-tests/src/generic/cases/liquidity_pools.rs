@@ -4579,7 +4579,7 @@ mod development {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.sibling_state(|| {
 				let current_balance =
@@ -4667,7 +4667,7 @@ mod development {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state(|| {
 				// Verify that Charlie's balance equals the amount transferred - fee
@@ -5381,7 +5381,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.sibling_state_mut(|| {
 				let current_balance =
@@ -5463,7 +5463,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				// Verify that Keyring::Alice now has initial balance + amount transferred - fee
@@ -5557,7 +5557,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				// Verify that Keyring::Bob now has initial balance + amount transferred - fee
@@ -5626,7 +5626,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.parachain_state(|| {
 				assert_eq!(
@@ -5684,7 +5684,7 @@ mod altair {
 				));
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.relay_state_mut(|| {
 				assert_eq!(
@@ -5782,7 +5782,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				let bob_balance =
@@ -5896,7 +5896,7 @@ mod altair {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				let bob_balance =
@@ -6425,7 +6425,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state(|| {
 				assert_eq!(
@@ -7453,7 +7453,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.relay_state_mut(|| {
 				assert_eq!(
@@ -7561,7 +7561,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.sibling_state_mut(|| {
 				let current_balance =
@@ -7644,7 +7644,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				// Verify that Keyring::Alice now has initial balance + amount transferred - fee
@@ -7738,7 +7738,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				// Verify that Keyring::Bob now has initial balance + amount transferred - fee
@@ -7788,7 +7788,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(1));
+			env.pass(Blocks::ByNumber(2));
 
 			env.relay_state_mut(|| {
 				assert_eq!(
@@ -7887,7 +7887,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				let bob_balance =
@@ -7999,7 +7999,7 @@ mod centrifuge {
 				);
 			});
 
-			env.pass(Blocks::ByNumber(2));
+			env.pass(Blocks::ByNumber(3));
 
 			env.parachain_state_mut(|| {
 				let bob_balance =
