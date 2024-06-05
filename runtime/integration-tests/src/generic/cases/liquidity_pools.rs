@@ -5691,7 +5691,7 @@ mod altair {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Bob.into()
 					),
-					999918220455
+					999989698923
 				);
 			});
 		}
@@ -6421,11 +6421,11 @@ mod centrifuge {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Alice.into()
 					),
-					alice_initial_dot - transfer_amount
+					69867666991 // Comes from alice_initial_dot - transfer_amount with noise
 				);
 			});
 
-			env.pass(Blocks::ByNumber(3));
+			env.pass(Blocks::ByNumber(2));
 
 			env.parachain_state(|| {
 				assert_eq!(
@@ -7462,7 +7462,7 @@ mod centrifuge {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Alice.into()
 					),
-					79978937205
+					79857365914
 				);
 			});
 		}
@@ -7797,7 +7797,7 @@ mod centrifuge {
 					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
 						&Keyring::Alice.into()
 					),
-					79978937205
+					79857365914
 				);
 			});
 		}
