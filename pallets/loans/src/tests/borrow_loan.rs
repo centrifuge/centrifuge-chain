@@ -601,9 +601,22 @@ fn increase_debt_does_not_withdraw() {
 		let loan_id = util::create_loan(loan);
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
+		MockPrices::mock_get(|id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			match *id {
+				REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+				_ => Err(PRICE_ID_NO_FOUND),
+			}
+		});
+		MockPrices::mock_register_id(|id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			match *id {
+				REGISTER_PRICE_ID => Ok(()),
+				_ => Err(PRICE_ID_NO_FOUND),
+			}
+		});
 
-		assert_ok!(Loans::borrow(
+		assert_ok!(Loans::increase_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
