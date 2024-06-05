@@ -17,13 +17,14 @@ use scale_info::TypeInfo;
 use staging_xcm::VersionedLocation;
 
 use crate::domain_address::DomainAddress;
+
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum RestrictedTransferLocation {
 	/// Local chain account sending destination.
 	Local(AccountId),
 	/// XCM Location sending destinations.
-	Xcm(VersionedLocation),
+	Xcm(Box<VersionedLocation>),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }

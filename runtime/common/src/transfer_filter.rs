@@ -28,8 +28,10 @@ use sp_runtime::{
 	DispatchError, DispatchResult, TokenError,
 };
 use sp_std::vec::Vec;
-use staging_xcm::v4::{Asset, Location};
-use staging_xcm::VersionedLocation;
+use staging_xcm::{
+	v4::{Asset, Location},
+	VersionedLocation,
+};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
@@ -49,20 +51,20 @@ impl<
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					RestrictedTransferLocation::Xcm(destination.clone()),
+					RestrictedTransferLocation::Xcm(Box::new(destination.clone())),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					RestrictedTransferLocation::Xcm(destination),
+					RestrictedTransferLocation::Xcm(Box::new(destination)),
 					FilterCurrency::All,
 				),
 			)
 		};
 
 		let asset_based_check = |sender, destination, asset: Asset| {
-			let currency = C::convert(asset.id.0.into())
-				.ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
+			let currency =
+				C::convert(asset.id.0).ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
 
 			currency_based_check(sender, destination, currency)
 		};

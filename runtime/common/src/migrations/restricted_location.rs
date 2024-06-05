@@ -159,7 +159,7 @@ where
 				Ok(location) => {
 					log::info!("{LOG_PREFIX} Hash: '{hash}' migrated!");
 					let new_restricted_location =
-						RestrictedTransferLocation::Xcm(VersionedLocation::V4(location));
+						RestrictedTransferLocation::Xcm(Box::new(VersionedLocation::V4(location)));
 
 					Some(new_restricted_location)
 				}
