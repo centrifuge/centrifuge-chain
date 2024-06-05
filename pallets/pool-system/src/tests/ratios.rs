@@ -296,6 +296,7 @@ fn ensure_ratios_are_distributed_correctly_3_tranches() {
 		let check_ratios = [
 			Perquintill::from_rational(1u64, 5),
 			Perquintill::from_rational(2u64, 5),
+			Perquintill::from_rational(2u64, 5),
 		];
 
 		// Ensure ratios are 100
