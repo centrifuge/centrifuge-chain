@@ -65,10 +65,13 @@ where
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
+		let local_representation_of_receiver =
+			T::DomainAddressToAccountId::convert(receiver.clone());
+
 		ensure!(
 			T::Permission::has(
 				PermissionScope::Pool(pool_id),
-				T::DomainAddressToAccountId::convert(receiver.clone()),
+				local_representation_of_receiver.clone(),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now())),
 			),
 			Error::<T>::UnauthorizedTransfer
@@ -79,7 +82,7 @@ where
 		T::Tokens::transfer(
 			invest_id.into(),
 			&Domain::convert(sending_domain),
-			&receiver.address().into(),
+			&local_representation_of_receiver,
 			amount,
 			Preservation::Expendable,
 		)?;
@@ -89,7 +92,7 @@ where
 		// them to.
 		if receiver.domain() != Domain::Centrifuge {
 			Pallet::<T>::transfer_tranche_tokens(
-				T::RuntimeOrigin::signed(receiver.address().into()),
+				T::RuntimeOrigin::signed(local_representation_of_receiver),
 				pool_id,
 				tranche_id,
 				receiver,
