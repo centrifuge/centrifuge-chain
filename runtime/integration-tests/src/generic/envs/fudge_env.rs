@@ -152,6 +152,7 @@ mod tests {
 	use super::*;
 	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
+	#[test_runtimes(all)]
 	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
@@ -181,6 +182,4 @@ mod tests {
 		)
 		.unwrap();
 	}
-
-	crate::test_for_runtimes!(all, correct_nonce_for_submit_later);
 }

@@ -167,8 +167,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -1443,8 +1441,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -2984,6 +2980,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -3000,8 +2997,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -7549,49 +7544,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-crowdloan-claim"
-version = "0.1.0"
-dependencies = [
- "cfg-traits",
- "cfg-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "pallet-balances",
- "pallet-crowdloan-reward",
- "pallet-vesting",
- "parity-scale-codec 3.6.9",
- "proofs",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
- "sp-trie",
-]
-
-[[package]]
-name = "pallet-crowdloan-reward"
-version = "0.1.0"
-dependencies = [
- "cfg-traits",
- "cfg-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-vesting",
- "parity-scale-codec 3.6.9",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-democracy"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
@@ -10904,16 +10856,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proofs"
-version = "2.0.0"
-dependencies = [
- "parity-scale-codec 3.6.9",
- "scale-info",
- "sp-core",
- "sp-std",
-]
-
-[[package]]
 name = "prost"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11578,8 +11520,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -11699,8 +11639,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-crowdloan-claim",
- "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -11758,6 +11696,7 @@ dependencies = [
  "polkadot-runtime-parachains",
  "rococo-runtime",
  "runtime-common",
+ "runtime-integration-tests-proc-macro",
  "sc-block-builder",
  "sc-client-api",
  "sc-executor",
@@ -11784,6 +11723,16 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "runtime-integration-tests-proc-macro"
+version = "0.1.0"
+dependencies = [
+ "prettyplease 0.2.17",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.57",
 ]
 
 [[package]]

@@ -1,8 +1,3 @@
-// For generic modules we can reactive the unused warn disabled on lib.rs
-#![warn(unused)]
-// Allow dead code for utilities not used yet
-#![allow(dead_code)]
-
 pub mod env;
 pub mod envs {
 	pub mod evm_env;
@@ -16,6 +11,7 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod account_derivation;
+	mod block_rewards;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
@@ -26,36 +22,16 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
-	mod rewards;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.
-/// Usage
+/// Usage. Used as building block for #[test_runtimes] procedural macro.
 ///
-/// ```rust
-/// use crate::generic::config::Runtime;
-///
-/// fn foo<T: Runtime> {
-///     /// Your test here...
-/// }
-///
-/// crate::test_for_runtimes!([development, altair, centrifuge], foo);
-/// ```
-/// For the following command: `cargo test -p runtime-integration-tests foo`,
-/// it will generate the following output:
-///
-/// ```text
-/// test generic::foo::altair ... ok
-/// test generic::foo::development ... ok
-/// test generic::foo::centrifuge ... ok
-/// ```
-///
-/// Available input  for the first argument is:
-/// - Any combination of `development`, `altair`, `centrifuge` inside `[]`.
-/// - The world `all`.
+/// NOTE: Do not use it direclty, use `#[test_runtimes]` proc macro instead
 #[macro_export]
-macro_rules! test_for_runtimes {
+macro_rules! __test_for_runtimes {
 	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+        #[cfg(test)]
 		mod $test_name {
 			use super::*;
 
@@ -77,6 +53,6 @@ macro_rules! test_for_runtimes {
 		}
 	};
 	( all , $test_name:ident ) => {
-		$crate::test_for_runtimes!([development, altair, centrifuge], $test_name);
+		$crate::__test_for_runtimes!([development, altair, centrifuge], $test_name);
     };
 }

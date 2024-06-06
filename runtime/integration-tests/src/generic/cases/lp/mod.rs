@@ -46,12 +46,10 @@ use crate::{
 			genesis::Genesis,
 			give_balance,
 			oracle::set_order_book_feeder,
+			tokens::evm_balances,
 		},
 	},
-	utils::{
-		accounts::{default_investors, Keyring},
-		tokens::evm_balances,
-	},
+	utils::accounts::{default_investors, Keyring},
 };
 
 pub mod investments;

@@ -5,20 +5,23 @@ use cfg_primitives::SECONDS_PER_DAY;
 use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok, storage::bounded_vec::BoundedVec};
-use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
+use sp_runtime::{
+	traits::{BadOrigin, One},
+	DispatchError, FixedPointNumber,
+};
 
 use super::{
 	entities::{
 		changes::{Change, InternalMutation, LoanMutation},
 		input::{PrincipalInput, RepaidInput},
-		loans::{ActiveLoan, LoanInfo},
+		loans::{ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
 			ActivePricing, Pricing,
 		},
 	},
-	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
+	pallet::{ActiveLoans, CreatedLoan, Error, Event, LastLoanId, PortfolioValuation},
 	types::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},

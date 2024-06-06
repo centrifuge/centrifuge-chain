@@ -20,7 +20,17 @@ use pallet_pool_system::{
 };
 use staging_xcm::VersionedMultiLocation;
 
-use crate::{mock::*, pallet, pallet::Error, PoolMetadataOf};
+use crate::{mock::*, pallet, pallet::Error, Event, PoolMetadataOf};
+
+fn find_metadata_event(pool_id: u64, metadata: BoundedVec<u8, MaxSizeMetadata>) -> Option<usize> {
+	System::events().iter().position(|e| match &e.event {
+		RuntimeEvent::PoolRegistry(Event::MetadataSet {
+			pool_id: id,
+			metadata: m,
+		}) if pool_id == *id && metadata == *m => true,
+		_ => false,
+	})
+}
 
 #[test]
 fn update_pool() {
@@ -67,7 +77,7 @@ fn register_pool_and_set_metadata() {
 			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
 				.to_vec();
-			let metadata = Some(hash);
+			let metadata = Some(hash.clone());
 
 			MockWriteOffPolicy::mock_update(|_, _| Ok(()));
 
@@ -86,6 +96,21 @@ fn register_pool_and_set_metadata() {
 			let registered_metadata = PoolRegistry::get_pool_metadata(pool_id);
 
 			assert_eq!(registered_metadata.unwrap().metadata, metadata.unwrap());
+
+			let pos_reg = System::events()
+				.iter()
+				.position(|e| match e.event {
+					RuntimeEvent::PoolRegistry(Event::Registered { pool_id: id })
+						if pool_id == id =>
+					{
+						true
+					}
+					_ => false,
+				})
+				.expect("Pool registered; qed");
+			let pos_metadata = find_metadata_event(pool_id, BoundedVec::truncate_from(hash))
+				.expect("Metadata not empty; qed");
+			assert!(pos_reg < pos_metadata);
 		})
 }
 
@@ -96,14 +121,17 @@ fn set_metadata() {
 		.execute_with(|| {
 			let pool_owner = 0u64;
 			let pool_id = 0;
+			let metadata = "QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
+				.as_bytes()
+				.to_vec();
 
 			assert_ok!(PoolRegistry::set_metadata(
 				RuntimeOrigin::signed(pool_owner),
 				pool_id,
-				"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-					.as_bytes()
-					.to_vec()
+				metadata.clone(),
 			));
+
+			assert!(find_metadata_event(pool_id, BoundedVec::truncate_from(metadata)).is_some())
 		})
 }
 
@@ -113,16 +141,74 @@ fn trait_pool_metadata_set_pool_metadata() {
 		.build()
 		.execute_with(|| {
 			let pool_id = 0;
+			let metadata = "QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
+				.as_bytes()
+				.to_vec();
 
 			assert_ok!(<PoolRegistry as PoolMetadata<
 				Balance,
 				VersionedMultiLocation,
-			>>::set_pool_metadata(
+			>>::set_pool_metadata(pool_id, metadata.clone()));
+
+			assert!(find_metadata_event(pool_id, BoundedVec::truncate_from(metadata)).is_some())
+		})
+}
+
+#[test]
+fn set_excess_metadata_fails() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_id = 0;
+
+			assert_noop!(
+				PoolRegistry::do_set_metadata(
+					pool_id,
+					(0..=MaxSizeMetadata::get())
+						.into_iter()
+						.map(|x| x as u8)
+						.collect::<Vec<u8>>()
+				),
+				Error::<Test>::BadMetadata
+			);
+		})
+}
+
+#[test]
+fn register_pool_empty_metadata() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_owner = 0u64;
+			let pool_id = 0;
+
+			let tranches_inputs = vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			}];
+
+			let currency = AUSD_CURRENCY_ID;
+			let max_reserve: u128 = 10_000 * 1_000_000_000;
+
+			MockWriteOffPolicy::mock_update(|_, _| Ok(()));
+
+			assert_ok!(PoolRegistry::register(
+				RuntimeOrigin::signed(pool_owner),
+				pool_owner,
 				pool_id,
-				"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-					.as_bytes()
-					.to_vec()
+				tranches_inputs,
+				currency,
+				max_reserve,
+				None,
+				(),
+				vec![]
 			));
+
+			assert!(find_metadata_event(pool_id, BoundedVec::default()).is_some())
 		})
 }
 

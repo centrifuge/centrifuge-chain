@@ -23,14 +23,11 @@ mod ratio_provider {
 	use runtime_common::oracle::Feeder;
 	use sp_runtime::{traits::One, FixedPointNumber};
 
-	use crate::{
-		generic::{
-			config::Runtime,
-			env::Env,
-			envs::runtime_env::RuntimeEnv,
-			utils::currency::{register_currency, CurrencyInfo},
-		},
-		test_for_runtimes,
+	use crate::generic::{
+		config::Runtime,
+		env::Env,
+		envs::runtime_env::RuntimeEnv,
+		utils::currency::{register_currency, CurrencyInfo},
 	};
 
 	pub struct OtherLocal;
@@ -110,6 +107,7 @@ mod ratio_provider {
 		get_rate_with::<T>(key, || {})
 	}
 
+	#[test_runtimes(all)]
 	fn local_to_variant<T: Runtime>() {
 		assert_eq!(
 			get_rate::<T>((LocalUSDC.id(), DomainUSDC.id())),
@@ -117,6 +115,7 @@ mod ratio_provider {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn variant_to_local<T: Runtime>() {
 		assert_eq!(
 			get_rate::<T>((DomainUSDC.id(), LocalUSDC.id())),
@@ -124,14 +123,17 @@ mod ratio_provider {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn variant_to_other_local<T: Runtime>() {
 		assert_eq!(get_rate::<T>((DomainUSDC.id(), OtherLocal.id())), None);
 	}
 
+	#[test_runtimes(all)]
 	fn other_local_to_variant<T: Runtime>() {
 		assert_eq!(get_rate::<T>((OtherLocal.id(), DomainUSDC.id())), None);
 	}
 
+	#[test_runtimes(all)]
 	fn variant_to_local_rate_set<T: Runtime>() {
 		let pair = (LocalUSDC.id(), DomainUSDC.id());
 		assert_eq!(
@@ -147,6 +149,7 @@ mod ratio_provider {
 		);
 	}
 
+	#[test_runtimes(all)]
 	fn local_to_variant_rate_set<T: Runtime>() {
 		let pair = (LocalUSDC.id(), DomainUSDC.id());
 		assert_eq!(
@@ -161,11 +164,4 @@ mod ratio_provider {
 			Some(Ratio::one())
 		);
 	}
-
-	test_for_runtimes!(all, variant_to_local);
-	test_for_runtimes!(all, local_to_variant);
-	test_for_runtimes!(all, variant_to_other_local);
-	test_for_runtimes!(all, other_local_to_variant);
-	test_for_runtimes!(all, variant_to_local_rate_set);
-	test_for_runtimes!(all, local_to_variant_rate_set);
 }

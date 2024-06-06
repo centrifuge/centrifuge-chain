@@ -16,6 +16,7 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
+#[test_runtimes([development, altair, centrifuge])]
 fn transfer_balance<T: Runtime>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
@@ -70,6 +71,7 @@ fn transfer_balance<T: Runtime>() {
 }
 
 // Identical to `transfer_balance()` test but using fudge.
+#[test_runtimes([development, altair, centrifuge])]
 fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
@@ -128,6 +130,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn call_api<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -141,6 +144,7 @@ fn call_api<T: Runtime>() {
 	})
 }
 
+#[test_runtimes(all)]
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	let env = FudgeEnv::<T>::default();
 
@@ -157,6 +161,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	})
 }
 
+#[test_runtimes(all)]
 fn pass_time_one_block<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 
@@ -169,9 +174,3 @@ fn pass_time_one_block<T: Runtime>() {
 
 	assert_eq!((after - before).into_seconds(), SECONDS_PER_YEAR)
 }
-
-crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
-crate::test_for_runtimes!(all, call_api);
-crate::test_for_runtimes!(all, fudge_transfer_balance);
-crate::test_for_runtimes!(all, fudge_call_api);
-crate::test_for_runtimes!(all, pass_time_one_block);

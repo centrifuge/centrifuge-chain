@@ -75,8 +75,6 @@ pallet-bridge = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
-pallet-crowdloan-claim = { workspace = true }
-pallet-crowdloan-reward = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-elections-phragmen = { workspace = true }
 pallet-ethereum = { workspace = true }
@@ -207,8 +205,6 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
-  "pallet-crowdloan-claim/std",
-  "pallet-crowdloan-reward/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
@@ -287,8 +283,6 @@ runtime-benchmarks = [
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
-  "pallet-crowdloan-claim/runtime-benchmarks",
-  "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -362,8 +356,6 @@ try-runtime = [
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
-  "pallet-crowdloan-claim/try-runtime",
-  "pallet-crowdloan-reward/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",

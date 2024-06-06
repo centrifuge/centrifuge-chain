@@ -137,6 +137,7 @@ fn configure_proxy_and_call<T: Runtime>(
 	.unwrap()
 }
 
+#[test_runtimes([development])]
 fn development_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -146,6 +147,7 @@ where
 	));
 }
 
+#[test_runtimes([development])]
 fn development_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -156,6 +158,7 @@ where
 	);
 }
 
+#[test_runtimes([development])]
 fn development_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -166,6 +169,7 @@ where
 	);
 }
 
+#[test_runtimes([development])]
 fn development_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -175,6 +179,7 @@ where
 	));
 }
 
+#[test_runtimes([development])]
 fn development_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -185,6 +190,7 @@ where
 	);
 }
 
+#[test_runtimes([development])]
 fn development_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
@@ -195,6 +201,7 @@ where
 	);
 }
 
+#[test_runtimes([altair])]
 fn altair_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -204,6 +211,7 @@ where
 	));
 }
 
+#[test_runtimes([altair])]
 fn altair_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -214,6 +222,7 @@ where
 	);
 }
 
+#[test_runtimes([altair])]
 fn altair_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -224,6 +233,7 @@ where
 	);
 }
 
+#[test_runtimes([altair])]
 fn altair_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -233,6 +243,7 @@ where
 	));
 }
 
+#[test_runtimes([altair])]
 fn altair_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -243,6 +254,7 @@ where
 	);
 }
 
+#[test_runtimes([altair])]
 fn altair_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
@@ -253,6 +265,7 @@ where
 	);
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -262,6 +275,7 @@ where
 	));
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -272,6 +286,7 @@ where
 	);
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -282,6 +297,7 @@ where
 	);
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -291,6 +307,7 @@ where
 	));
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -301,6 +318,7 @@ where
 	);
 }
 
+#[test_runtimes([centrifuge])]
 fn centrifuge_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
@@ -310,24 +328,3 @@ where
 		frame_system::Error::<T>::CallFiltered,
 	);
 }
-
-crate::test_for_runtimes!([development], development_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([development], development_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([development], development_transfer_with_proxy_invest);
-crate::test_for_runtimes!([development], development_x_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([development], development_x_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([development], development_x_transfer_with_proxy_invest);
-
-crate::test_for_runtimes!([altair], altair_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([altair], altair_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([altair], altair_transfer_with_proxy_invest);
-crate::test_for_runtimes!([altair], altair_x_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([altair], altair_x_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([altair], altair_x_transfer_with_proxy_invest);
-
-crate::test_for_runtimes!([centrifuge], centrifuge_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([centrifuge], centrifuge_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([centrifuge], centrifuge_transfer_with_proxy_invest);
-crate::test_for_runtimes!([centrifuge], centrifuge_x_transfer_with_proxy_transfer);
-crate::test_for_runtimes!([centrifuge], centrifuge_x_transfer_with_proxy_borrow);
-crate::test_for_runtimes!([centrifuge], centrifuge_x_transfer_with_proxy_invest);

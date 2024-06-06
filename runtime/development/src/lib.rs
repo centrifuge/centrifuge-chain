@@ -104,7 +104,7 @@ use runtime_common::{
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	gateway,
+	gateway, instances,
 	liquidity_pools::LiquidityPoolsMessage,
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
@@ -157,7 +157,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1046,
+	spec_version: 1047,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -501,8 +501,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Preimage(..) |
 					RuntimeCall::Fees(..) |
 					RuntimeCall::Anchor(..) |
-					RuntimeCall::CrowdloanClaim(..) |
-					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
 					// Specifically omitting Loans `repay` & `borrow` for pallet_loans
 					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
@@ -548,30 +546,32 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, RuntimeCall::Proxy(..))
 			}
-			ProxyType::Borrow => matches!(
-				c,
-				RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
-                // Borrowers should be able to close and execute an epoch
-                // in order to get liquidity from repayments in previous epochs.
-                RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch { .. }) |
-                RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution { .. }) |
-                RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch { .. }) |
-                RuntimeCall::Utility(pallet_utility::Call::batch_all { .. }) |
-                RuntimeCall::Utility(pallet_utility::Call::batch { .. }) |
-				// Borrowers should be able to swap back and forth between local currencies and their variants
-				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
-				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
-				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
-			),
+			ProxyType::Borrow => {
+				matches!(
+					c,
+					RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
+                    // Borrowers should be able to close and execute an epoch
+                    // in order to get liquidity from repayments in previous epochs.
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch { .. }) |
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution { .. }) |
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch { .. }) |
+                    RuntimeCall::Utility(pallet_utility::Call::batch_all { .. }) |
+                    RuntimeCall::Utility(pallet_utility::Call::batch { .. }) |
+                    // Borrowers should be able to swap back and forth between local currencies and their variants
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
+				) | ProxyType::PodOperation.filter(c)
+			}
 			ProxyType::Invest => matches!(
 				c,
 				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
@@ -1039,6 +1039,7 @@ parameter_types! {
 }
 
 impl pallet_pool_system::Config for Runtime {
+	type AdminOrigin = runtime_common::pool::LiquidityAndPoolAdminOrRoot<Runtime>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
@@ -1194,36 +1195,6 @@ impl PoolUpdateGuard for UpdateGuard {
 
 		true
 	}
-}
-
-// Parameterize crowdloan reward pallet configuration
-parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
-}
-
-// Implement crowdloan reward pallet's configuration trait for the runtime
-impl pallet_crowdloan_reward::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type PalletId = CrowdloanRewardPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_crowdloan_reward::WeightInfo<Self>;
-}
-
-// Parameterize crowdloan claim pallet
-parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const MaxProofLength: u32 = 30;
-}
-
-// Implement crowdloan claim pallet configuration trait for the runtime
-impl pallet_crowdloan_claim::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxProofLength = MaxProofLength;
-	type PalletId = CrowdloanClaimPalletId;
-	type RelayChainAccountId = AccountId;
-	type RewardMechanism = CrowdloanReward;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_crowdloan_claim::WeightInfo<Self>;
 }
 
 // Parameterize collator selection pallet
@@ -1708,7 +1679,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
+impl pallet_rewards::Config<instances::BlockRewards> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
@@ -2027,7 +1998,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1046,
+	crate::migrations::UpgradeDevelopment1047,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2071,8 +2042,8 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		// Removed: Claims = 92
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
-		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
+		// Removed: CrowdloanClaim = 93
+		// Removed: CrowdloanReward = 94
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
@@ -2397,14 +2368,14 @@ impl_runtime_apis! {
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
 		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, instances::BlockRewards>::list_currencies(&account_id),
 				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
 			}
 		}
 
 		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
 			match domain {
-				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, instances::BlockRewards> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 			}
 		}
@@ -2791,8 +2762,6 @@ mod benches {
 		[pallet_fees, Fees]
 		[pallet_anchors, Anchor]
 		[pallet_block_rewards, BlockRewards]
-		[pallet_crowdloan_claim, CrowdloanClaim]
-		[pallet_crowdloan_reward, CrowdloanReward]
 		[pallet_collator_allowlist, CollatorAllowlist]
 		[pallet_collator_selection, CollatorSelection]
 		[pallet_pool_registry, PoolRegistry]

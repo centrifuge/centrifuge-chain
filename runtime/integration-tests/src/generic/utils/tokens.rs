@@ -12,26 +12,10 @@
 
 //! Time balances and tokens
 use cfg_primitives::Balance;
-use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
+use cfg_types::tokens::CurrencyId;
 use frame_support::traits::{fungible::Mutate as _, fungibles::Mutate as _};
-use sp_runtime::FixedPointNumber;
 
-use crate::{
-	generic::config::Runtime,
-	utils::{accounts::default_accounts, time::secs::SECONDS_PER_YEAR},
-};
-
-pub const DECIMAL_BASE_12: u128 = 1_000_000_000_000;
-pub const DECIMAL_BASE_18: u128 = DECIMAL_BASE_12 * 1_000_000;
-pub const DECIMAL_BASE_27: u128 = DECIMAL_BASE_18 * 1_000_000_000;
-
-lazy_static::lazy_static! {
-	pub static ref YEAR_RATE: Rate = Rate::saturating_from_integer(SECONDS_PER_YEAR);
-}
-
-pub fn rate_from_percent(perc: u64) -> Rate {
-	Rate::saturating_from_rational(perc, 100)
-}
+use crate::{generic::config::Runtime, utils::accounts::default_accounts};
 
 pub fn evm_balances<T: Runtime>(balance: Balance) {
 	let mut accounts = Vec::new();
@@ -43,14 +27,17 @@ pub fn evm_balances<T: Runtime>(balance: Balance) {
 }
 
 pub fn evm_tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) {
-	default_accounts().into_iter().map(|keyring| {
+	default_accounts().into_iter().for_each(|keyring| {
 		values
 			.clone()
 			.into_iter()
-			.map(|(curency_id, balance)| {
-				orml_tokens::Pallet::<T>::mint_into(curency_id, &keyring.id_ecdsa::<T>(), balance)
-					.expect("Failed minting tokens into EVM default wallets")
-			})
-			.collect::<Vec<_>>()
+			.for_each(|(curency_id, balance)| {
+				let _ = orml_tokens::Pallet::<T>::mint_into(
+					curency_id,
+					&keyring.id_ecdsa::<T>(),
+					balance,
+				)
+				.expect("Failed minting tokens into EVM default wallets");
+			});
 	});
 }

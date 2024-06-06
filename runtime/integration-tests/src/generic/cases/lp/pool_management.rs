@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, PoolId};
+use cfg_primitives::{Balance, PoolId, SECONDS_PER_YEAR};
 use cfg_traits::{PoolMetadata, TimeAsSecs, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -35,9 +35,10 @@ use crate::{
 		env::{EnvEvmExtension, EvmEnv},
 		utils::currency::{register_currency, CurrencyInfo},
 	},
-	utils::{accounts::Keyring, time::secs::SECONDS_PER_YEAR},
+	utils::accounts::Keyring,
 };
 
+#[test_runtimes(all)]
 fn add_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 
@@ -126,6 +127,7 @@ fn add_currency<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn add_pool<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 	const POOL: PoolId = 1;
@@ -174,6 +176,7 @@ fn add_pool<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -255,6 +258,7 @@ fn add_tranche<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn allow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -306,6 +310,7 @@ fn allow_investment_currency<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn disallow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -358,6 +363,7 @@ fn disallow_investment_currency<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn update_member<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -435,6 +441,7 @@ fn update_member<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn update_tranche_token_metadata<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -529,6 +536,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn update_tranche_token_price<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -596,12 +604,3 @@ fn update_tranche_token_price<T: Runtime>() {
 		assert_eq!(price_evm, pre_price_cfg.price.into_inner());
 	});
 }
-
-crate::test_for_runtimes!(all, add_currency);
-crate::test_for_runtimes!(all, add_pool);
-crate::test_for_runtimes!(all, add_tranche);
-crate::test_for_runtimes!(all, allow_investment_currency);
-crate::test_for_runtimes!(all, disallow_investment_currency);
-crate::test_for_runtimes!(all, update_member);
-crate::test_for_runtimes!(all, update_tranche_token_metadata);
-crate::test_for_runtimes!(all, update_tranche_token_price);

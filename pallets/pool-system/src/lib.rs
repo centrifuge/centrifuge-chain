@@ -184,7 +184,7 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		sp_runtime::traits::Convert,
-		traits::{tokens::Preservation, Contains},
+		traits::{tokens::Preservation, Contains, EnsureOriginWithArg},
 		PalletId,
 	};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
@@ -194,6 +194,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type AdminOrigin: EnsureOriginWithArg<Self::RuntimeOrigin, Self::PoolId>;
 
 		type Balance: Member
 			+ Parameter
@@ -613,7 +615,7 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -876,7 +878,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
 				let epoch = epoch_info
@@ -1087,7 +1089,8 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let old_pool = pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
+				let old_pool =
+					pool.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1142,7 +1145,8 @@ pub mod pallet {
 				Self::deposit_event(Event::Updated {
 					id: *pool_id,
 					old: old_pool,
-					new: pool.essence::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
+					new: pool
+						.essence_from_registry::<T::AssetRegistry, T::Balance, T::StringLimit>()?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);

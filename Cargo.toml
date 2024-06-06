@@ -4,7 +4,6 @@ members = [
   "node",
   "libs/mocks",
   "libs/primitives",
-  "libs/proofs",
   "libs/test-utils",
   "libs/traits",
   "libs/types",
@@ -13,8 +12,6 @@ members = [
   "pallets/bridge",
   "pallets/block-rewards",
   "pallets/collator-allowlist",
-  "pallets/crowdloan-claim",
-  "pallets/crowdloan-reward",
   "pallets/ethereum-transaction",
   "pallets/fees",
   "pallets/foreign-investments",
@@ -45,6 +42,7 @@ members = [
   "runtime/development",
   "runtime/common",
   "runtime/integration-tests",
+  "runtime/integration-tests/procedural",
 ]
 
 [workspace.package]
@@ -236,8 +234,6 @@ pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
-pallet-crowdloan-claim = { path = "pallets/crowdloan-claim", default-features = false }
-pallet-crowdloan-reward = { path = "pallets/crowdloan-reward", default-features = false }
 pallet-ethereum-transaction = { path = "pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "pallets/fees", default-features = false }
 pallet-foreign-investments = { path = "pallets/foreign-investments", default-features = false }
@@ -269,13 +265,13 @@ cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 cfg-mocks = { path = "libs/mocks", default-features = false }
 cfg-test-utils = { path = "libs/test-utils", default-features = false }
-proofs = { path = "libs/proofs", default-features = false }
 
 # Centrifuge runtimes
 runtime-common = { path = "runtime/common", default-features = false }
 development-runtime = { path = "runtime/development", default-features = false }
 altair-runtime = { path = "runtime/altair", default-features = false }
 centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
+runtime-integration-tests-proc-macro = { path = "runtime/integration-tests/procedural" }
 
 # Build dependencies
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }

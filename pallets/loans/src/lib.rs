@@ -118,7 +118,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -169,7 +169,7 @@ pub mod pallet {
 		type Time: TimeAsSecs;
 
 		/// Generic time type
-		type Moment: Parameter + Member + IntoSeconds;
+		type Moment: Parameter + Member + Copy + IntoSeconds;
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
@@ -232,7 +232,7 @@ pub mod pallet {
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
-	pub(crate) type CreatedLoan<T: Config> = StorageDoubleMap<
+	pub type CreatedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -259,7 +259,7 @@ pub mod pallet {
 	/// No mutations are expected in this storage.
 	/// Loans are stored here for historical purposes.
 	#[pallet::storage]
-	pub(crate) type ClosedLoan<T: Config> = StorageDoubleMap<
+	pub type ClosedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -355,6 +355,12 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			amount: PrincipalInput<T>,
 		},
+		/// Debt of a loan has been decreased
+		DebtDecreased {
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: RepaidInput<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -398,6 +404,10 @@ pub mod pallet {
 		TransferDebtToSameLoan,
 		/// Emits when debt is transfered with different repaid/borrow amounts
 		TransferDebtAmountMismatched,
+		/// Emits when the loan has no maturity date set, but the valuation
+		/// method needs one. Making valuation and maturity settings
+		/// incompatible.
+		MaturityDateNeededForValuationMethod,
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {
@@ -838,7 +848,7 @@ pub mod pallet {
 				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			let (_, _count) = Self::transfer_debt_action(
+			let (repaid_amount, _count) = Self::transfer_debt_action(
 				&who,
 				pool_id,
 				from_loan_id,
@@ -879,6 +889,34 @@ pub mod pallet {
 			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
 
 			Self::deposit_event(Event::<T>::DebtIncreased {
+				pool_id,
+				loan_id,
+				amount,
+			});
+
+			Ok(())
+		}
+
+		/// Decrease debt for a loan. Similar to [`Pallet::repay()`] but
+		/// without transferring from the pool.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The decrease debt action should fulfill the repay restrictions
+		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
+		/// of the pool is updated to reflect the new present value of the loan.
+		#[pallet::weight(T::WeightInfo::increase_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(14)]
+		pub fn decrease_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: RepaidInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount, false)?;
+
+			Self::deposit_event(Event::<T>::DebtDecreased {
 				pool_id,
 				loan_id,
 				amount,
@@ -945,7 +983,7 @@ pub mod pallet {
 			repaid_amount: RepaidInput<T>,
 			borrow_amount: PrincipalInput<T>,
 			permissionless: bool,
-		) -> Result<(T::Balance, u32), DispatchError> {
+		) -> Result<(RepaidInput<T>, u32), DispatchError> {
 			ensure!(
 				from_loan_id != to_loan_id,
 				Error::<T>::TransferDebtToSameLoan
@@ -962,7 +1000,7 @@ pub mod pallet {
 			let count =
 				Self::borrow_action(who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
 
-			Ok((repaid_amount.repaid_amount()?.total()?, count))
+			Ok((repaid_amount, count))
 		}
 
 		/// Set the maturity date of the loan to this instant.
@@ -1050,7 +1088,7 @@ pub mod pallet {
 
 		pub fn registered_prices(
 			pool_id: T::PoolId,
-		) -> Result<BTreeMap<T::PriceId, T::Balance>, DispatchError> {
+		) -> Result<BTreeMap<T::PriceId, PriceOf<T>>, DispatchError> {
 			let collection = T::PriceRegistry::collection(&pool_id)?;
 			Ok(ActiveLoans::<T>::get(pool_id)
 				.iter()
@@ -1058,7 +1096,7 @@ pub mod pallet {
 				.filter_map(|price_id| {
 					collection
 						.get(&price_id)
-						.map(|price| (price_id, price.0))
+						.map(|price| (price_id, (price.0, price.1)))
 						.ok()
 				})
 				.collect::<BTreeMap<_, _>>())

@@ -26,6 +26,7 @@ use crate::generic::{
 	},
 };
 
+#[test_runtimes([development])]
 fn axelar_precompile_execute<T: Runtime>() {
 	RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -133,5 +134,3 @@ fn axelar_precompile_execute<T: Runtime>() {
 		);
 	});
 }
-
-crate::test_for_runtimes!([development], axelar_precompile_execute);

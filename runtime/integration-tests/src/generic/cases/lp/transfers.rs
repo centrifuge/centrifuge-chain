@@ -30,6 +30,7 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
+#[test_runtimes(all)]
 fn transfer_tokens_from_local<T: Runtime>() {
 	const AMOUNT: Balance = DEFAULT_BALANCE * DECIMALS_6;
 
@@ -100,6 +101,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 	});
 }
 
+#[test_runtimes(all)]
 fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	const AMOUNT: Balance = DEFAULT_BALANCE * DECIMALS_6;
 
@@ -182,6 +184,3 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 		);
 	});
 }
-
-crate::test_for_runtimes!(all, transfer_tokens_from_local);
-crate::test_for_runtimes!(all, transfer_tranche_tokens_from_local);
