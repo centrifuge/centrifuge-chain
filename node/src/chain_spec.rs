@@ -22,8 +22,6 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use std::collections::BTreeMap;
-
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
 	currency_decimals, parachains, AccountId, AuraId, Balance, BlockNumber, CFG, MILLI_CFG,
@@ -36,11 +34,11 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::{account_conversion::AccountConverter, evm::precompile::H160Addresses};
+use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160};
+use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
@@ -817,7 +815,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 						Parachain(parachains::rococo::acala::ID),
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
-							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
+							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY),
 						},
 					),
 				})),

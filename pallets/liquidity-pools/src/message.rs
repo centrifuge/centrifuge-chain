@@ -1039,8 +1039,8 @@ mod tests {
 			LiquidityPoolsMessage::AddTranche {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
-				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+				token_name: vec_to_fixed_array(b"Some Name"),
+				token_symbol: vec_to_fixed_array( b"SYMBOL"),
 				decimals: 15,
 				restriction_set: 1,
 			},
@@ -1081,7 +1081,7 @@ mod tests {
 			LiquidityPoolsMessage::Transfer {
 					currency: TOKEN_ID,
 					sender: default_address_32(),
-					receiver: vec_to_fixed_array(default_address_20().to_vec()),
+					receiver: vec_to_fixed_array(default_address_20()),
 					amount: AMOUNT,
 				},
 			"070000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
@@ -1093,7 +1093,7 @@ mod tests {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::Transfer {
         			currency: TOKEN_ID,
-					sender: vec_to_fixed_array(default_address_20().to_vec()),
+					sender: vec_to_fixed_array(default_address_20()),
 					receiver: default_address_32(),
 					amount: AMOUNT,
 				},
@@ -1124,7 +1124,7 @@ mod tests {
 			LiquidityPoolsMessage::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				sender: vec_to_fixed_array(default_address_20().to_vec()),
+				sender: vec_to_fixed_array(default_address_20()),
 				domain: Domain::Centrifuge,
 				receiver: default_address_32(),
 				amount: AMOUNT,
@@ -1247,7 +1247,7 @@ mod tests {
 			LiquidityPoolsMessage::ExecutedDecreaseInvestOrder {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
-				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				investor: vec_to_fixed_array(default_address_20()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT / 2,
 				remaining_invest_amount: AMOUNT / 4,
@@ -1262,7 +1262,7 @@ mod tests {
 			LiquidityPoolsMessage::ExecutedDecreaseRedeemOrder {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
-				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				investor: vec_to_fixed_array(default_address_20()),
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
 				remaining_redeem_amount: AMOUNT / 4,
@@ -1277,7 +1277,7 @@ mod tests {
 			LiquidityPoolsMessage::ExecutedCollectInvest {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
-				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				investor: vec_to_fixed_array(default_address_20()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
@@ -1293,7 +1293,7 @@ mod tests {
 			LiquidityPoolsMessage::ExecutedCollectRedeem {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
-				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				investor: vec_to_fixed_array(default_address_20()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
@@ -1329,8 +1329,8 @@ mod tests {
 			LiquidityPoolsMessage::UpdateTrancheTokenMetadata {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
-				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+				token_name: vec_to_fixed_array(b"Some Name"),
+				token_symbol: vec_to_fixed_array(b"SYMBOL"),
 			},
 			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
 		)

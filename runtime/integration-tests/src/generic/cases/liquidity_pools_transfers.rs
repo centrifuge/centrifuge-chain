@@ -6127,7 +6127,7 @@ mod altair {
 					PalletInstance(PoolPalletIndex::get()),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				),
 			};
@@ -8095,7 +8095,7 @@ mod all {
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				),
 			};
@@ -8143,7 +8143,7 @@ mod all {
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				),
 			};
