@@ -42,6 +42,8 @@ use crate::{
 	UnhealthyState,
 };
 
+mod ratios;
+
 const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 pub mod util {
@@ -56,34 +58,88 @@ pub mod util {
 	pub mod default_pool {
 		use super::*;
 
+		pub fn one_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			}]
+		}
+
+		pub fn three_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(20),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(25),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+			]
+		}
+
+		pub fn two_tranche_input() -> Vec<TrancheInput<Rate, StringLimit>> {
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::default(),
+						min_risk_buffer: Perquintill::from_percent(25),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				},
+			]
+		}
+
 		pub fn create() {
+			create_with_tranche_input(two_tranche_input())
+		}
+
+		pub fn create_with_tranche_input(input: Vec<TrancheInput<Rate, StringLimit>>) {
 			PoolSystem::create(
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_ID,
-				vec![
-					TrancheInput {
-						tranche_type: TrancheType::Residual,
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-					TrancheInput {
-						tranche_type: TrancheType::NonResidual {
-							interest_rate_per_sec: Rate::default(),
-							min_risk_buffer: Perquintill::default(),
-						},
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-				],
+				input,
 				AUSD_CURRENCY_ID,
-				0,
+				10_000 * CURRENCY,
 				vec![],
 			)
 			.unwrap();
@@ -95,7 +151,7 @@ pub mod util {
 			// forcing to call `execute_epoch()` later.
 			Investments::update_invest_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(0, JuniorTrancheId::get()),
+				TrancheCurrency::generate(0, SeniorTrancheId::get()),
 				500 * CURRENCY,
 			)
 			.unwrap();
@@ -818,31 +874,6 @@ fn submission_period() {
 		// Not allowed as it breaks the min risk buffer, and the current state isn't
 		// broken
 		let epoch = <pallet::EpochExecution<mock::Runtime>>::try_get(0).unwrap();
-		let existing_state_score = PoolSystem::score_solution(
-			&crate::Pool::<Runtime>::try_get(0).unwrap(),
-			&epoch,
-			&epoch.clone().best_submission.unwrap().solution(),
-		)
-		.unwrap();
-		let new_solution_score = PoolSystem::score_solution(
-			&crate::Pool::<Runtime>::try_get(0).unwrap(),
-			&epoch,
-			&vec![
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
-				},
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
-				},
-			],
-		)
-		.unwrap();
-		assert_eq!(existing_state_score.healthy(), true);
-		assert_eq!(new_solution_score.healthy(), false);
-		assert_eq!(new_solution_score < existing_state_score, true);
-
 		assert_err!(
 			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
@@ -858,23 +889,57 @@ fn submission_period() {
 					}
 				]
 			),
+			Error::<Runtime>::InvalidSolution
+		);
+
+		let existing_state_score = PoolSystem::score_solution(
+			&crate::Pool::<Runtime>::try_get(0).unwrap(),
+			&epoch,
+			&epoch.clone().best_submission.unwrap().solution(),
+		)
+		.unwrap();
+
+		let new_solution = vec![
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::from_rational(9u64, 10),
+			},
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::one(),
+			},
+		];
+
+		let new_solution_score = PoolSystem::score_solution(
+			&crate::Pool::<Runtime>::try_get(0).unwrap(),
+			&epoch,
+			&new_solution,
+		)
+		.unwrap();
+		assert_eq!(existing_state_score.healthy(), true);
+		assert_eq!(new_solution_score.healthy(), false);
+		assert_eq!(new_solution_score < existing_state_score, true);
+
+		// Is error as would put pool in unhealthy state
+		assert_err!(
+			PoolSystem::submit_solution(pool_owner_origin.clone(), 0, new_solution,),
 			Error::<Runtime>::NotNewBestSubmission
 		);
 
-		// Allowed as 1% redemption keeps the risk buffer healthy
+		let new_solution = vec![
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::from_rational(7u64, 10),
+			},
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::one(),
+			},
+		];
 		let partial_fulfilment_solution = PoolSystem::score_solution(
 			&crate::Pool::<Runtime>::try_get(0).unwrap(),
 			&epoch,
-			&vec![
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.01),
-				},
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
-				},
-			],
+			&new_solution,
 		)
 		.unwrap();
 		assert_eq!(partial_fulfilment_solution.healthy(), true);
@@ -883,16 +948,7 @@ fn submission_period() {
 		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
-			vec![
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.01),
-				},
-				TrancheSolution {
-					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
-				}
-			]
+			new_solution
 		));
 
 		// Can submit the same solution twice
@@ -902,7 +958,7 @@ fn submission_period() {
 			vec![
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.01),
+					redeem_fulfillment: Perquintill::from_rational(7u64, 10),
 				},
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
@@ -911,14 +967,14 @@ fn submission_period() {
 			]
 		));
 
-		// Slight risk buffer improvement
+		// Risk buffer not touched, so increase in redemption is better
 		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.10),
+					redeem_fulfillment: Perquintill::from_rational(8u64, 10),
 				},
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),

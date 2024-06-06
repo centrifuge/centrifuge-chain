@@ -26,10 +26,10 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
+#[cfg(feature = "runtime-benchmarks")]
+use frame_support::dispatch::RawOrigin;
 use frame_support::{
-	assert_ok, derive_impl,
-	dispatch::RawOrigin,
-	parameter_types,
+	assert_ok, derive_impl, parameter_types,
 	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, PalletId, StorageHasher,
 };
@@ -506,6 +506,7 @@ fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+	pub SecondSeniorTrancheId: [u8; 16] = create_tranche_id(0, 2);
 }
 
 // Build genesis storage according to the mock runtime.
