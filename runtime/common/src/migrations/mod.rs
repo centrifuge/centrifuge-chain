@@ -17,6 +17,7 @@ pub mod increase_storage_version;
 pub mod loans;
 pub mod nuke;
 pub mod precompile_account_codes;
+pub mod restricted_location;
 
 pub mod utils {
 	use frame_support::storage::unhashed;

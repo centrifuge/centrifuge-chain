@@ -109,15 +109,7 @@ pub mod pallet {
 		type Deposit: Get<DepositBalanceOf<Self>>;
 
 		/// Type containing the locations a transfer can be sent to.
-		type Location: Member
-			+ Debug
-			+ Eq
-			+ PartialEq
-			+ TypeInfo
-			+ Encode
-			+ EncodeLike
-			+ Decode
-			+ MaxEncodedLen;
+		type Location: Member + TypeInfo + Encode + EncodeLike + Decode + MaxEncodedLen;
 
 		/// Type for pallet weights
 		type WeightInfo: WeightInfo;

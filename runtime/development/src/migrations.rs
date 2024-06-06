@@ -10,10 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::AccountId;
 use sp_core::parameter_types;
+use sp_std::{vec, vec::Vec};
+
 parameter_types! {
 	pub const CollatorReward: cfg_primitives::Balance = cfg_primitives::constants::CFG;
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
+	pub AccountMap: Vec<(AccountId, AccountId)> = vec![];
+
 }
 
 // Number of identities on Dev and Demo Chain on 30.05.2024 was both 0
@@ -52,6 +57,10 @@ pub type UpgradeDevelopment1047 = (
 		crate::Runtime,
 		CollatorReward,
 		AnnualTreasuryInflationPercent,
+	>,
+	runtime_common::migrations::restricted_location::MigrateRestrictedTransferLocation<
+		crate::Runtime,
+		AccountMap,
 	>,
 	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 	runtime_common::migrations::hold_reason::MigrateTransferAllowListHolds<

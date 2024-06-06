@@ -11,7 +11,7 @@ documentation.workspace = true
 
 [dependencies]
 hex = { workspace = true }
-hex-literal = { workspace = true, optional = true }
+hex-literal = { workspace = true }
 log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
@@ -264,7 +264,6 @@ std = [
 
 runtime-benchmarks = [
   # Enabling optional
-  "hex-literal",
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
