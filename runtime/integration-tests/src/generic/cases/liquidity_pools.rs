@@ -6690,17 +6690,17 @@ mod centrifuge {
 		const TRANSFER_AMOUNT: u128 = 10;
 
 		fn xcm_location() -> VersionedLocation {
-			VersionedLocation::v4::new(
+			VersionedLocation::V4(Location::new(
 				1,
 				AccountId32 {
 					id: Keyring::Alice.into(),
 					network: None,
 				},
-			)
+			))
 		}
 
 		fn allowed_xcm_location() -> RestrictedTransferLocation {
-			RestrictedTransferLocation::Xcm(xcm_location())
+			RestrictedTransferLocation::Xcm(Box::new(xcm_location()))
 		}
 
 		fn add_allowance<T: Runtime>(
@@ -7220,16 +7220,18 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::Specific(USDC),
-						RestrictedTransferLocation::Xcm(VersionedLocation::v4::new(
-							1,
-							[
-								Parachain(T::FudgeHandle::SIBLING_ID),
-								Junction::AccountId32 {
-									id: Keyring::Alice.into(),
-									network: None,
-								}
-							]
-						))
+						RestrictedTransferLocation::Xcm(Box::new(VersionedLocation::V4(
+							Location::new(
+								1,
+								[
+									Parachain(T::FudgeHandle::SIBLING_ID),
+									Junction::AccountId32 {
+										id: Keyring::Alice.into(),
+										network: None,
+									}
+								]
+							)
+						)))
 					)
 				);
 
