@@ -597,8 +597,8 @@ fn increase_debt_does_not_withdraw() {
 		let loan_id = util::create_loan(loan);
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
 
+		config_mocks(amount.balance().unwrap());
 		MockPools::mock_withdraw(|_, _, _| {
 			unreachable!("increase debt must not withdraw funds from the pool");
 		});
