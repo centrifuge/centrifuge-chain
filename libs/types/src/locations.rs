@@ -15,19 +15,18 @@ use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::crypto::AccountId32;
-// Please note that if this version change,
-// a migration could be required in those places where
-// RestrictedTransferLocation is stored
-use staging_xcm::v4::Location;
+use sp_std::boxed::Box;
+use staging_xcm::VersionedLocation;
 
 use crate::domain_address::DomainAddress;
+
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum RestrictedTransferLocation {
 	/// Local chain account sending destination.
 	Local(AccountId),
 	/// XCM Location sending destinations.
-	Xcm(Location),
+	Xcm(Box<VersionedLocation>),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }

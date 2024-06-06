@@ -51,37 +51,37 @@ use staging_xcm::{v4::prelude::*, VersionedAsset, VersionedAssets, VersionedLoca
 pub enum TransferEffects<AccountId, CurrencyId, Balance> {
 	Transfer {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		currency_id: CurrencyId,
 		amount: Balance,
 	},
 	TransferMultiAsset {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		asset: Asset,
 	},
 	TransferWithFee {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		currency_id: CurrencyId,
 		amount: Balance,
 		fee: Balance,
 	},
 	TransferMultiAssetWithFee {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		asset: Asset,
 		fee_asset: Asset,
 	},
 	TransferMultiCurrencies {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		currencies: Vec<(CurrencyId, Balance)>,
 		fee: (CurrencyId, Balance),
 	},
 	TransferMultiAssets {
 		sender: AccountId,
-		destination: Location,
+		destination: VersionedLocation,
 		assets: Assets,
 		fee_asset: Asset,
 	},
@@ -130,14 +130,11 @@ pub mod pallet {
 			dest: Box<VersionedLocation>,
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 			let sender = ensure_signed(origin.clone())?;
 
 			T::PreTransfer::check(TransferEffects::Transfer {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				currency_id: currency_id.clone(),
 				amount,
 			})?;
@@ -175,13 +172,10 @@ pub mod pallet {
 			let multi_asset: Asset = (*asset.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiAsset {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				asset: multi_asset,
 			})?;
 
@@ -220,13 +214,10 @@ pub mod pallet {
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferWithFee {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				currency_id: currency_id.clone(),
 				amount,
 				fee,
@@ -279,13 +270,10 @@ pub mod pallet {
 			let fee_asset: Asset = (*fee.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiAssetWithFee {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				asset: multi_asset,
 				fee_asset,
 			})?;
@@ -324,16 +312,13 @@ pub mod pallet {
 			dest_weight_limit: WeightLimit,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee = currencies
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiCurrencies {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				currencies: currencies.clone(),
 				fee: fee.clone(),
 			})?;
@@ -375,16 +360,13 @@ pub mod pallet {
 			let multi_assets: Assets = (*assets.clone())
 				.try_into()
 				.map_err(|()| Error::<T>::BadVersion)?;
-			let destination: Location = (*dest.clone())
-				.try_into()
-				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee_asset: &Asset = multi_assets
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiAssets {
 				sender,
-				destination,
+				destination: (*dest.clone()),
 				assets: multi_assets.clone(),
 				fee_asset: fee_asset.clone(),
 			})?;

@@ -6689,8 +6689,8 @@ mod centrifuge {
 
 		const TRANSFER_AMOUNT: u128 = 10;
 
-		fn xcm_location() -> Location {
-			Location::new(
+		fn xcm_location() -> VersionedLocation {
+			VersionedLocation::v4::new(
 				1,
 				AccountId32 {
 					id: Keyring::Alice.into(),
@@ -7220,7 +7220,7 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::Specific(USDC),
-						RestrictedTransferLocation::Xcm(Location::new(
+						RestrictedTransferLocation::Xcm(VersionedLocation::v4::new(
 							1,
 							[
 								Parachain(T::FudgeHandle::SIBLING_ID),

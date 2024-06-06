@@ -27,8 +27,11 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
-use sp_std::vec::Vec;
-use staging_xcm::v4::{Asset, Location};
+use sp_std::{boxed::Box, vec::Vec};
+use staging_xcm::{
+	v4::{Asset, Location},
+	VersionedLocation,
+};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
@@ -44,16 +47,16 @@ impl<
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		let currency_based_check = |sender: AccountId, destination: Location, currency| {
+		let currency_based_check = |sender: AccountId, destination: VersionedLocation, currency| {
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					RestrictedTransferLocation::Xcm(destination.clone()),
+					RestrictedTransferLocation::Xcm(Box::new(destination.clone())),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					RestrictedTransferLocation::Xcm(destination),
+					RestrictedTransferLocation::Xcm(Box::new(destination)),
 					FilterCurrency::All,
 				),
 			)

@@ -9,8 +9,8 @@ use parity_scale_codec::Encode;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use sp_std::vec::Vec;
-use staging_xcm::v4;
+use sp_std::{boxed::Box, vec::Vec};
+use staging_xcm::{v4, VersionedLocation};
 
 mod old {
 	use cfg_primitives::AccountId;
@@ -158,7 +158,8 @@ where
 			match v4::Location::try_from(old_location) {
 				Ok(location) => {
 					log::info!("{LOG_PREFIX} Hash: '{hash}' migrated!");
-					let new_restricted_location = RestrictedTransferLocation::Xcm(location);
+					let new_restricted_location =
+						RestrictedTransferLocation::Xcm(Box::new(VersionedLocation::V4(location)));
 
 					Some(new_restricted_location)
 				}
