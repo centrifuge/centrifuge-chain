@@ -1726,6 +1726,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type DomainAccountToAccountId = AccountConverter;
+	type DomainAccountToDomainAddress = AccountConverter;
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
