@@ -18,8 +18,8 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-const GAS_LIMIT: u64 = 5_000_000;
-const VALIDATE: bool = true;
+const GAS_LIMIT: u64 = 105_000_000;
+const VALIDATE: bool = false;
 const TRANSACTIONAL: bool = true;
 
 pub struct EvmEnv<T: Runtime> {
