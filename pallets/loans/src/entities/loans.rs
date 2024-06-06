@@ -243,26 +243,21 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		match &self.pricing {
-			ActivePricing::Internal(inner) => Ok(self
-				.total_borrowed
-				.ensure_sub(self.total_repaid.principal)?),
-			ActivePricing::External(inner) => {
-				let maturity = self.maturity_date();
-				inner.outstanding_principal(pool_id, maturity)
-			}
-		}
+	pub fn principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.total_borrowed
+			.ensure_sub(self.total_repaid.principal)?)
 	}
 
-	pub fn expected_cashflows(
-		&self,
-		pool_id: T::PoolId,
-	) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
+	pub fn expected_cashflows(&self) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
 		self.schedule.generate_cashflows(
 			self.repayments_on_schedule_until,
-			self.principal(pool_id)?,
-			self.pricing.interest().current_debt()?,
+			self.principal()?,
+			match &self.pricing {
+				ActivePricing::Internal(_) => self.principal()?,
+				ActivePricing::External(inner) => inner.outstanding_notional_principal()?,
+			},
+			self.pricing.interest().rate(),
 		)
 	}
 
@@ -408,7 +403,7 @@ impl<T: Config> ActiveLoan<T> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				let _ = amount.principal.internal()?;
-				let principal = self.principal(pool_id)?;
+				let principal = self.principal()?;
 
 				(principal, inner.outstanding_interest(principal)?)
 			}
@@ -574,7 +569,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 		Ok(match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
-				let principal = active_loan.principal(pool_id)?;
+				let principal = active_loan.principal()?;
 
 				Self {
 					present_value,
@@ -589,7 +584,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 				Self {
 					present_value,
-					outstanding_principal: inner.outstanding_principal(pool_id, maturity)?,
+					outstanding_principal: inner.outstanding_priced_principal(pool_id, maturity)?,
 					outstanding_interest: inner.outstanding_interest()?,
 					current_price: Some(inner.current_price(pool_id, maturity)?),
 					active_loan,

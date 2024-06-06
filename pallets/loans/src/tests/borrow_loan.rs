@@ -630,7 +630,7 @@ mod cashflow {
 	}
 
 	#[test]
-	fn computed_correctly() {
+	fn computed_correctly_interal_pricing() {
 		new_test_ext().execute_with(|| {
 			let loan_id = create_cashflow_loan();
 

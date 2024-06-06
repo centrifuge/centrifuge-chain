@@ -59,11 +59,10 @@ pub mod util;
 
 mod weights;
 
-#[cfg(test)]
-mod tests;
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+#[cfg(test)]
+mod tests;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -1260,7 +1259,7 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| loan.expected_cashflows(pool_id))
+				.map(|(_, loan)| loan.expected_cashflows())
 				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?
 		}
 	}
