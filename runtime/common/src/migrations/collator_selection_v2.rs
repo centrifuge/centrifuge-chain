@@ -36,7 +36,8 @@ pub type Candidates<T: Config> = StorageValue<
 	ValueQuery,
 >;
 
-/// Migrate to storage to V2 without bumping storage version because it is missing in v1.7.2 SDK
+/// Migrate to storage to V2 without bumping storage version because it is
+/// missing in v1.7.2 SDK
 pub struct UncheckedMigrationToV2<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config + pallet_balances::Config> OnRuntimeUpgrade for UncheckedMigrationToV2<T> {
 	fn on_runtime_upgrade() -> Weight {
