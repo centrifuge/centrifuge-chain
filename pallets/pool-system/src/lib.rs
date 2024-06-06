@@ -1255,16 +1255,13 @@ pub mod pallet {
 							//       implementation defaults to 100% if the denominator is zero
 							let ratio = if total_assets.is_zero() {
 								Perquintill::zero()
+							} else if current_tranche < num_tranches {
+								Perquintill::from_rational(
+									tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+									total_assets,
+								)
 							} else {
-								if current_tranche < num_tranches {
-									Perquintill::from_rational(
-										tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
-										total_assets,
-									)
-								} else {
-									Perquintill::one()
-										.ensure_sub(sum_non_residual_tranche_ratios)?
-								}
+								Perquintill::one().ensure_sub(sum_non_residual_tranche_ratios)?
 							};
 
 							sum_non_residual_tranche_ratios.ensure_add_assign(ratio)?;
