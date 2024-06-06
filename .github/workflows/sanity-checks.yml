@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b #4.1.4
+        with:
+          submodules: 'recursive'
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -26,7 +28,10 @@ jobs:
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
-          submodules: 'recursive'
+
+      # Required for integration tests evm interaction
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
@@ -43,6 +48,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b #4.1.4
+        with:
+          submodules: 'recursive'
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -51,9 +58,6 @@ jobs:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 
-      # Required for integration tests evm interaction
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
