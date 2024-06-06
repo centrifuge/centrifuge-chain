@@ -355,6 +355,12 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			amount: PrincipalInput<T>,
 		},
+		/// Debt of a loan has been decreased
+		DebtDecreased {
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: RepaidInput<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -398,6 +404,10 @@ pub mod pallet {
 		TransferDebtToSameLoan,
 		/// Emits when debt is transfered with different repaid/borrow amounts
 		TransferDebtAmountMismatched,
+		/// Emits when the loan has no maturity date set, but the valuation
+		/// method needs one. Making valuation and maturity settings
+		/// incompatible.
+		MaturityDateNeededForValuationMethod,
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {
@@ -879,6 +889,34 @@ pub mod pallet {
 			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
 
 			Self::deposit_event(Event::<T>::DebtIncreased {
+				pool_id,
+				loan_id,
+				amount,
+			});
+
+			Ok(())
+		}
+
+		/// Decrease debt for a loan. Similar to [`Pallet::repay()`] but
+		/// without transferring from the pool.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The decrease debt action should fulfill the repay restrictions
+		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
+		/// of the pool is updated to reflect the new present value of the loan.
+		#[pallet::weight(T::WeightInfo::increase_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(14)]
+		pub fn decrease_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: RepaidInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount, false)?;
+
+			Self::deposit_event(Event::<T>::DebtDecreased {
 				pool_id,
 				loan_id,
 				amount,

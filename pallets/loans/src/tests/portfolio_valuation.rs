@@ -270,3 +270,62 @@ fn no_linear_pricing_either_settlement_or_oracle() {
 		expected_portfolio(QUANTITY.saturating_mul_int(MARKET_PRICE_VALUE));
 	});
 }
+
+#[test]
+fn internal_dcf_with_no_maturity() {
+	new_test_ext().execute_with(|| {
+		let mut internal = util::dcf_internal_loan();
+		internal.schedule.maturity = Maturity::None;
+
+		let loan_id = util::create_loan(LoanInfo {
+			collateral: ASSET_BA,
+			..internal
+		});
+
+		MockPools::mock_withdraw(|_, _, _| Ok(()));
+
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(util::borrower(loan_id)),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE),
+			),
+			Error::<Runtime>::MaturityDateNeededForValuationMethod
+		);
+	});
+}
+
+#[test]
+fn internal_oustanding_debt_with_no_maturity() {
+	new_test_ext().execute_with(|| {
+		let mut internal = util::base_internal_loan();
+		internal.schedule.maturity = Maturity::None;
+
+		let loan_id = util::create_loan(LoanInfo {
+			collateral: ASSET_BA,
+			..internal
+		});
+		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
+
+		config_mocks();
+		let pv = util::current_loan_pv(loan_id);
+		update_portfolio();
+		expected_portfolio(pv);
+
+		advance_time(YEAR);
+
+		update_portfolio();
+		expected_portfolio(
+			Rate::from_float(util::interest_for(DEFAULT_INTEREST_RATE, YEAR))
+				.checked_mul_int(COLLATERAL_VALUE)
+				.unwrap(),
+		);
+
+		util::repay_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
+
+		config_mocks();
+		update_portfolio();
+		expected_portfolio(0);
+	});
+}

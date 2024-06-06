@@ -256,8 +256,12 @@ pub mod pallet {
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
 
-		/// The converter from a Domain 32 byte array to Substrate AccountId.
+		/// The converter from a Domain and 32 byte array to Substrate
+		/// AccountId.
 		type DomainAccountToAccountId: Convert<(Domain, [u8; 32]), Self::AccountId>;
+
+		/// The converter from a Domain and a 32 byte array to DomainAddress.
+		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
 		/// The type for processing outgoing messages.
 		type OutboundQueue: OutboundQueue<
@@ -976,14 +980,15 @@ pub mod pallet {
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
+					domain,
 					receiver,
 					amount,
 					..
 				} => Self::handle_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
-					sender,
-					receiver.into(),
+					sender.domain(),
+					T::DomainAccountToDomainAddress::convert((domain, receiver)),
 					amount,
 				),
 				Message::IncreaseInvestOrder {

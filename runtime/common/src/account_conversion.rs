@@ -13,7 +13,7 @@
 use cfg_primitives::AccountId;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
-use sp_core::{Get, H160};
+use sp_core::{crypto::AccountId32, Get, H160};
 use sp_runtime::traits::Convert;
 use staging_xcm::v4::{Junction::AccountKey20, Location, NetworkId::Ethereum};
 use staging_xcm_executor::traits::ConvertLocation;
@@ -76,10 +76,23 @@ impl Convert<DomainAddress, AccountId> for AccountConverter {
 	}
 }
 
-impl Convert<(Domain, [u8; 32]), AccountId> for AccountConverter {
-	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId {
+impl Convert<(Domain, [u8; 32]), DomainAddress> for AccountConverter {
+	fn convert((domain, account): (Domain, [u8; 32])) -> DomainAddress {
 		match domain {
-			Domain::Centrifuge => AccountId::new(account),
+			Domain::Centrifuge => DomainAddress::Centrifuge(account),
+			Domain::EVM(chain_id) => {
+				let mut bytes20 = [0; 20];
+				bytes20.copy_from_slice(&account[..20]);
+				DomainAddress::EVM(chain_id, bytes20)
+			}
+		}
+	}
+}
+
+impl Convert<(Domain, [u8; 32]), AccountId32> for AccountConverter {
+	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId32 {
+		match domain {
+			Domain::Centrifuge => AccountId32::new(account),
 			// EVM AccountId20 addresses are right-padded to 32 bytes
 			Domain::EVM(chain_id) => {
 				let mut bytes20 = [0; 20];

@@ -20,7 +20,7 @@ use cfg_types::{
 };
 use frame_support::{
 	ensure,
-	traits::{fungibles::Mutate, tokens::Preservation},
+	traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
 };
 use sp_core::Get;
 use sp_runtime::{
@@ -32,7 +32,7 @@ use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, MessageOf, P
 
 impl<T: Config> Pallet<T>
 where
-	T::AccountId: Into<[u8; 32]>,
+	<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 {
 	/// Executes a transfer from another domain exclusively for
 	/// non-tranche-tokens.
@@ -59,16 +59,19 @@ where
 	pub fn handle_tranche_tokens_transfer(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
-		sending_domain: DomainAddress,
-		receiver: T::AccountId,
+		sending_domain: Domain,
+		receiver: DomainAddress,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
+		let local_representation_of_receiver =
+			T::DomainAddressToAccountId::convert(receiver.clone());
+
 		ensure!(
 			T::Permission::has(
 				PermissionScope::Pool(pool_id),
-				receiver.clone(),
+				local_representation_of_receiver.clone(),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now())),
 			),
 			Error::<T>::UnauthorizedTransfer
@@ -78,11 +81,24 @@ where
 
 		T::Tokens::transfer(
 			invest_id.into(),
-			&Domain::convert(sending_domain.domain()),
-			&receiver,
+			&Domain::convert(sending_domain),
+			&local_representation_of_receiver,
 			amount,
 			Preservation::Expendable,
 		)?;
+
+		// If the receiver is not on the Centrifuge domain we need to forward it now
+		// to the right domain from the holdings of the receiver we just transferred
+		// them to.
+		if receiver.domain() != Domain::Centrifuge {
+			Pallet::<T>::transfer_tranche_tokens(
+				T::RuntimeOrigin::signed(local_representation_of_receiver),
+				pool_id,
+				tranche_id,
+				receiver,
+				amount,
+			)?;
+		}
 
 		Ok(())
 	}
