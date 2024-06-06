@@ -16,7 +16,10 @@ use super::{
 		input::{PrincipalInput, RepaidInput},
 		loans::{ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{
-			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
+			external::{
+				ExternalActivePricing, ExternalAmount, ExternalPricing,
+				MaxBorrowAmount as ExtMaxBorrowAmount,
+			},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
 			ActivePricing, Pricing,
 		},

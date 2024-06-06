@@ -27,6 +27,13 @@ pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 	}
 }
 
+pub fn current_extenal_pricing(loan_id: LoanId) -> ExternalActivePricing<Runtime> {
+	match get_loan(loan_id).pricing() {
+		ActivePricing::Internal(_) => panic!("expected external pricing"),
+		ActivePricing::External(pricing) => pricing.clone(),
+	}
+}
+
 pub fn borrower(loan_id: LoanId) -> AccountId {
 	match CreatedLoan::<Runtime>::get(POOL_A, loan_id) {
 		Some(created_loan) => *created_loan.borrower(),
