@@ -13,7 +13,6 @@ ethabi = { workspace = true, features = ["std"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
 fudge-core = { workspace = true }
-getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
