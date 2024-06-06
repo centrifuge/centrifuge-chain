@@ -90,7 +90,7 @@ impl<T: Config + pallet_balances::Config> OnRuntimeUpgrade for UncheckedMigratio
 				count.saturating_inc();
 			}
 			weight.saturating_accrue(
-                    <<T as pallet_balances::Config>::WeightInfo as pallet_balances::WeightInfo>::force_unreserve().saturating_mul(count.into()),
+                    <<T as pallet_balances::Config>::WeightInfo as pallet_balances::WeightInfo>::force_unreserve().saturating_mul(count),
                 );
 		}
 
