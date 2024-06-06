@@ -7197,6 +7197,15 @@ mod centrifuge {
 				Default::default(),
 			);
 
+			// Configuring XCM in this test fails because the Hrmp
+			// configuration is not applied. We force the application here,
+			// but we should configure correctly this because something is off.
+			env.relay_state_mut(|| {
+				polkadot_runtime_parachains::configuration::Pallet::<FudgeRelayRuntime<T>>::force_set_active_config(
+                    crate::generic::envs::fudge_env::handle::hrmp_host_config()
+                );
+			});
+
 			setup_xcm(&mut env);
 
 			setup_usdc_xcm(&mut env);

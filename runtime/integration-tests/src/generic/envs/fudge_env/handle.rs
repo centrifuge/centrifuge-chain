@@ -159,20 +159,7 @@ pub trait FudgeHandle<T: Runtime> {
 			Self::RelayRuntime,
 		>::default();
 
-		let mut host_config = HostConfiguration::default();
-		host_config.max_downward_message_size = 1024;
-		host_config.hrmp_channel_max_capacity = 100;
-		host_config.hrmp_channel_max_message_size = 1024;
-		host_config.hrmp_channel_max_total_size = 1024;
-		host_config.hrmp_max_parachain_outbound_channels = 10;
-		host_config.hrmp_max_parachain_inbound_channels = 10;
-		host_config.hrmp_max_message_num_per_candidate = 100;
-		host_config.max_upward_queue_count = 10;
-		host_config.max_upward_queue_size = 1024;
-		host_config.max_upward_message_size = 1024;
-		host_config.max_upward_message_num_per_candidate = 100;
-
-		configuration.config = host_config;
+		configuration.config = hrmp_host_config();
 
 		state
 			.insert_storage(
@@ -361,5 +348,22 @@ pub trait FudgeHandle<T: Runtime> {
 			.unwrap();
 
 		runtime
+	}
+}
+
+pub fn hrmp_host_config<BlockNumber: Default + From<u32>>() -> HostConfiguration<BlockNumber> {
+	HostConfiguration {
+		max_downward_message_size: 1024,
+		hrmp_channel_max_capacity: 100,
+		hrmp_channel_max_message_size: 1024,
+		hrmp_channel_max_total_size: 1024,
+		hrmp_max_parachain_outbound_channels: 10,
+		hrmp_max_parachain_inbound_channels: 10,
+		hrmp_max_message_num_per_candidate: 100,
+		max_upward_queue_count: 10,
+		max_upward_queue_size: 1024,
+		max_upward_message_size: 1024,
+		max_upward_message_num_per_candidate: 100,
+		..Default::default()
 	}
 }
