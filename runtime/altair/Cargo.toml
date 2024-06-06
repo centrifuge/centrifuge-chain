@@ -10,7 +10,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true, optional = true }
 log = { workspace = true }
@@ -146,7 +145,6 @@ default = ["std"]
 
 std = [
   "parity-scale-codec/std",
-  "getrandom/std",
   "hex/std",
   "scale-info/std",
   "serde/std",
