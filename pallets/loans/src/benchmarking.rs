@@ -200,7 +200,7 @@ where
 	}
 
 	fn create_mutation() -> LoanMutation<T::Rate> {
-		LoanMutation::InterestPayments(InterestPayments::None)
+		LoanMutation::InterestPayments(InterestPayments::OnceAtMaturity)
 	}
 
 	fn propose_mutation(pool_id: T::PoolId, loan_id: T::LoanId) -> T::Hash {

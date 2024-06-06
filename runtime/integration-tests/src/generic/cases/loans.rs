@@ -134,7 +134,7 @@ mod common {
 					date: now + SECONDS_PER_MINUTE,
 					extension: SECONDS_PER_MINUTE / 2,
 				},
-				interest_payments: InterestPayments::None,
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {
