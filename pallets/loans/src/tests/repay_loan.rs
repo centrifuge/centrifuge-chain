@@ -978,3 +978,44 @@ fn with_external_pricing() {
 		assert_eq!(current_price(), NOTIONAL);
 	});
 }
+
+#[test]
+fn decrease_debt_does_not_deposit() {
+	new_test_ext().execute_with(|| {
+		MockPools::mock_deposit(|_, _, _| {
+			unreachable!("increase debt must not withdraw funds from the pool");
+		});
+
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount.clone()));
+
+		MockPrices::mock_get(move |id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			match *id {
+				REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+				_ => Err(PRICE_ID_NO_FOUND),
+			}
+		});
+
+		assert_ok!(Loans::decrease_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			}
+		));
+	});
+}
