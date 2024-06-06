@@ -110,7 +110,7 @@ impl DomainAddress {
 	pub fn address(&self) -> [u8; 32] {
 		match self.clone() {
 			Self::Centrifuge(x) => x,
-			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
+			Self::EVM(_, x) => vec_to_fixed_array(x),
 		}
 	}
 
