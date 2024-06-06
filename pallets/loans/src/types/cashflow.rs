@@ -11,17 +11,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{interest::InterestRate, Seconds};
+use cfg_traits::Seconds;
 use chrono::{DateTime, Datelike, NaiveDate};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		ensure_pow, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub,
-		EnsureSubAssign,
+		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
 	},
-	DispatchError, FixedPointNumber, FixedPointOperand, FixedU128,
+	DispatchError, FixedPointOperand, FixedU128,
 };
 use sp_std::{cmp::min, vec, vec::Vec};
 
@@ -144,15 +143,14 @@ impl RepaymentSchedule {
 		Ok(valid && self.maturity.is_valid(now))
 	}
 
-	pub fn generate_cashflows<Balance, Rate>(
+	pub fn generate_cashflows<Balance>(
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
-		interest_rate: &InterestRate<Rate>,
+		current_debt: Balance,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
 		Balance: FixedPointOperand + EnsureAdd + EnsureSub,
-		Rate: FixedPointNumber,
 	{
 		let Some(maturity) = self.maturity.date() else {
 			return Ok(Vec::new());
@@ -173,11 +171,7 @@ impl RepaymentSchedule {
 			.map(|(_, weight)| weight)
 			.try_fold(0, |a, b| a.ensure_add(*b))?;
 
-		let lifetime = maturity.ensure_sub(origination_date)?.ensure_into()?;
-		let interest_rate_per_lifetime = ensure_pow(interest_rate.per_sec()?, lifetime)?;
-		let interest_at_maturity = interest_rate_per_lifetime
-			.ensure_mul_int(principal)?
-			.ensure_sub(principal)?;
+		let interest_at_maturity = current_debt.ensure_sub(principal)?;
 
 		timeflow
 			.into_iter()
@@ -195,18 +189,17 @@ impl RepaymentSchedule {
 			.collect()
 	}
 
-	pub fn expected_payment<Balance, Rate>(
+	pub fn expected_payment<Balance>(
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
-		interest_rate: &InterestRate<Rate>,
+		current_debt: Balance,
 		until: Seconds,
 	) -> Result<Balance, DispatchError>
 	where
 		Balance: FixedPointOperand + EnsureAdd + EnsureSub,
-		Rate: FixedPointNumber,
 	{
-		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
+		let cashflow = self.generate_cashflows(origination_date, principal, current_debt)?;
 
 		let total_amount = cashflow
 			.into_iter()
