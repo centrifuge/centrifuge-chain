@@ -23,7 +23,7 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeDevelopment1047 = (
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
-	runtime_common::migrations::collator_selection_v2::UncheckedMigrationToV2<crate::Runtime>,
+	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
 	cleanup_foreign_investments::Migration<crate::Runtime>,
 	// v0 -> v1
 	pallet_multisig::migrations::v1::MigrateToV1<crate::Runtime>,

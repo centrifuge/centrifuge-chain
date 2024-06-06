@@ -12,7 +12,6 @@
 
 //! Centrifuge Runtime-Common Migrations
 
-pub mod collator_selection_v2;
 pub mod hold_reason;
 pub mod increase_storage_version;
 pub mod loans;
