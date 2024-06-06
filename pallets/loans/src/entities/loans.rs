@@ -363,18 +363,6 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
-		let expected_payment = self.schedule.expected_payment(
-			self.repayments_on_schedule_until,
-			self.principal()?,
-			self.pricing.interest().rate(),
-			now,
-		)?;
-
-		ensure!(
-			self.total_repaid.effective()? >= expected_payment,
-			Error::<T>::from(BorrowLoanError::PaymentOverdue)
-		);
-
 		Ok(())
 	}
 

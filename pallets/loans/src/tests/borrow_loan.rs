@@ -739,6 +739,10 @@ mod cashflow {
 			advance_time(Duration::from_secs(1));
 
 			config_mocks(COLLATERAL_VALUE / 4);
+
+			/*
+			// NOTE: uncomment when https://github.com/centrifuge/centrifuge-chain/pull/1797#issuecomment-2149262096
+			// be added again
 			assert_noop!(
 				Loans::borrow(
 					RuntimeOrigin::signed(BORROWER),
@@ -748,6 +752,15 @@ mod cashflow {
 				),
 				Error::<Runtime>::from(BorrowLoanError::PaymentOverdue)
 			);
+			*/
+
+			// No restriction to borrow again by now
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
+			));
 		});
 	}
 
