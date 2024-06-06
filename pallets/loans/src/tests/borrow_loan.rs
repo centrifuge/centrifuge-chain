@@ -653,9 +653,17 @@ mod cashflow {
 				Some(secs_from_ymdhms(1971, 1, 1, 0, 0, 10))
 			);
 
-			let principal = (COLLATERAL_VALUE / 2) / 12;
-			let interest_rate_per_month = DEFAULT_INTEREST_RATE / 12.0;
-			let interest = Rate::from_float(interest_rate_per_month).saturating_mul_int(principal);
+			let total_principal = COLLATERAL_VALUE / 2;
+			let acc_interest_rate_per_year = checked_pow(
+				util::default_interest_rate().per_sec().unwrap(),
+				SECONDS_PER_YEAR as usize,
+			)
+			.unwrap();
+			let total_interest =
+				acc_interest_rate_per_year.saturating_mul_int(total_principal) - total_principal;
+
+			let principal = total_principal / 12;
+			let interest = total_interest / 12;
 
 			assert_eq!(
 				loan.expected_cashflows()

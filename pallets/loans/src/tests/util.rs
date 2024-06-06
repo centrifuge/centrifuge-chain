@@ -103,6 +103,13 @@ pub fn dcf_internal_loan() -> LoanInfo<Runtime> {
 	}
 }
 
+pub fn default_interest_rate() -> InterestRate<Rate> {
+	InterestRate::Fixed {
+		rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+		compounding: CompoundingSchedule::Secondly,
+	}
+}
+
 pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
@@ -113,10 +120,7 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
-			compounding: CompoundingSchedule::Secondly,
-		},
+		interest_rate: default_interest_rate(),
 		collateral: ASSET_AA,
 		pricing: Pricing::Internal(base_internal_pricing()),
 		restrictions: LoanRestrictions {
@@ -143,10 +147,7 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
-			compounding: CompoundingSchedule::Secondly,
-		},
+		interest_rate: default_interest_rate(),
 		collateral: ASSET_AA,
 		pricing: Pricing::External(base_external_pricing()),
 		restrictions: LoanRestrictions {

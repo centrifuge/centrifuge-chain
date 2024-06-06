@@ -18,7 +18,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub,
+		ensure_pow, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub,
 		EnsureSubAssign,
 	},
 	DispatchError, FixedPointNumber, FixedPointOperand, FixedU128,
@@ -151,8 +151,8 @@ impl RepaymentSchedule {
 		interest_rate: &InterestRate<Rate>,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
-		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
-		Rate: FixedPointNumber + EnsureDiv,
+		Balance: FixedPointOperand + EnsureAdd + EnsureSub + std::fmt::Debug,
+		Rate: FixedPointNumber,
 	{
 		let Some(maturity) = self.maturity.date() else {
 			return Ok(Vec::new());
@@ -161,12 +161,11 @@ impl RepaymentSchedule {
 		let start_date = date::from_seconds(origination_date)?;
 		let end_date = date::from_seconds(maturity)?;
 
-		let (timeflow, periods_per_year) = match &self.interest_payments {
-			InterestPayments::None => (vec![], 1),
-			InterestPayments::Monthly(reference_day) => (
-				date::monthly_intervals(start_date, end_date, (*reference_day).into())?,
-				12,
-			),
+		let timeflow = match &self.interest_payments {
+			InterestPayments::None => vec![],
+			InterestPayments::Monthly(reference_day) => {
+				date::monthly_intervals(start_date, end_date, (*reference_day).into())?
+			}
 		};
 
 		let total_weight = timeflow
@@ -174,16 +173,18 @@ impl RepaymentSchedule {
 			.map(|(_, weight)| weight)
 			.try_fold(0, |a, b| a.ensure_add(*b))?;
 
-		let interest_per_period = interest_rate
-			.per_year()
-			.ensure_div(Rate::saturating_from_integer(periods_per_year))?;
+		let lifetime = maturity.ensure_sub(origination_date)?.ensure_into()?;
+		let interest_rate_per_lifetime = ensure_pow(interest_rate.per_sec()?, lifetime)?;
+		let interest_at_maturity = interest_rate_per_lifetime
+			.ensure_mul_int(principal)?
+			.ensure_sub(principal)?;
 
 		timeflow
 			.into_iter()
 			.map(|(date, weight)| {
 				let proportion = FixedU128::ensure_from_rational(weight, total_weight)?;
 				let principal = proportion.ensure_mul_int(principal)?;
-				let interest = interest_per_period.ensure_mul_int(principal)?;
+				let interest = proportion.ensure_mul_int(interest_at_maturity)?;
 
 				Ok(CashflowPayment {
 					when: date::into_seconds(date)?,
@@ -202,7 +203,7 @@ impl RepaymentSchedule {
 		until: Seconds,
 	) -> Result<Balance, DispatchError>
 	where
-		Balance: FixedPointOperand + EnsureAdd + EnsureDiv,
+		Balance: FixedPointOperand + EnsureAdd + EnsureSub + std::fmt::Debug,
 		Rate: FixedPointNumber,
 	{
 		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
@@ -420,6 +421,11 @@ pub mod tests {
 
 		#[test]
 		fn correct_amounts() {
+			// To understand the expected interest amounts:
+			// A rate per year of 0.12 means each month you nearly pay with a rate of 0.01.
+			// 0.01 of the total principal is 25000 * 0.01 = 250 each month.
+			// A minor extra amount comes from the secondly compounding interest during 2.5
+			// months.
 			assert_eq!(
 				RepaymentSchedule {
 					maturity: Maturity::fixed(last_secs_from_ymd(2022, 7, 1)),
@@ -428,9 +434,9 @@ pub mod tests {
 				}
 				.generate_cashflows(
 					last_secs_from_ymd(2022, 4, 16),
-					25000, /* principal */
+					25000u128, /* principal */
 					&InterestRate::Fixed {
-						rate_per_year: Rate::from_float(0.01 * 12.0),
+						rate_per_year: Rate::from_float(0.12),
 						compounding: CompoundingSchedule::Secondly,
 					}
 				)
@@ -438,7 +444,7 @@ pub mod tests {
 				.into_iter()
 				.map(|payment| (payment.principal, payment.interest))
 				.collect::<Vec<_>>(),
-				vec![(5000, 50), (10000, 100), (10000, 100)]
+				vec![(5000, 126), (10000, 252), (10000, 252)]
 			)
 		}
 	}
