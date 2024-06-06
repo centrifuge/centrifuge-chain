@@ -976,7 +976,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
+	type WeightInfo = (); // Using default weights for recomended hardware
 }
 
 parameter_types! {
@@ -2724,7 +2724,6 @@ mod benches {
 		[pallet_democracy, Democracy]
 		[pallet_identity, Identity]
 		[pallet_vesting, Vesting]
-		[pallet_treasury, Treasury]
 		[pallet_preimage, Preimage]
 		[pallet_uniques, Uniques]
 		[pallet_fees, Fees]
