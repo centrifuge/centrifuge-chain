@@ -82,7 +82,7 @@ impl Maturity {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
-	None,
+	OnceAtMaturity,
 
 	/// Interest is expected to be paid monthly
 	/// The associated value correspond to the paydown day in the month,
@@ -124,7 +124,7 @@ pub struct RepaymentSchedule {
 impl RepaymentSchedule {
 	pub fn is_valid(&self, now: Seconds) -> Result<bool, DispatchError> {
 		let valid = match self.interest_payments {
-			InterestPayments::None => true,
+			InterestPayments::OnceAtMaturity => true,
 			InterestPayments::Monthly(_) => {
 				match self.maturity.date() {
 					Some(maturity) => {
@@ -162,7 +162,7 @@ impl RepaymentSchedule {
 		let end_date = date::from_seconds(maturity)?;
 
 		let timeflow = match &self.interest_payments {
-			InterestPayments::None => vec![],
+			InterestPayments::OnceAtMaturity => vec![(end_date, 1)],
 			InterestPayments::Monthly(reference_day) => {
 				date::monthly_intervals(start_date, end_date, (*reference_day).into())?
 			}
@@ -344,6 +344,39 @@ pub mod tests {
 		secs_from_ymdhms(year, month, day, 23, 59, 59)
 	}
 
+	mod once_at_maturity {
+		use super::*;
+
+		#[test]
+		fn correct_amounts() {
+			// To understand the expected interest amounts:
+			// A rate per year of 0.12 means each month you nearly pay with a rate of 0.01.
+			// 0.01 of the total principal is 25000 * 0.01 = 250 each month.
+			// A minor extra amount comes from the secondly compounding interest during 2.5
+			// months.
+			assert_eq!(
+				RepaymentSchedule {
+					maturity: Maturity::fixed(last_secs_from_ymd(2022, 7, 1)),
+					interest_payments: InterestPayments::OnceAtMaturity,
+					pay_down_schedule: PayDownSchedule::None,
+				}
+				.generate_cashflows(
+					last_secs_from_ymd(2022, 4, 16),
+					25000u128, /* principal */
+					&InterestRate::Fixed {
+						rate_per_year: Rate::from_float(0.12),
+						compounding: CompoundingSchedule::Secondly,
+					}
+				)
+				.unwrap()
+				.into_iter()
+				.map(|payment| (payment.principal, payment.interest))
+				.collect::<Vec<_>>(),
+				vec![(25000, 632)]
+			)
+		}
+	}
+
 	mod months {
 		use super::*;
 
@@ -421,11 +454,7 @@ pub mod tests {
 
 		#[test]
 		fn correct_amounts() {
-			// To understand the expected interest amounts:
-			// A rate per year of 0.12 means each month you nearly pay with a rate of 0.01.
-			// 0.01 of the total principal is 25000 * 0.01 = 250 each month.
-			// A minor extra amount comes from the secondly compounding interest during 2.5
-			// months.
+			// See comment at once_at_maturity::correct_amounts() to know about the numbers
 			assert_eq!(
 				RepaymentSchedule {
 					maturity: Maturity::fixed(last_secs_from_ymd(2022, 7, 1)),

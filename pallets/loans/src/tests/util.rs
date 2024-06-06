@@ -117,7 +117,7 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 				date: (now() + YEAR).as_secs(),
 				extension: (YEAR / 2).as_secs(),
 			},
-			interest_payments: InterestPayments::None,
+			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
 		},
 		interest_rate: default_interest_rate(),
@@ -144,7 +144,7 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
 			maturity: Maturity::fixed((now() + YEAR).as_secs()),
-			interest_payments: InterestPayments::None,
+			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
 		},
 		interest_rate: default_interest_rate(),
