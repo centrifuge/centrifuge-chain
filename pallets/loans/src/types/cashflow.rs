@@ -151,7 +151,7 @@ impl RepaymentSchedule {
 		interest_rate: &InterestRate<Rate>,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
-		Balance: FixedPointOperand + EnsureAdd + EnsureSub + std::fmt::Debug,
+		Balance: FixedPointOperand + EnsureAdd + EnsureSub,
 		Rate: FixedPointNumber,
 	{
 		let Some(maturity) = self.maturity.date() else {
@@ -203,7 +203,7 @@ impl RepaymentSchedule {
 		until: Seconds,
 	) -> Result<Balance, DispatchError>
 	where
-		Balance: FixedPointOperand + EnsureAdd + EnsureSub + std::fmt::Debug,
+		Balance: FixedPointOperand + EnsureAdd + EnsureSub,
 		Rate: FixedPointNumber,
 	{
 		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
