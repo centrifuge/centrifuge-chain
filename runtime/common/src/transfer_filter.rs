@@ -27,6 +27,7 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
+use sp_std::boxed::Box;
 use sp_std::vec::Vec;
 use staging_xcm::{
 	v4::{Asset, Location},

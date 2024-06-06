@@ -12,10 +12,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use cfg_types::{
-	locations::RestrictedTransferLocation,
-	tokens::{CurrencyId, FilterCurrency},
-};
+use cfg_types::tokens::{CurrencyId, FilterCurrency};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	pallet_prelude::Get,
@@ -34,8 +31,9 @@ const BENCHMARK_CURRENCY_ID: FilterCurrency = FilterCurrency::Specific(CurrencyI
 
 #[benchmarks(
 where
-	T: Config<CurrencyId = FilterCurrency, Location = RestrictedTransferLocation>,
+	T: Config<CurrencyId = FilterCurrency>,
 	<T as frame_system::Config>::AccountId: Into<AccountId32>,
+	T::Location: From<<T as frame_system::Config>::AccountId>,
 	T::ReserveCurrency: Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
 	BlockNumberFor<T>: One,
 	<<T as Config>::ReserveCurrency as frame_support::traits::fungible::Inspect<<T as frame_system::Config>::AccountId,>>::Balance: From<u64>
@@ -51,7 +49,7 @@ mod benchmarks {
 		add_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		);
 
 		Ok(())
@@ -70,7 +68,7 @@ mod benchmarks {
 		add_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		);
 
 		Ok(())
@@ -94,7 +92,7 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		)?;
 
 		#[extrinsic_call]
@@ -186,7 +184,7 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		)?;
 		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(
 			RawOrigin::Signed(sender.clone()).into(),
@@ -216,7 +214,7 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 
 		let b = frame_system::Pallet::<T>::block_number()
@@ -228,7 +226,7 @@ mod benchmarks {
 		remove_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		);
 
 		Ok(())
@@ -240,14 +238,14 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 
 		#[extrinsic_call]
 		remove_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		);
 
 		Ok(())
@@ -259,19 +257,19 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 		Pallet::<T>::remove_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 
 		#[extrinsic_call]
 		purge_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		);
 
 		Ok(())
@@ -284,24 +282,24 @@ mod benchmarks {
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 		Pallet::<T>::add_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver_1.clone()),
+			T::Location::from(receiver_1.clone()),
 		)?;
 		Pallet::<T>::remove_transfer_allowance(
 			RawOrigin::Signed(sender.clone()).into(),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver.clone()),
+			T::Location::from(receiver.clone()),
 		)?;
 
 		#[extrinsic_call]
 		purge_transfer_allowance(
 			RawOrigin::Signed(sender),
 			BENCHMARK_CURRENCY_ID,
-			default_location::<T>(receiver),
+			T::Location::from(receiver),
 		);
 
 		Ok(())
@@ -331,11 +329,4 @@ where
 
 fn set_up_second_receiver<T: Config>() -> T::AccountId {
 	account::<T::AccountId>("Receiver_1", 3, 0)
-}
-
-fn default_location<T: Config>(receiver: T::AccountId) -> RestrictedTransferLocation
-where
-	<T as frame_system::Config>::AccountId: Into<AccountId32>,
-{
-	RestrictedTransferLocation::Local(receiver.into())
 }

@@ -9,6 +9,7 @@ use parity_scale_codec::Encode;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
+use sp_std::boxed::Box;
 use sp_std::vec::Vec;
 use staging_xcm::{v4, VersionedLocation};
 

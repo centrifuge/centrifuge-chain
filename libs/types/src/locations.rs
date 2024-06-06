@@ -14,6 +14,8 @@ use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_core::crypto::AccountId32;
+use sp_std::boxed::Box;
 use staging_xcm::VersionedLocation;
 
 use crate::domain_address::DomainAddress;
@@ -27,4 +29,10 @@ pub enum RestrictedTransferLocation {
 	Xcm(Box<VersionedLocation>),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
+}
+
+impl From<AccountId32> for RestrictedTransferLocation {
+	fn from(value: AccountId32) -> Self {
+		Self::Local(value)
+	}
 }

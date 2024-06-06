@@ -10,9 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{locations::RestrictedTransferLocation, tokens::FilterCurrency};
-use frame_support::{derive_impl, traits::ConstU64};
+use cfg_types::tokens::FilterCurrency;
+use frame_support::{derive_impl, traits::ConstU64, Deserialize, Serialize};
 use frame_system::pallet_prelude::BlockNumberFor;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_core::crypto::AccountId32;
 use sp_runtime::{
 	traits::{CheckedAdd, IdentityLookup},
@@ -53,15 +55,39 @@ impl pallet_balances::Config for Runtime {
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = ConstU64<10>;
-	type Location = RestrictedTransferLocation;
+	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = ();
 }
 
-pub(crate) fn local_location(receiver: AccountId32) -> RestrictedTransferLocation {
-	RestrictedTransferLocation::Local(receiver)
+#[derive(
+	Clone,
+	Debug,
+	PartialOrd,
+	Ord,
+	Encode,
+	Decode,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
+	TypeInfo,
+	Deserialize,
+	Serialize,
+)]
+pub enum Location {
+	TestLocal(AccountId32),
+}
+
+impl From<AccountId32> for Location {
+	fn from(a: AccountId32) -> Self {
+		Self::TestLocal(a)
+	}
+}
+
+pub(crate) fn local_location(receiver: AccountId32) -> Location {
+	receiver.into()
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
