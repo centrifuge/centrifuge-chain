@@ -21,7 +21,7 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 parameter_types! {
 	// Address used by Anemoy to withdraw in AssetHub
-	// 4dTeMxuPJCK7zQGhFcgCivSJqBs9Wo2SuMSQeYCCuVJ9xrE2 --> 5Fc9NzKzJZwZvgjQBmSKtvZmJ5oP6B49DFC5dXZhTETjrSzo
+	// 4dTeMxuPJCK7zQGhFcgCivSJqBs9Wo2SuMSQeYCCuVJ9xrE2 --> 5CSfibAR9HHEwKpXbdsDHguAmLgKS6yKat2joTLA75DZ152L
 	pub AccountMap: Vec<(AccountId, AccountId)> = vec![
 		(
 			AccountId::new(hex_literal::hex!("5dbb2cec05b6bda775f7945827b887b0e7b5245eae8b4ef266c60820c9377185")),
