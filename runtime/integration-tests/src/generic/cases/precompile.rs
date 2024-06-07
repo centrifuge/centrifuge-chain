@@ -116,7 +116,7 @@ fn axelar_precompile_execute<T: Runtime>() {
 		.expect("cannot encode input for test contract function");
 
 		assert_ok!(pallet_evm::Pallet::<T>::call(
-			RawOrigin::Signed(derived_sender_account.clone()).into(),
+			RawOrigin::Root.into(),
 			sender_address,
 			lp_axelar_gateway,
 			eth_function_encoded.to_vec(),

@@ -346,11 +346,6 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 	});
 }
 
-#[test]
-fn _test() {
-	transferring_invalid_tranche_tokens_should_fail::<centrifuge_runtime::Runtime>()
-}
-
 #[test_runtimes(all)]
 fn transferring_invalid_tranche_tokens_should_fail<T: Runtime>() {
 	const INVALID_POOL_ID: PoolId = 100;
