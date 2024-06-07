@@ -299,6 +299,7 @@ pub mod investment_portfolios {
 	/// NOTE: Moving inner scope to any pallet would introduce tight(er)
 	/// coupling due to requirement of iterating over storage maps which in turn
 	/// require the pallet's Config trait.
+	#[allow(clippy::type_complexity)]
 	pub fn get_account_portfolio<T>(
 		investor: AccountId,
 	) -> Result<Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)>, DispatchError>
