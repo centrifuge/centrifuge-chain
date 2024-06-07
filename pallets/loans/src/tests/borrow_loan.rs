@@ -686,7 +686,7 @@ mod cashflow {
 					.into_iter()
 					.map(|payment| (payment.when, payment.principal, payment.interest))
 					.collect::<Vec<_>>(),
-				vec![(loan.maturity_date().unwrap(), principal, interest),]
+				vec![(loan.maturity_date().unwrap(), principal, interest)]
 			);
 		});
 	}

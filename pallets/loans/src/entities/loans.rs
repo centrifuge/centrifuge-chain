@@ -457,6 +457,8 @@ impl<T: Config> ActiveLoan<T> {
 			}
 		}
 
+		self.repayments_on_schedule_until = T::Time::now();
+
 		Ok(amount)
 	}
 
