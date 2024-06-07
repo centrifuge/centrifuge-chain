@@ -26,13 +26,10 @@ use sp_runtime::FixedPointNumber;
 
 use crate::{
 	generic::{
-		cases::{
-			lp,
-			lp::{
-				names, utils,
-				utils::{pool_a_tranche_1_id, Decoder},
-				LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
-			},
+		cases::lp::{
+			names, utils,
+			utils::{pool_a_tranche_1_id, Decoder},
+			LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
@@ -177,11 +174,6 @@ fn add_pool<T: Runtime>() {
 			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
 		});
 	});
-}
-
-#[test]
-fn _test() {
-	add_tranche::<centrifuge_runtime::Runtime>();
 }
 
 #[test_runtimes(all)]

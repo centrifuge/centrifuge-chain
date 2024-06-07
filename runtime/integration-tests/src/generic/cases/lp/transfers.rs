@@ -227,11 +227,6 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	});
 }
 
-#[test]
-fn _test() {
-	transfer_tokens_from_local::<centrifuge_runtime::Runtime>();
-}
-
 #[test_runtimes(all)]
 fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
