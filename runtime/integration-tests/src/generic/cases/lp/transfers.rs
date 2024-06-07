@@ -26,7 +26,7 @@ use crate::{
 	generic::{
 		cases::lp::{
 			names, utils,
-			utils::{pool_a_tranche_1_id, Decoder},
+			utils::{as_h160_32bytes, pool_a_tranche_1_id, Decoder},
 			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
@@ -200,14 +200,7 @@ fn _test() {
 fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	const AMOUNT: Balance = DEFAULT_BALANCE * DECIMALS_6;
 
-	let mut env = super::setup::<T, _>(|evm| {
-		super::setup_currencies(evm);
-		super::setup_pools(evm);
-		super::setup_tranches(evm);
-		super::setup_investment_currencies(evm);
-		super::setup_deploy_lps(evm);
-		super::setup_investors(evm);
-	});
+	let mut env = super::setup_full::<T>();
 
 	env.state_mut(|evm| {
 		assert_eq!(
@@ -282,6 +275,17 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	env.state_mut(|evm| {
 		evm.call(
 			Keyring::TrancheInvestor(1),
+			Default::default(),
+			names::POOL_A_T_1,
+			"approve",
+			Some(&[
+				Token::Address(evm.deployed(names::POOL_MANAGER).address()),
+				Token::Uint(U256::from(AMOUNT)),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::TrancheInvestor(1),
 			sp_core::U256::zero(),
 			names::POOL_MANAGER,
 			"transferTrancheTokensToEVM",
@@ -289,7 +293,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
-				Token::Address(Keyring::TrancheInvestor(1).into()),
+				Token::Address(Keyring::TrancheInvestor(2).into()),
 				Token::Uint(AMOUNT.into()),
 			]),
 		)
@@ -307,15 +311,31 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 						<T as pallet_liquidity_pools::Config>::DomainAddressToAccountId::convert(
 							DomainAddress::evm(
 								EVM_DOMAIN_CHAIN_ID,
-								Keyring::TrancheInvestor(1).into()
+								Keyring::TrancheInvestor(2).into()
 							)
 						)
 						.into(),
 					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID),
-					receiver: Keyring::TrancheInvestor(1).id().into(),
+					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
 					amount: AMOUNT,
 				}
 			);
 		});
+	});
+
+	env.state(|evm| {
+		assert_eq!(
+			Decoder::<Balance>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::POOL_A_T_1,
+					"balanceOf",
+					Some(&[Token::Address(Keyring::TrancheInvestor(2).into())]),
+				)
+				.unwrap()
+				.value,
+			),
+			AMOUNT
+		);
 	});
 }

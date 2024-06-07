@@ -182,6 +182,12 @@ pub mod utils {
 		dest
 	}
 
+	pub fn as_h160_32bytes(who: Keyring) -> [u8; 32] {
+		let mut address = [0u8; 32];
+		address[..20].copy_from_slice(H160::from(who).as_bytes());
+		address
+	}
+
 	trait Input {
 		fn input(&self) -> &[u8];
 	}
