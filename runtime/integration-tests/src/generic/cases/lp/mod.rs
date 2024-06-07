@@ -61,11 +61,12 @@ pub mod utils {
 
 	use cfg_primitives::{Balance, TrancheId};
 	use ethabi::ethereum_types::{H160, H256, U256};
+	use fp_evm::CallInfo;
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use pallet_evm::ExecutionInfo;
 	use sp_core::{ByteArray, Get};
-	use sp_runtime::traits::EnsureAdd;
+	use sp_runtime::{traits::EnsureAdd, DispatchError};
 	use staging_xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -83,6 +84,9 @@ pub mod utils {
 		},
 		utils::accounts::Keyring,
 	};
+
+	pub const REVERT_ERR: Result<CallInfo, DispatchError> =
+		Err(DispatchError::Other("EVM call failed: Revert"));
 
 	pub fn lp_asset_location<T: Runtime>(address: H160) -> VersionedMultiLocation {
 		X3(
@@ -1688,6 +1692,12 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 /// Centrifuge Chain as well as EVM. Also mints default balance on both sides.
 pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	default_investors().into_iter().for_each(|investor| {
+		// Allow investor to locally invest
+		crate::generic::utils::pool::give_role::<T>(
+			investor.into(),
+			POOL_A,
+			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
+		);
 		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
@@ -1702,6 +1712,12 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
+		// Allow investor to locally invest
+		crate::generic::utils::pool::give_role::<T>(
+			investor.into(),
+			POOL_B,
+			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
+		);
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_B,
@@ -1715,6 +1731,12 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
+		// Allow investor to locally invest
+		crate::generic::utils::pool::give_role::<T>(
+			investor.into(),
+			POOL_B,
+			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
+		);
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_B,
@@ -1728,6 +1750,12 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
+		// Allow investor to locally invest
+		crate::generic::utils::pool::give_role::<T>(
+			investor.into(),
+			POOL_C,
+			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
+		);
 		crate::generic::utils::pool::give_role::<T>(
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
 			POOL_C,
