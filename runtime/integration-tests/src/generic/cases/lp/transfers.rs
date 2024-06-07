@@ -10,13 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Balance;
+use cfg_primitives::{Balance, PoolId};
+use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	permissions::PoolRole,
 	tokens::CurrencyId,
 };
 use ethabi::{ethereum_types::U256, Token};
-use frame_support::traits::OriginTrait;
+use frame_support::{assert_noop, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::Message;
 use sp_core::ByteArray;
@@ -340,6 +342,56 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 			)
 			.free,
 			AMOUNT
+		);
+	});
+}
+
+#[test]
+fn _test() {
+	transferring_invalid_tranche_tokens_should_fail::<centrifuge_runtime::Runtime>()
+}
+
+#[test_runtimes(all)]
+fn transferring_invalid_tranche_tokens_should_fail<T: Runtime>() {
+	const INVALID_POOL_ID: PoolId = 100;
+	const INVALID_TRANCHE_ID: [u8; 16] = [0; 16];
+	let mut env = super::setup_full::<T>();
+
+	env.state_mut(|_| {
+		crate::generic::utils::pool::give_role::<T>(
+			lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
+			POOL_A,
+			PoolRole::TrancheInvestor(INVALID_TRANCHE_ID, Seconds::MAX),
+		);
+		crate::generic::utils::pool::give_role::<T>(
+			lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
+			INVALID_POOL_ID,
+			PoolRole::TrancheInvestor(INVALID_TRANCHE_ID, Seconds::MAX),
+		);
+	});
+
+	let destination = DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).into());
+	env.state(|_evm| {
+		assert_noop!(
+			pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+				OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
+				INVALID_POOL_ID,
+				INVALID_TRANCHE_ID,
+				destination.clone(),
+				AMOUNT
+			),
+			pallet_liquidity_pools::Error::<T>::PoolNotFound
+		);
+
+		assert_noop!(
+			pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+				OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
+				POOL_A,
+				INVALID_TRANCHE_ID,
+				destination,
+				AMOUNT
+			),
+			pallet_liquidity_pools::Error::<T>::TrancheNotFound
 		);
 	});
 }

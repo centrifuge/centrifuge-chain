@@ -19,7 +19,7 @@ use sp_runtime::traits::Zero;
 use crate::{
 	generic::{
 		cases::lp::{
-			names, setup_full,
+			self, names, setup_full,
 			utils::{pool_c_tranche_1_id, Decoder},
 			DECIMALS_6, POOL_C,
 		},
@@ -34,19 +34,14 @@ const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 mod utils {
 	use cfg_primitives::{AccountId, Balance};
 	use cfg_traits::{investments::TrancheCurrency, HasLocalAssetRepresentation};
-	use cfg_types::domain_address::DomainAddress;
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
 	use pallet_liquidity_pools::{GeneralCurrencyIndexOf, GeneralCurrencyIndexType};
-	use runtime_common::account_conversion::AccountConverter;
 	use sp_core::U256;
-	use sp_runtime::traits::Convert;
 
 	use crate::{
 		generic::{
-			cases::lp::{
-				investments::DEFAULT_INVESTMENT_AMOUNT, names, utils::Decoder, EVM_DOMAIN_CHAIN_ID,
-			},
+			cases::lp::{investments::DEFAULT_INVESTMENT_AMOUNT, names, utils::Decoder},
 			config::Runtime,
 			env::EvmEnv,
 			utils::{collect_investments, pool::close_epoch},
@@ -61,10 +56,6 @@ mod utils {
 			"currencyAddressToId",
 			Some(&[Token::Address(evm.deployed(name).address)]),
 		))
-	}
-
-	pub fn remote_account_of(keyring: Keyring) -> AccountId {
-		AccountConverter::convert(DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, keyring.into()))
 	}
 
 	pub fn currency_index<T: Runtime>(
@@ -189,7 +180,7 @@ mod with_pool_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_C, pool_c_tranche_1_id::<T>())
 				),
 				Some(OrderOf::<T>::new(
@@ -223,7 +214,7 @@ mod with_pool_currency {
 		env.pass(Blocks::ByNumber(1));
 		env.state_mut(|_evm| {
 			utils::close_and_collect::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_C,
 				pool_c_tranche_1_id::<T>(),
 			);
@@ -234,7 +225,7 @@ mod with_pool_currency {
 		env.state_mut(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_C, pool_c_tranche_1_id::<T>())
 				),
 				None
@@ -290,7 +281,7 @@ mod with_pool_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_C, pool_c_tranche_1_id::<T>())
 				),
 				Some(OrderOf::<T>::new(
@@ -318,7 +309,7 @@ mod with_pool_currency {
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_C, pool_c_tranche_1_id::<T>())
 				),
 				None
@@ -368,7 +359,7 @@ mod with_foreign_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
 				),
 				None,
@@ -393,7 +384,7 @@ mod with_foreign_currency {
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
 				),
 				None
@@ -422,7 +413,7 @@ mod with_foreign_currency {
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 			utils::fulfill_swap::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
@@ -433,7 +424,7 @@ mod with_foreign_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				Some(OrderOf::<T>::new(
@@ -461,14 +452,14 @@ mod with_foreign_currency {
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
 			);
 
 			utils::fulfill_swap::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
@@ -481,7 +472,7 @@ mod with_foreign_currency {
 					MessageOf::<T>::ExecutedDecreaseInvestOrder {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(utils::remote_account_of(
+						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),
@@ -515,7 +506,7 @@ mod with_foreign_currency {
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 			utils::fulfill_swap::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
@@ -526,7 +517,7 @@ mod with_foreign_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				Some(OrderOf::<T>::new(partial_amount, OrderId::zero()))
@@ -551,7 +542,7 @@ mod with_foreign_currency {
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
@@ -571,7 +562,7 @@ mod with_foreign_currency {
 			);
 
 			utils::fulfill_swap::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
@@ -584,7 +575,7 @@ mod with_foreign_currency {
 					MessageOf::<T>::ExecutedDecreaseInvestOrder {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(utils::remote_account_of(
+						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),
@@ -622,7 +613,7 @@ mod with_foreign_currency {
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 			utils::fulfill_swap::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
@@ -633,7 +624,7 @@ mod with_foreign_currency {
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				Some(OrderOf::<T>::new(partial_amount, OrderId::zero()))
@@ -657,14 +648,14 @@ mod with_foreign_currency {
 
 		env.state_mut(|evm| {
 			close_and_collect::<T>(
-				utils::remote_account_of(Keyring::TrancheInvestor(1)),
+				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 			);
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
@@ -676,7 +667,7 @@ mod with_foreign_currency {
 					MessageOf::<T>::ExecutedCollectInvest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(utils::remote_account_of(
+						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),
@@ -704,7 +695,7 @@ mod with_foreign_currency {
 
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
-					utils::remote_account_of(Keyring::TrancheInvestor(1)),
+					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
@@ -729,7 +720,7 @@ mod with_foreign_currency {
 					MessageOf::<T>::ExecutedDecreaseInvestOrder {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(utils::remote_account_of(
+						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),

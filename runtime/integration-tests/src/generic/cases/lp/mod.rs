@@ -60,13 +60,17 @@ pub mod utils {
 	use std::{cmp::min, fmt::Debug};
 
 	use cfg_primitives::{Balance, TrancheId};
+	use cfg_types::domain_address::DomainAddress;
 	use ethabi::ethereum_types::{H160, H256, U256};
 	use fp_evm::CallInfo;
 	use frame_support::traits::{OriginTrait, PalletInfo};
 	use frame_system::pallet_prelude::OriginFor;
 	use pallet_evm::ExecutionInfo;
 	use sp_core::{ByteArray, Get};
-	use sp_runtime::{traits::EnsureAdd, DispatchError};
+	use sp_runtime::{
+		traits::{Convert, EnsureAdd},
+		DispatchError,
+	};
 	use staging_xcm::{
 		v3::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -84,6 +88,14 @@ pub mod utils {
 		},
 		utils::accounts::Keyring,
 	};
+
+	pub fn remote_account_of<T: Runtime>(
+		keyring: Keyring,
+	) -> <T as frame_system::Config>::AccountId {
+		<T as pallet_liquidity_pools::Config>::DomainAddressToAccountId::convert(
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, keyring.into()),
+		)
+	}
 
 	pub const REVERT_ERR: Result<CallInfo, DispatchError> =
 		Err(DispatchError::Other("EVM call failed: Revert"));
