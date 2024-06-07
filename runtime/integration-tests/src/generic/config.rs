@@ -282,6 +282,7 @@ pub trait Runtime:
 				frame_system::CheckWeight<Self>,
 				pallet_transaction_payment::ChargeTransactionPayment<Self>,
 				runtime_common::transfer_filter::PreBalanceTransferExtension<Self>,
+				frame_metadata_hash_extension::CheckMetadataHash<Self>,
 			),
 		>,
 	>;

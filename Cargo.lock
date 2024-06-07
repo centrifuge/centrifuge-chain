@@ -11710,6 +11710,7 @@ dependencies = [
  "ethabi",
  "ethereum",
  "fp-self-contained",
+ "frame-metadata-hash-extension",
  "frame-support",
  "frame-system",
  "fudge",

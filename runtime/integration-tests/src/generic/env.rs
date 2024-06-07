@@ -187,6 +187,7 @@ pub mod utils {
 			frame_system::CheckWeight::<T>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
 			runtime_common::transfer_filter::PreBalanceTransferExtension::<T>::new(),
+			frame_metadata_hash_extension::CheckMetadataHash::<T>::new(true),
 		);
 
 		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
