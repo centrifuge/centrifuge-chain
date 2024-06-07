@@ -40,7 +40,7 @@ fn call<T: Runtime>() {
 		utils::evm::mint_balance_into_derived_account::<T>(creator_address, 1 * CFG);
 		utils::evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);
 
-		let contract_address = H160::from(
+		let contract_address = sp_core::H160::from(
 			utils::evm::deploy_contract::<T>(
 				creator_address,
 				hex::decode(TEST_CONTRACT_CODE).unwrap(),
