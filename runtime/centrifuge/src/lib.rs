@@ -2421,7 +2421,7 @@ impl_runtime_apis! {
 	// Investment Runtime APIs
 	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>> for Runtime {
 		fn investment_portfolio(account_id: AccountId) -> Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)> {
-			runtime_common::investment_portfolios::get_account_portfolio::<Runtime>(account_id)
+			runtime_common::investment_portfolios::get_account_portfolio::<Runtime>(account_id).unwrap_or_default()
 		}
 	}
 
