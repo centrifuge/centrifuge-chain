@@ -22,14 +22,17 @@ use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use runtime_common::account_conversion::AccountConverter;
-use sp_runtime::{DispatchError, FixedPointNumber};
+use sp_runtime::FixedPointNumber;
 
 use crate::{
 	generic::{
-		cases::lp::{
-			names, utils,
-			utils::{pool_a_tranche_1_id, Decoder},
-			LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+		cases::{
+			lp,
+			lp::{
+				names, utils,
+				utils::{pool_a_tranche_1_id, Decoder},
+				LocalUSDC, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+			},
 		},
 		config::Runtime,
 		env::{EnvEvmExtension, EvmEnv},
@@ -176,6 +179,11 @@ fn add_pool<T: Runtime>() {
 	});
 }
 
+#[test]
+fn _test() {
+	add_tranche::<centrifuge_runtime::Runtime>();
+}
+
 #[test_runtimes(all)]
 fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
@@ -184,7 +192,7 @@ fn add_tranche<T: Runtime>() {
 	});
 
 	env.state(|evm| {
-		assert_noop!(
+		assert_eq!(
 			evm.call(
 				Keyring::Alice,
 				Default::default(),
@@ -195,7 +203,7 @@ fn add_tranche<T: Runtime>() {
 					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
 				]),
 			),
-			DispatchError::Other("EVM call failed: Revert")
+			utils::REVERT_ERR
 		);
 	});
 
