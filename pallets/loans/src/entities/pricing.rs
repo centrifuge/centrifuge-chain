@@ -2,7 +2,7 @@ use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 
-use crate::pallet::Config;
+use crate::{entities::interest::ActiveInterestRate, pallet::Config};
 
 pub mod external;
 pub mod internal;
@@ -27,4 +27,20 @@ pub enum ActivePricing<T: Config> {
 
 	/// Internal attributes
 	External(external::ExternalActivePricing<T>),
+}
+
+impl<T: Config> ActivePricing<T> {
+	pub fn interest(&self) -> &ActiveInterestRate<T> {
+		match self {
+			Self::Internal(inner) => &inner.interest,
+			Self::External(inner) => &inner.interest,
+		}
+	}
+
+	pub fn interest_mut(&mut self) -> &mut ActiveInterestRate<T> {
+		match self {
+			Self::Internal(inner) => &mut inner.interest,
+			Self::External(inner) => &mut inner.interest,
+		}
+	}
 }

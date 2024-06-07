@@ -27,6 +27,13 @@ pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 	}
 }
 
+pub fn current_extenal_pricing(loan_id: LoanId) -> ExternalActivePricing<Runtime> {
+	match get_loan(loan_id).pricing() {
+		ActivePricing::Internal(_) => panic!("expected external pricing"),
+		ActivePricing::External(pricing) => pricing.clone(),
+	}
+}
+
 pub fn borrower(loan_id: LoanId) -> AccountId {
 	match CreatedLoan::<Runtime>::get(POOL_A, loan_id) {
 		Some(created_loan) => *created_loan.borrower(),
@@ -103,6 +110,13 @@ pub fn dcf_internal_loan() -> LoanInfo<Runtime> {
 	}
 }
 
+pub fn default_interest_rate() -> InterestRate<Rate> {
+	InterestRate::Fixed {
+		rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+		compounding: CompoundingSchedule::Secondly,
+	}
+}
+
 pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
@@ -110,13 +124,10 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 				date: (now() + YEAR).as_secs(),
 				extension: (YEAR / 2).as_secs(),
 			},
-			interest_payments: InterestPayments::None,
+			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
-			compounding: CompoundingSchedule::Secondly,
-		},
+		interest_rate: default_interest_rate(),
 		collateral: ASSET_AA,
 		pricing: Pricing::Internal(base_internal_pricing()),
 		restrictions: LoanRestrictions {
@@ -140,13 +151,10 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
 			maturity: Maturity::fixed((now() + YEAR).as_secs()),
-			interest_payments: InterestPayments::None,
+			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
-			compounding: CompoundingSchedule::Secondly,
-		},
+		interest_rate: default_interest_rate(),
 		collateral: ASSET_AA,
 		pricing: Pricing::External(base_external_pricing()),
 		restrictions: LoanRestrictions {

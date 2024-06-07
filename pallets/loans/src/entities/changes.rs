@@ -7,8 +7,9 @@ use crate::{
 	entities::input::{PrincipalInput, RepaidInput},
 	pallet::Config,
 	types::{
-		policy::WriteOffRule, valuation::ValuationMethod, InterestPayments, Maturity,
-		PayDownSchedule,
+		cashflow::{InterestPayments, Maturity, PayDownSchedule},
+		policy::WriteOffRule,
+		valuation::ValuationMethod,
 	},
 };
 
