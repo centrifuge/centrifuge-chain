@@ -208,7 +208,13 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	pub fn outstanding_principal(
+	pub fn outstanding_notional_principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.outstanding_quantity
+			.ensure_mul_int(self.info.notional)?)
+	}
+
+	pub fn outstanding_priced_principal(
 		&self,
 		pool_id: T::PoolId,
 		maturity: Option<Seconds>,
@@ -218,12 +224,8 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	pub fn outstanding_interest(&self) -> Result<T::Balance, DispatchError> {
-		let outstanding_notional = self
-			.outstanding_quantity
-			.ensure_mul_int(self.info.notional)?;
-
 		let debt = self.interest.current_debt()?;
-		Ok(debt.ensure_sub(outstanding_notional)?)
+		Ok(debt.ensure_sub(self.outstanding_notional_principal()?)?)
 	}
 
 	pub fn present_value(
@@ -231,7 +233,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		pool_id: T::PoolId,
 		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
-		self.outstanding_principal(pool_id, maturity)
+		self.outstanding_priced_principal(pool_id, maturity)
 	}
 
 	pub fn present_value_cached(

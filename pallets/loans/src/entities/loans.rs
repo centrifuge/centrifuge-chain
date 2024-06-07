@@ -253,6 +253,10 @@ impl<T: Config> ActiveLoan<T> {
 		self.schedule.generate_cashflows(
 			self.repayments_on_schedule_until,
 			self.principal()?,
+			match &self.pricing {
+				ActivePricing::Internal(_) => self.principal()?,
+				ActivePricing::External(inner) => inner.outstanding_notional_principal()?,
+			},
 			self.pricing.interest().rate(),
 		)
 	}
@@ -580,7 +584,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 				Self {
 					present_value,
-					outstanding_principal: inner.outstanding_principal(pool_id, maturity)?,
+					outstanding_principal: inner.outstanding_priced_principal(pool_id, maturity)?,
 					outstanding_interest: inner.outstanding_interest()?,
 					current_price: Some(inner.current_price(pool_id, maturity)?),
 					active_loan,

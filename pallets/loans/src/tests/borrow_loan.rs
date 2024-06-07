@@ -615,24 +615,24 @@ fn increase_debt_does_not_withdraw() {
 mod cashflow {
 	use super::*;
 
-	fn create_cashflow_loan() -> LoanId {
-		util::create_loan(LoanInfo {
-			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed {
-					date: (now() + YEAR).as_secs(),
-					extension: 0,
-				},
-				interest_payments: InterestPayments::Monthly(1),
-				pay_down_schedule: PayDownSchedule::None,
+	fn monthly_schedule() -> RepaymentSchedule {
+		RepaymentSchedule {
+			maturity: Maturity::Fixed {
+				date: (now() + YEAR).as_secs(),
+				extension: 0,
 			},
-			..util::base_internal_loan()
-		})
+			interest_payments: InterestPayments::Monthly(1),
+			pay_down_schedule: PayDownSchedule::None,
+		}
 	}
 
 	#[test]
-	fn computed_correctly() {
+	fn computed_correctly_internal_pricing() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_cashflow_loan();
+			let loan_id = util::create_loan(LoanInfo {
+				schedule: monthly_schedule(),
+				..util::base_internal_loan()
+			});
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(
@@ -690,9 +690,75 @@ mod cashflow {
 	}
 
 	#[test]
+	fn computed_correctly_external_pricing() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(LoanInfo {
+				schedule: monthly_schedule(),
+				..util::base_external_loan()
+			});
+
+			let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+			config_mocks(amount.balance().unwrap());
+
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::External(amount.clone())
+			));
+
+			let loan = util::get_loan(loan_id);
+
+			let total_principal = amount.balance().unwrap();
+			dbg!(total_principal);
+			let acc_interest_rate_per_year = checked_pow(
+				util::default_interest_rate().per_sec().unwrap(),
+				SECONDS_PER_YEAR as usize,
+			)
+			.unwrap();
+
+			let outstanding_notional = util::current_extenal_pricing(loan_id)
+				.outstanding_notional_principal()
+				.unwrap();
+
+			let total_interest = acc_interest_rate_per_year.saturating_mul_int(total_principal)
+				- outstanding_notional;
+
+			// The -1 comes from a precission issue when computing cashflows.
+			let principal = (total_principal - 1) / 12;
+			let interest = total_interest / 12;
+
+			assert_eq!(
+				loan.expected_cashflows()
+					.unwrap()
+					.into_iter()
+					.map(|payment| (payment.when, payment.principal, payment.interest))
+					.collect::<Vec<_>>(),
+				vec![
+					(last_secs_from_ymd(1970, 2, 1), principal, interest),
+					(last_secs_from_ymd(1970, 3, 1), principal, interest),
+					(last_secs_from_ymd(1970, 4, 1), principal, interest),
+					(last_secs_from_ymd(1970, 5, 1), principal, interest),
+					(last_secs_from_ymd(1970, 6, 1), principal, interest),
+					(last_secs_from_ymd(1970, 7, 1), principal, interest),
+					(last_secs_from_ymd(1970, 8, 1), principal, interest),
+					(last_secs_from_ymd(1970, 9, 1), principal, interest),
+					(last_secs_from_ymd(1970, 10, 1), principal, interest),
+					(last_secs_from_ymd(1970, 11, 1), principal, interest),
+					(last_secs_from_ymd(1970, 12, 1), principal, interest),
+					(last_secs_from_ymd(1971, 1, 1), principal, interest),
+				]
+			);
+		});
+	}
+
+	#[test]
 	fn borrow_twice_same_month() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_cashflow_loan();
+			let loan_id = util::create_loan(LoanInfo {
+				schedule: monthly_schedule(),
+				..util::base_internal_loan()
+			});
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(
@@ -720,7 +786,10 @@ mod cashflow {
 	#[test]
 	fn payment_overdue() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_cashflow_loan();
+			let loan_id = util::create_loan(LoanInfo {
+				schedule: monthly_schedule(),
+				..util::base_internal_loan()
+			});
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(
@@ -767,7 +836,10 @@ mod cashflow {
 	#[test]
 	fn allow_borrow_again_after_repay_overdue_amount() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_cashflow_loan();
+			let loan_id = util::create_loan(LoanInfo {
+				schedule: monthly_schedule(),
+				..util::base_internal_loan()
+			});
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(

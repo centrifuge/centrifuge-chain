@@ -148,6 +148,7 @@ impl RepaymentSchedule {
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
+		principal_base: Balance,
 		interest_rate: &InterestRate<Rate>,
 	) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>
 	where
@@ -177,7 +178,7 @@ impl RepaymentSchedule {
 		let interest_rate_per_lifetime = ensure_pow(interest_rate.per_sec()?, lifetime)?;
 		let interest_at_maturity = interest_rate_per_lifetime
 			.ensure_mul_int(principal)?
-			.ensure_sub(principal)?;
+			.ensure_sub(principal_base)?;
 
 		timeflow
 			.into_iter()
@@ -199,6 +200,7 @@ impl RepaymentSchedule {
 		&self,
 		origination_date: Seconds,
 		principal: Balance,
+		principal_base: Balance,
 		interest_rate: &InterestRate<Rate>,
 		until: Seconds,
 	) -> Result<Balance, DispatchError>
@@ -206,7 +208,8 @@ impl RepaymentSchedule {
 		Balance: FixedPointOperand + EnsureAdd + EnsureSub,
 		Rate: FixedPointNumber,
 	{
-		let cashflow = self.generate_cashflows(origination_date, principal, interest_rate)?;
+		let cashflow =
+			self.generate_cashflows(origination_date, principal, principal_base, interest_rate)?;
 
 		let total_amount = cashflow
 			.into_iter()
@@ -363,6 +366,7 @@ pub mod tests {
 				.generate_cashflows(
 					last_secs_from_ymd(2022, 4, 16),
 					25000u128, /* principal */
+					25000u128, /* principal as base */
 					&InterestRate::Fixed {
 						rate_per_year: Rate::from_float(0.12),
 						compounding: CompoundingSchedule::Secondly,
@@ -464,6 +468,7 @@ pub mod tests {
 				.generate_cashflows(
 					last_secs_from_ymd(2022, 4, 16),
 					25000u128, /* principal */
+					25000u128, /* principal as base */
 					&InterestRate::Fixed {
 						rate_per_year: Rate::from_float(0.12),
 						compounding: CompoundingSchedule::Secondly,
