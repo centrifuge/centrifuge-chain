@@ -2054,8 +2054,8 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
