@@ -615,24 +615,10 @@ fn increase_debt_does_not_withdraw() {
 mod cashflow {
 	use super::*;
 
-	fn monthly_schedule() -> RepaymentSchedule {
-		RepaymentSchedule {
-			maturity: Maturity::Fixed {
-				date: (now() + YEAR).as_secs(),
-				extension: 0,
-			},
-			interest_payments: InterestPayments::Monthly(1),
-			pay_down_schedule: PayDownSchedule::None,
-		}
-	}
-
 	#[test]
 	fn computed_correctly_internal_pricing() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(LoanInfo {
-				schedule: monthly_schedule(),
-				..util::base_internal_loan()
-			});
+			let loan_id = util::create_loan(util::base_internal_loan());
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(
@@ -644,26 +630,13 @@ mod cashflow {
 
 			let loan = util::get_loan(loan_id);
 
-			assert_eq!(
-				loan.origination_date(),
-				secs_from_ymdhms(1970, 1, 1, 0, 0, 10)
-			);
-			assert_eq!(
-				loan.maturity_date(),
-				Some(secs_from_ymdhms(1971, 1, 1, 0, 0, 10))
-			);
-
-			let total_principal = COLLATERAL_VALUE / 2;
+			let principal = COLLATERAL_VALUE / 2;
 			let acc_interest_rate_per_year = checked_pow(
 				util::default_interest_rate().per_sec().unwrap(),
 				SECONDS_PER_YEAR as usize,
 			)
 			.unwrap();
-			let total_interest =
-				acc_interest_rate_per_year.saturating_mul_int(total_principal) - total_principal;
-
-			let principal = total_principal / 12;
-			let interest = total_interest / 12;
+			let interest = acc_interest_rate_per_year.saturating_mul_int(principal) - principal;
 
 			assert_eq!(
 				loan.expected_cashflows()
@@ -671,20 +644,7 @@ mod cashflow {
 					.into_iter()
 					.map(|payment| (payment.when, payment.principal, payment.interest))
 					.collect::<Vec<_>>(),
-				vec![
-					(last_secs_from_ymd(1970, 2, 1), principal, interest),
-					(last_secs_from_ymd(1970, 3, 1), principal, interest),
-					(last_secs_from_ymd(1970, 4, 1), principal, interest),
-					(last_secs_from_ymd(1970, 5, 1), principal, interest),
-					(last_secs_from_ymd(1970, 6, 1), principal, interest),
-					(last_secs_from_ymd(1970, 7, 1), principal, interest),
-					(last_secs_from_ymd(1970, 8, 1), principal, interest),
-					(last_secs_from_ymd(1970, 9, 1), principal, interest),
-					(last_secs_from_ymd(1970, 10, 1), principal, interest),
-					(last_secs_from_ymd(1970, 11, 1), principal, interest),
-					(last_secs_from_ymd(1970, 12, 1), principal, interest),
-					(last_secs_from_ymd(1971, 1, 1), principal, interest),
-				]
+				vec![(loan.maturity_date().unwrap(), principal, interest)]
 			);
 		});
 	}
@@ -692,10 +652,7 @@ mod cashflow {
 	#[test]
 	fn computed_correctly_external_pricing() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(LoanInfo {
-				schedule: monthly_schedule(),
-				..util::base_external_loan()
-			});
+			let loan_id = util::create_loan(util::base_external_loan());
 
 			let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
 			config_mocks(amount.balance().unwrap());
@@ -709,8 +666,7 @@ mod cashflow {
 
 			let loan = util::get_loan(loan_id);
 
-			let total_principal = amount.balance().unwrap();
-			dbg!(total_principal);
+			let principal = amount.balance().unwrap();
 			let acc_interest_rate_per_year = checked_pow(
 				util::default_interest_rate().per_sec().unwrap(),
 				SECONDS_PER_YEAR as usize,
@@ -721,12 +677,8 @@ mod cashflow {
 				.outstanding_notional_principal()
 				.unwrap();
 
-			let total_interest = acc_interest_rate_per_year.saturating_mul_int(total_principal)
-				- outstanding_notional;
-
-			// The -1 comes from a precission issue when computing cashflows.
-			let principal = (total_principal - 1) / 12;
-			let interest = total_interest / 12;
+			let interest =
+				acc_interest_rate_per_year.saturating_mul_int(principal) - outstanding_notional;
 
 			assert_eq!(
 				loan.expected_cashflows()
@@ -734,139 +686,8 @@ mod cashflow {
 					.into_iter()
 					.map(|payment| (payment.when, payment.principal, payment.interest))
 					.collect::<Vec<_>>(),
-				vec![
-					(last_secs_from_ymd(1970, 2, 1), principal, interest),
-					(last_secs_from_ymd(1970, 3, 1), principal, interest),
-					(last_secs_from_ymd(1970, 4, 1), principal, interest),
-					(last_secs_from_ymd(1970, 5, 1), principal, interest),
-					(last_secs_from_ymd(1970, 6, 1), principal, interest),
-					(last_secs_from_ymd(1970, 7, 1), principal, interest),
-					(last_secs_from_ymd(1970, 8, 1), principal, interest),
-					(last_secs_from_ymd(1970, 9, 1), principal, interest),
-					(last_secs_from_ymd(1970, 10, 1), principal, interest),
-					(last_secs_from_ymd(1970, 11, 1), principal, interest),
-					(last_secs_from_ymd(1970, 12, 1), principal, interest),
-					(last_secs_from_ymd(1971, 1, 1), principal, interest),
-				]
+				vec![(loan.maturity_date().unwrap(), principal, interest),]
 			);
-		});
-	}
-
-	#[test]
-	fn borrow_twice_same_month() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(LoanInfo {
-				schedule: monthly_schedule(),
-				..util::base_internal_loan()
-			});
-
-			config_mocks(COLLATERAL_VALUE / 2);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
-			));
-
-			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
-
-			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
-			advance_time(time_until_next_month);
-
-			config_mocks(COLLATERAL_VALUE / 4);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
-			));
-		});
-	}
-
-	#[test]
-	fn payment_overdue() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(LoanInfo {
-				schedule: monthly_schedule(),
-				..util::base_internal_loan()
-			});
-
-			config_mocks(COLLATERAL_VALUE / 2);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
-			));
-
-			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
-
-			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
-			advance_time(time_until_next_month);
-
-			// Start of the next month
-			advance_time(Duration::from_secs(1));
-
-			config_mocks(COLLATERAL_VALUE / 4);
-
-			/*
-			// NOTE: uncomment when https://github.com/centrifuge/centrifuge-chain/pull/1797#issuecomment-2149262096
-			// be added again
-			assert_noop!(
-				Loans::borrow(
-					RuntimeOrigin::signed(BORROWER),
-					POOL_A,
-					loan_id,
-					PrincipalInput::Internal(COLLATERAL_VALUE / 4)
-				),
-				Error::<Runtime>::from(BorrowLoanError::PaymentOverdue)
-			);
-			*/
-
-			// No restriction to borrow again by now
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
-			));
-		});
-	}
-
-	#[test]
-	fn allow_borrow_again_after_repay_overdue_amount() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(LoanInfo {
-				schedule: monthly_schedule(),
-				..util::base_internal_loan()
-			});
-
-			config_mocks(COLLATERAL_VALUE / 2);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
-			));
-
-			let cashflow = util::get_loan(loan_id).expected_cashflows().unwrap();
-
-			let time_until_next_month = Duration::from_secs(cashflow[0].when) - now();
-			advance_time(time_until_next_month);
-
-			// Start of the next month
-			advance_time(Duration::from_secs(1));
-
-			// Repaying the overdue amount allow to borrow again
-			util::repay_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
-
-			config_mocks(COLLATERAL_VALUE / 4);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PrincipalInput::Internal(COLLATERAL_VALUE / 4)
-			));
 		});
 	}
 }

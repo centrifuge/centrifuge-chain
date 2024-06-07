@@ -129,7 +129,7 @@ where
 		LoanInfo {
 			schedule: RepaymentSchedule {
 				maturity: Maturity::fixed(T::Time::now() + maturity_offset),
-				interest_payments: InterestPayments::Monthly(1),
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			collateral: (COLLECION_ID.into(), item_id),

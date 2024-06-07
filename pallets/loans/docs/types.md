@@ -11,8 +11,7 @@ package cashflow {
     }
 
     enum InterestPayments {
-        None
-        Monthly::reference_day: u8
+        OnceAtMaturity
     }
 
     enum PayDownSchedule {
