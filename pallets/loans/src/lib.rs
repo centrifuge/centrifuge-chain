@@ -107,6 +107,7 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 	use types::{
 		self,
+		cashflow::CashflowPayment,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
 		WrittenOffError,
@@ -1237,7 +1238,7 @@ pub mod pallet {
 		) -> Result<PortfolioInfoOf<T>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
-				.map(|(loan_id, loan)| Ok((loan_id, (pool_id, loan).try_into()?)))
+				.map(|(loan_id, loan)| Ok((loan_id, ActiveLoanInfo::try_from((pool_id, loan))?)))
 				.collect()
 		}
 
@@ -1248,8 +1249,19 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| (pool_id, loan).try_into())
+				.map(|(_, loan)| ActiveLoanInfo::try_from((pool_id, loan)))
 				.transpose()
+		}
+
+		pub fn expected_cashflows(
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.map(|(_, loan)| loan.expected_cashflows())
+				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?
 		}
 	}
 

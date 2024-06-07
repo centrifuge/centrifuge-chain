@@ -287,7 +287,7 @@ pub trait Runtime:
 	/// You can extend this bounds to give extra API support
 	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::BlockExt>
 		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::BlockExt>
-		+ apis::runtime_decl_for_loans_api::LoansApiV2<
+		+ apis::runtime_decl_for_loans_api::LoansApiV3<
 			Self::BlockExt,
 			PoolId,
 			LoanId,

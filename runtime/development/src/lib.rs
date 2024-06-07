@@ -82,6 +82,7 @@ use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
+use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -128,7 +129,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_staking::currency_to_vote::U128CurrencyToVote;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*, vec::Vec};
 use sp_version::RuntimeVersion;
 use staging_xcm_executor::XcmExecutor;
 use static_assertions::const_assert;
@@ -2408,6 +2409,10 @@ impl_runtime_apis! {
 			input_prices: PriceCollectionInput<Runtime>
 		) -> Result<Balance, DispatchError> {
 			Ok(runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum)
+		}
+
+		fn expected_cashflows(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError> {
+			Loans::expected_cashflows(pool_id, loan_id)
 		}
 	}
 
