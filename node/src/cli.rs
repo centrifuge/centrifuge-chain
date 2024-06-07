@@ -23,8 +23,8 @@ use crate::{chain_spec, service::evm::EthConfiguration};
 #[derive(Debug, Parser)]
 #[allow(clippy::large_enum_variant)]
 pub enum Subcommand {
-	/// Export the genesis state of the parachain.
-	ExportGenesisState(cumulus_client_cli::ExportGenesisStateCommand),
+	/// Export the genesis head of the parachain.
+	ExportGenesisHead(cumulus_client_cli::ExportGenesisHeadCommand),
 
 	/// Export the genesis wasm of the parachain.
 	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),

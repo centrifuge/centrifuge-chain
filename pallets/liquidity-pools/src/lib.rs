@@ -64,9 +64,8 @@ use sp_runtime::{
 };
 use sp_std::{convert::TryInto, vec};
 use staging_xcm::{
-	latest::NetworkId,
-	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
-	VersionedMultiLocation,
+	v4::{Junction::*, NetworkId},
+	VersionedLocation,
 };
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
@@ -129,7 +128,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
-	use staging_xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
@@ -892,21 +890,26 @@ pub mod pallet {
 				Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 
-			match meta.location {
-				Some(VersionedMultiLocation::V3(MultiLocation {
-					parents: 0,
-					interior:
-						X3(
-							PalletInstance(pallet_instance),
-							GlobalConsensus(NetworkId::Ethereum { chain_id }),
-							AccountKey20 {
-								network: None,
-								key: address,
-							},
-						),
-				})) if Some(pallet_instance.into())
-					== <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>() =>
-				{
+			// We need to still support v3 until orml_asset_registry migrates to the last
+			// version.
+			let location = match meta.location {
+				Some(VersionedLocation::V3(location)) => location.try_into().map_err(|_| {
+					DispatchError::Other("v3 is isometric to v4 and should not fail")
+				})?,
+				Some(VersionedLocation::V4(location)) => location,
+				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken)?,
+			};
+
+			let pallet_index = <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>();
+
+			match location.unpack() {
+				(
+					0,
+					&[PalletInstance(pallet_instance), GlobalConsensus(NetworkId::Ethereum { chain_id }), AccountKey20 {
+						network: None,
+						key: address,
+					}],
+				) if Some(pallet_instance.into()) == pallet_index => {
 					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
 				}
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),

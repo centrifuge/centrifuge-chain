@@ -30,7 +30,7 @@ use cfg_types::{
 };
 use frame_support::{
 	derive_impl,
-	dispatch::{DispatchResult, RawOrigin},
+	dispatch::DispatchResult,
 	pallet_prelude::DispatchError,
 	parameter_types,
 	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
@@ -125,6 +125,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
 		Ok(RawOrigin::Root.into())
 	}
 }

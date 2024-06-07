@@ -11,6 +11,7 @@
 pub mod currency;
 pub mod democracy;
 pub mod genesis;
+pub mod xcm;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds, TimeAsSecs};

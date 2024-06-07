@@ -1,10 +1,16 @@
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{EitherOfDiverse, FindAuthor, SortedMembers},
+	traits::{
+		tokens::{PayFromAccount, UnityAssetBalanceConversion},
+		EitherOfDiverse, FindAuthor, SortedMembers,
+	},
 	ConsensusEngineId, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
-use sp_runtime::{traits::ConstU64, BuildStorage};
+use sp_runtime::{
+	traits::{ConstU64, IdentityLookup},
+	BuildStorage,
+};
 
 use crate::{self as pallet_fees, *};
 
@@ -30,9 +36,6 @@ impl frame_system::Config for Runtime {
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type RuntimeHoldReason = ();
 }
 
 pub struct AuthorGiven;
@@ -53,16 +56,25 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
+	pub TreasuryAccount: u64 = Treasury::account_id();
 }
 
 impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
+	type AssetKind = ();
+	type BalanceConverter = UnityAssetBalanceConversion;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type Beneficiary = Self::AccountId;
+	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 	type Burn = ();
 	type BurnDestination = ();
 	type Currency = Balances;
 	type MaxApprovals = ();
 	type OnSlash = Treasury;
 	type PalletId = TreasuryPalletId;
+	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+	type PayoutPeriod = ConstU64<10>;
 	type ProposalBond = ();
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();

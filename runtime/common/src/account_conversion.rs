@@ -15,7 +15,7 @@ use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
 use sp_core::{crypto::AccountId32, Get, H160};
 use sp_runtime::traits::Convert;
-use staging_xcm::v3;
+use staging_xcm::v4::{Junction::AccountKey20, Location, NetworkId::Ethereum};
 use staging_xcm_executor::traits::ConvertLocation;
 
 /// Common converter code for translating accounts across different
@@ -40,22 +40,21 @@ impl AccountConverter {
 	}
 
 	pub fn location_to_account<XcmConverter: ConvertLocation<AccountId>>(
-		location: v3::MultiLocation,
+		location: Location,
 	) -> Option<AccountId> {
 		// Try xcm logic first
 		match XcmConverter::convert_location(&location) {
 			Some(acc) => Some(acc),
 			None => {
 				// match EVM logic
-				match location {
-					v3::MultiLocation {
-						parents: 0,
-						interior:
-							v3::Junctions::X1(v3::Junction::AccountKey20 {
-								network: Some(v3::NetworkId::Ethereum { chain_id }),
-								key,
-							}),
-					} => Some(Self::convert_evm_address(chain_id, key)),
+				match location.unpack() {
+					(
+						0,
+						[AccountKey20 {
+							network: Some(Ethereum { chain_id }),
+							key,
+						}],
+					) => Some(Self::convert_evm_address(*chain_id, *key)),
 					_ => None,
 				}
 			}

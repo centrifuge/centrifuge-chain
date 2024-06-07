@@ -273,4 +273,16 @@ impl<T: frame_system::Config> pallet_xcm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
+
+    fn transfer_assets() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn new_query() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn take_response() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
 }

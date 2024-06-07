@@ -4,7 +4,7 @@ pub mod pallet {
 	use mock_builder::{execute_call, register_call};
 	use orml_traits::asset_registry::{AssetMetadata, Inspect, Mutate};
 	use sp_std::fmt::Debug;
-	use staging_xcm::{v3::prelude::MultiLocation, VersionedMultiLocation};
+	use staging_xcm::{v4::Location, VersionedLocation};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -21,7 +21,7 @@ pub mod pallet {
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_asset_id(f: impl Fn(&MultiLocation) -> Option<T::AssetId> + 'static) {
+		pub fn mock_asset_id(f: impl Fn(&Location) -> Option<T::AssetId> + 'static) {
 			register_call!(f);
 		}
 
@@ -36,7 +36,7 @@ pub mod pallet {
 
 		pub fn mock_metadata_by_location(
 			f: impl Fn(
-					&MultiLocation,
+					&Location,
 				) -> Option<AssetMetadata<T::Balance, T::CustomMetadata, T::StringLimit>>
 				+ 'static,
 		) {
@@ -44,7 +44,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_location(
-			f: impl Fn(&T::AssetId) -> Result<Option<MultiLocation>, DispatchError> + 'static,
+			f: impl Fn(&T::AssetId) -> Result<Option<Location>, DispatchError> + 'static,
 		) {
 			register_call!(f);
 		}
@@ -66,7 +66,7 @@ pub mod pallet {
 					Option<BoundedVec<u8, T::StringLimit>>,
 					Option<BoundedVec<u8, T::StringLimit>>,
 					Option<T::Balance>,
-					Option<Option<VersionedMultiLocation>>,
+					Option<Option<VersionedLocation>>,
 					Option<T::CustomMetadata>,
 				) -> DispatchResult
 				+ 'static,
@@ -81,7 +81,7 @@ pub mod pallet {
 		type CustomMetadata = T::CustomMetadata;
 		type StringLimit = T::StringLimit;
 
-		fn asset_id(a: &MultiLocation) -> Option<Self::AssetId> {
+		fn asset_id(a: &Location) -> Option<Self::AssetId> {
 			execute_call!(a)
 		}
 
@@ -92,12 +92,12 @@ pub mod pallet {
 		}
 
 		fn metadata_by_location(
-			a: &MultiLocation,
+			a: &Location,
 		) -> Option<AssetMetadata<Self::Balance, Self::CustomMetadata, Self::StringLimit>> {
 			execute_call!(a)
 		}
 
-		fn location(a: &Self::AssetId) -> Result<Option<MultiLocation>, DispatchError> {
+		fn location(a: &Self::AssetId) -> Result<Option<Location>, DispatchError> {
 			execute_call!(a)
 		}
 	}
@@ -116,7 +116,7 @@ pub mod pallet {
 			c: Option<BoundedVec<u8, Self::StringLimit>>,
 			d: Option<BoundedVec<u8, Self::StringLimit>>,
 			e: Option<Self::Balance>,
-			g: Option<Option<VersionedMultiLocation>>,
+			g: Option<Option<VersionedLocation>>,
 			h: Option<Self::CustomMetadata>,
 		) -> DispatchResult {
 			execute_call!((a, b, c, d, e, g, h))

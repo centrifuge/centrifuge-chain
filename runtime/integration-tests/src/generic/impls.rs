@@ -188,8 +188,8 @@ impl_fudge_support!(
 
 impl_fudge_support!(
 	FudgeAltair,
-	staging_kusama_runtime,
-	default_kusama_session_keys(),
+	rococo_runtime,
+	default_rococo_session_keys(),
 	altair_runtime,
 	2088,
 	2089
@@ -197,8 +197,8 @@ impl_fudge_support!(
 
 impl_fudge_support!(
 	FudgeCentrifuge,
-	polkadot_runtime,
-	default_polkadot_session_keys(),
+	rococo_runtime,
+	default_rococo_session_keys(),
 	centrifuge_runtime,
 	2031,
 	2032
@@ -208,38 +208,10 @@ pub fn default_rococo_session_keys() -> rococo_runtime::SessionKeys {
 	rococo_runtime::SessionKeys {
 		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
 		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
-		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
-			.unwrap(),
 		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
 		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
 		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
 		beefy: sp_consensus_beefy::ecdsa_crypto::AuthorityId::from_slice([0u8; 33].as_slice())
 			.unwrap(),
-	}
-}
-
-pub fn default_kusama_session_keys() -> staging_kusama_runtime::SessionKeys {
-	staging_kusama_runtime::SessionKeys {
-		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
-		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
-		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
-			.unwrap(),
-		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
-		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
-		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
-		beefy: sp_consensus_beefy::ecdsa_crypto::AuthorityId::from_slice([0u8; 33].as_slice())
-			.unwrap(),
-	}
-}
-
-pub fn default_polkadot_session_keys() -> polkadot_runtime::SessionKeys {
-	polkadot_runtime::SessionKeys {
-		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
-		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
-		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
-			.unwrap(),
-		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
-		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
-		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
 	}
 }

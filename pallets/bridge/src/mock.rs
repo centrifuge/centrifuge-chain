@@ -51,7 +51,6 @@ pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-
 	pub enum Runtime
 	{
 		System: frame_system,
@@ -84,21 +83,11 @@ parameter_types! {
 	pub const ExistentialDeposit: u128 = 1;
 }
 
-// Implement FRAME balances pallet configuration trait for the mock runtime
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
-	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = ();
-	type WeightInfo = ();
 }
 
 // Required as a tight dependency from pallet_fees, but not used for it in the

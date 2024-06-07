@@ -9,7 +9,7 @@ use cfg_types::{
 	domain_address::Domain,
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
@@ -93,7 +93,7 @@ pub trait Runtime:
 		PriceId = OracleKey,
 		Moment = Millis,
 	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
-	+ orml_asset_registry::Config<
+	+ orml_asset_registry::module::Config<
 		AssetId = CurrencyId,
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
@@ -111,7 +111,7 @@ pub trait Runtime:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
-	+ parachain_info::Config
+	+ staging_parachain_info::Config
 	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
 	+ pallet_oracle_collection::Config<
 		OracleKey = OracleKey,
@@ -123,8 +123,10 @@ pub trait Runtime:
 	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
-	+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
-	+ pallet_liquidity_pools::Config<
+	+ pallet_transfer_allowlist::Config<
+		CurrencyId = FilterCurrency,
+		Location = RestrictedTransferLocation,
+	> + pallet_liquidity_pools::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		PoolId = PoolId,

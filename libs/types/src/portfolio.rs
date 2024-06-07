@@ -25,7 +25,7 @@ use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 /// The total NAV is based on the reserve, the assets under management (AUM) and
 /// pool fees:
 ///
-/// ```ignore
+/// ```text
 /// NAV = PoolReserve + AUM - PoolFees
 /// ```
 ///

@@ -11,22 +11,23 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::FilterCurrency;
-use frame_support::{
-	derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64},
-	Deserialize, Serialize,
-};
+use frame_support::{derive_impl, traits::ConstU64, Deserialize, Serialize};
 use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::CheckedAdd, BuildStorage};
+use sp_core::crypto::AccountId32;
+use sp_runtime::{
+	traits::{CheckedAdd, IdentityLookup},
+	BuildStorage,
+};
 
 use crate as transfer_allowlist;
 
 pub(crate) const STARTING_BLOCK: u64 = 50;
-pub(crate) const SENDER: u64 = 0x1;
-pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
-pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
+pub(crate) const SENDER: AccountId32 = AccountId32::new([1u8; 32]);
+pub(crate) const ACCOUNT_RECEIVER: AccountId32 = AccountId32::new([2u8; 32]);
+pub(crate) const FEE_DEFICIENT_SENDER: AccountId32 = AccountId32::new([3u8; 32]);
+pub(crate) const OTHER_RECEIVER: AccountId32 = AccountId32::new([100u8; 32]);
 
 type Balance = u64;
 
@@ -41,7 +42,24 @@ frame_support::construct_runtime!(
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = AccountId32;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
+	type Lookup = IdentityLookup<Self::AccountId>;
+}
+
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+}
+
+impl transfer_allowlist::Config for Runtime {
+	type CurrencyId = FilterCurrency;
+	type Deposit = ConstU64<10>;
+	type Location = Location;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = ();
 }
 
 #[derive(
@@ -59,36 +77,17 @@ impl frame_system::Config for Runtime {
 	Serialize,
 )]
 pub enum Location {
-	TestLocal(u64),
+	TestLocal(AccountId32),
 }
 
-impl From<u64> for Location {
-	fn from(a: u64) -> Self {
+impl From<AccountId32> for Location {
+	fn from(a: AccountId32) -> Self {
 		Self::TestLocal(a)
 	}
 }
 
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type MaxHolds = ConstU32<1>;
-	type RuntimeHoldReason = ();
-}
-
-parameter_types! {
-	pub const HoldId: () = ();
-}
-
-impl transfer_allowlist::Config for Runtime {
-	type CurrencyId = FilterCurrency;
-	type Deposit = ConstU64<10>;
-	type HoldId = HoldId;
-	type Location = Location;
-	type ReserveCurrency = Balances;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+pub(crate) fn local_location(receiver: AccountId32) -> Location {
+	receiver.into()
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

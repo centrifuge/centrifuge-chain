@@ -1428,8 +1428,7 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-
-			vec![],
+				vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1492,8 +1491,7 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-
-			vec![],
+				vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1548,8 +1546,7 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-
-			vec![],
+				vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1601,8 +1598,7 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-
-			vec![],
+				vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);

@@ -15,7 +15,7 @@ use cfg_traits::rewards::RewardIssuance;
 use frame_support::traits::{fungibles::Mutate, tokens::Preservation};
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::{traits::Get, DispatchResult};
-use sp_std::marker::PhantomData;
+use sp_std::{cmp::Eq, marker::PhantomData};
 
 /// Enables rewarding out of thin air, e.g. via minting.
 pub struct MintReward<AccountId, Balance, CurrencyId, Currency>(
@@ -25,7 +25,7 @@ pub struct MintReward<AccountId, Balance, CurrencyId, Currency>(
 impl<AccountId, Balance, CurrencyId, Currency> RewardIssuance
 	for MintReward<AccountId, Balance, CurrencyId, Currency>
 where
-	AccountId: Encode + Decode,
+	AccountId: Encode + Decode + Eq,
 	Currency: Mutate<AccountId, AssetId = CurrencyId, Balance = Balance>,
 {
 	type AccountId = AccountId;
@@ -49,7 +49,7 @@ pub struct TransferReward<AccountId, Balance, CurrencyId, Currency, SourceAddres
 impl<AccountId, Balance, CurrencyId, Currency, SourceAddress> RewardIssuance
 	for TransferReward<AccountId, Balance, CurrencyId, Currency, SourceAddress>
 where
-	AccountId: Encode + Decode,
+	AccountId: Encode + Decode + Eq,
 	Currency: Mutate<AccountId, AssetId = CurrencyId, Balance = Balance>,
 	SourceAddress: Get<AccountId>,
 {

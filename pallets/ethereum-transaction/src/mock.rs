@@ -8,7 +8,7 @@ use pallet_evm::{
 	FixedGasWeightMapping, IsPrecompileResult, PrecompileHandle, PrecompileSet,
 	SubstrateBlockHashMapping,
 };
-use sp_core::{crypto::AccountId32, ByteArray, ConstU128, ConstU64, H160, U256};
+use sp_core::{crypto::AccountId32, ByteArray, ConstU128, ConstU32, ConstU64, H160, U256};
 use sp_runtime::{traits::IdentityLookup, ConsensusEngineId};
 
 use crate::pallet as pallet_ethereum_transaction;
@@ -143,6 +143,7 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = MockPrecompiles;
 	type Runner = Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
+	type SuicideQuickClearLimit = ConstU32<0>;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;

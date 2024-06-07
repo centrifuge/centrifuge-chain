@@ -4,7 +4,7 @@ version: '3.4'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:v1.0.0"
+    image: "parity/polkadot:v1.7.2"
     platform: "linux/x86_64"
     ports:
       - "30333:30333"
@@ -30,7 +30,7 @@ services:
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:v1.0.0"
+    image: "parity/polkadot:v1.7.2"
     platform: "linux/x86_64"
     ports:
       - "30344:30333"

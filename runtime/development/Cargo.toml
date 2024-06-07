@@ -10,9 +10,8 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-getrandom = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true, optional = true }
+hex-literal = { workspace = true }
 log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
@@ -23,6 +22,7 @@ sp-api = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-core = { workspace = true }
+sp-genesis-builder = { workspace = true }
 sp-inherents = { workspace = true }
 sp-io = { workspace = true }
 sp-offchain = { workspace = true }
@@ -107,6 +107,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-message-queue = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
@@ -135,7 +136,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
-parachain-info = { workspace = true }
+staging-parachain-info = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true }
@@ -145,7 +146,6 @@ default = ["std"]
 
 std = [
   "parity-scale-codec/std",
-  "getrandom/std",
   "hex/std",
   "log/std",
   "scale-info/std",
@@ -156,6 +156,7 @@ std = [
   "sp-block-builder/std",
   "sp-consensus-aura/std",
   "sp-core/std",
+  "sp-genesis-builder/std",
   "sp-inherents/std",
   "sp-io/std",
   "sp-offchain/std",
@@ -259,12 +260,12 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
-  "parachain-info/std",
+  "pallet-message-queue/std",
+  "staging-parachain-info/std",
 ]
 
 runtime-benchmarks = [
   # Enabling optional
-  "hex-literal",
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
@@ -341,6 +342,7 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
+  "pallet-message-queue/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -426,7 +428,8 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
-  "parachain-info/try-runtime",
+  "pallet-message-queue/try-runtime",
+  "staging-parachain-info/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
