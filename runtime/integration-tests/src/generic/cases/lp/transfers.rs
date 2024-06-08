@@ -188,7 +188,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	});
 
 	// Invest, close epoch and collect tranche tokens with 1-to-1 conversion
-	// env.pass(Blocks::ByNumber(2));
+	env.pass(Blocks::ByNumber(2));
 	env.state_mut(|_evm| {
 		give_tokens::<T>(Keyring::TrancheInvestor(1).id(), LocalUSDC.id(), AMOUNT);
 		invest_and_collect::<T>(
