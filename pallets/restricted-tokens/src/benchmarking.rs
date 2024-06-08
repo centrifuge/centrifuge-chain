@@ -36,8 +36,10 @@ fn make_free_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
-		+ orml_tokens::Config<
+		+ pallet_balances::Config<
+			Balance = <T as Config>::Balance,
+			RuntimeHoldReason = <T as Config>::RuntimeHoldReason,
+		> + orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		>,
@@ -69,8 +71,10 @@ fn reserve_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
-		+ orml_tokens::Config<
+		+ pallet_balances::Config<
+			Balance = <T as Config>::Balance,
+			RuntimeHoldReason = <T as Config>::RuntimeHoldReason,
+		> + orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		>,
@@ -81,7 +85,7 @@ fn reserve_balance<T>(
 			"Providers should not be zero"
 		);
 		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(
-			&Default::default(),
+			&HoldReason::NativeIndex.into(),
 			account,
 			balance,
 		)
@@ -89,7 +93,7 @@ fn reserve_balance<T>(
 	} else {
 		<orml_tokens::Pallet<T> as fungibles::MutateHold<T::AccountId>>::hold(
 			currency_id,
-			&Default::default(),
+			&(),
 			account,
 			balance,
 		)
@@ -149,8 +153,10 @@ fn set_up_account<T>(
 ) -> T::AccountId
 where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
-		+ orml_tokens::Config<
+		+ pallet_balances::Config<
+			Balance = <T as Config>::Balance,
+			RuntimeHoldReason = <T as Config>::RuntimeHoldReason,
+		> + orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		> + pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
@@ -190,7 +196,10 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config
-			+ pallet_balances::Config<Balance = <T as Config>::Balance, RuntimeHoldReason = ()>
+			+ pallet_balances::Config<
+				Balance = <T as Config>::Balance,
+				RuntimeHoldReason = <T as Config>::RuntimeHoldReason,
+			>
 			+ orml_tokens::Config<Balance = <T as Config>::Balance, CurrencyId = <T as Config>::CurrencyId>
 			+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		<T as Config>::Balance: From<u128> + Zero,

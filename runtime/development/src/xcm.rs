@@ -27,7 +27,7 @@ use pallet_xcm::XcmPassthrough;
 use runtime_common::{
 	transfer_filter::PreXcmTransfer,
 	xcm::{
-		general_key, AccountIdToMultiLocation, Barrier, FixedConversionRateProvider,
+		general_key, AccountIdToLocation, Barrier, FixedConversionRateProvider,
 		LocalOriginToLocation, LpInstanceRelayer, ToTreasury,
 	},
 	xcm_fees::native_per_second,
@@ -35,12 +35,12 @@ use runtime_common::{
 use sp_core::ConstU32;
 use staging_xcm::{
 	prelude::*,
-	v3::{MultiLocation, Weight as XcmWeight},
+	v4::{Location, Weight as XcmWeight},
 };
 use staging_xcm_builder::{
-	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter,
-	NoChecking, RelayChainAsNative, SiblingParachainAsNative, SignedAccountId32AsNative,
-	SovereignSignedViaLocation,
+	ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds,
+	FrameTransactionalProcessor, FungiblesAdapter, NoChecking, RelayChainAsNative,
+	SiblingParachainAsNative, SignedAccountId32AsNative, SovereignSignedViaLocation,
 };
 use staging_xcm_executor::{traits::JustTry, XcmExecutor};
 
@@ -48,37 +48,6 @@ use super::{
 	AccountId, Balance, OrmlAssetRegistry, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
 	RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, XcmpQueue,
 };
-
-/// A call filter for the XCM Transact instruction. This is a temporary
-/// measure until we properly account for proof size weights.
-///
-/// Calls that are allowed through this filter must:
-/// 1. Have a fixed weight;
-/// 2. Cannot lead to another call being made;
-/// 3. Have a defined proof size weight, e.g. no unbounded vecs in call
-/// parameters.
-///
-/// NOTE: Defensive configuration for now, inspired by filter of
-/// SystemParachains and Polkadot, can be extended if desired.
-pub struct SafeCallFilter;
-impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
-	fn contains(call: &RuntimeCall) -> bool {
-		matches!(
-			call,
-			RuntimeCall::Timestamp(..)
-				| RuntimeCall::Balances(..)
-				| RuntimeCall::Utility(pallet_utility::Call::as_derivative { .. })
-				| RuntimeCall::PolkadotXcm(
-					pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				) | RuntimeCall::XcmpQueue(..)
-				| RuntimeCall::DmpQueue(..)
-				| RuntimeCall::Proxy(..)
-				| RuntimeCall::LiquidityPoolsGateway(
-					pallet_liquidity_pools_gateway::Call::process_msg { .. }
-				) | RuntimeCall::OrderBook(..)
-		)
-	}
-}
 
 /// The main XCM config
 /// This is where we configure the core of our XCM integrations: how tokens are
@@ -104,9 +73,10 @@ impl staging_xcm_executor::Config for XcmConfig {
 	type PalletInstancesInfo = crate::AllPalletsWithSystem;
 	type ResponseHandler = PolkadotXcm;
 	type RuntimeCall = RuntimeCall;
-	type SafeCallFilter = SafeCallFilter;
+	type SafeCallFilter = Everything;
 	type SubscriptionService = PolkadotXcm;
 	type Trader = Trader;
+	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -128,9 +98,9 @@ pub type Trader = (
 parameter_types! {
 	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
 	pub CanonicalNativePerSecond: (AssetId, u128, u128) = (
-		MultiLocation::new(
+		Location::new(
 			0,
-			X1(general_key(parachains::kusama::altair::AIR_KEY)),
+			general_key(parachains::kusama::altair::AIR_KEY),
 		).into(),
 		native_per_second(),
 		0,
@@ -145,7 +115,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	// This means that this adapter should handle any token that `CurrencyIdConvert` can convert
 	// to `CurrencyId`, the `CurrencyId` type of `Tokens`, the fungibles implementation it uses.
 	ConvertedConcreteId<CurrencyId, Balance, CurrencyIdConvert, JustTry>,
-	// Convert an XCM MultiLocation into a local account id
+	// Convert an XCM Location into a local account id
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly)
 	AccountId,
@@ -161,11 +131,6 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-parameter_types! {
-	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
-}
-
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to
 /// configure and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
@@ -176,8 +141,6 @@ impl pallet_xcm::Config for Runtime {
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation<Runtime>>;
 	type MaxLockers = ConstU32<8>;
 	type MaxRemoteLockConsumers = ConstU32<0>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ReachableDest = ReachableDest;
 	type RemoteLockConsumerIdentifier = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -200,7 +163,7 @@ impl pallet_xcm::Config for Runtime {
 parameter_types! {
 	pub const RelayNetwork: NetworkId = NetworkId::Rococo;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+	pub Ancestry: Location = Parachain(ParachainInfo::parachain_id().into()).into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
@@ -264,29 +227,29 @@ parameter_types! {
 }
 
 parameter_types! {
-	/// The `MultiLocation` identifying this very parachain
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
-	pub UniversalLocation: InteriorMultiLocation = X2(
+	/// The `Location` identifying this very parachain
+	pub SelfLocation: Location = Location::new(1, Parachain(ParachainInfo::get().into()));
+	pub UniversalLocation: InteriorLocation = [
 		GlobalConsensus(RelayNetwork::get()),
 		Parachain(ParachainInfo::parachain_id().into())
-	);
+	].into();
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+	pub ParachainMinFee: |_location: Location| -> Option<u128> {
 		None
 	};
 }
 
 impl orml_xtokens::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToLocation = AccountIdToLocation;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
+	type LocationsFilter = Everything;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-	type MultiLocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;

@@ -14,12 +14,10 @@
 
 use cfg_primitives::AccountId;
 use runtime_common::apis::runtime_decl_for_account_conversion_api::AccountConversionApi;
-use sp_api::{BlockT, HeaderT};
-use sp_runtime::traits::{Get, Zero};
-use staging_xcm::v3::{
+use sp_runtime::traits::{Block, Get, Header, Zero};
+use staging_xcm::v4::{
 	Junction::{AccountId32, AccountKey20, Parachain},
-	Junctions::{X1, X2},
-	MultiLocation, NetworkId,
+	Location, NetworkId,
 };
 
 use crate::generic::{config::Runtime, env::Env, envs::runtime_env::RuntimeEnv};
@@ -55,12 +53,12 @@ fn local_evm_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			0,
-			X1(AccountKey20 {
+			AccountKey20 {
 				key: KEY_20,
 				network: network_id(pallet_evm_chain_id::Pallet::<T>::get()),
-			}),
+			},
 		))
 		.unwrap()
 	});
@@ -76,12 +74,12 @@ fn lp_evm_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			0,
-			X1(AccountKey20 {
+			AccountKey20 {
 				key: KEY_20,
 				network: network_id(RANDOM_EVM_ID),
-			}),
+			},
 		))
 		.unwrap()
 	});
@@ -94,12 +92,12 @@ fn relay_chain_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			1,
-			X1(AccountKey20 {
+			AccountKey20 {
 				key: KEY_20,
 				network: None,
-			}),
+			},
 		))
 		.unwrap()
 	});
@@ -113,12 +111,12 @@ fn relay_chain_account<T: Runtime>() {
 	);
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			1,
-			X1(AccountId32 {
+			AccountId32 {
 				id: KEY_32,
 				network: None,
-			}),
+			},
 		))
 		.unwrap()
 	});
@@ -137,15 +135,15 @@ fn sibling_chain_account<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			1,
-			X2(
+			[
 				Parachain(RANDOM_PARA_ID),
 				AccountKey20 {
 					key: KEY_20,
 					network: None,
 				},
-			),
+			],
 		))
 		.unwrap()
 	});
@@ -159,15 +157,15 @@ fn sibling_chain_account<T: Runtime>() {
 	);
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			1,
-			X2(
+			[
 				Parachain(RANDOM_PARA_ID),
 				AccountId32 {
 					id: KEY_32,
 					network: None,
 				},
-			),
+			],
 		))
 		.unwrap()
 	});
@@ -186,17 +184,17 @@ fn remote_account_on_relay<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			0,
-			X2(
-				Parachain(parachain_info::Pallet::<T>::get().into()),
+			[
+				Parachain(staging_parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
 					network: Some(NetworkId::ByGenesis(
 						frame_system::BlockHash::<T>::get::<u32>(Zero::zero()).0,
 					)),
 				},
-			),
+			],
 		))
 		.unwrap()
 	});
@@ -215,20 +213,20 @@ fn remote_account_on_sibling<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
 	let derived = env.parachain_state(|| {
-		T::Api::conversion_of(MultiLocation::new(
+		T::Api::conversion_of(Location::new(
 			1,
-			X2(
-				Parachain(parachain_info::Pallet::<T>::get().into()),
+			[
+				Parachain(staging_parachain_info::Pallet::<T>::get().into()),
 				AccountId32 {
 					id: KEY_32,
 					network: Some(NetworkId::ByGenesis(
 						frame_system::BlockHash::<T>::get(
-							<<T::BlockExt as BlockT>::Header as HeaderT>::Number::zero(),
+							<<T::BlockExt as Block>::Header as Header>::Number::zero(),
 						)
 						.0,
 					)),
 				},
-			),
+			],
 		))
 		.unwrap()
 	});

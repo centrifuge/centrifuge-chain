@@ -454,7 +454,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	let symbol_new = b"NEW_SYMBOL".to_vec();
 
 	let (decimals_old, name_evm, symbol_evm) = env.state(|evm| {
-		let meta = orml_asset_registry::Metadata::<T>::get(CurrencyId::Tranche(
+		let meta = orml_asset_registry::module::Metadata::<T>::get(CurrencyId::Tranche(
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 		))

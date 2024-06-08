@@ -47,7 +47,7 @@ pub fn xcm_router_contract() -> Contract {
 				internal_type: None,
 			}],
 			outputs: vec![],
-			constant: false,
+			constant: Some(false),
 			state_mutability: Default::default(),
 		}],
 	);

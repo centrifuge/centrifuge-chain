@@ -12,8 +12,8 @@
 
 pub mod reexport {
 	pub use staging_xcm::{
-		v3::prelude::MultiLocation as __private_MultiLocation,
-		VersionedMultiLocation as __private_VersionedMultiLocation,
+		v4::prelude::Location as __private_Location,
+		VersionedLocation as __private_VersionedLocation,
 	};
 }
 
@@ -36,7 +36,7 @@ macro_rules! impl_mock_registry {
 			};
 			use sp_runtime::{BoundedVec, BuildStorage};
 			use $crate::mocks::orml_asset_registry::reexport::{
-				__private_MultiLocation, __private_VersionedMultiLocation,
+				__private_Location, __private_VersionedLocation,
 			};
 
 			use super::*;
@@ -49,7 +49,7 @@ macro_rules! impl_mock_registry {
 				type CustomMetadata = $custom_metadata;
 				type StringLimit = $string_limit;
 
-				fn asset_id(location: &__private_MultiLocation) -> Option<Self::AssetId> {
+				fn asset_id(location: &__private_Location) -> Option<Self::AssetId> {
 					__private::STATE.with(|s| s.borrow().get_asset_from_location(location))
 				}
 
@@ -62,7 +62,7 @@ macro_rules! impl_mock_registry {
 				}
 
 				fn metadata_by_location(
-					location: &__private_MultiLocation,
+					location: &__private_Location,
 				) -> Option<
 					__private_AssetMetadata<Self::Balance, Self::CustomMetadata, Self::StringLimit>,
 				> {
@@ -71,7 +71,7 @@ macro_rules! impl_mock_registry {
 
 				fn location(
 					asset_id: &Self::AssetId,
-				) -> Result<Option<__private_MultiLocation>, __private_DispatchError> {
+				) -> Result<Option<__private_Location>, __private_DispatchError> {
 					let maybe_location =
 						__private::STATE.with(|s| s.borrow().get_location(asset_id));
 
@@ -103,7 +103,7 @@ macro_rules! impl_mock_registry {
 					name: Option<BoundedVec<u8, Self::StringLimit>>,
 					symbol: Option<BoundedVec<u8, Self::StringLimit>>,
 					existential_deposit: Option<Self::Balance>,
-					location: Option<Option<__private_VersionedMultiLocation>>,
+					location: Option<Option<__private_VersionedLocation>>,
 					additional: Option<Self::CustomMetadata>,
 				) -> __private_DispatchResult {
 					__private::STATE.with(|s| {
@@ -192,7 +192,7 @@ macro_rules! impl_mock_registry {
 				use super::*;
 
 				pub struct RegistryState {
-					pub location_to_asset: Vec<(__private_MultiLocation, $asset_id)>,
+					pub location_to_asset: Vec<(__private_Location, $asset_id)>,
 					pub metadata: Vec<(
 						$asset_id,
 						__private_AssetMetadata<$balance, $custom_metadata, $string_limit>,
@@ -230,10 +230,7 @@ macro_rules! impl_mock_registry {
 						Ok(())
 					}
 
-					pub fn get_location(
-						&self,
-						asset_id: &$asset_id,
-					) -> Option<__private_MultiLocation> {
+					pub fn get_location(&self, asset_id: &$asset_id) -> Option<__private_Location> {
 						for (curr_id, meta) in &self.metadata {
 							if curr_id == asset_id {
 								return meta
@@ -249,7 +246,7 @@ macro_rules! impl_mock_registry {
 
 					pub fn get_asset_from_location(
 						&self,
-						location: &__private_MultiLocation,
+						location: &__private_Location,
 					) -> Option<$asset_id> {
 						for (curr_location, asset_id) in &self.location_to_asset {
 							if curr_location == location {
@@ -262,7 +259,7 @@ macro_rules! impl_mock_registry {
 
 					pub fn get_meta_from_location(
 						&self,
-						location: &__private_MultiLocation,
+						location: &__private_Location,
 					) -> Option<__private_AssetMetadata<$balance, $custom_metadata, $string_limit>>
 					{
 						let asset_id = self.get_asset_from_location(location)?;
@@ -276,7 +273,7 @@ macro_rules! impl_mock_registry {
 						name: Option<BoundedVec<u8, $string_limit>>,
 						symbol: Option<BoundedVec<u8, $string_limit>>,
 						existential_deposit: Option<$balance>,
-						location: Option<Option<__private_VersionedMultiLocation>>,
+						location: Option<Option<__private_VersionedLocation>>,
 						additional: Option<$custom_metadata>,
 					) -> __private_DispatchResult {
 						for (curr_id, curr_meta) in &mut self.metadata {

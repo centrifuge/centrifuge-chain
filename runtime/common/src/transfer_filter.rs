@@ -14,7 +14,7 @@ use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
 use cfg_types::{
 	domain_address::DomainAddress,
-	locations::Location,
+	locations::RestrictedTransferLocation,
 	tokens::{CurrencyId, FilterCurrency},
 };
 use frame_support::{traits::IsSubType, RuntimeDebugNoBound};
@@ -22,43 +22,49 @@ use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_core::Hasher;
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
+	traits::{Convert, DispatchInfoOf, SignedExtension, StaticLookup},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
-use sp_std::vec::Vec;
-use staging_xcm::v3::{MultiAsset, MultiLocation};
+use sp_std::{boxed::Box, vec::Vec};
+use staging_xcm::{
+	v4::{Asset, Location},
+	VersionedLocation,
+};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
-		T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>,
-		C: Convert<MultiAsset, Option<CurrencyId>>,
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
+		C: Convert<Location, Option<CurrencyId>>,
 	> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T, C>
 {
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		let currency_based_check = |sender: AccountId, destination: MultiLocation, currency| {
+		let currency_based_check = |sender: AccountId, destination: VersionedLocation, currency| {
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::Xcm(Box::new(destination.clone())),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::Xcm(Box::new(destination)),
 					FilterCurrency::All,
 				),
 			)
 		};
 
-		let asset_based_check = |sender, destination, asset| {
+		let asset_based_check = |sender, destination, asset: Asset| {
 			let currency =
-				C::convert(asset).ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
+				C::convert(asset.id.0).ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
 
 			currency_based_check(sender, destination, currency)
 		};
@@ -87,7 +93,7 @@ impl<
 				asset,
 				fee_asset,
 			} => {
-				asset_based_check(sender.clone(), destination, asset)?;
+				asset_based_check(sender.clone(), destination.clone(), asset)?;
 
 				// NOTE: We do check the fee asset and assume that the destination
 				//       is the same as for the actual assets. This is a pure subjective
@@ -102,7 +108,7 @@ impl<
 				fee,
 			} => {
 				for (currency, ..) in currencies {
-					currency_based_check(sender.clone(), destination, currency)?;
+					currency_based_check(sender.clone(), destination.clone(), currency)?;
 				}
 
 				// NOTE: We do check the fee asset and assume that the destination
@@ -121,7 +127,7 @@ impl<
 				//       but rather a burn of tokens. Furthermore, we do not know the
 				//       destination where those fees will go.
 				for asset in assets.into_inner() {
-					asset_based_check(sender.clone(), destination, asset)?;
+					asset_based_check(sender.clone(), destination.clone().clone(), asset)?;
 				}
 
 				// NOTE: We do check the fee asset and assume that the destination
@@ -136,8 +142,13 @@ impl<
 
 pub struct PreNativeTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>>
-	PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
+impl<
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
+	> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
 {
 	type Result = bool;
 
@@ -145,12 +156,12 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 		amalgamate_allowance(
 			T::allowance(
 				t.send.clone(),
-				Location::Local(t.recv.clone()),
+				RestrictedTransferLocation::Local(t.recv.clone()),
 				FilterCurrency::Specific(t.id),
 			),
 			T::allowance(
 				t.send.clone(),
-				Location::Local(t.recv.clone()),
+				RestrictedTransferLocation::Local(t.recv.clone()),
 				FilterCurrency::All,
 			),
 		)
@@ -159,8 +170,13 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 }
 pub struct PreLpTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>>
-	PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
+impl<
+		T: TransferAllowance<
+			AccountId,
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		>,
+	> PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
 {
 	type Result = DispatchResult;
 
@@ -170,10 +186,14 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 		amalgamate_allowance(
 			T::allowance(
 				sender.clone(),
-				Location::Address(receiver.clone()),
+				RestrictedTransferLocation::Address(receiver.clone()),
 				FilterCurrency::Specific(currency),
 			),
-			T::allowance(sender, Location::Address(receiver), FilterCurrency::All),
+			T::allowance(
+				sender,
+				RestrictedTransferLocation::Address(receiver),
+				FilterCurrency::All,
+			),
 		)
 	}
 }
@@ -213,8 +233,7 @@ where
 	) -> Result<Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
 		Self::recursive_search(caller.clone(), call, |who, balance_call, checks| {
 			match balance_call {
-				pallet_balances::Call::transfer { dest, .. }
-				| pallet_balances::Call::transfer_all { dest, .. }
+				pallet_balances::Call::transfer_all { dest, .. }
 				| pallet_balances::Call::transfer_allow_death { dest, .. }
 				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
 					let recv: T::AccountId = <T as frame_system::Config>::Lookup::lookup(
@@ -298,8 +317,10 @@ where
 		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
-		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
-		+ Sync
+		+ pallet_transfer_allowlist::Config<
+			CurrencyId = FilterCurrency,
+			Location = RestrictedTransferLocation,
+		> + Sync
 		+ Send,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
 		+ IsSubType<pallet_utility::Call<T>>
@@ -330,12 +351,12 @@ where
 				amalgamate_allowance(
 					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
 						who.clone(),
-						Location::Local(recv.clone()),
+						RestrictedTransferLocation::Local(recv.clone()),
 						FilterCurrency::All,
 					),
 					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
 						who.clone(),
-						Location::Local(recv.clone()),
+						RestrictedTransferLocation::Local(recv.clone()),
 						FilterCurrency::Specific(CurrencyId::Native),
 					),
 				)
@@ -345,8 +366,8 @@ where
 }
 
 fn amalgamate_allowance(
-	first: Result<Option<Location>, DispatchError>,
-	second: Result<Option<Location>, DispatchError>,
+	first: Result<Option<RestrictedTransferLocation>, DispatchError>,
+	second: Result<Option<RestrictedTransferLocation>, DispatchError>,
 ) -> DispatchResult {
 	match (first, second) {
 		// There is an allowance set for `Specific(id)`, but NOT for the given recv

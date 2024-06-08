@@ -5,13 +5,12 @@ use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
 use staging_xcm::{
 	prelude::Parachain,
-	v3::{Junction, Junctions::*, MultiLocation, WeightLimit},
-	VersionedMultiLocation,
+	v4::{Junction, Location, WeightLimit},
+	VersionedLocation,
 };
 
 use crate::{
 	generic::{
-		cases::liquidity_pools_transfers::utils::setup_xcm,
 		config::Runtime,
 		env::Env,
 		envs::{
@@ -22,6 +21,7 @@ use crate::{
 			self,
 			currency::{cfg, register_currency, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
+			xcm::setup_xcm,
 		},
 	},
 	utils::accounts::Keyring,
@@ -70,9 +70,9 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 
 	env.parachain_state_mut(|| {
 		register_currency::<T>(Usd6, |meta| {
-			meta.location = Some(VersionedMultiLocation::V3(MultiLocation::new(
+			meta.location = Some(VersionedLocation::V4(Location::new(
 				1,
-				X1(Parachain(T::FudgeHandle::SIBLING_ID)),
+				Parachain(T::FudgeHandle::SIBLING_ID),
 			)));
 			meta.additional.transferability = CrossChainTransferability::Xcm(XcmMetadata {
 				fee_per_second: Some(1_000),
@@ -84,15 +84,15 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 		currency_id: Usd6.id(),
 		amount: TRANSFER_AMOUNT,
 		dest: Box::new(
-			MultiLocation::new(
+			Location::new(
 				1,
-				X2(
+				[
 					Parachain(T::FudgeHandle::SIBLING_ID),
 					Junction::AccountId32 {
 						id: TO.into(),
 						network: None,
 					},
-				),
+				],
 			)
 			.into(),
 		),

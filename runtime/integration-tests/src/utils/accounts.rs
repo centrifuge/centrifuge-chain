@@ -130,14 +130,6 @@ impl From<Keyring> for H160 {
 	}
 }
 
-impl From<Keyring> for sp_core::H160 {
-	fn from(value: Keyring) -> Self {
-		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
-			&Into::<ecdsa::Pair>::into(value).public().as_ref(),
-		)))
-	}
-}
-
 impl From<Keyring> for [u8; 20] {
 	fn from(value: Keyring) -> Self {
 		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(

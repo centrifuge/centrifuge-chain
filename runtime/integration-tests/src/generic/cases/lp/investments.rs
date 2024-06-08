@@ -141,8 +141,8 @@ mod utils {
 		let from = &order.currency_out;
 		let to = &order.currency_in;
 		let needs_token_mux = match (
-			HasLocalAssetRepresentation::<orml_asset_registry::Pallet<T>>::is_local_representation_of(to, from).unwrap(),
-			HasLocalAssetRepresentation::<orml_asset_registry::Pallet<T>>::is_local_representation_of(from, to).unwrap(),
+			HasLocalAssetRepresentation::<orml_asset_registry::module::Pallet<T>>::is_local_representation_of(to, from).unwrap(),
+			HasLocalAssetRepresentation::<orml_asset_registry::module::Pallet<T>>::is_local_representation_of(from, to).unwrap(),
 		) {
 			(true, true) => unreachable!("Currencies should never be local of locals."),
 			(false, false) => false,

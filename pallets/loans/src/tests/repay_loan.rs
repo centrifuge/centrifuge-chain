@@ -982,10 +982,6 @@ fn with_external_pricing() {
 #[test]
 fn decrease_debt_does_not_deposit() {
 	new_test_ext().execute_with(|| {
-		MockPools::mock_deposit(|_, _, _| {
-			unreachable!("increase debt must not withdraw funds from the pool");
-		});
-
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
@@ -999,12 +995,9 @@ fn decrease_debt_does_not_deposit() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PrincipalInput::External(amount.clone()));
 
-		MockPrices::mock_get(move |id, pool_id| {
-			assert_eq!(*pool_id, POOL_A);
-			match *id {
-				REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
-				_ => Err(PRICE_ID_NO_FOUND),
-			}
+		config_mocks(amount.balance().unwrap());
+		MockPools::mock_deposit(|_, _, _| {
+			unreachable!("decrease debt must not withdraw funds from the pool");
 		});
 
 		assert_ok!(Loans::decrease_debt(

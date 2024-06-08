@@ -21,12 +21,13 @@ use pallet_loans::{
 		},
 	},
 	types::{
-		valuation::ValuationMethod, BorrowLoanError, BorrowRestrictions, InterestPayments,
-		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
+		valuation::ValuationMethod,
+		BorrowLoanError, BorrowRestrictions, LoanRestrictions, RepayRestrictions,
 	},
 };
 use runtime_common::{
-	apis::{runtime_decl_for_loans_api::LoansApiV2, runtime_decl_for_pools_api::PoolsApiV1},
+	apis::{runtime_decl_for_loans_api::LoansApiV3, runtime_decl_for_pools_api::PoolsApiV1},
 	oracle::Feeder,
 };
 use sp_runtime::FixedPointNumber;
@@ -133,7 +134,7 @@ mod common {
 					date: now + SECONDS_PER_MINUTE,
 					extension: SECONDS_PER_MINUTE / 2,
 				},
-				interest_payments: InterestPayments::None,
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {

@@ -13,7 +13,7 @@
 mod cfg {
 	use cfg_primitives::{currency_decimals, Balance};
 	use cfg_types::{
-		locations::Location,
+		locations::RestrictedTransferLocation,
 		tokens::{CurrencyId, FilterCurrency},
 	};
 	use frame_support::{assert_ok, dispatch::RawOrigin};
@@ -51,7 +51,7 @@ mod cfg {
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					filter,
-					Location::Local(Keyring::Bob.id())
+					RestrictedTransferLocation::Local(Keyring::Bob.id())
 				)
 			);
 
@@ -206,14 +206,14 @@ mod cfg {
 	}
 
 	fn transfer_ok<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer {
+		pallet_balances::Call::<T>::transfer_allow_death {
 			dest: Keyring::Bob.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}
 	}
 
 	fn transfer_fail<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer {
+		pallet_balances::Call::<T>::transfer_allow_death {
 			dest: Keyring::Charlie.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}

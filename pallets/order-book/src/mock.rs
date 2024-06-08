@@ -54,11 +54,10 @@ frame_support::construct_runtime!(
 	  pub enum Runtime {
 		  Balances: pallet_balances,
 		  System: frame_system,
-		  OrmlTokens: orml_tokens,
+		  Tokens: orml_tokens,
 		  OrderBook: order_book,
 		  MockRatioProvider: cfg_mocks::value_provider::pallet,
 		  MockFulfilledOrderHook: cfg_mocks::status_notification::pallet,
-		  Tokens: pallet_restricted_tokens,
 	  }
 );
 
@@ -91,10 +90,8 @@ impl cfg_mocks::status_notification::pallet::Config for Runtime {
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
-	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type MaxHolds = ConstU32<1>;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_type_with_key! {
@@ -113,34 +110,6 @@ impl orml_tokens::Config for Runtime {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const NativeToken: CurrencyId = CurrencyId::Native;
-}
-
-impl pallet_restricted_tokens::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type Fungibles = OrmlTokens;
-	type NativeFungible = Balances;
-	type NativeToken = NativeToken;
-	type PreCurrency = cfg_traits::Always;
-	type PreExtrTransfer = cfg_traits::Always;
-	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
-	type PreFungibleInspectHold = cfg_traits::Always;
-	type PreFungibleMutate = cfg_traits::Always;
-	type PreFungibleMutateHold = cfg_traits::Always;
-	type PreFungibleTransfer = cfg_traits::Always;
-	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = cfg_traits::Always;
-	type PreFungiblesMutate = cfg_traits::Always;
-	type PreFungiblesMutateHold = cfg_traits::Always;
-	type PreFungiblesTransfer = cfg_traits::Always;
-	type PreFungiblesUnbalanced = cfg_traits::Always;
-	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }

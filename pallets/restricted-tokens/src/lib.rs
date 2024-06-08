@@ -67,8 +67,8 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::TypeInfo,
 		sp_runtime::{
-			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
-			ArithmeticError, FixedPointOperand,
+			traits::{AtLeast32BitUnsigned, EnsureAdd, StaticLookup},
+			FixedPointOperand,
 		},
 		traits::tokens::{Fortitude, Precision, Preservation},
 	};
@@ -87,6 +87,12 @@ pub mod pallet {
 		},
 	};
 
+	/// A reason for this pallet placing a hold on funds.
+	#[pallet::composite_enum]
+	pub enum HoldReason {
+		NativeIndex,
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it
 	/// depends.
 	#[pallet::config]
@@ -94,6 +100,9 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's
 		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// The identifier to be used for holding.
+		type RuntimeHoldReason: From<HoldReason> + Parameter;
 
 		/// The balance type
 		type Balance: Parameter
@@ -202,7 +211,7 @@ pub mod pallet {
 			+ LockableCurrency<Self::AccountId>
 			+ ReservableCurrency<Self::AccountId>
 			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
-			+ fungible::InspectHold<Self::AccountId, Reason = ()>
+			+ fungible::InspectHold<Self::AccountId, Reason = Self::RuntimeHoldReason>
 			+ fungible::Mutate<Self::AccountId>
 			+ fungible::MutateHold<Self::AccountId>;
 
@@ -497,16 +506,16 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-			let new_total = new_free
-				.checked_add(&new_reserved)
-				.ok_or(ArithmeticError::Overflow)?;
+			let new_total = new_free.ensure_add(new_reserved)?;
 
 			let token = if T::NativeToken::get() == currency_id {
-				let old_reserved =
-					<Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(&(), &who);
+				let old_reserved = <Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(
+					&HoldReason::NativeIndex.into(),
+					&who,
+				);
 
 				<Self as fungible::MutateHold<T::AccountId>>::release(
-					&(),
+					&HoldReason::NativeIndex.into(),
 					&who,
 					old_reserved,
 					Precision::Exact,
@@ -519,7 +528,11 @@ pub mod pallet {
 					Fortitude::Force,
 				)?;
 				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
-				<Self as fungible::MutateHold<T::AccountId>>::hold(&(), &who, new_reserved)?;
+				<Self as fungible::MutateHold<T::AccountId>>::hold(
+					&HoldReason::NativeIndex.into(),
+					&who,
+					new_reserved,
+				)?;
 
 				TokenType::Native
 			} else {

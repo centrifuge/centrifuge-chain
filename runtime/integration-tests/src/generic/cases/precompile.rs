@@ -104,7 +104,7 @@ fn axelar_precompile_execute<T: Runtime>() {
 				},
 			],
 			outputs: vec![],
-			constant: false,
+			constant: Some(false),
 			state_mutability: Default::default(),
 		}
 		.encode_input(&[

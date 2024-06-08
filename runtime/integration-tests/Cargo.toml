@@ -14,7 +14,6 @@ ethabi = { workspace = true, features = ["std", "full-serde"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
 fudge-core = { workspace = true }
-getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
@@ -56,11 +55,9 @@ polkadot-core-primitives = { workspace = true, features = ["std"] }
 polkadot-node-primitives = { workspace = true }
 polkadot-parachain-primitives = { workspace = true, features = ["std"] }
 polkadot-primitives = { workspace = true, features = ["std"] }
-polkadot-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
 polkadot-runtime-parachains = { workspace = true, features = ["std"] }
 rococo-runtime = { workspace = true, features = ["std"] }
-staging-kusama-runtime = { workspace = true, features = ["std"] }
 
 pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }
@@ -90,7 +87,6 @@ runtime-integration-tests-proc-macro = { workspace = true }
 axelar-gateway-precompile = { workspace = true, features = ["std"] }
 chainbridge = { workspace = true, features = ["std"] }
 cumulus-pallet-aura-ext = { workspace = true, features = ["std"] }
-cumulus-pallet-dmp-queue = { workspace = true, features = ["std"] }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-pallet-xcm = { workspace = true, features = ["std"] }
 cumulus-pallet-xcmp-queue = { workspace = true, features = ["std"] }
@@ -152,7 +148,7 @@ pallet-utility = { workspace = true, features = ["std"] }
 pallet-vesting = { workspace = true, features = ["std"] }
 pallet-xcm = { workspace = true, features = ["std"] }
 pallet-xcm-transactor = { workspace = true, features = ["std"] }
-parachain-info = { workspace = true, features = ["std"] }
+staging-parachain-info = { workspace = true, features = ["std"] }
 
 [features]
 # There is no need for integration test to add new features.

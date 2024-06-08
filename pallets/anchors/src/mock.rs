@@ -46,23 +46,11 @@ frame_support::construct_runtime!(
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
-	type RuntimeEvent = ();
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type FreezeIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = ();
-	type RuntimeHoldReason = ();
-	type WeightInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {

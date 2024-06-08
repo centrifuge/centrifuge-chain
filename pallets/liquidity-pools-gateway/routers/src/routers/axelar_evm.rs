@@ -128,7 +128,7 @@ pub(crate) fn get_axelar_encoded_msg(
 					},
 				],
 				outputs: vec![],
-				constant: false,
+				constant: Some(false),
 				state_mutability: Default::default(),
 			}],
 		)]),

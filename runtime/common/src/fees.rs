@@ -143,7 +143,10 @@ mod test {
 	use cfg_types::ids::TREASURY_PALLET_ID;
 	use frame_support::{
 		derive_impl, parameter_types,
-		traits::{Currency, FindAuthor},
+		traits::{
+			tokens::{PayFromAccount, UnityAssetBalanceConversion},
+			Currency, FindAuthor,
+		},
 		PalletId,
 	};
 	use sp_core::ConstU64;
@@ -185,17 +188,26 @@ mod test {
 
 	parameter_types! {
 		pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
+		pub TreasuryAccount: AccountId = Treasury::account_id();
 		pub const MaxApprovals: u32 = 100;
 	}
 
 	impl pallet_treasury::Config for Runtime {
 		type ApproveOrigin = frame_system::EnsureRoot<AccountId>;
+		type AssetKind = ();
+		type BalanceConverter = UnityAssetBalanceConversion;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper = ();
+		type Beneficiary = Self::AccountId;
+		type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 		type Burn = ();
 		type BurnDestination = ();
 		type Currency = pallet_balances::Pallet<Runtime>;
 		type MaxApprovals = MaxApprovals;
 		type OnSlash = ();
 		type PalletId = TreasuryPalletId;
+		type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+		type PayoutPeriod = ConstU64<10>;
 		type ProposalBond = ();
 		type ProposalBondMaximum = ();
 		type ProposalBondMinimum = ();

@@ -14,6 +14,7 @@ pub mod evm;
 pub mod genesis;
 pub mod pool;
 pub mod tokens;
+pub mod xcm;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds, TimeAsSecs};

@@ -16,7 +16,7 @@ use cfg_traits::{
 	benchmarking::FundedPoolBenchmarkHelper,
 	changes::ChangeGuard,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolWriteOffPolicyMutate, Seconds, TimeAsSecs, ValueProvider,
+	Permissions, PoolWriteOffPolicyMutate, TimeAsSecs, ValueProvider,
 };
 use cfg_types::{
 	adjustments::Adjustment,
@@ -40,13 +40,12 @@ use crate::{
 	},
 	pallet::*,
 	types::{
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, LoanRestrictions, RepayRestrictions,
 	},
 };
 
-const OFFSET: Seconds = 120;
 const COLLECION_ID: u16 = 42;
 const COLLATERAL_VALUE: u128 = 1_000_000;
 const FUNDS: u128 = 1_000_000_000;
@@ -125,10 +124,12 @@ where
 	}
 
 	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
+		let maturity_offset = 40 * 365 * 24 * 3600; // 40 years
+
 		LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::fixed(T::Time::now() + OFFSET),
-				interest_payments: InterestPayments::None,
+				maturity: Maturity::fixed(T::Time::now() + maturity_offset),
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			collateral: (COLLECION_ID.into(), item_id),
@@ -145,7 +146,7 @@ where
 					probability_of_default: T::Rate::zero(),
 					loss_given_default: T::Rate::zero(),
 					discount_rate: InterestRate::Fixed {
-						rate_per_year: T::Rate::one(),
+						rate_per_year: T::Rate::saturating_from_rational(1, 5000),
 						compounding: CompoundingSchedule::Secondly,
 					},
 				}),
@@ -199,7 +200,7 @@ where
 	}
 
 	fn create_mutation() -> LoanMutation<T::Rate> {
-		LoanMutation::InterestPayments(InterestPayments::None)
+		LoanMutation::InterestPayments(InterestPayments::OnceAtMaturity)
 	}
 
 	fn propose_mutation(pool_id: T::PoolId, loan_id: T::LoanId) -> T::Hash {

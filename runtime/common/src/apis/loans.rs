@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use pallet_loans::types::cashflow::CashflowPayment;
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_runtime::DispatchError;
@@ -18,17 +19,18 @@ use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	#[api_version(2)]
+	#[api_version(3)]
 	pub trait LoansApi<PoolId, LoanId, Loan, Balance, PriceCollectionInput>
 	where
 		PoolId: Codec,
 		LoanId: Codec,
 		Loan: Codec,
 		Balance: Codec,
-		PriceCollectionInput: Codec
+		PriceCollectionInput: Codec,
 	{
 		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, Loan)>;
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
 		fn portfolio_valuation(pool_id: PoolId, input_prices: PriceCollectionInput) -> Result<Balance, DispatchError>;
+		fn expected_cashflows(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError>;
 	}
 }

@@ -72,12 +72,11 @@ pub mod utils {
 		DispatchError,
 	};
 	use staging_xcm::{
-		v3::{
+		v4::{
 			Junction::{AccountKey20, GlobalConsensus, PalletInstance},
-			Junctions::X3,
 			NetworkId,
 		},
-		VersionedMultiLocation,
+		VersionedLocation,
 	};
 
 	use crate::{
@@ -100,8 +99,8 @@ pub mod utils {
 	pub const REVERT_ERR: Result<CallInfo, DispatchError> =
 		Err(DispatchError::Other("EVM call failed: Revert"));
 
-	pub fn lp_asset_location<T: Runtime>(address: H160) -> VersionedMultiLocation {
-		X3(
+	pub fn lp_asset_location<T: Runtime>(address: H160) -> VersionedLocation {
+		[
 			PalletInstance(
 				<T as frame_system::Config>::PalletInfo::index::<pallet_liquidity_pools::Pallet<T>>()
 					.unwrap()
@@ -114,9 +113,8 @@ pub mod utils {
 			AccountKey20 {
 				key: address.into(),
 				network: None,
-			},
-		)
-			.into()
+			}
+		].into()
 	}
 
 	pub fn pool_a_tranche_1_id<T: Runtime>() -> TrancheId {
@@ -241,14 +239,6 @@ pub mod utils {
 			assert_eq!(self.input().len(), 32usize);
 
 			H160::from(to_fixed_array(&self.input()[12..]))
-		}
-	}
-
-	impl<T: Input> Decoder<sp_core::H160> for T {
-		fn decode(&self) -> sp_core::H160 {
-			assert_eq!(self.input().len(), 32usize);
-
-			sp_core::H160::from(to_fixed_array(&self.input()[12..]))
 		}
 	}
 

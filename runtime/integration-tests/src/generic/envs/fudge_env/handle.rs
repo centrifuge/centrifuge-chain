@@ -23,7 +23,7 @@ use sp_consensus_aura::{sr25519::AuthorityId, AuraApi};
 use sp_consensus_babe::BabeApi;
 use sp_consensus_slots::SlotDuration;
 use sp_core::{crypto::AccountId32, ByteArray, H256};
-use sp_runtime::{traits::AccountIdLookup, BuildStorage, Storage};
+use sp_runtime::{BuildStorage, Storage};
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
@@ -78,7 +78,7 @@ pub type RelayClient<ConstructApi> = TFullClient<RelayBlock, ConstructApi, TWasm
 pub type ParachainClient<Block, ConstructApi> = TFullClient<Block, ConstructApi, TWasmExecutor>;
 
 pub trait FudgeHandle<T: Runtime> {
-	type RelayRuntime: frame_system::Config<AccountId = AccountId32, Lookup = AccountIdLookup<AccountId32, ()>>
+	type RelayRuntime: frame_system::Config<AccountId = AccountId32>
 		+ polkadot_runtime_parachains::paras::Config
 		+ polkadot_runtime_parachains::session_info::Config
 		+ polkadot_runtime_parachains::initializer::Config
@@ -159,20 +159,7 @@ pub trait FudgeHandle<T: Runtime> {
 			Self::RelayRuntime,
 		>::default();
 
-		let mut host_config = HostConfiguration::default();
-		host_config.max_downward_message_size = 1024;
-		host_config.hrmp_channel_max_capacity = 100;
-		host_config.hrmp_channel_max_message_size = 1024;
-		host_config.hrmp_channel_max_total_size = 1024;
-		host_config.hrmp_max_parachain_outbound_channels = 10;
-		host_config.hrmp_max_parachain_inbound_channels = 10;
-		host_config.hrmp_max_message_num_per_candidate = 100;
-		host_config.max_upward_queue_count = 10;
-		host_config.max_upward_queue_size = 1024;
-		host_config.max_upward_message_size = 1024;
-		host_config.max_upward_message_num_per_candidate = 100;
-
-		configuration.config = host_config;
+		configuration.config = hrmp_host_config();
 
 		state
 			.insert_storage(
@@ -185,7 +172,6 @@ pub trait FudgeHandle<T: Runtime> {
 		state
 			.insert_storage(
 				frame_system::GenesisConfig::<T> {
-					code: code.to_vec(),
 					_config: Default::default(),
 				}
 				.build_storage()
@@ -250,8 +236,16 @@ pub trait FudgeHandle<T: Runtime> {
 			Ok(digest)
 		});
 
-		RelaychainBuilder::new(init, |client| (cidp(client), dp))
-			.expect("ESSENTIAL: Relaychain Builder can be created.")
+		let mut runtime = RelaychainBuilder::new(init, |client| (cidp(client), dp))
+			.expect("ESSENTIAL: Relaychain Builder can be created.");
+
+		runtime
+			.with_mut_state(|| {
+				frame_system::Pallet::<T>::update_code_in_storage(code);
+			})
+			.unwrap();
+
+		runtime
 	}
 
 	fn new_parachain_builder(
@@ -269,7 +263,6 @@ pub trait FudgeHandle<T: Runtime> {
 		state
 			.insert_storage(
 				frame_system::GenesisConfig::<T> {
-					code: code.to_vec(),
 					_config: Default::default(),
 				}
 				.build_storage()
@@ -287,7 +280,7 @@ pub trait FudgeHandle<T: Runtime> {
 			.expect("ESSENTIAL: Storage can be inserted");
 		state
 			.insert_storage(
-				parachain_info::GenesisConfig::<T> {
+				staging_parachain_info::GenesisConfig::<T> {
 					_config: Default::default(),
 					parachain_id: para_id,
 				}
@@ -345,7 +338,32 @@ pub trait FudgeHandle<T: Runtime> {
 			})
 		};
 
-		ParachainBuilder::new(para_id, init, |client| (cidp, dp(client)))
-			.expect("ESSENTIAL: Parachain Builder can be created.")
+		let mut runtime = ParachainBuilder::new(para_id, init, |client| (cidp, dp(client)))
+			.expect("ESSENTIAL: Parachain Builder can be created.");
+
+		runtime
+			.with_mut_state(|| {
+				frame_system::Pallet::<T>::update_code_in_storage(code);
+			})
+			.unwrap();
+
+		runtime
+	}
+}
+
+pub fn hrmp_host_config<BlockNumber: Default + From<u32>>() -> HostConfiguration<BlockNumber> {
+	HostConfiguration {
+		max_downward_message_size: 1024,
+		hrmp_channel_max_capacity: 100,
+		hrmp_channel_max_message_size: 1024,
+		hrmp_channel_max_total_size: 1024,
+		hrmp_max_parachain_outbound_channels: 10,
+		hrmp_max_parachain_inbound_channels: 10,
+		hrmp_max_message_num_per_candidate: 100,
+		max_upward_queue_count: 10,
+		max_upward_queue_size: 1024,
+		max_upward_message_size: 1024,
+		max_upward_message_num_per_candidate: 100,
+		..Default::default()
 	}
 }

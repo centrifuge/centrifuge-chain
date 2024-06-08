@@ -152,7 +152,7 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {
@@ -223,8 +223,6 @@ parameter_types! {
 	pub const MockParachainId: u32 = 100;
 }
 
-impl parachain_info::Config for Runtime {}
-
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -250,6 +248,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = ();
 }
 
@@ -394,6 +393,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
 		Ok(RawOrigin::Root.into())
 	}
 }

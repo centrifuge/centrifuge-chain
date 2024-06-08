@@ -10,16 +10,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::AccountId;
 use sp_core::parameter_types;
+use sp_std::{vec, vec::Vec};
+
 parameter_types! {
 	pub const CollatorReward: cfg_primitives::Balance = cfg_primitives::constants::CFG;
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
+	pub AccountMap: Vec<(AccountId, AccountId)> = vec![];
+
 }
+
+// Number of identities on Dev and Demo Chain on 30.05.2024 was both 0
+const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeDevelopment1047 = (
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
 	cleanup_foreign_investments::Migration<crate::Runtime>,
 	// v0 -> v1
 	pallet_multisig::migrations::v1::MigrateToV1<crate::Runtime>,
@@ -30,11 +39,10 @@ pub type UpgradeDevelopment1047 = (
 	// v0 -> v1
 	runtime_common::migrations::nuke::ResetPallet<crate::Democracy, crate::RocksDbWeight, 0>,
 	// v0 -> v1
-	pallet_xcm::migration::v1::VersionUncheckedMigrateToV1<crate::Runtime>,
+	runtime_common::migrations::nuke::ResetPallet<crate::PolkadotXcm, crate::RocksDbWeight, 0>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::PoolSystem, 0, 2>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::InterestAccrual, 0, 3>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::Investments, 0, 1>,
-	runtime_common::migrations::increase_storage_version::Migration<crate::BlockRewards, 0, 2>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<
 		crate::OraclePriceCollection,
@@ -42,14 +50,29 @@ pub type UpgradeDevelopment1047 = (
 		1,
 	>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::OrmlAssetRegistry, 0, 2>,
-	// Reset Block rewards
+	// Reset Block rewards on Demo which is at v0
 	runtime_common::migrations::nuke::ResetPallet<crate::BlockRewards, crate::RocksDbWeight, 0>,
+	// Reset Block rewards on Dev which is at v2
+	runtime_common::migrations::nuke::ResetPallet<crate::BlockRewards, crate::RocksDbWeight, 2>,
 	pallet_block_rewards::migrations::init::InitBlockRewards<
 		crate::Runtime,
 		CollatorReward,
 		AnnualTreasuryInflationPercent,
 	>,
+	runtime_common::migrations::restricted_location::MigrateRestrictedTransferLocation<
+		crate::Runtime,
+		AccountMap,
+	>,
 	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
+	runtime_common::migrations::hold_reason::MigrateTransferAllowListHolds<
+		crate::Runtime,
+		crate::RuntimeHoldReason,
+	>,
+	// Migrations below this comment originate from Polkadot SDK
+	pallet_xcm::migration::MigrateToLatestXcmVersion<crate::Runtime>,
+	cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<crate::Runtime>,
+	pallet_identity::migration::versioned::V0ToV1<crate::Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
+	pallet_uniques::migration::MigrateV0ToV1<crate::Runtime, ()>,
 );
 
 mod cleanup_foreign_investments {

@@ -120,4 +120,20 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(Weight::from_parts(0, 2583).saturating_mul(p.into()))
 	}
+
+    fn spend_local() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn payout() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn check_status() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
+
+    fn void_spend() -> cumulus_primitives_core::Weight {
+        Weight::default()
+    }
 }

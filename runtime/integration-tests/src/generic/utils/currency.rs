@@ -31,7 +31,7 @@ pub trait CurrencyInfo {
 		&self.symbol()
 	}
 
-	fn location(&self) -> Option<staging_xcm::VersionedMultiLocation> {
+	fn location(&self) -> Option<staging_xcm::VersionedLocation> {
 		None
 	}
 
@@ -150,7 +150,7 @@ pub fn register_currency<T: Runtime>(
 ) {
 	let mut meta = currency.metadata();
 	adaptor(&mut meta);
-	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+	assert_ok!(orml_asset_registry::module::Pallet::<T>::register_asset(
 		<T as frame_system::Config>::RuntimeOrigin::root(),
 		meta,
 		Some(currency.id())
