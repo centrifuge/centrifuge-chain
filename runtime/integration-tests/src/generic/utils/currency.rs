@@ -2,27 +2,30 @@
 //! considered at this level.
 
 use cfg_primitives::{conversion, Balance, CFG};
-use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
+use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
-use staging_xcm::{v4::Location, VersionedLocation};
+use staging_xcm::VersionedLocation;
 
 use crate::generic::config::Runtime;
 
-pub const fn amount6(amount: Balance) -> Balance {
-	amount * 10u128.pow(6)
+pub fn default_metadata() -> AssetMetadata {
+	AssetMetadata {
+		decimals: 0,
+		name: Default::default(),
+		symbol: Default::default(),
+		existential_deposit: 0,
+		location: None,
+		additional: Default::default(),
+	}
 }
 
-pub const fn amount12(amount: Balance) -> Balance {
-	amount * 10u128.pow(12)
+const fn amount_pow(amount: Balance, exp: u32) -> Balance {
+	amount * 10u128.pow(exp)
 }
 
-pub const fn amount18(amount: Balance) -> Balance {
-	amount * 10u128.pow(18)
-}
-
-pub const fn cfg(amount: Balance) -> Balance {
-	amount * CFG
+pub const fn cfg(amount: u32) -> Balance {
+	amount as Balance * CFG
 }
 
 pub trait CurrencyInfo {
@@ -66,15 +69,6 @@ pub trait CurrencyInfo {
 	}
 }
 
-/// Matches default() but for const support
-pub const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
-	transferability: CrossChainTransferability::None,
-	mintable: false,
-	permissioned: false,
-	pool_currency: false,
-	local_representation: None,
-};
-
 pub fn price_to_currency<N: FixedPointNumber<Inner = Balance>>(
 	price: N,
 	currency_id: impl CurrencyInfo,
@@ -99,13 +93,13 @@ impl CurrencyInfo for Usd6 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
 
 pub const fn usd6(amount: Balance) -> Balance {
-	amount6(amount)
+	amount_pow(amount, 6)
 }
 
 pub struct Usd12;
@@ -125,13 +119,13 @@ impl CurrencyInfo for Usd12 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
 
 pub const fn usd12(amount: Balance) -> Balance {
-	amount12(amount)
+	amount_pow(amount, 12)
 }
 
 pub struct Usd18;
@@ -151,30 +145,24 @@ impl CurrencyInfo for Usd18 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
 
 pub const fn usd18(amount: Balance) -> Balance {
-	amount18(amount)
+	amount_pow(amount, 18)
 }
 
 #[derive(Clone)]
-pub struct CustomCurrency {
-	pub id: CurrencyId,
-	pub decimals: u32,
-	pub location: Location,
-	pub custom: CustomMetadata,
-}
-
+pub struct CustomCurrency(pub CurrencyId, pub AssetMetadata);
 impl CurrencyInfo for CustomCurrency {
 	fn id(&self) -> CurrencyId {
-		self.id
+		self.0
 	}
 
 	fn decimals(&self) -> u32 {
-		self.decimals
+		self.1.decimals
 	}
 
 	fn symbol(&self) -> &'static str {
@@ -182,17 +170,19 @@ impl CurrencyInfo for CustomCurrency {
 	}
 
 	fn location(&self) -> Option<VersionedLocation> {
-		Some(VersionedLocation::V4(self.location.clone()))
+		self.1.location.clone()
 	}
 
 	fn custom(&self) -> CustomMetadata {
-		self.custom
+		self.1.additional
 	}
 }
 
 impl CustomCurrency {
-	pub const fn val(&self, amount: Balance) -> Balance {
-		amount * 10u128.pow(self.decimals)
+	// Using `u32` on purpose here to avoid placing a `Balance` as input and
+	// generating more decimals than expected.
+	pub const fn val(&self, amount: u32) -> Balance {
+		amount_pow(amount as Balance, self.1.decimals)
 	}
 }
 

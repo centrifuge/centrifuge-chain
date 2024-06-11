@@ -2,13 +2,16 @@
 //! considered at this level.
 
 use cfg_primitives::Balance;
-use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
+use cfg_types::{
+	fixed_point::Rate,
+	tokens::{AssetMetadata, CurrencyId},
+};
 use parity_scale_codec::Encode;
 use sp_core::Get;
 use sp_runtime::{BuildStorage, FixedPointNumber, Storage};
 
 use crate::{
-	generic::{config::Runtime, utils::currency::CurrencyInfo},
+	generic::config::Runtime,
 	utils::accounts::{default_accounts, Keyring},
 };
 
@@ -37,7 +40,9 @@ pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
 	}
 }
 
-pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStorage {
+pub fn tokens<T: Runtime>(
+	values: impl IntoIterator<Item = (CurrencyId, Balance)> + Clone,
+) -> impl BuildStorage {
 	orml_tokens::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
@@ -53,24 +58,30 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStora
 	}
 }
 
-pub fn assets<T: Runtime>(currency_ids: Vec<&dyn CurrencyInfo>) -> impl BuildStorage {
+pub fn assets<'a, T: Runtime>(
+	currency_ids: impl IntoIterator<Item = (CurrencyId, &'a AssetMetadata)>,
+) -> impl BuildStorage {
 	orml_asset_registry::module::GenesisConfig::<T> {
 		assets: currency_ids
 			.into_iter()
-			.map(|currency_id| (currency_id.id(), currency_id.metadata().encode()))
+			.map(|(currency_id, metadata)| (currency_id, metadata.encode()))
 			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
 	}
 }
 
-pub fn council_members<T: Runtime>(members: Vec<Keyring>) -> impl BuildStorage {
+pub fn council_members<T: Runtime>(
+	members: impl IntoIterator<Item = Keyring>,
+) -> impl BuildStorage {
 	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
 		phantom: Default::default(),
 		members: members.into_iter().map(|acc| acc.id()).collect(),
 	}
 }
 
-pub fn invulnerables<T: Runtime>(invulnerables: Vec<Keyring>) -> impl BuildStorage {
+pub fn invulnerables<T: Runtime>(
+	invulnerables: impl IntoIterator<Item = Keyring>,
+) -> impl BuildStorage {
 	pallet_collator_selection::GenesisConfig::<T> {
 		invulnerables: invulnerables.into_iter().map(|acc| acc.id()).collect(),
 		candidacy_bond: cfg_primitives::MILLI_CFG,
@@ -87,7 +98,9 @@ pub fn session_keys<T: Runtime>() -> impl BuildStorage {
 	}
 }
 
-pub fn block_rewards<T: Runtime>(collators: Vec<Keyring>) -> impl BuildStorage {
+pub fn block_rewards<T: Runtime>(
+	collators: impl IntoIterator<Item = Keyring>,
+) -> impl BuildStorage {
 	pallet_block_rewards::GenesisConfig::<T> {
 		collators: collators.into_iter().map(|acc| acc.id()).collect(),
 		collator_reward: (1000 * cfg_primitives::CFG).into(),

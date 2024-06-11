@@ -40,10 +40,6 @@ impl Keyring {
 		self.to_account_id()
 	}
 
-	pub fn bytes(self) -> [u8; 32] {
-		self.public().0
-	}
-
 	pub fn sign(self, msg: &[u8]) -> Signature {
 		Pair::from(self).sign(msg)
 	}

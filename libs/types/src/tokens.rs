@@ -365,7 +365,7 @@ impl CrossChainTransferability {
 		matches!(self, Self::LiquidityPools)
 	}
 
-	/// Fees will charged using `FixedRateOfFungible`.
+	/// Fees will be charged using `FixedRateOfFungible`.
 	#[cfg(feature = "std")]
 	pub fn xcm_default() -> Self {
 		Self::Xcm(XcmMetadata {
@@ -373,7 +373,7 @@ impl CrossChainTransferability {
 		})
 	}
 
-	/// Fees will charged using `AssetRegistryTrader`.
+	/// Fees will be charged using `AssetRegistryTrader`.
 	/// If value is 0, no fees will be charged.
 	#[cfg(feature = "std")]
 	pub fn xcm_with_fees(value: Balance) -> Self {

@@ -1,14 +1,18 @@
+use cfg_primitives::AccountId;
+use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CustomMetadata};
 use frame_support::{assert_ok, traits::OriginTrait};
 use polkadot_parachain_primitives::primitives::Id;
 use staging_xcm::{
 	prelude::XCM_VERSION,
 	v4::{Junction, Location},
+	VersionedLocation,
 };
 
 use crate::generic::{
 	config::Runtime,
 	env::{Blocks, Env},
 	envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
+	utils::currency::default_metadata,
 };
 
 pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
@@ -66,4 +70,32 @@ pub fn setup_xcm<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 	});
 
 	env.pass(Blocks::ByNumber(1));
+}
+
+pub fn account_location(account_id: AccountId, para_id: u32) -> Box<VersionedLocation> {
+	Box::new(
+		Location::new(
+			1,
+			[
+				Junction::Parachain(para_id),
+				Junction::AccountId32 {
+					network: None,
+					id: account_id.into(),
+				},
+			],
+		)
+		.into(),
+	)
+}
+
+pub fn transferable_metadata<T: FudgeSupport>(decimals: u32) -> AssetMetadata {
+	AssetMetadata {
+		decimals,
+		location: Some(Location::new(1, Junction::Parachain(T::FudgeHandle::PARA_ID)).into()),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::xcm_with_fees(0),
+			..Default::default()
+		},
+		..default_metadata()
+	}
 }
