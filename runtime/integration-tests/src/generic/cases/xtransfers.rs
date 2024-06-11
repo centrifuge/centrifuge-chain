@@ -134,7 +134,7 @@ fn foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 		));
 
 		assert_eq!(
-			orml_tokens::Pallet::<T>::free_balance(xnative.id(), &Keyring::Bob.id()),
+			orml_tokens::Pallet::<T>::free_balance(xnative.id(), &Keyring::Alice.id()),
 			xnative.val(INITIAL) - xnative.val(TRANSFER)
 		);
 	});
@@ -143,7 +143,7 @@ fn foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.sibling_state_mut(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+			pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
 			cfg(TRANSFER)
 		);
 	});
