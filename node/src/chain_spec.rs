@@ -38,7 +38,7 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{sr25519, Encode, Pair, Public, H160};
+use sp_core::{sr25519, Encode, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
