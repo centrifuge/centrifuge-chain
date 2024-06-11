@@ -355,7 +355,7 @@ fn centrifuge_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile_account_genesis::<CentrifugePrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<CentrifugePrecompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -449,7 +449,7 @@ fn altair_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile_account_genesis::<AltairPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<AltairPrecompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -592,7 +592,7 @@ fn development_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile_account_genesis::<DevelopmentPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<DevelopmentPrecompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
