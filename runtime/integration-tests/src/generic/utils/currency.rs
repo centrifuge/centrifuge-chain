@@ -5,8 +5,21 @@ use cfg_primitives::{conversion, Balance, CFG};
 use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
+use staging_xcm::{v4::Location, VersionedLocation};
 
 use crate::generic::config::Runtime;
+
+pub const fn amount6(amount: Balance) -> Balance {
+	amount * 10u128.pow(6)
+}
+
+pub const fn amount12(amount: Balance) -> Balance {
+	amount * 10u128.pow(12)
+}
+
+pub const fn amount18(amount: Balance) -> Balance {
+	amount * 10u128.pow(18)
+}
 
 pub const fn cfg(amount: Balance) -> Balance {
 	amount * CFG
@@ -31,7 +44,7 @@ pub trait CurrencyInfo {
 		&self.symbol()
 	}
 
-	fn location(&self) -> Option<staging_xcm::VersionedLocation> {
+	fn location(&self) -> Option<VersionedLocation> {
 		None
 	}
 
@@ -92,7 +105,7 @@ impl CurrencyInfo for Usd6 {
 }
 
 pub const fn usd6(amount: Balance) -> Balance {
-	amount * 10u128.pow(6)
+	amount6(amount)
 }
 
 pub struct Usd12;
@@ -118,7 +131,7 @@ impl CurrencyInfo for Usd12 {
 }
 
 pub const fn usd12(amount: Balance) -> Balance {
-	amount * 10u128.pow(12)
+	amount12(amount)
 }
 
 pub struct Usd18;
@@ -144,7 +157,43 @@ impl CurrencyInfo for Usd18 {
 }
 
 pub const fn usd18(amount: Balance) -> Balance {
-	amount * 10u128.pow(18)
+	amount18(amount)
+}
+
+#[derive(Clone)]
+pub struct CustomCurrency {
+	pub id: CurrencyId,
+	pub decimals: u32,
+	pub location: Location,
+	pub custom: CustomMetadata,
+}
+
+impl CurrencyInfo for CustomCurrency {
+	fn id(&self) -> CurrencyId {
+		self.id
+	}
+
+	fn decimals(&self) -> u32 {
+		self.decimals
+	}
+
+	fn symbol(&self) -> &'static str {
+		format!("Custom-{}", self.decimals()).leak()
+	}
+
+	fn location(&self) -> Option<VersionedLocation> {
+		Some(VersionedLocation::V4(self.location.clone()))
+	}
+
+	fn custom(&self) -> CustomMetadata {
+		self.custom
+	}
+}
+
+impl CustomCurrency {
+	pub const fn val(&self, amount: Balance) -> Balance {
+		amount * 10u128.pow(self.decimals)
+	}
 }
 
 pub fn register_currency<T: Runtime>(

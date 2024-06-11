@@ -364,6 +364,23 @@ impl CrossChainTransferability {
 	pub fn includes_liquidity_pools(self) -> bool {
 		matches!(self, Self::LiquidityPools)
 	}
+
+	/// Fees will charged using `FixedRateOfFungible`.
+	#[cfg(feature = "std")]
+	pub fn xcm_default() -> Self {
+		Self::Xcm(XcmMetadata {
+			fee_per_second: None,
+		})
+	}
+
+	/// Fees will charged using `AssetRegistryTrader`.
+	/// If value is 0, no fees will be charged.
+	#[cfg(feature = "std")]
+	pub fn xcm_with_fees(value: Balance) -> Self {
+		Self::Xcm(XcmMetadata {
+			fee_per_second: Some(value),
+		})
+	}
 }
 
 /// Liquidity Pools-wrapped tokens

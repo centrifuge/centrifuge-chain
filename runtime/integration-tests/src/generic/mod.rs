@@ -20,6 +20,7 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
+	mod xtransfers;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.

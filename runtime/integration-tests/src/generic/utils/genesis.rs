@@ -53,7 +53,7 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStora
 	}
 }
 
-pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl BuildStorage {
+pub fn assets<T: Runtime>(currency_ids: Vec<&dyn CurrencyInfo>) -> impl BuildStorage {
 	orml_asset_registry::module::GenesisConfig::<T> {
 		assets: currency_ids
 			.into_iter()

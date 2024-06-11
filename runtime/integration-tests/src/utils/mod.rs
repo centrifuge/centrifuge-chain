@@ -12,3 +12,9 @@
 
 pub mod accounts;
 pub mod logs;
+
+pub mod orml_asset_registry {
+	// orml_asset_registry has remove the reexport of all pallet stuff,
+	// we reexport it again here
+	pub use orml_asset_registry::module::*;
+}

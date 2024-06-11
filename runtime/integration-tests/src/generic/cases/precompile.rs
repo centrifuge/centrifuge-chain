@@ -30,7 +30,7 @@ use crate::generic::{
 fn axelar_precompile_execute<T: Runtime>() {
 	RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
-			.add(genesis::assets::<T>(vec![Box::new(Usd18)]))
+			.add(genesis::assets::<T>(vec![&Usd18]))
 			.storage(),
 	)
 	.parachain_state_mut(|| {
