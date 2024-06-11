@@ -32,7 +32,7 @@ use crate::{
 			LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 		},
 		config::Runtime,
-		env::{EnvEvmExtension, EvmEnv},
+		env::{Blocks, Env, EnvEvmExtension, EvmEnv},
 		utils::{currency::CurrencyInfo, give_tokens, invest_and_collect},
 	},
 	utils::accounts::Keyring,
@@ -43,7 +43,6 @@ const AMOUNT: Balance = DEFAULT_BALANCE * DECIMALS_6;
 
 mod utils {
 	use super::*;
-	use crate::generic::env::Blocks;
 
 	pub fn prepare_hold_tt_domain<T: Runtime>(env: &mut impl EnvEvmExtension<T>) {
 		env.state_mut(|evm| {
