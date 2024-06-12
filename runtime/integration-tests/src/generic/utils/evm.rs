@@ -181,17 +181,11 @@ pub fn mint_balance_into_derived_account<T: Runtime>(address: impl AsRef<[u8]>, 
 }
 
 pub fn deploy_contract<T: Runtime>(address: impl AsRef<[u8]> + Clone, code: Vec<u8>) -> H160 {
-	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-
-	let derived_address =
-		AccountConverter::convert_evm_address(chain_id, vec_to_fixed_array(address.clone()));
-
 	let transaction_create_cost = <T as pallet_evm::Config>::config().gas_transaction_create;
-
 	let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 	pallet_evm::Pallet::<T>::create(
-		T::RuntimeOriginExt::signed(derived_address),
+		T::RuntimeOriginExt::root(),
 		sp_core::H160::from(vec_to_fixed_array(address)),
 		code,
 		sp_core::U256::from(0),
