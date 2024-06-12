@@ -18,7 +18,10 @@ use cfg_types::{
 	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
-use ethabi::{ethereum_types::U256, FixedBytes, Token, Uint};
+use ethabi::{
+	ethereum_types::{H160, U256},
+	FixedBytes, Token, Uint,
+};
 use frame_support::{
 	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
 };
@@ -1031,7 +1034,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 		let evm_domain = EVMDomain {
-			target_contract_address: sp_core::H160::from(evm.deployed("router").address().0),
+			target_contract_address: evm.deployed("router").address(),
 			target_contract_hash: BlakeTwo256::hash_of(&evm.deployed("router").deployed_bytecode),
 			fee_values: FeeValues {
 				value: sp_core::U256::zero(),
@@ -1047,7 +1050,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 				EVM_DOMAIN_STR.as_bytes().to_vec(),
 			)
 			.unwrap(),
-			sp_core::H160::from(evm.deployed("router").address().0),
+			evm.deployed("router").address(),
 		);
 
 		assert_ok!(
@@ -1065,7 +1068,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 
 		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_gateway(
 			RawOrigin::Root.into(),
-			sp_core::H160::from(evm.deployed("router").address().0)
+			evm.deployed("router").address()
 		));
 
 		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_converter(
@@ -1173,7 +1176,7 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			evm.register(
 				lp_name(pool, tranche_id, currency),
 				"LiquidityPool",
-				Decoder::<sp_core::H160>::decode(
+				Decoder::<H160>::decode(
 					&evm.view(
 						Keyring::Alice,
 						"pool_manager",
@@ -1224,7 +1227,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::POOL_A_T_1,
 		"TrancheToken",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -1241,7 +1244,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::RM_POOL_A_T_1,
 		"RestrictionManager",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				names::POOL_A_T_1,
@@ -1281,7 +1284,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::POOL_B_T_1,
 		"TrancheToken",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -1298,7 +1301,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::RM_POOL_B_T_1,
 		"RestrictionManager",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				names::POOL_B_T_1,
@@ -1338,7 +1341,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::POOL_B_T_2,
 		"TrancheToken",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -1355,7 +1358,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::RM_POOL_B_T_2,
 		"RestrictionManager",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				names::POOL_B_T_2,
@@ -1395,7 +1398,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::POOL_C_T_1,
 		"TrancheToken",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				"pool_manager",
@@ -1412,7 +1415,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.register(
 		names::RM_POOL_C_T_1,
 		"RestrictionManager",
-		Decoder::<sp_core::H160>::decode(
+		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
 				names::POOL_C_T_1,

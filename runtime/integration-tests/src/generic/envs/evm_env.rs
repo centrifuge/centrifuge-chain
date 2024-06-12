@@ -180,7 +180,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 
 		let res = <T as pallet_evm::Config>::Runner::call(
 			caller.into(),
-			sp_core::H160::from(contract_info.address().0),
+			contract_info.address(),
 			input,
 			value,
 			GAS_LIMIT,

@@ -40,12 +40,9 @@ fn call<T: Runtime>() {
 		utils::evm::mint_balance_into_derived_account::<T>(creator_address, 1 * CFG);
 		utils::evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);
 
-		let contract_address = sp_core::H160::from(
-			utils::evm::deploy_contract::<T>(
-				creator_address,
-				hex::decode(TEST_CONTRACT_CODE).unwrap(),
-			)
-			.0,
+		let contract_address = utils::evm::deploy_contract::<T>(
+			creator_address,
+			hex::decode(TEST_CONTRACT_CODE).unwrap(),
 		);
 
 		// Executing Bar should error out since the function returns an error.

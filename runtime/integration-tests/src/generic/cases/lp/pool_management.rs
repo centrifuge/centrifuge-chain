@@ -213,7 +213,7 @@ fn add_tranche<T: Runtime>() {
 	env.state_mut(|evm| {
 		// Tranche id does not exist before adding and deploying tranche
 		assert_eq!(
-			Decoder::<sp_core::H160>::decode(
+			Decoder::<H160>::decode(
 				&evm.view(
 					Keyring::Alice,
 					"pool_manager",
@@ -240,7 +240,7 @@ fn add_tranche<T: Runtime>() {
 			]),
 		));
 		assert_ne!(
-			Decoder::<sp_core::H160>::decode(
+			Decoder::<H160>::decode(
 				&evm.view(
 					Keyring::Alice,
 					"pool_manager",

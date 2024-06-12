@@ -186,7 +186,7 @@ pub fn deploy_contract<T: Runtime>(address: impl AsRef<[u8]> + Clone, code: Vec<
 
 	pallet_evm::Pallet::<T>::create(
 		T::RuntimeOriginExt::root(),
-		sp_core::H160::from(vec_to_fixed_array(address)),
+		H160::from(vec_to_fixed_array(address)),
 		code,
 		sp_core::U256::from(0),
 		transaction_create_cost * 10,
