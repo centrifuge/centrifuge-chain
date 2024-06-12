@@ -56,10 +56,7 @@ pub type CentrifugeChainSpec =
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::RuntimeGenesisConfig, Extensions>;
 
-use altair_runtime::Precompiles;
-use centrifuge_runtime::Precompiles;
 use cfg_types::fixed_point::Rate;
-use development_runtime::Precompiles;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -355,7 +352,7 @@ fn centrifuge_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<CentrifugePrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<centrifuge_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -449,7 +446,7 @@ fn altair_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<AltairPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<altair_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -592,7 +589,7 @@ fn development_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<DevelopmentPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<development_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
