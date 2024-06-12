@@ -78,19 +78,19 @@ fn main() {
 				let source = match parent {
 					"liquidity-pools" => {
 						println!(
-							"cargo:info=Build liquidity-pools Solidity contracts. Stored at {} ",
-							LP_SOL_SOURCES
+							"cargo::warning=Build liquidity-pools Solidity contracts. Stored at {} ",
+							out_dir_build
 						);
 
 						LP_SOL_SOURCES
 					}
 					_ => {
 						println!(
-							"cargo:warning=Unknown solidity source build. Name: {}",
+							"cargo::warning=Unknown solidity source build. Name: {}",
 							parent
 						);
 						println!(
-                            "cargo:warning=No environment variable for sources set. Artifacts stored under: {}",
+                            "cargo::warning=No environment variable for sources set. Artifacts stored under: {}",
                             out_dir_build
                         );
 						continue;
@@ -101,13 +101,13 @@ fn main() {
 			}
 			Ok(o) => {
 				println!(
-					"cargo:warning=forge build failed with: \n  - status: {}\n   -stderr: {}",
+					"cargo::warning=forge build failed with: \n  - status: {}\n   -stderr: {}",
 					o.status,
 					String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
 				);
 			}
 			Err(err) => {
-				eprintln!("cargo:warning=Failed to execute git command: {}", err);
+				println!("cargo::warning=Failed to execute git command: {}", err);
 			}
 		}
 	}
