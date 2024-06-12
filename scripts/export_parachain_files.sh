@@ -25,5 +25,5 @@ if [[ $should_build == "true" ]]; then
 fi
 
 echo "Exporting State & Wasm"
-$PWD/target/release/centrifuge-chain export-genesis-head --chain node/res/$chain_name-spec-raw.json > $chain_name-genesis-state
+$PWD/target/release/centrifuge-chain export-genesis-state --chain node/res/$chain_name-spec-raw.json > $chain_name-genesis-state
 $PWD/target/release/centrifuge-chain export-genesis-wasm --chain node/res/$chain_name-spec-raw.json > $chain_name-genesis-wasm
