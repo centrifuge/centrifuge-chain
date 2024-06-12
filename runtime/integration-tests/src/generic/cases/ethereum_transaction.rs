@@ -7,7 +7,7 @@ use sp_core::{H160, U256};
 
 use crate::generic::{
 	config::Runtime,
-	env::EnvEvmExtension,
+	env::Env,
 	envs::runtime_env::RuntimeEnv,
 	utils::{self},
 };
@@ -27,7 +27,7 @@ pub const TEST_CONTRACT_CODE: &str = "608060405234801561001057600080fd5b50610113
 
 #[test_runtimes(all)]
 fn call<T: Runtime>() {
-	RuntimeEnv::<T>::default().state_mut(|_evm| {
+	RuntimeEnv::<T>::default().parachain_state_mut(|| {
 		// Addresses must be high enough to not map to the precompile space.
 		let creator_address = H160::from_low_u64_be(1_000_001);
 		let sender_address = H160::from_low_u64_be(1_000_002);
