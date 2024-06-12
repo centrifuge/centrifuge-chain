@@ -36,7 +36,7 @@ use staging_xcm_builder::{
 	TakeWeightCredit,
 };
 
-use crate::xcm_fees::default_per_second;
+use crate::xcm_fees::{default_per_second, native_per_second};
 
 /// Our FixedConversionRateProvider, used to charge XCM-related fees for
 /// tokens registered in the asset registry that were not already handled by
@@ -69,6 +69,18 @@ pub fn general_key(data: &[u8]) -> staging_xcm::latest::Junction {
 		length: data.len().min(32) as u8,
 		data: cfg_utils::vec_to_fixed_array(data.to_vec()),
 	}
+}
+
+frame_support::parameter_types! {
+	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
+	pub CanonicalNativePerSecond: (AssetId, u128, u128) = (
+		Location::new(
+			0,
+			general_key(cfg_primitives::NATIVE_KEY),
+		).into(),
+		native_per_second(),
+		0,
+	);
 }
 
 /// How we convert an `[AccountId]` into an XCM Location

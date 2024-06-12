@@ -1,7 +1,7 @@
 //! PLEASE be as much generic as possible because no domain or use cases are
 //! considered at this level.
 
-use cfg_primitives::Balance;
+use cfg_primitives::{AccountId, Balance};
 use cfg_types::{
 	fixed_point::Rate,
 	tokens::{AssetMetadata, CurrencyId},
@@ -31,7 +31,9 @@ impl Genesis {
 	}
 }
 
-pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
+pub fn balances<T: pallet_balances::Config<AccountId = AccountId, Balance = Balance>>(
+	balance: Balance,
+) -> impl BuildStorage {
 	pallet_balances::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()

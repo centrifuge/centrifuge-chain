@@ -48,6 +48,8 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		parachain_storage: Storage,
 		sibling_storage: Storage,
 	) -> Self {
+		crate::utils::logs::init_logs();
+
 		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();

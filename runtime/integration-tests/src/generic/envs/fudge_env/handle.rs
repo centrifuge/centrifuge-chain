@@ -146,8 +146,6 @@ pub trait FudgeHandle<T: Runtime> {
 		storage: Storage,
 		session_keys: <Self::RelayRuntime as pallet_session::Config>::Keys,
 	) -> RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
-		crate::utils::logs::init_logs();
-
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 
 		let code = Self::RELAY_CODE.expect("ESSENTIAL: WASM is built.");
