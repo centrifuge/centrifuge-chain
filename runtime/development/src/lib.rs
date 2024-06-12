@@ -108,7 +108,7 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	evm::{
-		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		self, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
@@ -1957,11 +1957,11 @@ parameter_types! {
 pub type XcmWeigher =
 	staging_xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 
-pub type DevelopmentPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+pub type Precompiles = evm::precompile::Precompiles<crate::Runtime, TokenSymbol>;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: DevelopmentPrecompiles = Precompiles::<_, _>::new();
+	pub PrecompilesValue: Precompiles = Precompiles::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
 	pub const TokenSymbol: &'static str = "DCFG";
 }
@@ -1980,7 +1980,7 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = DevelopmentPrecompiles;
+	type PrecompilesType = Precompiles;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;

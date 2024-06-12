@@ -14,6 +14,7 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
 };
+use fp_evm::PrecompileSet;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -26,6 +27,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
+	evm::precompile::H160Addresses,
 	fees::{DealWithFees, WeightToFee},
 	instances,
 	oracle::Feeder,
@@ -337,6 +339,8 @@ pub trait Runtime:
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
 
 	type SessionKeysExt: OpaqueKeys + Member + Parameter + MaybeSerializeDeserialize;
+
+	type PrecompilesTypeExt: PrecompileSet + H160Addresses;
 
 	fn initialize_session_keys(public_id: Public) -> Self::SessionKeysExt;
 }

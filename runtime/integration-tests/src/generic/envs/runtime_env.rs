@@ -25,7 +25,7 @@ use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		config::{Runtime, RuntimeKind},
+		config::Runtime,
 		env::{utils, Env, EnvEvmExtension},
 		envs::evm_env::EvmEnv,
 	},
@@ -191,27 +191,11 @@ impl<T: Runtime> RuntimeEnv<T> {
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
-			let accounts = match T::KIND {
-				RuntimeKind::Centrifuge => {
-					runtime_common::evm::precompile::utils::precompile_account_genesis::<
-						centrifuge_runtime::CentrifugePrecompiles,
-					>()
-				}
-				RuntimeKind::Altair => {
-					runtime_common::evm::precompile::utils::precompile_account_genesis::<
-						altair_runtime::AltairPrecompiles,
-					>()
-				}
-				RuntimeKind::Development => {
-					runtime_common::evm::precompile::utils::precompile_account_genesis::<
-						development_runtime::DevelopmentPrecompiles,
-					>()
-				}
-			};
-
 			// Precompiles need to have code-set
 			pallet_evm::GenesisConfig::<T> {
-				accounts,
+				accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+					T::PrecompilesTypeExt,
+				>(),
 				_marker: PhantomData::default(),
 			}
 			.build();
