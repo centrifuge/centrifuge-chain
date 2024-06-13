@@ -71,7 +71,7 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::ByNumber(2));
 
-	env.sibling_state_mut(|| {
+	env.sibling_state(|| {
 		assert_eq!(
 			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
 			curr.val(TRANSFER)
@@ -113,7 +113,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::ByNumber(2));
 
-	env.sibling_state_mut(|| {
+	env.sibling_state(|| {
 		assert_eq!(
 			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
 			curr.val(TRANSFER)
@@ -155,7 +155,7 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::ByNumber(2));
 
-	env.sibling_state_mut(|| {
+	env.sibling_state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
 			cfg(TRANSFER)
@@ -197,7 +197,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::ByNumber(2));
 
-	env.parachain_state_mut(|| {
+	env.parachain_state(|| {
 		assert_eq!(
 			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
 			curr.val(TRANSFER)
@@ -224,7 +224,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::ByNumber(2));
 
-	env.relay_state_mut(|| {
+	env.relay_state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<Relay<T>>::free_balance(&Keyring::Alice.id()),
 			(curr.val(INITIAL) - curr.val(TRANSFER) + curr.val(TRANSFER / 2)).approx(0.01)

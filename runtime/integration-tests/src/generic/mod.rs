@@ -13,6 +13,7 @@ mod cases {
 	mod account_derivation;
 	mod assets;
 	mod block_rewards;
+	mod currency_conversions;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;

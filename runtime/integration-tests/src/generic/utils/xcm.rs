@@ -82,6 +82,13 @@ pub fn account_location(
 	}))
 }
 
+pub fn transferable_custom() -> CustomMetadata {
+	CustomMetadata {
+		transferability: CrossChainTransferability::xcm_with_fees(0),
+		..Default::default()
+	}
+}
+
 pub fn transferable_metadata(origin_para_id: Option<u32>) -> AssetMetadata {
 	let location = match origin_para_id {
 		Some(para_id) => Location::new(1, Parachain(para_id)),
@@ -90,10 +97,7 @@ pub fn transferable_metadata(origin_para_id: Option<u32>) -> AssetMetadata {
 
 	AssetMetadata {
 		location: Some(VersionedLocation::V4(location)),
-		additional: CustomMetadata {
-			transferability: CrossChainTransferability::xcm_with_fees(0),
-			..Default::default()
-		},
+		additional: transferable_custom(),
 		..default_metadata()
 	}
 }

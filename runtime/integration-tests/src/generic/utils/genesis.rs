@@ -113,3 +113,10 @@ pub fn block_rewards<T: Runtime>(
 		last_update: Default::default(),
 	}
 }
+
+pub fn parachain_id<T: Runtime>(para_id: u32) -> impl BuildStorage {
+	staging_parachain_info::GenesisConfig::<T> {
+		_config: Default::default(),
+		parachain_id: para_id.into(),
+	}
+}
