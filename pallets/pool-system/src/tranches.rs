@@ -2909,10 +2909,11 @@ pub mod test {
 		mod rebalance {
 			use super::*;
 
-			const TOTAL_ASSETS: Balance = DEBT_RES
-				+ RESERVE_RES + DEBT_NONRES_1
-				+ RESERVE_NONRES_1
-				+ DEBT_NONRES_2 + RESERVE_NONRES_2;
+			const TOTAL_ASSETS: Balance =
+				DEBT_RES
+					+ RESERVE_RES + DEBT_NONRES_1
+					+ RESERVE_NONRES_1
+					+ DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const RATIO_NONRES_1: Balance = DEBT_NONRES_1 + RESERVE_NONRES_1;
 			const RATIO_NONRES_2: Balance = DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const DEFAULT_NAV: Balance = 1_234_567_890;

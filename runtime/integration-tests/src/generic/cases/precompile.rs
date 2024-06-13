@@ -20,13 +20,13 @@ use crate::generic::{
 	env::Env,
 	envs::runtime_env::RuntimeEnv,
 	utils::{
-		self,
 		currency::{usd18, CurrencyInfo, Usd18},
+		evm,
 		genesis::{self, Genesis},
 	},
 };
 
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn axelar_precompile_execute<T: Runtime>() {
 	RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
@@ -48,7 +48,7 @@ fn axelar_precompile_execute<T: Runtime>() {
 		let derived_sender_account = T::AddressMapping::into_account_id(sender_address);
 		let derived_receiver_account = T::AddressMapping::into_account_id(receiver_address);
 
-		utils::evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);
+		evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);
 
 		let general_currency_id =
 			pallet_liquidity_pools::Pallet::<T>::try_get_general_index(Usd18.id()).unwrap();
@@ -116,7 +116,7 @@ fn axelar_precompile_execute<T: Runtime>() {
 		.expect("cannot encode input for test contract function");
 
 		assert_ok!(pallet_evm::Pallet::<T>::call(
-			RawOrigin::Signed(derived_sender_account.clone()).into(),
+			RawOrigin::Root.into(),
 			sender_address,
 			lp_axelar_gateway,
 			eth_function_encoded.to_vec(),

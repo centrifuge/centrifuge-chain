@@ -1,6 +1,9 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Nonce};
 use cfg_traits::{IntoSeconds, Seconds};
+use ethabi::{Log, Token};
+use pallet_evm::CallInfo;
 use parity_scale_codec::Encode;
+use sp_core::{H160, U256};
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -8,7 +11,13 @@ use sp_runtime::{
 };
 use sp_std::ops::Range;
 
-use crate::{generic::config::Runtime, utils::accounts::Keyring};
+use crate::{
+	generic::{
+		config::Runtime,
+		utils::evm::{ContractInfo, DeployedContractInfo},
+	},
+	utils::accounts::Keyring,
+};
 
 /// Used by Env::pass() to determine how many blocks should be passed
 #[derive(Clone)]
@@ -166,6 +175,58 @@ pub trait Env<T: Runtime>: Default {
 	fn __priv_build_block(&mut self, i: BlockNumber);
 }
 
+pub trait EnvEvmExtension<T: Runtime>: Env<T> {
+	type EvmEnv: EvmEnv<T>;
+
+	/// Allows to mutate the parachain storage state through the closure.
+	fn state_mut<R>(&mut self, f: impl FnOnce(&mut Self::EvmEnv) -> R) -> R;
+
+	/// Allows to read the parachain storage state through the closure.
+	fn state<R>(&self, f: impl FnOnce(&Self::EvmEnv) -> R) -> R;
+}
+
+pub trait EvmEnv<T: Runtime> {
+	fn find_events(&self, contract: impl Into<String>, event: impl Into<String>) -> Vec<Log>;
+
+	fn load_contracts(&mut self) -> &mut Self;
+
+	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo;
+
+	fn register(
+		&mut self,
+		name: impl Into<String>,
+		contract: impl Into<String>,
+		address: H160,
+	) -> &mut Self;
+
+	fn contract(&self, name: impl Into<String>) -> ContractInfo;
+
+	fn deploy(
+		&mut self,
+		what: impl Into<String> + Clone,
+		name: impl Into<String>,
+		who: Keyring,
+		args: Option<&[Token]>,
+	) -> &mut Self;
+
+	fn call(
+		&self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError>;
+
+	fn view(
+		&self,
+		caller: Keyring,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError>;
+}
+
 pub mod utils {
 	use super::*;
 
@@ -193,7 +254,7 @@ pub mod utils {
 		let signature =
 			MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
 
-		let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
+		let multi_address = (Address::Id(who.id()), signature, signed_extra);
 
 		<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap()
 	}

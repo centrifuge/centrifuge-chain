@@ -1,5 +1,6 @@
 pub mod env;
 pub mod envs {
+	pub mod evm_env;
 	pub mod fudge_env;
 	pub mod runtime_env;
 }
@@ -16,6 +17,7 @@ mod cases {
 	mod investments;
 	mod liquidity_pools;
 	mod loans;
+	mod lp;
 	mod oracles;
 	mod precompile;
 	mod proxy;
