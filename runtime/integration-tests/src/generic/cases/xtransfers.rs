@@ -1,7 +1,7 @@
 use cfg_types::tokens::{AssetMetadata, CurrencyId};
 use frame_support::{assert_ok, dispatch::RawOrigin};
 use orml_traits::MultiCurrency;
-use staging_xcm::v4::{prelude::XCM_VERSION, Junction::*, Junctions::Here, Location, WeightLimit};
+use staging_xcm::v4::{Junction::*, Junctions::Here, Location, WeightLimit};
 
 use crate::{
 	generic::{
@@ -12,7 +12,11 @@ use crate::{
 			currency::{cfg, CurrencyInfo, CustomCurrency},
 			genesis,
 			genesis::Genesis,
-			xcm::{account_location, setup_xcm, transferable_metadata},
+			xcm::{
+				account_location, enable_para_to_relay_communication,
+				enable_para_to_sibling_communication, enable_relay_to_para_communication,
+				transferable_metadata,
+			},
 		},
 	},
 	utils::{accounts::Keyring, approx::Approximate},
@@ -38,7 +42,7 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 			.storage(),
 	);
 
-	setup_xcm(&mut env);
+	enable_para_to_sibling_communication::<T>(&mut env);
 
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
@@ -81,7 +85,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 			.storage(),
 	);
 
-	setup_xcm(&mut env);
+	enable_para_to_sibling_communication::<T>(&mut env);
 
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
@@ -124,7 +128,7 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 			.storage(),
 	);
 
-	setup_xcm(&mut env);
+	enable_para_to_sibling_communication::<T>(&mut env);
 
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
@@ -172,14 +176,9 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 	);
 
 	// From Relay to Parachain
+	enable_relay_to_para_communication::<T>(&mut env);
 
 	env.relay_state_mut(|| {
-		assert_ok!(pallet_xcm::Pallet::<Relay<T>>::force_xcm_version(
-			RawOrigin::Root.into(),
-			Box::new(Location::new(0, Parachain(T::FudgeHandle::PARA_ID))),
-			XCM_VERSION,
-		));
-
 		assert_ok!(pallet_xcm::Pallet::<Relay<T>>::reserve_transfer_assets(
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
 			Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
@@ -204,14 +203,9 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 	});
 
 	// From Parachain to Relay
+	enable_para_to_relay_communication::<T>(&mut env);
 
 	env.parachain_state_mut(|| {
-		assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
-			RawOrigin::Root.into(),
-			Box::new(Location::parent()),
-			XCM_VERSION,
-		));
-
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
 			RawOrigin::Signed(Keyring::Bob.id()).into(),
 			xrelay.id(),

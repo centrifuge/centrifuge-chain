@@ -21,7 +21,6 @@ use crate::{
 			self,
 			currency::{cfg, register_currency, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
-			xcm::setup_xcm,
 		},
 	},
 	utils::accounts::Keyring,
@@ -33,14 +32,13 @@ const TO: Keyring = Keyring::Bob;
 
 const FOR_FEES: Balance = cfg(1);
 const TRANSFER_AMOUNT: Balance = usd6(100);
+const INITIAL: Balance = usd6(1000) + TRANSFER_AMOUNT;
 
 fn configure_proxy_and_transfer<T: Runtime>(proxy_type: T::ProxyType) -> DispatchResult {
 	let env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
-			.add(genesis::balances::<T>(
-				T::ExistentialDeposit::get() + FOR_FEES,
-			))
-			.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
+			.add(genesis::balances::<T>(FOR_FEES))
+			.add(genesis::tokens::<T>(vec![(Usd6.id(), INITIAL)]))
 			.storage(),
 	);
 
@@ -57,45 +55,20 @@ fn configure_proxy_and_transfer<T: Runtime>(proxy_type: T::ProxyType) -> Dispatc
 fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 	proxy_type: T::ProxyType,
 ) -> DispatchResult {
+	let curr = CustomCurrency(Usd6.id(), transferable_metadata::<T>(6));
+
 	let mut env = FudgeEnv::<T>::from_parachain_storage(
 		Genesis::default()
-			.add(genesis::balances::<T>(
-				T::ExistentialDeposit::get() + FOR_FEES,
-			))
-			.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
+			.add(genesis::balances::<T>(FOR_FEES))
+			.add(genesis::tokens::<T>(vec![(curr.id(), INITIAL)]))
+			.add(genesis::assets::<T>(vec![(curr.id(), curr.metadata())]))
 			.storage(),
 	);
-
-	setup_xcm(&mut env);
-
-	env.parachain_state_mut(|| {
-		register_currency::<T>(Usd6, |meta| {
-			meta.location = Some(VersionedLocation::V4(Location::new(
-				1,
-				Parachain(T::FudgeHandle::SIBLING_ID),
-			)));
-			meta.additional.transferability = CrossChainTransferability::Xcm(XcmMetadata {
-				fee_per_second: Some(1_000),
-			});
-		});
-	});
 
 	let call = pallet_restricted_xtokens::Call::transfer {
 		currency_id: Usd6.id(),
 		amount: TRANSFER_AMOUNT,
-		dest: Box::new(
-			Location::new(
-				1,
-				[
-					Parachain(T::FudgeHandle::SIBLING_ID),
-					Junction::AccountId32 {
-						id: TO.into(),
-						network: None,
-					},
-				],
-			)
-			.into(),
-		),
+		dest: account_location(1, T::FudgeHandle::SIBLING_ID, TO.id()),
 		dest_weight_limit: WeightLimit::Unlimited,
 	}
 	.into();
@@ -109,8 +82,6 @@ fn configure_proxy_and_call<T: Runtime>(
 	call: T::RuntimeCallExt,
 ) -> DispatchResult {
 	env.parachain_state_mut(|| {
-		utils::give_tokens::<T>(FROM.id(), Usd6.id(), TRANSFER_AMOUNT);
-
 		// Register PROXY as proxy of FROM
 		pallet_proxy::Pallet::<T>::add_proxy(
 			RawOrigin::Signed(FROM.id()).into(),

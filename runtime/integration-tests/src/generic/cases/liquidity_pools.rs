@@ -70,7 +70,7 @@ use crate::{
 		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
 		utils::{
 			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
-			genesis::Genesis, xcm::setup_xcm,
+			genesis::Genesis, xcm::enable_para_to_sibling_communication,
 		},
 	},
 	utils::{accounts::Keyring, orml_asset_registry},
@@ -424,8 +424,6 @@ mod development {
 		}
 
 		pub fn setup_test<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
-			setup_xcm(env);
-
 			env.parachain_state_mut(|| {
 				register_ausd::<T>();
 				register_glmr::<T>();
@@ -5385,7 +5383,7 @@ mod centrifuge {
 			));
 		}
 
-		pub fn register_usdc<T: Runtime>() {
+		pub fn register_usdc<T: Runtime>(para_id: u32) {
 			let meta: AssetMetadata = AssetMetadata {
 				decimals: 6,
 				name: BoundedVec::default(),
@@ -5393,11 +5391,7 @@ mod centrifuge {
 				existential_deposit: 1_000,
 				location: Some(VersionedLocation::V4(Location::new(
 					1,
-					[
-						Junction::Parachain(1000),
-						Junction::PalletInstance(50),
-						Junction::GeneralIndex(1337),
-					],
+					Junction::Parachain(para_id),
 				))),
 				additional: CustomMetadata {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -5969,7 +5963,7 @@ mod centrifuge {
 
 			// Restrict USDC local
 			env.parachain_state_mut(|| {
-				register_usdc::<T>();
+				register_usdc::<T>(1000);
 
 				let pre_transfer_alice =
 					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
@@ -6177,10 +6171,8 @@ mod centrifuge {
 					.storage(),
 			);
 
-			setup_xcm(&mut env);
-
 			env.parachain_state_mut(|| {
-				register_usdc::<T>();
+				register_usdc::<T>(T::FudgeHandle::SIBLING_ID);
 				register_lp_eth_usdc::<T>();
 
 				assert_ok!(orml_tokens::Pallet::<T>::set_balance(
@@ -6276,7 +6268,7 @@ mod centrifuge {
 			);
 
 			env.parachain_state_mut(|| {
-				register_usdc::<T>();
+				register_usdc::<T>(1000);
 
 				let pre_transfer_alice =
 					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
@@ -6334,53 +6326,17 @@ mod centrifuge {
 
 		#[test_runtimes([centrifuge])]
 		fn restrict_usdc_xcm_transfer<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				paras::GenesisConfig::<FudgeRelayRuntime<T>> {
-					_config: Default::default(),
-					paras: vec![(
-						1000.into(),
-						ParaGenesisArgs {
-							genesis_head: Default::default(),
-							validation_code: ValidationCode::from(vec![0, 1, 2, 3]),
-							para_kind: ParaKind::Parachain,
-						},
-					)],
-				}
-				.build_storage()
-				.unwrap(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
+					.add(genesis::tokens::<T>([(USDC, usdc(3_000))]))
 					.storage(),
-				Default::default(),
 			);
 
-			// Configuring XCM in this test fails because the Hrmp
-			// configuration is not applied. We force the application here,
-			// but we should configure correctly this because something is off.
-			env.relay_state_mut(|| {
-				polkadot_runtime_parachains::configuration::Pallet::<FudgeRelayRuntime<T>>::force_set_active_config(
-                    crate::generic::envs::fudge_env::handle::hrmp_host_config()
-                );
-			});
-
-			setup_xcm(&mut env);
-
-			setup_usdc_xcm(&mut env);
-
-			env.sibling_state_mut(|| {
-				register_usdc::<T>();
-			});
+			enable_para_to_sibling_communication::<T>(&mut env);
 
 			env.parachain_state_mut(|| {
-				register_usdc::<T>();
-
-				let alice_initial_usdc = usdc(3_000);
-
-				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-					USDC,
-					&Keyring::Alice.into(),
-					alice_initial_usdc
-				));
+				register_usdc::<T>(T::FudgeHandle::SIBLING_ID);
 
 				assert_ok!(
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
@@ -6443,20 +6399,7 @@ mod centrifuge {
 					),
 					WeightLimit::Unlimited,
 				));
-
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.into()),
-					alice_initial_usdc - usdc(1_000),
-				);
 			});
-
-			// NOTE - we cannot confirm that the Alice account present on the
-			// sibling receives this transfer since the orml_xtokens pallet
-			// sends a message to parachain 1000 (the parachain of the USDC
-			// currency) which in turn should send a message to the sibling.
-			// Since parachain 1000 is just a dummy added in the paras
-			// genesis config and not an actual sibling with a runtime, the
-			// transfer does not take place.
 		}
 
 		#[test_runtimes([centrifuge])]
