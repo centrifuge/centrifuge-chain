@@ -1,8 +1,8 @@
 //! PLEASE be as much generic as possible because no domain or use cases are
 //! considered at this level.
 
-use cfg_primitives::{conversion, Balance, CFG};
-use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata};
+use cfg_primitives::{conversion, liquidity_pools::GeneralCurrencyPrefix, Balance, CFG};
+use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata, GeneralCurrencyIndex};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 use staging_xcm::VersionedLocation;
@@ -51,7 +51,9 @@ pub trait CurrencyInfo {
 		None
 	}
 
-	fn custom(&self) -> CustomMetadata;
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata::default()
+	}
 
 	fn ed(&self) -> Balance {
 		0
@@ -66,6 +68,10 @@ pub trait CurrencyInfo {
 			location: self.location(),
 			additional: self.custom(),
 		}
+	}
+
+	fn general_currency_index(&self) -> Option<GeneralCurrencyIndex<u128, GeneralCurrencyPrefix>> {
+		TryFrom::try_from(*&self.id()).ok()
 	}
 }
 

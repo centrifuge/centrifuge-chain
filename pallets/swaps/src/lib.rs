@@ -81,14 +81,14 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type OrderIdToSwapId<T: Config> =
+	pub type OrderIdToSwapId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::OrderId, (T::AccountId, T::SwapId)>;
 
 	/// Maps an `AccountId` and `SwapId` to its corresponding `OrderId`
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type SwapIdToOrderId<T: Config> =
+	pub type SwapIdToOrderId<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, T::SwapId), T::OrderId>;
 
 	#[pallet::error]

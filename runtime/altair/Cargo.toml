@@ -1,7 +1,7 @@
 [package]
 name = "altair-runtime"
-version = "0.10.35"
 build = "build.rs"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

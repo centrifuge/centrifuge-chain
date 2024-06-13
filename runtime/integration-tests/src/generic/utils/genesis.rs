@@ -37,7 +37,9 @@ pub fn balances<T: pallet_balances::Config<AccountId = AccountId, Balance = Bala
 	pallet_balances::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
-			.map(|keyring| (keyring.id(), balance))
+			.map(Keyring::id)
+			.chain(default_accounts().into_iter().map(Keyring::id_ed25519))
+			.map(|id| (id, balance))
 			.collect(),
 	}
 }
@@ -48,14 +50,15 @@ pub fn tokens<T: Runtime>(
 	orml_tokens::GenesisConfig::<T> {
 		balances: default_accounts()
 			.into_iter()
-			.map(|keyring| {
+			.map(Keyring::id)
+			.chain(default_accounts().into_iter().map(Keyring::id_ed25519))
+			.flat_map(|account_id| {
 				values
 					.clone()
 					.into_iter()
-					.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
+					.map(|(curency_id, balance)| (account_id.clone(), curency_id, balance))
 					.collect::<Vec<_>>()
 			})
-			.flatten()
 			.collect(),
 	}
 }
@@ -77,7 +80,7 @@ pub fn council_members<T: Runtime>(
 ) -> impl BuildStorage {
 	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
 		phantom: Default::default(),
-		members: members.into_iter().map(|acc| acc.id()).collect(),
+		members: members.into_iter().map(|acc| acc.id().into()).collect(),
 	}
 }
 
@@ -95,7 +98,7 @@ pub fn session_keys<T: Runtime>() -> impl BuildStorage {
 	pallet_session::GenesisConfig::<T> {
 		keys: default_accounts()
 			.into_iter()
-			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.public())))
+			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.into())))
 			.collect(),
 	}
 }

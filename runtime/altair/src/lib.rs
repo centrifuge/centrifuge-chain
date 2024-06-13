@@ -78,8 +78,8 @@ use pallet_anchors::AnchorData;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_ethereum::{Call::transact, PostLogContent};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressRoot, EnsureAddressTruncated, FeeCalculator,
-	GasWeightMapping, Runner,
+	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, GasWeightMapping,
+	Runner,
 };
 use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
@@ -103,7 +103,7 @@ use runtime_common::{
 	account_conversion::{AccountConverter, RuntimeAccountConverter},
 	asset_registry,
 	evm::{
-		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		self, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1035,
+	spec_version: 1100,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1866,11 +1866,11 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
 
-pub type AltairPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+pub type Precompiles = evm::precompile::Precompiles<crate::Runtime, TokenSymbol>;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: AltairPrecompiles = Precompiles::<_, _>::new();
+	pub PrecompilesValue: Precompiles = Precompiles::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
 	pub const TokenSymbol: &'static str = "AIR";
 }
@@ -1889,7 +1889,7 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = AltairPrecompiles;
+	type PrecompilesType = Precompiles;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
@@ -1897,7 +1897,7 @@ impl pallet_evm::Config for Runtime {
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
+	type WithdrawOrigin = EnsureAddressNever<AccountId>;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -1967,7 +1967,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1035,
+	migrations::UpgradeAltair1100,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
