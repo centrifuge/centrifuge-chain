@@ -1099,7 +1099,7 @@ parameter_types! {
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
+	pub const DefaultMinEpochTime: u64 = 1; // 1 Second
 	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
 
 	// Runtime-defined constraints for pool parameters
