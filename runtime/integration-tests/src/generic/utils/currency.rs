@@ -176,6 +176,10 @@ impl CurrencyInfo for CustomCurrency {
 	fn custom(&self) -> CustomMetadata {
 		self.1.additional
 	}
+
+	fn metadata(&self) -> AssetMetadata {
+		self.1.clone()
+	}
 }
 
 impl CustomCurrency {

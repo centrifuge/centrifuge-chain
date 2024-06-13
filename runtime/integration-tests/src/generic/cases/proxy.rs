@@ -1,13 +1,9 @@
 use cfg_primitives::Balance;
-use cfg_types::{tokens::CrossChainTransferability, xcm::XcmMetadata};
-use frame_support::{assert_err, assert_ok, traits::Get};
+use cfg_types::tokens::{AssetMetadata, CurrencyId};
+use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
-use staging_xcm::{
-	prelude::Parachain,
-	v4::{Junction, Location, WeightLimit},
-	VersionedLocation,
-};
+use staging_xcm::v4::WeightLimit;
 
 use crate::{
 	generic::{
@@ -18,9 +14,9 @@ use crate::{
 			runtime_env::RuntimeEnv,
 		},
 		utils::{
-			self,
-			currency::{cfg, register_currency, usd6, CurrencyInfo, Usd6},
+			currency::{cfg, usd6, CurrencyInfo, CustomCurrency, Usd6},
 			genesis::{self, Genesis},
+			xcm::{account_location, enable_para_to_sibling_communication, transferable_metadata},
 		},
 	},
 	utils::accounts::Keyring,
@@ -55,20 +51,28 @@ fn configure_proxy_and_transfer<T: Runtime>(proxy_type: T::ProxyType) -> Dispatc
 fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 	proxy_type: T::ProxyType,
 ) -> DispatchResult {
-	let curr = CustomCurrency(Usd6.id(), transferable_metadata::<T>(6));
+	let curr = CustomCurrency(
+		CurrencyId::ForeignAsset(1),
+		AssetMetadata {
+			decimals: 6,
+			..transferable_metadata(Some(T::FudgeHandle::PARA_ID))
+		},
+	);
 
 	let mut env = FudgeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::balances::<T>(FOR_FEES))
 			.add(genesis::tokens::<T>(vec![(curr.id(), INITIAL)]))
-			.add(genesis::assets::<T>(vec![(curr.id(), curr.metadata())]))
+			.add(genesis::assets::<T>(vec![(curr.id(), &curr.metadata())]))
 			.storage(),
 	);
 
+	enable_para_to_sibling_communication::<T>(&mut env);
+
 	let call = pallet_restricted_xtokens::Call::transfer {
-		currency_id: Usd6.id(),
+		currency_id: curr.id(),
 		amount: TRANSFER_AMOUNT,
-		dest: account_location(1, T::FudgeHandle::SIBLING_ID, TO.id()),
+		dest: account_location(1, Some(T::FudgeHandle::SIBLING_ID), TO.id()),
 		dest_weight_limit: WeightLimit::Unlimited,
 	}
 	.into();

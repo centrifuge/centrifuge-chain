@@ -1,7 +1,7 @@
-use cfg_types::tokens::{AssetMetadata, CurrencyId};
+use cfg_types::tokens::{AssetMetadata, CurrencyId, CurrencyId::Native};
 use frame_support::{assert_ok, dispatch::RawOrigin};
 use orml_traits::MultiCurrency;
-use staging_xcm::v4::{Junction::*, Junctions::Here, Location, WeightLimit};
+use staging_xcm::v4::{Junction::*, Junctions::Here, WeightLimit};
 
 use crate::{
 	generic::{
@@ -27,9 +27,19 @@ const TRANSFER: u32 = 20;
 
 type Relay<T> = FudgeRelayRuntime<T>;
 
+fn create_transfeable_currency(decimals: u32, para_id: Option<u32>) -> CustomCurrency {
+	CustomCurrency(
+		CurrencyId::ForeignAsset(1),
+		AssetMetadata {
+			decimals,
+			..transferable_metadata(para_id)
+		},
+	)
+}
+
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let curr = CustomCurrency(CurrencyId::ForeignAsset(1), transferable_metadata::<T>(6));
+	let curr = create_transfeable_currency(6, Some(T::FudgeHandle::PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -71,17 +81,16 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let metadata = transferable_metadata::<T>(18);
-	let xnative = CustomCurrency(CurrencyId::ForeignAsset(1), metadata.clone());
+	let curr = create_transfeable_currency(18, Some(T::FudgeHandle::PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
 		Genesis::default()
 			.add(genesis::balances::<T>(cfg(INITIAL)))
-			.add(genesis::assets::<T>([(CurrencyId::Native, &metadata)]))
+			.add(genesis::assets::<T>([(Native, &curr.metadata())]))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(xnative.id(), &metadata)]))
+			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
 			.storage(),
 	);
 
@@ -90,7 +99,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
-			CurrencyId::Native,
+			Native,
 			cfg(TRANSFER),
 			account_location(1, Some(T::FudgeHandle::SIBLING_ID), Keyring::Bob.id()),
 			WeightLimit::Unlimited,
@@ -106,25 +115,24 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 	env.sibling_state_mut(|| {
 		assert_eq!(
-			orml_tokens::Pallet::<T>::free_balance(xnative.id(), &Keyring::Bob.id()),
-			xnative.val(TRANSFER)
+			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
+			curr.val(TRANSFER)
 		);
 	});
 }
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
-	let metadata = transferable_metadata::<T>(18);
-	let xnative = CustomCurrency(CurrencyId::ForeignAsset(1), metadata.clone());
+	let curr = create_transfeable_currency(18, Some(T::FudgeHandle::PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
 		Genesis::default()
-			.add(genesis::tokens::<T>([(xnative.id(), xnative.val(INITIAL))]))
-			.add(genesis::assets::<T>([(xnative.id(), &metadata)]))
+			.add(genesis::tokens::<T>([(curr.id(), curr.val(INITIAL))]))
+			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(CurrencyId::Native, &metadata)]))
+			.add(genesis::assets::<T>([(Native, &curr.metadata())]))
 			.storage(),
 	);
 
@@ -133,15 +141,15 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
-			xnative.id(),
-			xnative.val(TRANSFER),
+			curr.id(),
+			curr.val(TRANSFER),
 			account_location(1, Some(T::FudgeHandle::SIBLING_ID), Keyring::Bob.id()),
 			WeightLimit::Unlimited,
 		));
 
 		assert_eq!(
-			orml_tokens::Pallet::<T>::free_balance(xnative.id(), &Keyring::Alice.id()),
-			xnative.val(INITIAL) - xnative.val(TRANSFER)
+			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Alice.id()),
+			curr.val(INITIAL) - curr.val(TRANSFER)
 		);
 	});
 
@@ -156,21 +164,15 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 }
 
 #[test_runtimes(all)]
-fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
-	let xrelay = CustomCurrency(
-		CurrencyId::ForeignAsset(1),
-		AssetMetadata {
-			location: Some(Location::parent().into()),
-			..transferable_metadata::<T>(10)
-		},
-	);
+fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
+	let curr = create_transfeable_currency(10, None);
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
-			.add(genesis::balances::<Relay<T>>(xrelay.val(INITIAL)))
+			.add(genesis::balances::<Relay<T>>(curr.val(INITIAL)))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(xrelay.id(), &xrelay.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
 			.storage(),
 		Default::default(),
 	);
@@ -183,13 +185,13 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
 			Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
 			account_location(0, None, Keyring::Bob.id()),
-			Box::new((Here, xrelay.val(TRANSFER)).into()),
+			Box::new((Here, curr.val(TRANSFER)).into()),
 			0,
 		));
 
 		assert_eq!(
 			pallet_balances::Pallet::<Relay<T>>::free_balance(&Keyring::Alice.id()),
-			(xrelay.val(INITIAL) - xrelay.val(TRANSFER)).approx(0.01)
+			(curr.val(INITIAL) - curr.val(TRANSFER)).approx(0.01)
 		);
 	});
 
@@ -197,8 +199,8 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.parachain_state_mut(|| {
 		assert_eq!(
-			orml_tokens::Pallet::<T>::free_balance(xrelay.id(), &Keyring::Bob.id()),
-			xrelay.val(TRANSFER)
+			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
+			curr.val(TRANSFER)
 		);
 	});
 
@@ -208,15 +210,15 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 	env.parachain_state_mut(|| {
 		assert_ok!(orml_xtokens::Pallet::<T>::transfer(
 			RawOrigin::Signed(Keyring::Bob.id()).into(),
-			xrelay.id(),
-			xrelay.val(TRANSFER / 2),
+			curr.id(),
+			curr.val(TRANSFER / 2),
 			account_location(1, None, Keyring::Alice.id()),
 			WeightLimit::Unlimited,
 		));
 
 		assert_eq!(
-			orml_tokens::Pallet::<T>::free_balance(xrelay.id(), &Keyring::Bob.id()),
-			(xrelay.val(TRANSFER) - xrelay.val(TRANSFER / 2)).approx(0.01)
+			orml_tokens::Pallet::<T>::free_balance(curr.id(), &Keyring::Bob.id()),
+			(curr.val(TRANSFER) - curr.val(TRANSFER / 2)).approx(0.01)
 		);
 	});
 
@@ -225,7 +227,7 @@ fn from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 	env.relay_state_mut(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<Relay<T>>::free_balance(&Keyring::Alice.id()),
-			(xrelay.val(INITIAL) - xrelay.val(TRANSFER) + xrelay.val(TRANSFER / 2)).approx(0.01)
+			(curr.val(INITIAL) - curr.val(TRANSFER) + curr.val(TRANSFER / 2)).approx(0.01)
 		);
 	});
 }

@@ -82,10 +82,14 @@ pub fn account_location(
 	}))
 }
 
-pub fn transferable_metadata<T: FudgeSupport>(decimals: u32) -> AssetMetadata {
+pub fn transferable_metadata(origin_para_id: Option<u32>) -> AssetMetadata {
+	let location = match origin_para_id {
+		Some(para_id) => Location::new(1, Parachain(para_id)),
+		None => Location::parent(),
+	};
+
 	AssetMetadata {
-		decimals,
-		location: Some(Location::new(1, Parachain(T::FudgeHandle::PARA_ID)).into()),
+		location: Some(VersionedLocation::V4(location)),
 		additional: CustomMetadata {
 			transferability: CrossChainTransferability::xcm_with_fees(0),
 			..Default::default()
