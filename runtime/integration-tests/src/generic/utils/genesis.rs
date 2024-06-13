@@ -29,28 +29,35 @@ impl Genesis {
 }
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl BuildStorage {
-	pallet_balances::GenesisConfig::<T> {
-		balances: default_accounts()
+	let mut accounts = Vec::new();
+	accounts.extend(default_accounts().into_iter().map(|k| (k.id(), balance)));
+	accounts.extend(
+		default_accounts()
 			.into_iter()
-			.map(|keyring| (keyring.id(), balance))
-			.collect(),
-	}
+			.map(|k| (k.id_ed25519(), balance)),
+	);
+
+	pallet_balances::GenesisConfig::<T> { balances: accounts }
 }
 
 pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl BuildStorage {
-	orml_tokens::GenesisConfig::<T> {
-		balances: default_accounts()
+	let mut accounts = Vec::new();
+	accounts.extend(default_accounts().into_iter().flat_map(|keyring| {
+		values
+			.clone()
 			.into_iter()
-			.map(|keyring| {
-				values
-					.clone()
-					.into_iter()
-					.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
-					.collect::<Vec<_>>()
-			})
-			.flatten()
-			.collect(),
-	}
+			.map(|(curency_id, balance)| (keyring.id(), curency_id, balance))
+			.collect::<Vec<_>>()
+	}));
+	accounts.extend(default_accounts().into_iter().flat_map(|keyring| {
+		values
+			.clone()
+			.into_iter()
+			.map(|(curency_id, balance)| (keyring.id_ed25519(), curency_id, balance))
+			.collect::<Vec<_>>()
+	}));
+
+	orml_tokens::GenesisConfig::<T> { balances: accounts }
 }
 
 pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl BuildStorage {
@@ -66,7 +73,7 @@ pub fn assets<T: Runtime>(currency_ids: Vec<Box<dyn CurrencyInfo>>) -> impl Buil
 pub fn council_members<T: Runtime>(members: Vec<Keyring>) -> impl BuildStorage {
 	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
 		phantom: Default::default(),
-		members: members.into_iter().map(|acc| acc.id()).collect(),
+		members: members.into_iter().map(|acc| acc.id().into()).collect(),
 	}
 }
 
@@ -82,7 +89,7 @@ pub fn session_keys<T: Runtime>() -> impl BuildStorage {
 	pallet_session::GenesisConfig::<T> {
 		keys: default_accounts()
 			.into_iter()
-			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.public())))
+			.map(|acc| (acc.id(), acc.id(), T::initialize_session_keys(acc.into())))
 			.collect(),
 	}
 }

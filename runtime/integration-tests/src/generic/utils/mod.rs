@@ -10,7 +10,10 @@
 
 pub mod currency;
 pub mod democracy;
+pub mod evm;
 pub mod genesis;
+pub mod pool;
+pub mod tokens;
 pub mod xcm;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
@@ -18,25 +21,20 @@ use cfg_traits::{investments::TrancheCurrency as _, Seconds, TimeAsSecs};
 use cfg_types::{
 	fixed_point::Ratio,
 	oracles::OracleKey,
-	permissions::{PermissionScope, PoolRole, Role},
-	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_support::{traits::fungible::Mutate, BoundedVec};
 use frame_system::RawOrigin;
-use pallet_evm::FeeCalculator;
 use pallet_oracle_collection::types::CollectionInfo;
-use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use runtime_common::{account_conversion::AccountConverter, oracle::Feeder};
-use sp_core::{H160, U256};
-use sp_runtime::{
-	traits::{Get, One, StaticLookup},
-	Perquintill,
+use runtime_common::oracle::Feeder;
+use sp_runtime::traits::StaticLookup;
+
+use crate::{
+	generic::{config::Runtime, utils::pool::close_epoch},
+	utils::accounts::Keyring,
 };
 
-use crate::generic::config::{Runtime, RuntimeKind};
-
-pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
+pub const ESSENTIAL: &str =
+	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
 
 pub fn now_secs<T: Runtime>() -> Seconds {
 	<pallet_timestamp::Pallet<T> as TimeAsSecs>::now()
@@ -51,6 +49,19 @@ where
 		.rev()
 		.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
 		.flatten()
+}
+
+pub fn last_event<T: Runtime, E>() -> E
+where
+	T::RuntimeEventExt: TryInto<E>,
+{
+	frame_system::Pallet::<T>::events()
+		.pop()
+		.unwrap()
+		.event
+		.try_into()
+		.ok()
+		.unwrap()
 }
 
 pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (CollectionId, ItemId)) {
@@ -91,68 +102,6 @@ pub fn give_tokens<T: Runtime>(dest: AccountId, currency_id: CurrencyId, amount:
 		data.reserved,
 	)
 	.unwrap();
-}
-
-pub fn give_pool_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
-	pallet_permissions::Pallet::<T>::add(
-		RawOrigin::Root.into(),
-		Role::PoolRole(role),
-		dest,
-		PermissionScope::Pool(pool_id),
-		Role::PoolRole(role),
-	)
-	.unwrap();
-}
-
-pub fn create_empty_pool<T: Runtime>(admin: AccountId, pool_id: PoolId, currency_id: CurrencyId) {
-	pallet_pool_registry::Pallet::<T>::register(
-		match T::KIND {
-			RuntimeKind::Development => RawOrigin::Signed(admin.clone()).into(),
-			_ => RawOrigin::Root.into(),
-		},
-		admin,
-		pool_id,
-		vec![
-			TrancheInput {
-				tranche_type: TrancheType::Residual,
-				seniority: None,
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::default(),
-					token_symbol: BoundedVec::default(),
-				},
-			},
-			TrancheInput {
-				tranche_type: TrancheType::NonResidual {
-					interest_rate_per_sec: One::one(),
-					min_risk_buffer: Perquintill::from_percent(0),
-				},
-				seniority: None,
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::default(),
-					token_symbol: BoundedVec::default(),
-				},
-			},
-		],
-		currency_id,
-		Balance::MAX,
-		None,
-		BoundedVec::default(),
-		vec![],
-	)
-	.unwrap();
-
-	// In order to later close the epoch fastly,
-	// we mofify here that requirement to significalty reduce the testing time.
-	// The only way to do it is breaking the integration tests rules mutating
-	// this state directly.
-	pallet_pool_system::Pool::<T>::mutate(pool_id, |pool| {
-		pool.as_mut().unwrap().parameters.min_epoch_time = POOL_MIN_EPOCH_TIME;
-	});
-}
-
-pub fn close_pool_epoch<T: Runtime>(admin: AccountId, pool_id: PoolId) {
-	pallet_pool_system::Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id)
-		.unwrap();
 }
 
 pub fn invest<T: Runtime>(
@@ -207,6 +156,18 @@ pub fn collect_redemptions<T: Runtime>(
 	.unwrap();
 }
 
+pub fn invest_and_collect<T: Runtime>(
+	investor: AccountId,
+	admin: Keyring,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+	amount: Balance,
+) {
+	invest::<T>(investor.clone(), pool_id, tranche_id, amount);
+	close_epoch::<T>(admin.into(), pool_id);
+	collect_investments::<T>(investor, pool_id, tranche_id);
+}
+
 pub fn last_change_id<T: Runtime>() -> T::Hash {
 	find_event::<T, _, _>(|e| match e {
 		pallet_pool_system::Event::<T>::ProposedChange { change_id, .. } => Some(change_id),
@@ -216,7 +177,17 @@ pub fn last_change_id<T: Runtime>() -> T::Hash {
 }
 
 pub mod oracle {
+	use frame_support::traits::OriginTrait;
+
 	use super::*;
+
+	pub fn set_order_book_feeder<T: Runtime>(origin: T::RuntimeOriginExt) {
+		pallet_order_book::Pallet::<T>::set_market_feeder(
+			T::RuntimeOriginExt::root(),
+			Feeder(origin.into_caller()),
+		)
+		.unwrap()
+	}
 
 	pub fn feed_from_root<T: Runtime>(key: OracleKey, value: Ratio) {
 		pallet_oracle_feed::Pallet::<T>::feed(RawOrigin::Root.into(), key, value).unwrap();
@@ -253,48 +224,5 @@ pub mod oracle {
 			pool_id,
 		)
 		.unwrap();
-	}
-}
-
-pub mod evm {
-	use super::*;
-
-	pub fn mint_balance_into_derived_account<T: Runtime>(
-		address: H160,
-		balance: Balance,
-	) -> Balance {
-		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-		let derived_account =
-			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
-
-		pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance).unwrap()
-	}
-
-	pub fn deploy_contract<T: Runtime>(address: H160, code: Vec<u8>) -> H160 {
-		let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-		let derived_address =
-			AccountConverter::convert_evm_address(chain_id, address.to_fixed_bytes());
-
-		let transaction_create_cost = T::config().gas_transaction_create;
-		let (base_fee, _) = T::FeeCalculator::min_gas_price();
-
-		pallet_evm::Pallet::<T>::create(
-			RawOrigin::from(Some(derived_address)).into(),
-			address,
-			code,
-			U256::from(0),
-			transaction_create_cost * 10,
-			U256::from(base_fee + 10),
-			None,
-			None,
-			Vec::new(),
-		)
-		.unwrap();
-
-		// returns the contract address
-		pallet_evm::AccountCodes::<T>::iter()
-			.find(|(_address, code)| code.len() > 0)
-			.unwrap()
-			.0
 	}
 }
