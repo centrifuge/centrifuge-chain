@@ -49,7 +49,7 @@ use sp_runtime::{
 };
 use staging_xcm::{
 	prelude::XCM_VERSION,
-	v4::{Junction, Junction::*, Junctions, Junctions::*, Location, NetworkId, WeightLimit},
+	v4::{Junction, Junction::*, Junctions::*, Location, NetworkId},
 	VersionedLocation,
 };
 
@@ -5235,109 +5235,84 @@ mod centrifuge {
 		}
 	}
 
-	use utils::*;
-
 	mod restricted_transfers {
 		use cfg_types::tokens::FilterCurrency;
 
 		use super::*;
-		use crate::generic::envs::runtime_env::RuntimeEnv;
+		use crate::generic::{
+			envs::runtime_env::RuntimeEnv,
+			utils::currency::{default_metadata, CurrencyInfo, CustomCurrency},
+		};
 
-		const TRANSFER_AMOUNT: u128 = 10;
+		const TRANSFER: u32 = 10;
+		const CHAIN_ID: u64 = 1;
+		const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
 
-		#[test_runtimes([centrifuge])]
-		fn restrict_lp_eth_usdc_lp_transfer<T: Runtime + FudgeSupport>() {
+		#[test_runtimes(all)]
+		fn restrict_lp_eth_transfer<T: Runtime + FudgeSupport>() {
+			let pallet_index = T::PalletInfo::index::<pallet_liquidity_pools::Pallet<T>>();
+			let curr = CustomCurrency(
+				CurrencyId::ForeignAsset(1),
+				AssetMetadata {
+					decimals: 6,
+					location: Some(VersionedLocation::V4(Location::new(
+						0,
+						[
+							PalletInstance(pallet_index.unwrap() as u8),
+							GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+							AccountKey20 {
+								network: None,
+								key: CONTRACT_ACCOUNT,
+							},
+						],
+					))),
+					additional: CustomMetadata {
+						transferability: CrossChainTransferability::LiquidityPools,
+						..CustomMetadata::default()
+					},
+					..default_metadata()
+				},
+			);
+
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
-					.add(orml_tokens::GenesisConfig::<T> {
-						balances: vec![(
-							Keyring::Alice.id(),
-							LP_ETH_USDC,
-							T::ExistentialDeposit::get() + lp_eth_usdc(TRANSFER_AMOUNT),
-						)],
-					})
+					.add(genesis::tokens::<T>([(curr.id(), curr.val(TRANSFER))]))
+					.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 					.storage(),
 			);
 
 			env.parachain_state_mut(|| {
-				register_usdc::<T>(T::FudgeHandle::SIBLING_ID);
-				register_lp_eth_usdc::<T>();
-
-				assert_ok!(orml_tokens::Pallet::<T>::set_balance(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					<T as pallet_liquidity_pools_gateway::Config>::Sender::get().into(),
-					USDC,
-					usdc(1_000),
-					0,
-				));
-
-				let router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
-					router: XCMRouter {
-						xcm_domain: XcmDomain {
-							location: Box::new(
-								Location::new(1, Parachain(T::FudgeHandle::SIBLING_ID)).into(),
-							),
-							ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![
-								38, 0,
-							]),
-							contract_address: H160::from_low_u64_be(11),
-							max_gas_limit: 700_000,
-							transact_required_weight_at_most: Default::default(),
-							overall_weight: Default::default(),
-							fee_currency: USDC,
-							fee_amount: usdc(1),
-						},
-						_marker: Default::default(),
-					},
-					_marker: Default::default(),
-				});
-
-				assert_ok!(
-					pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
-						<T as frame_system::Config>::RuntimeOrigin::root(),
-						Domain::EVM(1),
-						router,
-					)
-				);
-
-				let receiver = H160::from_slice(
-					&<sp_runtime::AccountId32 as AsRef<[u8; 32]>>::as_ref(&Keyring::Charlie.id())
-						[0..20],
-				);
-
-				let domain_address = DomainAddress::EVM(1, receiver.into());
+				let curr_contract = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
 
 				assert_ok!(
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						FilterCurrency::Specific(LP_ETH_USDC),
-						RestrictedTransferLocation::Address(domain_address.clone()),
+						FilterCurrency::Specific(curr.id()),
+						RestrictedTransferLocation::Address(curr_contract.clone()),
 					)
 				);
 
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::transfer(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						LP_ETH_USDC,
-						DomainAddress::EVM(1, [1u8; 20]),
-						lp_eth_usdc(TRANSFER_AMOUNT),
+						curr.id(),
+						DomainAddress::EVM(CHAIN_ID, [2; 20]), // Not the allowed contract account
+						curr.val(TRANSFER),
 					),
 					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
 				);
 
-				let total_issuance_pre = orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC);
-
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					LP_ETH_USDC,
-					domain_address,
-					lp_eth_usdc(TRANSFER_AMOUNT),
-				));
-
-				assert_eq!(
-					orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC),
-					total_issuance_pre - lp_eth_usdc(TRANSFER_AMOUNT),
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						curr.id(),
+						curr_contract,
+						curr.val(TRANSFER),
+					),
+					// But it's ok, we do not care about the router transaction in this context.
+					// Is already checked at `liquidity_pools.rs`
+					pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
 				);
 			});
 		}

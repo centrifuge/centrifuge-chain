@@ -10,15 +10,23 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{currency_decimals, AccountId, Balance};
+use cfg_primitives::Balance;
 use cfg_types::{
+	domain_address::DomainAddress,
 	locations::RestrictedTransferLocation,
-	tokens::{AssetMetadata, CurrencyId, FilterCurrency},
+	tokens::{
+		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata, FilterCurrency,
+	},
 };
 use cumulus_primitives_core::WeightLimit;
-use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
 use runtime_common::remarks::Remark;
 use sp_runtime::traits::Zero;
+use staging_xcm::{
+	prelude::XCM_VERSION,
+	v4::{Junction::*, Junctions::*, Location, NetworkId},
+	VersionedLocation,
+};
 
 use crate::{
 	generic::{
@@ -26,7 +34,7 @@ use crate::{
 		env::Env,
 		envs::runtime_env::RuntimeEnv,
 		utils::{
-			currency::{cfg, CurrencyInfo, CustomCurrency},
+			currency::{cfg, default_metadata, CurrencyInfo, CustomCurrency},
 			genesis,
 			genesis::Genesis,
 			xcm::{account_location, transferable_metadata},
@@ -35,10 +43,10 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-const TRANSFER_AMOUNT: u32 = 100;
-
 mod local {
 	use super::*;
+
+	const TRANSFER_AMOUNT: u32 = 100;
 
 	fn setup<T: Runtime>(filter: FilterCurrency) -> RuntimeEnv<T> {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
@@ -288,20 +296,23 @@ mod local {
 mod xcm {
 	use super::*;
 
-	#[test_runtimes([centrifuge])]
+	const TRANSFER: u32 = 100;
+	const PARA_ID: u32 = 1000;
+
+	#[test_runtimes(all)]
 	fn restrict_xcm_transfer<T: Runtime>() {
 		let curr = CustomCurrency(
 			CurrencyId::ForeignAsset(1),
 			AssetMetadata {
 				decimals: 6,
-				..transferable_metadata(Some(1000))
+				..transferable_metadata(Some(PARA_ID))
 			},
 		);
 
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(genesis::balances::<T>(cfg(1))) // For fees
-				.add(genesis::tokens::<T>([(curr.id(), curr.val(3_000))]))
+				.add(genesis::tokens::<T>([(curr.id(), curr.val(TRANSFER))]))
 				.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 				.storage(),
 		);
@@ -313,7 +324,7 @@ mod xcm {
 					FilterCurrency::Specific(curr.id()),
 					RestrictedTransferLocation::Xcm(account_location(
 						1,
-						Some(1001),
+						Some(PARA_ID),
 						Keyring::Alice.id()
 					)),
 				)
@@ -323,8 +334,8 @@ mod xcm {
 				pallet_restricted_xtokens::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					curr.id(),
-					curr.val(1_000),
-					account_location(1, Some(1001), Keyring::Bob.id()),
+					curr.val(TRANSFER),
+					account_location(1, Some(PARA_ID), Keyring::Bob.id()),
 					WeightLimit::Unlimited,
 				),
 				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
@@ -334,18 +345,91 @@ mod xcm {
 				pallet_restricted_xtokens::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					curr.id(),
-					curr.val(1_000),
-					account_location(1, Some(1001), Keyring::Alice.id()),
+					curr.val(TRANSFER),
+					account_location(1, Some(PARA_ID), Keyring::Alice.id()),
 					WeightLimit::Unlimited,
 				),
-				// But it's ok, we do not care about the xcm transaction in this context
-				// The xcm transaction is already checked at `xcm_transfers.rs`
+				// But it's ok, we do not care about the xcm transaction in this context.
+				// It is already checked at `xcm_transfers.rs`
 				orml_xtokens::Error::<T>::XcmExecutionFailed
 			);
 		});
 	}
 }
 
-mod domain_address {
-	// TODO
+mod eth_address {
+	use super::*;
+
+	const TRANSFER: u32 = 10;
+	const CHAIN_ID: u64 = 1;
+	const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
+
+	#[test_runtimes(all)]
+	fn restrict_lp_eth_transfer<T: Runtime>() {
+		let pallet_index = T::PalletInfo::index::<pallet_liquidity_pools::Pallet<T>>();
+		let curr = CustomCurrency(
+			CurrencyId::ForeignAsset(1),
+			AssetMetadata {
+				decimals: 6,
+				location: Some(VersionedLocation::V4(Location::new(
+					0,
+					[
+						PalletInstance(pallet_index.unwrap() as u8),
+						GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+						AccountKey20 {
+							network: None,
+							key: CONTRACT_ACCOUNT,
+						},
+					],
+				))),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					..CustomMetadata::default()
+				},
+				..default_metadata()
+			},
+		);
+
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
+			Genesis::default()
+				.add(genesis::balances::<T>(cfg(10)))
+				.add(genesis::tokens::<T>([(curr.id(), curr.val(TRANSFER))]))
+				.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
+				.storage(),
+		);
+
+		env.parachain_state_mut(|| {
+			let curr_contract = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
+
+			assert_ok!(
+				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					FilterCurrency::Specific(curr.id()),
+					RestrictedTransferLocation::Address(curr_contract.clone()),
+				)
+			);
+
+			assert_noop!(
+				pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					DomainAddress::EVM(CHAIN_ID, [2; 20]), // Not the allowed contract account
+					curr.val(TRANSFER),
+				),
+				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+			);
+
+			assert_noop!(
+				pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					curr_contract,
+					curr.val(TRANSFER),
+				),
+				// But it's ok, we do not care about the router transaction in this context.
+				// Is already checked at `liquidity_pools.rs`
+				pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
+			);
+		});
+	}
 }
