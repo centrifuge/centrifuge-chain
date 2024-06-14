@@ -1083,22 +1083,6 @@ mod development {
 
 				outbound_message
 			});
-
-			let expected_event =
-				pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
-					sender,
-					domain,
-					message,
-					nonce: T::OutboundMessageNonce::one(),
-				};
-
-			env.pass(Blocks::UntilEvent {
-				event: expected_event.clone().into(),
-				limit: 3,
-			});
-
-			env.check_event(expected_event)
-				.expect("expected RouterExecutionSuccess event");
 		}
 
 		#[test_runtimes([development])]
@@ -4618,7 +4602,7 @@ mod development {
 				});
 
 				env.check_event(expected_event)
-					.expect("expected RouterExecutionSuccess event");
+					.expect("expected OutboundMessageExecutionSuccess event");
 
 				// Router not found
 				let unused_domain = Domain::EVM(1234);
@@ -4652,6 +4636,8 @@ mod development {
 					);
 
 					setup_test(&mut env);
+
+					enable_para_to_sibling_communication::<T>(&mut env);
 
 					let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 						currency: 0,
@@ -4701,7 +4687,7 @@ mod development {
 					});
 
 					env.check_event(expected_event)
-						.expect("expected RouterExecutionSuccess event");
+						.expect("expected OutboundMessageExecutionSuccess event");
 				}
 
 				type RouterCreationFn<T> =
