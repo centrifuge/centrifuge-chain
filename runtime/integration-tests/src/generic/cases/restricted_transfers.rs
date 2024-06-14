@@ -339,7 +339,7 @@ mod xcm {
 					WeightLimit::Unlimited,
 				),
 				// But it's ok, we do not care about the xcm transaction in this context
-				// The xcm transaction is already checked at `cross_transfers.rs`
+				// The xcm transaction is already checked at `xcm_transfers.rs`
 				orml_xtokens::Error::<T>::XcmExecutionFailed
 			);
 		});

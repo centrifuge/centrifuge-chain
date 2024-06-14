@@ -24,7 +24,7 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
-	mod xtransfers;
+	mod xcm_transfers;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.
