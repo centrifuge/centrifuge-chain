@@ -41,7 +41,7 @@ fn convert_transferable_asset<T: Runtime>() {
 	let env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::parachain_id::<T>(PARA_ID))
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 	);
 
@@ -73,7 +73,7 @@ fn cannot_convert_nontransferable_asset<T: Runtime>() {
 	let env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::parachain_id::<T>(PARA_ID))
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 	);
 

@@ -45,10 +45,10 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 		Default::default(),
 		Genesis::default()
 			.add(genesis::tokens::<T>([(curr.id(), curr.val(INITIAL))]))
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 	);
 
@@ -87,10 +87,10 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 		Default::default(),
 		Genesis::default()
 			.add(genesis::balances::<T>(cfg(INITIAL)))
-			.add(genesis::assets::<T>([(Native, &curr.metadata())]))
+			.add(genesis::assets::<T>([(Native, curr.metadata())]))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 	);
 
@@ -129,10 +129,10 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 		Default::default(),
 		Genesis::default()
 			.add(genesis::tokens::<T>([(curr.id(), curr.val(INITIAL))]))
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(Native, &curr.metadata())]))
+			.add(genesis::assets::<T>([(Native, curr.metadata())]))
 			.storage(),
 	);
 
@@ -172,7 +172,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 			.add(genesis::balances::<Relay<T>>(curr.val(INITIAL)))
 			.storage(),
 		Genesis::default()
-			.add(genesis::assets::<T>([(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
 			.storage(),
 		Default::default(),
 	);

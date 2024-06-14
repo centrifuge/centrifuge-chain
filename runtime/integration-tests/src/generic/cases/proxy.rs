@@ -63,7 +63,7 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 		Genesis::default()
 			.add(genesis::balances::<T>(FOR_FEES))
 			.add(genesis::tokens::<T>(vec![(curr.id(), INITIAL)]))
-			.add(genesis::assets::<T>(vec![(curr.id(), &curr.metadata())]))
+			.add(genesis::assets::<T>(vec![(curr.id(), curr.metadata())]))
 			.storage(),
 	);
 

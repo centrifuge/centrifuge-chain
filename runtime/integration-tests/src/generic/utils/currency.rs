@@ -194,6 +194,10 @@ impl CustomCurrency {
 	pub const fn val(&self, amount: u32) -> Balance {
 		amount_pow(amount as Balance, self.1.decimals)
 	}
+
+	pub fn metadata(&self) -> &AssetMetadata {
+		&self.1
+	}
 }
 
 pub fn register_currency<T: Runtime>(
