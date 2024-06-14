@@ -172,6 +172,7 @@ pub fn receipt_ok(receipt: ReceiptV3) -> bool {
 	inner.status_code == 1
 }
 
+/// TEST COMMENT
 pub fn mint_balance_into_derived_account<T: Runtime>(address: impl AsRef<[u8]>, balance: u128) {
 	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
 	let derived_account =
