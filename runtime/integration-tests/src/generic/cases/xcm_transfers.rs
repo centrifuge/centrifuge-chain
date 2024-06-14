@@ -7,7 +7,7 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
+		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport, RelayRuntime},
 		utils::{
 			currency::{cfg, CurrencyInfo, CustomCurrency},
 			genesis,
@@ -24,8 +24,6 @@ use crate::{
 
 const INITIAL: u32 = 100;
 const TRANSFER: u32 = 20;
-
-type Relay<T> = FudgeRelayRuntime<T>;
 
 fn create_transfeable_currency(decimals: u32, para_id: Option<u32>) -> CustomCurrency {
 	CustomCurrency(
@@ -169,7 +167,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
-			.add(genesis::balances::<Relay<T>>(curr.val(INITIAL)))
+			.add(genesis::balances::<RelayRuntime<T>>(curr.val(INITIAL)))
 			.storage(),
 		Genesis::default()
 			.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
@@ -181,16 +179,18 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 	enable_relay_to_para_communication::<T>(&mut env);
 
 	env.relay_state_mut(|| {
-		assert_ok!(pallet_xcm::Pallet::<Relay<T>>::reserve_transfer_assets(
-			RawOrigin::Signed(Keyring::Alice.id()).into(),
-			Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
-			account_location(0, None, Keyring::Bob.id()),
-			Box::new((Here, curr.val(TRANSFER)).into()),
-			0,
-		));
+		assert_ok!(
+			pallet_xcm::Pallet::<RelayRuntime<T>>::reserve_transfer_assets(
+				RawOrigin::Signed(Keyring::Alice.id()).into(),
+				Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
+				account_location(0, None, Keyring::Bob.id()),
+				Box::new((Here, curr.val(TRANSFER)).into()),
+				0,
+			)
+		);
 
 		assert_eq!(
-			pallet_balances::Pallet::<Relay<T>>::free_balance(&Keyring::Alice.id()),
+			pallet_balances::Pallet::<RelayRuntime<T>>::free_balance(&Keyring::Alice.id()),
 			(curr.val(INITIAL) - curr.val(TRANSFER)).approx(0.01)
 		);
 	});
@@ -226,7 +226,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 
 	env.relay_state(|| {
 		assert_eq!(
-			pallet_balances::Pallet::<Relay<T>>::free_balance(&Keyring::Alice.id()),
+			pallet_balances::Pallet::<RelayRuntime<T>>::free_balance(&Keyring::Alice.id()),
 			(curr.val(INITIAL) - curr.val(TRANSFER) + curr.val(TRANSFER / 2)).approx(0.01)
 		);
 	});

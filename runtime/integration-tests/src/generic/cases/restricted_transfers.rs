@@ -23,8 +23,7 @@ use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletI
 use runtime_common::remarks::Remark;
 use sp_runtime::traits::Zero;
 use staging_xcm::{
-	prelude::XCM_VERSION,
-	v4::{Junction::*, Junctions::*, Location, NetworkId},
+	v4::{Junction::*, Location, NetworkId},
 	VersionedLocation,
 };
 

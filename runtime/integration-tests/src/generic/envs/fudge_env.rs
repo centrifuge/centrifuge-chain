@@ -24,7 +24,7 @@ pub trait FudgeSupport: Runtime {
 	type FudgeHandle: FudgeHandle<Self>;
 }
 
-pub type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
+pub type RelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
 
 /// Evironment that uses fudge to interact with the runtime
 pub struct FudgeEnv<T: Runtime + FudgeSupport> {

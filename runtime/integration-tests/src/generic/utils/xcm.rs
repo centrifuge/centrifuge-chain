@@ -11,19 +11,17 @@ use staging_xcm::{
 use crate::generic::{
 	config::Runtime,
 	env::{Blocks, Env},
-	envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
+	envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport, RelayRuntime},
 	utils::currency::default_metadata,
 };
 
 pub fn enable_relay_to_para_communication<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 	env.relay_state_mut(|| {
-		assert_ok!(
-			pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
-				RawOrigin::Root.into(),
-				Box::new(Location::new(0, Parachain(T::FudgeHandle::PARA_ID))),
-				XCM_VERSION,
-			)
-		);
+		assert_ok!(pallet_xcm::Pallet::<RelayRuntime<T>>::force_xcm_version(
+			RawOrigin::Root.into(),
+			Box::new(Location::new(0, Parachain(T::FudgeHandle::PARA_ID))),
+			XCM_VERSION,
+		));
 	});
 }
 
@@ -48,19 +46,22 @@ pub fn enable_para_to_sibling_communication<T: Runtime + FudgeSupport>(env: &mut
 
 	env.relay_state_mut(|| {
 		// Enable para -> sibling comunication though relay
-		assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-			FudgeRelayRuntime<T>,
-		>::force_open_hrmp_channel(
-			RawOrigin::Root.into(),
-			Id::from(T::FudgeHandle::PARA_ID),
-			Id::from(T::FudgeHandle::SIBLING_ID),
-			10,
-			1024,
-		));
+		assert_ok!(
+			polkadot_runtime_parachains::hrmp::Pallet::<RelayRuntime<T>>::force_open_hrmp_channel(
+				RawOrigin::Root.into(),
+				Id::from(T::FudgeHandle::PARA_ID),
+				Id::from(T::FudgeHandle::SIBLING_ID),
+				10,
+				1024,
+			)
+		);
 
-		assert_ok!(polkadot_runtime_parachains::hrmp::Pallet::<
-			FudgeRelayRuntime<T>,
-		>::force_process_hrmp_open(RawOrigin::Root.into(), 1));
+		assert_ok!(
+			polkadot_runtime_parachains::hrmp::Pallet::<RelayRuntime<T>>::force_process_hrmp_open(
+				RawOrigin::Root.into(),
+				1
+			)
+		);
 	});
 
 	env.pass(Blocks::ByNumber(1));
