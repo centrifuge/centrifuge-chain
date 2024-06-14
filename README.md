@@ -23,6 +23,7 @@
     <a href="https://docs.centrifuge.io/build/cent-chain/"><strong>Read the documentation »</strong></a>
   </p>
 
+
 ## About Centrifuge
 Centrifuge is the infrastructure that facilitates the decentralized financing of real-world assets natively on-chain, creating a fully transparent market which allows borrowers and lenders to transact without unnecessary intermediaries. Asset pools are fully collateralized, liquidity providers have legal recourse, and the protocol is asset-class agnostic with pools for assets spanning mortgages, invoices, microlending and consumer finance. Ultimately, the protocol aims to lower the cost of borrowing for businesses around the world, while providing DeFi users with a stable source of collateralized yield that is uncorrelated to the volatile crypto markets. By bringing the entire structured credit market on-chain across securitization, tokenization, privacy, governance, and liquidity integrations, Centrifuge is building a more transparent, affordable, and limitless financial system.
 
