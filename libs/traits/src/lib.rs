@@ -55,6 +55,7 @@ pub mod swaps;
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
 
+pub mod adjustments;
 pub mod time;
 
 /// A trait that can be used to fetch the nav and update nav for a given pool

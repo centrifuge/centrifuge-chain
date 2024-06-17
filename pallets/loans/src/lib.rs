@@ -72,6 +72,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_traits::{
 		self,
+		adjustments::Adjustment,
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
 		interest::InterestAccrual,
@@ -79,7 +80,6 @@ pub mod pallet {
 		Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
-		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};

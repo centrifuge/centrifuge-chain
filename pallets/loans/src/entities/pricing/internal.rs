@@ -1,8 +1,8 @@
 use cfg_traits::{
+	adjustments::Adjustment,
 	interest::{InterestRate, RateCollection},
 	Seconds, TimeAsSecs,
 };
-use cfg_types::adjustments::Adjustment;
 use frame_support::{
 	ensure,
 	pallet_prelude::{DispatchResult, RuntimeDebug},

@@ -6,7 +6,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{
 	traits::{EnsureAdd, EnsureInto, EnsureSub},
-	ArithmeticError, FixedPointOperand, Perquintill,
+	ArithmeticError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_runtime::DispatchError;
 use sp_std::ops::Add;
@@ -594,9 +594,18 @@ pub enum Weekday {
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
 pub struct PassedPeriods {
-	front: PartialPeriod,
-	full: FullPeriods,
-	back: PartialPeriod,
+	front: Option<PartialPeriod>,
+	full: Option<FullPeriods>,
+	back: Option<PartialPeriod>,
+}
+
+impl PassedPeriods {
+	pub fn try_map_front<F: FnOnce(&PartialPeriod) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<R, E> {
+		self.front.as_ref().map(f)
+	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
@@ -639,7 +648,7 @@ pub enum Period {
 }
 
 impl Period {
-	pub fn periods_per_year<R: FixedPointOperand>(&self) -> Result<R, DispatchError> {
+	pub fn periods_per_year<Rate: FixedPointNumber>(&self) -> Result<Rate, DispatchError> {
 		todo!("Implement the rest of the periods")
 	}
 
@@ -658,10 +667,6 @@ impl Period {
 	}
 
 	pub fn next_period_start<T: IntoSeconds + Copy>(&self, t: T) -> Result<Seconds, DispatchError> {
-		todo!("Implement the rest of the periods")
-	}
-
-	pub fn next_period_end<T: IntoSeconds + Copy>(&self, t: T) -> Result<Seconds, DispatchError> {
 		todo!("Implement the rest of the periods")
 	}
 

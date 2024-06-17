@@ -14,119 +14,18 @@
 //! # Interest Accrual Pallet
 //!
 //! A pallet for calculating interest accrual on debt.
-//! It keeps track of different buckets of interest rates and is optimized
-//! for many loans per interest bucket. This implementation is inspired
-//! by [jug.sol](https://github.com/makerdao/dss/blob/master/src/jug.sol)
-//! from Multi Collateral Dai.
-//!
-//! It works by defining debt = normalized debt * accumulated rate.
-//! When the first loan for an interest rate is created, the accumulated
-//! rate is set to 1.0. The normalized debt is then calculated, which is
-//! the debt at t=0, using debt / accumulated rate.
-//!
-//! Over time, the accumulated rate grows based on the interest rate per second.
-//! Any time the accumulated rate is updated for an interest rate group,
-//! this indirectly updates the debt of all loans outstanding using this
-//! interest rate.
-//!
-//! ```text
-//!                    ar = accumulated rate
-//!                    nd = normalized debt
-//!
-//!            │
-//!        2.0 │                             ****
-//!            │                         ****
-//!            │                     ****
-//!            │                 ****
-//!   ar   1.5 │             ****
-//!            │         ****
-//!            │      ****
-//!            │   ****
-//!        1.0 │ **
-//!            └──────────────────────────────────
-//!            │              │
-//!
-//!            borrow 10      borrow 20
-//!            ar   = 1.0     ar   = 1.5
-//!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
-//!            debt = 10      debt = 35
-//! ```
-//!
-//! ## Basics of shared rate accrual and "normalized debts"
-//!
-//! When we want to compute the interest accrued on some value, the
-//! high-level equation is:
-//!
-//! ```text
-//! rate_per_second.pow(debt_age) * debt_base_value
-//! ```
-//!
-//! Computing that pow for everything is expensive, so we want to only
-//! do it once for any given `rate_per_second` and share that result
-//! across multiple debts. Because these debts might not have been
-//! created at the same time as each other (or the rate), we must
-//! include a correction factor to the shared interest rate accrual:
-//!
-//! ```text
-//! correction_factor = ???;
-//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
-//! ```
-//!
-//! This correction factor is just the accumulated interest at the
-//! time the debt was created:
-//!
-//! ```text
-//! correction_factor = rate_per_second.pow(rate_age_at_time_of_debt_creation);
-//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
-//! // Equivalent to:
-//! rate_per_second.pow(rate_age - rate_ag_at_time_of_debt_creation) * debt_base_value
-//! ```
-//!
-//! And in the classic trade-off of space vs time complexity, we
-//! precompute the correction factor applied to the base debt as the
-//! normalized debt
-//!
-//! ```text
-//! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_debt_creation);
-//! ```
-//!
-//! In the actual code, `rate_per_second.pow(...)` will be precomputed
-//! for us at block initialize and is just queried as the "accrued
-//! rate".
-//!
-//! The case of `rate_age_at_time_of_debt_creation == 0` creates a
-//! correction factor of 1, since no debt has yet accumulated on that
-//! rate. This leads to the behavior of `normalize` apparently doing
-//! nothing. The debt in that case is "synced" to the interest rate,
-//! and doesn't need any correction.
-//!
-//! ## Renormalization
-//!
-//! Renormalization is the operation of saying "from now one, I want
-//! to accrue this debt at a new rate". Implicit in that is that all
-//! previous debt has been accounted for. We are essentially "starting
-//! over" with a new base debt - our accrued debt from the old rate -
-//! and a new interest rate.
-//!
-//! ```text
-//! current_debt = normalized_debt * accrued_rate(old_interest_rate);
-//! normalized_debt = current_debt / accrued_rate(new_interest_rate);
-//! ```
-//!
-//! Two things to note here:
-//! * If `old_interest_rate` and `new_interest_rate` are identical, this is a
-//!   no-op.
-//! * If `new_interest_rate` is newly created (and thus its age is `0`), the
-//!   correction factor is `1` just as for any other rate.  See the note above
-//!   regarding zero-age rates.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::{
-	interest::{Interest, InterestAccrual, InterestModel, InterestRate},
-	time::{Seconds, TimeAsSecs},
+	adjustments::Adjustment,
+	interest::{
+		FullPeriod, Interest, InterestAccrual, InterestAccrualProvider, InterestModel,
+		InterestPayment, InterestRate,
+	},
+	time::{Period, Seconds, TimeAsSecs},
 };
-use cfg_types::adjustments::Adjustment;
+use frame_support::ensure;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
@@ -152,9 +51,18 @@ mod tests;
 
 pub use pallet::*;
 
+pub struct ActiveInterestModel<T: Config> {
+	model: InterestModel<T::Rate>,
+	activation: Seconds,
+	last_updated: Seconds,
+	deactivation: Option<Seconds>,
+	notional: T::Balance,
+	interest: T::Balance,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{macro_magic::__private::syn::token::In, pallet_prelude::*};
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -201,53 +109,149 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Emits when the debt calculation failed
-		DebtCalculationFailed,
-		/// Emits when a rate is not within the valid range
-		InvalidRate,
+		/// Emits when the accrual deactivation is in time before the last
+		/// update
+		AccrualDeactivationInThePast,
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn calculate_rate(
-			interest_rate_per_year: T::Rate,
-			accumulated_rate: T::Rate,
-			when: Seconds,
-		) -> Result<Interest<T::Rate>, DispatchError> {
-			todo!()
-		}
+		pub fn calculate_interest(
+			notional: T::Balance,
+			model: &InterestModel<T::Rate>,
+			last_updated: Seconds,
+			at: Seconds,
+		) -> Result<Interest<T::Balance>, DispatchError> {
+			let rate = model.rate_per_schedule()?;
 
-		pub(crate) fn calculate_debt(
-			interest_rate_per_year: T::Rate,
-			debt: T::Balance,
-			when: Seconds,
-		) -> Result<T::Rate, DispatchError> {
-			todo!()
-		}
-
-		pub(crate) fn validate_interest_rate(
-			interest_rate_per_year: &InterestRate<T::Rate>,
-		) -> DispatchResult {
-			match interest_rate_per_year {
-				InterestRate::Fixed { rate_per_year, .. } => Ok(()),
+			match model.compounding {
+				None => Interest::only_full(FullPeriod::new(rate.ensure_mul_int(notional), 1)),
+				Some(compounding) => {
+					let periods = compounding.periods_passed(last_updated, at)?;
+					let front = periods.try_map_front(|| {})?;
+				}
 			}
 		}
 	}
 }
 
-impl<T: Config> InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
-	fn calculate_debt(
-		interest_rate_per_year: &InterestModel<T::Rate>,
-		debt: T::Balance,
-		when: Seconds,
-	) -> Result<Interest<T::Balance>, DispatchError> {
-		Pallet::<T>::calculate_debt(interest_rate_per_year, debt, when)
+impl<T: Config> InterestAccrualProvider<T::Rate, T::Balance> for Pallet<T> {
+	type InterestAccrual = ActiveInterestModel<T>;
+
+	fn reference(
+		model: InterestModel<T::Rate>,
+		at: Seconds,
+	) -> Result<Self::InterestAccrual, DispatchError> {
+		Ok(ActiveInterestModel {
+			model,
+			activation: at,
+			last_updated: at,
+			deactivation: None,
+			notional: T::Balance::zero(),
+			interest: T::Balance::zero(),
+		})
 	}
 
-	fn accumulate_rate(
-		interest_rate_per_year: &InterestModel<T::Rate>,
-		acc_rate: T::Rate,
-		when: Seconds,
+	fn unreference(_model: Self::InterestAccrual) -> Result<(), DispatchError> {
+		Ok(())
+	}
+}
+
+impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> {
+	fn update<F: FnOnce(Interest<T::Balance>) -> Result<(T::Balance, Seconds), DispatchError>>(
+		&mut self,
+		at: Seconds,
+		result: F,
 	) -> Result<T::Rate, DispatchError> {
-		Pallet::<T>::calculate_rate(interest_rate_per_year, acc_rate, when)
+		let interest =
+			Pallet::<T>::calculate_interest(self.notional, &self.model, self.last_updated, at)?;
+
+		let (interest, last_updated) = result(interest)?;
+		self.last_updated = last_updated;
+		self.interest.ensure_add_assign(interest)?;
+
+		Ok(())
+	}
+
+	fn notional(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self.notional)
+	}
+
+	fn interest(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self.interest)
+	}
+
+	fn debt(&self) -> Result<T::Balance, DispatchError> {
+		self.notional.ensure_add(self.interest).map_err(Into::into)
+	}
+
+	fn adjust_notional(&mut self, adjustment: Adjustment<T::Balance>) -> Result<(), DispatchError> {
+		match adjustment {
+			Adjustment::Increase(amount) => {
+				self.notional.ensure_add_assign(amount)?;
+			}
+			Adjustment::Decrease(amount) => {
+				self.notional.ensure_sub_assign(amount)?;
+			}
+		}
+
+		Ok(())
+	}
+
+	fn adjust_interest(&mut self, adjustment: Adjustment<T::Balance>) -> Result<(), DispatchError> {
+		match adjustment {
+			Adjustment::Increase(amount) => {
+				self.interest.ensure_add_assign(amount)?;
+			}
+			Adjustment::Decrease(amount) => {
+				self.interest.ensure_sub_assign(amount)?;
+			}
+		}
+
+		Ok(())
+	}
+
+	fn adjust_rate(
+		&mut self,
+		adjustment: Adjustment<InterestRate<T::Rate>>,
+	) -> Result<(), DispatchError> {
+		match adjustment {
+			Adjustment::Increase(rate) => {
+				self.model.rate.ensure_add_assign(rate)?;
+			}
+			Adjustment::Decrease(rate) => {
+				self.model.rate.ensure_sub_assign(rate)?;
+			}
+		}
+
+		Ok(())
+	}
+
+	fn adjust_compounding(&mut self, adjustment: Option<Period>) -> Result<(), DispatchError> {
+		self.model.compounding = adjustment;
+
+		Ok(())
+	}
+
+	fn stop_accrual_at(&mut self, deactivation: Seconds) -> Result<(), DispatchError> {
+		ensure!(
+			deactivation >= self.last_updated,
+			Error::<T>::AccrualDeactivationInThePast
+		);
+
+		self.deactivation = Some(deactivation);
+
+		Ok(())
+	}
+
+	fn last_updated(&self) -> Seconds {
+		self.last_updated
+	}
+
+	fn accrued_since(&self) -> Seconds {
+		self.activation
+	}
+
+	fn accruing_till(&self) -> Option<Seconds> {
+		self.deactivation
 	}
 }

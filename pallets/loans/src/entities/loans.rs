@@ -1,9 +1,9 @@
 use cfg_traits::{
 	self,
+	adjustments::Adjustment,
 	interest::{InterestAccrual, InterestModel, InterestRate, RateCollection},
 	Seconds, TimeAsSecs,
 };
-use cfg_types::adjustments::Adjustment;
 use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
 use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};

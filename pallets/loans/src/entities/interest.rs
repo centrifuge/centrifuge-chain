@@ -1,8 +1,8 @@
 use cfg_traits::{
+	adjustments::Adjustment,
 	interest::{InterestAccrual, InterestRate, RateCollection},
 	TimeAsSecs,
 };
-use cfg_types::adjustments::Adjustment;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

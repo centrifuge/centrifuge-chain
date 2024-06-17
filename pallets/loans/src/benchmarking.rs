@@ -13,15 +13,13 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
+	adjustments::Adjustment,
 	benchmarking::FundedPoolBenchmarkHelper,
 	changes::ChangeGuard,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
 	Permissions, PoolWriteOffPolicyMutate, TimeAsSecs, ValueProvider,
 };
-use cfg_types::{
-	adjustments::Adjustment,
-	permissions::{PermissionScope, PoolRole, Role},
-};
+use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::tokens::nonfungibles::{Create, Mutate};
 use frame_system::RawOrigin;

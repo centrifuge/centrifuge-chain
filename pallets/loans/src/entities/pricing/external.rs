@@ -1,7 +1,7 @@
 use cfg_traits::{
-	self, data::DataRegistry, interest::InterestRate, IntoSeconds, Seconds, TimeAsSecs,
+	self, adjustments::Adjustment, data::DataRegistry, interest::InterestRate, IntoSeconds,
+	Seconds, TimeAsSecs,
 };
-use cfg_types::adjustments::Adjustment;
 use frame_support::{self, ensure, pallet_prelude::RuntimeDebug, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
