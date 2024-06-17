@@ -162,11 +162,14 @@ pub mod utils {
 	}
 
 	pub fn verify_outbound_success<T: Runtime>(
-		_: <T as pallet_liquidity_pools_gateway::Config>::Message,
+		message: <T as pallet_liquidity_pools_gateway::Config>::Message,
 	) {
 		assert!(matches!(
 			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess { .. }
+			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
+				message: message,
+				..
+			}
 		));
 	}
 

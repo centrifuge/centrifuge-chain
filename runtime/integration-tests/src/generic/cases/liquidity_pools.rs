@@ -3993,7 +3993,6 @@ mod routers {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
-					.add(genesis::council_members::<T>(get_council_members()))
 					.storage(),
 			);
 

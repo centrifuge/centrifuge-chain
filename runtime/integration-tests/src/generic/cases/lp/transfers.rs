@@ -143,13 +143,13 @@ fn transfer_tokens_from_local<T: Runtime>() {
 	utils::prepare_hold_usdc_local::<T>(&mut env);
 
 	env.state_mut(|_evm| {
-		let call = pallet_liquidity_pools::Pallet::<T>::transfer(
+		pallet_liquidity_pools::Pallet::<T>::transfer(
 			OriginFor::<T>::signed(Keyring::Ferdie.into()),
 			USDC.id(),
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Ferdie.into()),
 			AMOUNT,
-		);
-		call.unwrap();
+		)
+		.unwrap();
 		lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
 	});
 
