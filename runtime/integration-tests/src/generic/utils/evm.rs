@@ -60,6 +60,16 @@ impl ContractInfo {
 	}
 }
 
+fn is_sol_directory(dir_entry: &std::fs::DirEntry) -> bool {
+	dir_entry
+		.path()
+		.parent()
+		.expect(ESSENTIAL)
+		.extension()
+		.map(|s| s.to_str().expect(ESSENTIAL))
+		== Some("sol")
+}
+
 fn traversal(path: impl AsRef<Path>, files: &mut Vec<PathBuf>) {
 	for path in fs::read_dir(path).expect("Submodules directory must exist for integration-tests") {
 		if let Ok(dir_entry) = path.as_ref() {
@@ -77,7 +87,9 @@ fn traversal(path: impl AsRef<Path>, files: &mut Vec<PathBuf>) {
 				.map(|meta| meta.is_file())
 				.unwrap_or(false)
 			{
-				files.push(dir_entry.path())
+				if is_sol_directory(dir_entry) {
+					files.push(dir_entry.path())
+				}
 			}
 		}
 	}
