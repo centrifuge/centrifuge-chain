@@ -3871,7 +3871,7 @@ mod foreign_investments {
 mod transfers {
 	use super::*;
 
-	// TODO: Must be moved to lp/transfers.rs (?)
+	// TODO: Must be moved to lp/transfers.rs (?) or to UT? It seems more an UT.
 
 	#[test_runtimes([development])]
 	fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
