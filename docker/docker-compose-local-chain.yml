@@ -16,7 +16,7 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain="${PARA_CHAIN_SPEC:-development}"
+      --chain="${PARA_CHAIN_SPEC:-centrifuge-local}"
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
