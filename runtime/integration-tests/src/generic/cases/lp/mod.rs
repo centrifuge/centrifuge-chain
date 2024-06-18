@@ -167,9 +167,9 @@ pub mod utils {
 		assert!(matches!(
 			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
 			pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
-				message: message,
+				message: processed_message,
 				..
-			}
+			} if processed_message == message
 		));
 	}
 
