@@ -11,7 +11,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::mock::Runtime;
-
 #[test]
 fn test_rate_validation() {}

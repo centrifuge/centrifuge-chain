@@ -1,47 +1,11 @@
 use std::num::ParseIntError;
 
-use chrono::{DateTime, Datelike, Days, Months, NaiveDate, NaiveDateTime, TimeDelta, Timelike};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeDelta};
 use frame_support::traits::UnixTime;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::{
-	traits::{EnsureAdd, EnsureInto, EnsureSub},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, Perquintill,
-};
+use sp_arithmetic::{traits::EnsureInto, FixedPointNumber, Perquintill};
 use sp_runtime::DispatchError;
-use sp_std::ops::Add;
-
-impl num_traits::Num for Seconds {
-	type FromStrRadixErr = ParseIntError;
-
-	fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-		Ok(Self(u64::from_str_radix(str, radix)?))
-	}
-}
-
-impl core::ops::Not for Seconds {
-	type Output = Self;
-
-	fn not(self) -> Self::Output {
-		Self(!self.0)
-	}
-}
-
-impl num_traits::NumCast for Seconds {
-	fn from<T: num_traits::ToPrimitive>(n: T) -> Option<Self> {
-		n.to_u64().map(Self)
-	}
-}
-
-impl num_traits::ToPrimitive for Seconds {
-	fn to_i64(&self) -> Option<i64> {
-		self.0.to_i64()
-	}
-
-	fn to_u64(&self) -> Option<u64> {
-		Some(self.0)
-	}
-}
 
 macro_rules! implement_base_math {
 	(
@@ -84,88 +48,83 @@ macro_rules! implement_base_math {
 			}
 		}
 
-		/*
-		impl TryFrom<u8> for $name {
-			type Error = DispatchError;
-
-			fn try_from(value: u8) -> Result<Self, Self::Error> {
-				u64::ensure_from(value).map($name).map_err(Into::into)
+		impl From<$name> for u64 {
+			fn from(int: $name) -> Self {
+				int.0
 			}
 		}
 
-		impl TryInto<u8> for $name {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<Self, Self::Error> {
-				u8::ensure_from(self).map($name).map_err(Into::into)
+		impl From<usize> for $name {
+			fn from(int: usize) -> Self {
+				$name(int as u64)
 			}
 		}
 
-		impl TryFrom<u16> for $name {
-			type Error = DispatchError;
+		impl parity_scale_codec::CompactAs for $name {
+			type As = u64;
 
-			fn try_from(value: u16) -> Result<Self, Self::Error> {
-				Self::ensure_from(value).map($name).map_err(Into::into)
+			fn encode_as(&self) -> &u64 {
+				&self.0
+			}
+
+			fn decode_from(x: u64) -> Result<$name, parity_scale_codec::Error> {
+				Ok($name(x))
 			}
 		}
 
-		impl TryInto<u16> for $name {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<Self, Self::Error> {
-				$name::try_from(self).map($name).map_err(Into::into)
-			}
-		}
-
-		impl TryFrom<u32> for $name {
-			type Error = DispatchError;
-
-			fn try_from(value: u32) -> Result<Self, Self::Error> {
-				Self::ensure_from(value).map($name).map_err(Into::into)
-			}
-		}
-
-		impl TryInto<u32> for $name {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<Self, Self::Error> {
-				$name::try_from(self).map($name).map_err(Into::into)
-			}
-		}
-
-		impl TryFrom<u64> for $name {
-			type Error = DispatchError;
-
-			fn try_from(value: u64) -> Result<Self, Self::Error> {
-				Self::ensure_from(value).map($name).map_err(Into::into)
-			}
-		}
-
-		impl TryInto<u64> for $name {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<Self, Self::Error> {
-				$name::try_from(self).map($name).map_err(Into::into)
+		impl From<parity_scale_codec::Compact<$name>> for $name {
+			fn from(x: parity_scale_codec::Compact<$name>) -> $name {
+				x.0
 			}
 		}
 
 		impl TryFrom<u128> for $name {
-			type Error = DispatchError;
+			type Error = core::num::TryFromIntError;
 
 			fn try_from(value: u128) -> Result<Self, Self::Error> {
-				Self::ensure_from(value).map($name).map_err(Into::into)
+				u64::try_from(value).map($name).map_err(Into::into)
+			}
+		}
+
+		impl TryInto<u8> for $name {
+			type Error = core::num::TryFromIntError;
+
+			fn try_into(self) -> Result<u8, Self::Error> {
+				u8::try_from(self.0)
+			}
+		}
+
+		impl TryInto<u16> for $name {
+			type Error = core::num::TryFromIntError;
+
+			fn try_into(self) -> Result<u16, Self::Error> {
+				u16::try_from(self.0)
+			}
+		}
+
+		impl TryInto<u32> for $name {
+			type Error = core::num::TryFromIntError;
+
+			fn try_into(self) -> Result<u32, Self::Error> {
+				u32::try_from(self.0)
 			}
 		}
 
 		impl TryInto<u128> for $name {
-			type Error = DispatchError;
+			type Error = core::num::TryFromIntError;
 
-			fn try_into(self) -> Result<Self, Self::Error> {
-				$name::try_from(self).map($name).map_err(Into::into)
+			fn try_into(self) -> Result<u128, Self::Error> {
+				Ok(self.0.into())
 			}
 		}
 
-		 */
+		impl TryInto<usize> for $name {
+			type Error = core::num::TryFromIntError;
+
+			fn try_into(self) -> Result<usize, Self::Error> {
+				usize::try_from(self.0)
+			}
+		}
 
 		impl core::ops::Add for $name {
 			type Output = Self;
@@ -265,6 +224,38 @@ macro_rules! implement_base_math {
 			}
 		}
 
+		impl core::ops::BitXor for $name {
+			type Output = Self;
+
+			fn bitxor(self, rhs: Self) -> Self::Output {
+				$name(self.0 ^ rhs.0)
+			}
+		}
+
+		impl core::ops::BitOr for $name {
+			type Output = Self;
+
+			fn bitor(self, rhs: Self) -> Self::Output {
+				$name(self.0 | rhs.0)
+			}
+		}
+
+		impl core::ops::BitAnd for $name {
+			type Output = Self;
+
+			fn bitand(self, rhs: Self) -> Self::Output {
+				$name(self.0 & rhs.0)
+			}
+		}
+
+		impl core::ops::Not for $name {
+			type Output = Self;
+
+			fn not(self) -> Self::Output {
+				Self(!self.0)
+			}
+		}
+
 		/// ------------------------------- ///
 		impl core::ops::Shl<usize> for $name {
 			type Output = Self;
@@ -316,6 +307,30 @@ macro_rules! implement_base_math {
 		impl num_traits::CheckedShr for $name {
 			fn checked_shr(&self, rhs: u32) -> Option<Self> {
 				self.0.checked_shr(rhs).map($name)
+			}
+		}
+
+		impl num_traits::NumCast for $name {
+			fn from<T: num_traits::ToPrimitive>(n: T) -> Option<Self> {
+				n.to_u64().map($name)
+			}
+		}
+
+		impl num_traits::Num for $name {
+			type FromStrRadixErr = ParseIntError;
+
+			fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+				Ok(Self(u64::from_str_radix(str, radix)?))
+			}
+		}
+
+		impl num_traits::ToPrimitive for $name {
+			fn to_i64(&self) -> Option<i64> {
+				self.0.to_i64()
+			}
+
+			fn to_u64(&self) -> Option<u64> {
+				Some(self.0)
 			}
 		}
 
@@ -381,7 +396,7 @@ macro_rules! implement_base_math {
 			}
 
 			fn pow(self, exp: u32) -> Self {
-				Self(num_traits::pow(self.0, exp))
+				Self(self.0.pow(exp))
 			}
 		}
 
@@ -519,6 +534,8 @@ pub trait IntoSeconds {
 	fn into_seconds(self) -> Seconds;
 }
 
+/// A wrapper around struct Seconds that ensures that the given seconds are
+/// valid daytime.
 #[derive(Encode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
 pub struct Daytime(Seconds);
 
@@ -603,23 +620,65 @@ impl PassedPeriods {
 	pub fn try_map_front<F: FnOnce(&PartialPeriod) -> Result<R, E>, R, E>(
 		&self,
 		f: F,
-	) -> Result<R, E> {
-		self.front.as_ref().map(f)
+	) -> Result<Option<R>, E> {
+		self.front.as_ref().map(f).transpose()
+	}
+
+	pub fn try_map_full<F: FnOnce(&FullPeriods) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<Option<R>, E> {
+		self.full.as_ref().map(f).transpose()
+	}
+
+	pub fn try_map_back<F: FnOnce(&PartialPeriod) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<Option<R>, E> {
+		self.back.as_ref().map(f).transpose()
 	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
-struct PartialPeriod {
+pub struct PartialPeriod {
 	from: Seconds,
 	part: Perquintill,
 	to: Seconds,
 }
 
+impl PartialPeriod {
+	pub fn part(&self) -> Perquintill {
+		self.part
+	}
+
+	pub fn from(&self) -> Seconds {
+		self.from
+	}
+
+	pub fn to(&self) -> Seconds {
+		self.to
+	}
+}
+
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
-struct FullPeriods {
+pub struct FullPeriods {
 	from: Seconds,
 	passed: u64,
 	to: Seconds,
+}
+
+impl FullPeriods {
+	pub fn passed(&self) -> u64 {
+		self.passed
+	}
+
+	pub fn from(&self) -> Seconds {
+		self.from
+	}
+
+	pub fn to(&self) -> Seconds {
+		self.to
+	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]

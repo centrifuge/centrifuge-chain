@@ -9,7 +9,7 @@ use sp_arithmetic::{
 	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::{
-	traits::{Get, Member, Zero},
+	traits::{CheckedAdd, Get, Member, Zero},
 	BoundedBTreeSet, DispatchError,
 };
 use strum::EnumCount;
@@ -74,7 +74,7 @@ pub struct InterestPayment<Balance> {
 }
 
 impl<Balance> InterestPayment<Balance> {
-	fn new(from: Seconds, to: Seconds, amount: Balance) -> Self {
+	pub fn new(from: Seconds, to: Seconds, amount: Balance) -> Self {
 		Self { from, to, amount }
 	}
 }
@@ -98,14 +98,14 @@ pub struct Interest<Balance> {
 
 impl<Balance> Interest<Balance> {
 	pub fn new(
-		partial_front_period: InterestPayment<Balance>,
-		full_periods: FullPeriod<Balance>,
-		partial_back_period: InterestPayment<Balance>,
+		partial_front_period: Option<InterestPayment<Balance>>,
+		full_periods: Option<FullPeriod<Balance>>,
+		partial_back_period: Option<InterestPayment<Balance>>,
 	) -> Self {
 		Interest {
-			partial_front_period: Some(partial_front_period),
-			full_periods: Some(full_periods),
-			partial_back_period: Some(partial_back_period),
+			partial_front_period: partial_front_period,
+			full_periods: full_periods,
+			partial_back_period: partial_back_period,
 		}
 	}
 
@@ -132,24 +132,40 @@ impl<Balance> Interest<Balance> {
 			full_periods: None,
 		}
 	}
+
+	pub fn try_map_front<F: FnOnce(&InterestPayment<Balance>) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<Option<R>, E> {
+		self.partial_front_period.as_ref().map(f).transpose()
+	}
+
+	pub fn try_map_full<F: FnOnce(&FullPeriod<Balance>) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<Option<R>, E> {
+		self.full_periods.as_ref().map(f).transpose()
+	}
+
+	pub fn try_map_back<F: FnOnce(&InterestPayment<Balance>) -> Result<R, E>, R, E>(
+		&self,
+		f: F,
+	) -> Result<Option<R>, E> {
+		self.partial_back_period.as_ref().map(f).transpose()
+	}
 }
 
 impl<Balance: Copy + BaseArithmetic> Interest<Balance> {
 	pub fn total(&self) -> Result<Balance, ArithmeticError> {
-		self.partial_front_period
-			.amount
-			.ensure_add(self.full_periods.payment.amount)?
-			.ensure_add(self.partial_back_period.amount)
+		todo!()
 	}
 
 	pub fn total_partial_periods(&self) -> Result<Balance, ArithmeticError> {
-		self.partial_front_period
-			.amount
-			.ensure_add(self.partial_back_period.amount)
+		todo!()
 	}
 
 	pub fn total_full_periods(&self) -> Result<Balance, ArithmeticError> {
-		Ok(self.full_periods.payment.amount)
+		todo!()
 	}
 
 	pub fn total_front_partial_full_periods(&self) -> Result<Balance, ArithmeticError> {
@@ -173,30 +189,24 @@ pub mod utils {
 	use super::*;
 
 	pub fn return_all<Balance>(interest: Interest<Balance>) -> (Balance, Seconds) {
-		(interest.total(), interest.end_back_partial_period())
+		todo!()
 	}
 
 	pub fn return_till_end_full_periods<Balance>(
 		interest: Interest<Balance>,
 	) -> (Balance, Seconds) {
-		(
-			interest.total_front_partial_full_periods(),
-			interest.end_full_periods(),
-		)
+		todo!()
 	}
 
 	pub fn return_till_end_front_partial_period<Balance>(
 		interest: Interest<Balance>,
 	) -> (Balance, Seconds) {
-		(
-			interest.total_front_partial_period(),
-			interest.end_front_partial_period(),
-		)
+		todo!()
 	}
 }
 
 pub trait InterestAccrual<Rate, Balance> {
-	fn update<F: FnOnce(Interest<Balance>) -> (Balance, Seconds)>(
+	fn update<F: FnOnce(Interest<Balance>) -> Result<(Balance, Seconds), DispatchError>>(
 		&mut self,
 		at: Seconds,
 		result: F,
@@ -233,7 +243,7 @@ pub trait InterestAccrualProvider<Rate, Balance> {
 	type InterestAccrual: InterestAccrual<Rate, Balance>;
 
 	fn reference(
-		model: InterestModel<Rate>,
+		model: impl Into<InterestModel<Rate>>,
 		at: Seconds,
 	) -> Result<Self::InterestAccrual, DispatchError>;
 

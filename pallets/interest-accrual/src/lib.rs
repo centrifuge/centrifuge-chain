@@ -16,7 +16,6 @@
 //! A pallet for calculating interest accrual on debt.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
 use cfg_traits::{
 	adjustments::Adjustment,
 	interest::{
@@ -28,13 +27,13 @@ use cfg_traits::{
 use frame_support::ensure;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::{checked_pow, One, Zero};
+use sp_arithmetic::traits::{One, Zero};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd, EnsureAddAssign, EnsureDiv,
-		EnsureInto, EnsureMul, EnsureSub, Saturating,
+		EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
 	},
-	DispatchError, FixedPointNumber, FixedPointOperand,
+	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
 };
 
 pub mod weights;
@@ -62,7 +61,7 @@ pub struct ActiveInterestModel<T: Config> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{macro_magic::__private::syn::token::In, pallet_prelude::*};
+	use frame_support::pallet_prelude::*;
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -112,6 +111,9 @@ pub mod pallet {
 		/// Emits when the accrual deactivation is in time before the last
 		/// update
 		AccrualDeactivationInThePast,
+		/// Emits when T::Rate is not cnstructable from amount of passed periods
+		/// (i.e. from the given u64)
+		RateCreationFailed,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -123,13 +125,46 @@ pub mod pallet {
 		) -> Result<Interest<T::Balance>, DispatchError> {
 			let rate = model.rate_per_schedule()?;
 
-			match model.compounding {
-				None => Interest::only_full(FullPeriod::new(rate.ensure_mul_int(notional), 1)),
+			let interest = match model.compounding {
+				None => Interest::only_full(FullPeriod::new(
+					InterestPayment::new(last_updated, at, rate.ensure_mul_int(notional)?),
+					1,
+				)),
 				Some(compounding) => {
 					let periods = compounding.periods_passed(last_updated, at)?;
-					let front = periods.try_map_front(|| {})?;
+					Interest::new(
+						periods.try_map_front(|p| {
+							Ok::<_, DispatchError>(InterestPayment::new(
+								p.from(),
+								p.to(),
+								p.part().mul_floor(rate.ensure_mul_int(notional)?),
+							))
+						})?,
+						periods.try_map_full(|p| {
+							Ok::<_, DispatchError>(FullPeriod::new(
+								InterestPayment::new(
+									p.from(),
+									p.to(),
+									T::Rate::checked_from_integer(p.passed())
+										.ok_or(Error::<T>::RateCreationFailed)?
+										.ensure_mul(rate)?
+										.ensure_mul_int(notional)?,
+								),
+								p.passed(),
+							))
+						})?,
+						periods.try_map_back(|p| {
+							Ok::<_, DispatchError>(InterestPayment::new(
+								p.from(),
+								p.to(),
+								p.part().mul_floor(rate.ensure_mul_int(notional)?),
+							))
+						})?,
+					)
 				}
-			}
+			};
+
+			Ok(interest)
 		}
 	}
 }
@@ -138,11 +173,11 @@ impl<T: Config> InterestAccrualProvider<T::Rate, T::Balance> for Pallet<T> {
 	type InterestAccrual = ActiveInterestModel<T>;
 
 	fn reference(
-		model: InterestModel<T::Rate>,
+		model: impl Into<InterestModel<T::Rate>>,
 		at: Seconds,
 	) -> Result<Self::InterestAccrual, DispatchError> {
 		Ok(ActiveInterestModel {
-			model,
+			model: model.into(),
 			activation: at,
 			last_updated: at,
 			deactivation: None,
@@ -161,7 +196,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 		&mut self,
 		at: Seconds,
 		result: F,
-	) -> Result<T::Rate, DispatchError> {
+	) -> DispatchResult {
 		let interest =
 			Pallet::<T>::calculate_interest(self.notional, &self.model, self.last_updated, at)?;
 
@@ -214,16 +249,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 		&mut self,
 		adjustment: Adjustment<InterestRate<T::Rate>>,
 	) -> Result<(), DispatchError> {
-		match adjustment {
-			Adjustment::Increase(rate) => {
-				self.model.rate.ensure_add_assign(rate)?;
-			}
-			Adjustment::Decrease(rate) => {
-				self.model.rate.ensure_sub_assign(rate)?;
-			}
-		}
-
-		Ok(())
+		todo!("Adjusting rate is not implemented yet")
 	}
 
 	fn adjust_compounding(&mut self, adjustment: Option<Period>) -> Result<(), DispatchError> {
