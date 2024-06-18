@@ -13,9 +13,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::pallet_prelude::*;
-pub use pallet::*;
+use frame_support::traits::ReservableCurrency;
+use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-pub use weights::*;
+use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -25,6 +26,9 @@ mod mock;
 mod tests;
 
 pub mod weights;
+
+pub use pallet::*;
+pub use weights::*;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct Anchor<AccountId, DocumentId, DocumentVersion, Hash, Balance> {
@@ -45,10 +49,6 @@ pub type AnchorOf<T> = Anchor<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::traits::ReservableCurrency;
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
-
 	use super::*;
 
 	#[pallet::config]
