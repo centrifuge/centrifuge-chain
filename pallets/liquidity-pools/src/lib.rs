@@ -84,6 +84,9 @@ mod inbound;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 /// The Parachains that Centrifuge Liquidity Pools support.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -1091,27 +1094,5 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use parity_scale_codec::{Decode, Encode};
-
-	use crate::Domain;
-
-	#[test]
-	fn test_domain_encode_decode() {
-		test_domain_identity(Domain::Centrifuge);
-		test_domain_identity(Domain::EVM(1284));
-		test_domain_identity(Domain::EVM(1));
-	}
-
-	/// Test that decode . encode results in the original value
-	fn test_domain_identity(domain: Domain) {
-		let encoded = domain.encode();
-		let decoded: Domain = Domain::decode(&mut encoded.as_slice()).expect("");
-
-		assert_eq!(domain, decoded);
 	}
 }

@@ -118,3 +118,25 @@ impl DomainAddress {
 		self.clone().into()
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use parity_scale_codec::{Decode, Encode};
+
+	use super::*;
+
+	#[test]
+	fn test_domain_encode_decode() {
+		test_domain_identity(Domain::Centrifuge);
+		test_domain_identity(Domain::EVM(1284));
+		test_domain_identity(Domain::EVM(1));
+	}
+
+	/// Test that (decode . encode) results in the original value
+	fn test_domain_identity(domain: Domain) {
+		let encoded = domain.encode();
+		let decoded = Domain::decode(&mut encoded.as_slice()).unwrap();
+
+		assert_eq!(domain, decoded);
+	}
+}

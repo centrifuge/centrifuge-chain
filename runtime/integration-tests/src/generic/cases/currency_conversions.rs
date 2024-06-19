@@ -1,4 +1,4 @@
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{default_metadata, CurrencyId};
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::xcm::CurrencyIdConvert;
 use sp_runtime::traits::Convert;
@@ -12,7 +12,7 @@ use crate::generic::{
 	env::Env,
 	envs::runtime_env::RuntimeEnv,
 	utils::{
-		currency::{default_metadata, CurrencyInfo, CustomCurrency},
+		currency::{CurrencyInfo, CustomCurrency},
 		genesis::{self, Genesis},
 		xcm::transferable_custom,
 	},
