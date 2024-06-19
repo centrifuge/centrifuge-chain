@@ -105,8 +105,6 @@ pub type MessageOf<T> = Message<
 	<T as Config>::BalanceRatio,
 >;
 
-pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
-
 pub type GeneralCurrencyIndexType = u128;
 
 pub type GeneralCurrencyIndexOf<T> =
@@ -179,14 +177,14 @@ pub mod pallet {
 		/// currency.
 		type PoolInspect: PoolInspect<
 			Self::AccountId,
-			CurrencyIdOf<Self>,
+			Self::CurrencyId,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
 		>;
 
 		type TrancheTokenPrice: TrancheTokenPrice<
 			Self::AccountId,
-			CurrencyIdOf<Self>,
+			Self::CurrencyId,
 			BalanceRatio = Self::BalanceRatio,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
@@ -196,7 +194,7 @@ pub mod pallet {
 		/// The source of truth for investment permissions.
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<Self::PoolId, CurrencyIdOf<Self>>,
+			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
 			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
@@ -208,15 +206,11 @@ pub mod pallet {
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
 		type Tokens: Mutate<Self::AccountId>
-			+ Inspect<
-				Self::AccountId,
-				AssetId = CurrencyIdOf<Self>,
-				Balance = <Self as pallet::Config>::Balance,
-			>;
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
 		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<CurrencyIdOf<Self>>
+			+ Into<Self::CurrencyId>
 			+ Clone;
 
 		/// Enables investing and redeeming into investment classes with foreign
@@ -225,7 +219,7 @@ pub mod pallet {
 			Self::AccountId,
 			Amount = Self::Balance,
 			TrancheAmount = Self::Balance,
-			CurrencyId = CurrencyIdOf<Self>,
+			CurrencyId = Self::CurrencyId,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
 		>;
@@ -233,7 +227,7 @@ pub mod pallet {
 		/// The source of truth for the transferability of assets via the
 		/// LiquidityPools feature.
 		type AssetRegistry: asset_registry::Inspect<
-			AssetId = CurrencyIdOf<Self>,
+			AssetId = Self::CurrencyId,
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
@@ -249,7 +243,7 @@ pub mod pallet {
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			// Enables checking whether currency is tranche token
-			+ CurrencyInspect<CurrencyId = CurrencyIdOf<Self>>;
+			+ CurrencyInspect<CurrencyId = Self::CurrencyId>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
@@ -440,7 +434,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 			destination: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -599,7 +593,7 @@ pub mod pallet {
 		#[pallet::call_index(7)]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 			receiver: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
@@ -607,7 +601,7 @@ pub mod pallet {
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
-				!CurrencyIdOf::<T>::is_tranche_token(currency_id),
+				!T::CurrencyId::is_tranche_token(currency_id),
 				Error::<T>::InvalidTransferCurrency
 			);
 			let currency = Self::try_get_general_index(currency_id)?;
@@ -668,7 +662,7 @@ pub mod pallet {
 		/// from the given currency.
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		#[pallet::call_index(8)]
-		pub fn add_currency(origin: OriginFor<T>, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let currency = Self::try_get_general_index(currency_id)?;
@@ -697,7 +691,7 @@ pub mod pallet {
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 		) -> DispatchResult {
 			// TODO(future): In the future, should be permissioned by trait which
 			// does not exist yet.
@@ -803,7 +797,7 @@ pub mod pallet {
 		pub fn disallow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -836,13 +830,13 @@ pub mod pallet {
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		///
 		/// NOTE: Reverse operation of `try_get_currency_id`.
-		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
+		pub fn try_get_general_index(currency: T::CurrencyId) -> Result<u128, DispatchError> {
 			ensure!(
 				T::AssetRegistry::metadata(&currency).is_some(),
 				Error::<T>::AssetNotFound
 			);
 
-			let general_index: GeneralCurrencyIndexOf<T> = CurrencyIdOf::<T>::try_into(currency)?;
+			let general_index: GeneralCurrencyIndexOf<T> = T::CurrencyId::try_into(currency)?;
 
 			Ok(general_index.index)
 		}
@@ -854,8 +848,8 @@ pub mod pallet {
 		/// NOTE: Reverse operation of `try_get_general_index`.
 		pub fn try_get_currency_id(
 			index: GeneralCurrencyIndexOf<T>,
-		) -> Result<CurrencyIdOf<T>, DispatchError> {
-			let currency = CurrencyIdOf::<T>::try_from(index)?;
+		) -> Result<T::CurrencyId, DispatchError> {
+			let currency = T::CurrencyId::try_from(index)?;
 			ensure!(
 				T::AssetRegistry::metadata(&currency).is_some(),
 				Error::<T>::AssetNotFound
@@ -870,7 +864,7 @@ pub mod pallet {
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
-			currency_id: &CurrencyIdOf<T>,
+			currency_id: &T::CurrencyId,
 		) -> Result<LiquidityPoolsWrappedToken, DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
@@ -925,7 +919,7 @@ pub mod pallet {
 		/// Performs multiple checks for the provided currency and returns its
 		/// general index and the EVM chain ID associated with it.
 		pub fn validate_investment_currency(
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 		) -> Result<(u128, EVMChainId), DispatchError> {
 			// Ensure the currency is enabled as pool_currency
 			let metadata =
