@@ -9,7 +9,6 @@
 //! Divide this utilities into files when it grows
 
 pub mod currency;
-pub mod democracy;
 pub mod evm;
 pub mod genesis;
 pub mod pool;
