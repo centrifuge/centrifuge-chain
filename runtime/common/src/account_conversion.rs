@@ -13,7 +13,7 @@
 use cfg_primitives::AccountId;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
-use sp_core::{crypto::AccountId32, Get, H160};
+use sp_core::{Get, H160};
 use sp_runtime::traits::Convert;
 use staging_xcm::v4::{Junction::AccountKey20, Location, NetworkId::Ethereum};
 use staging_xcm_executor::traits::ConvertLocation;
@@ -65,6 +65,11 @@ impl AccountConverter {
 		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
 		Self::convert_evm_address(chain_id, address.0)
 	}
+
+	pub fn domain_account_to_account(domain: Domain, account_id: AccountId) -> AccountId {
+		let domain_address = Self::convert((domain, account_id.into()));
+		Self::convert(domain_address)
+	}
 }
 
 impl Convert<DomainAddress, AccountId> for AccountConverter {
@@ -86,12 +91,6 @@ impl Convert<(Domain, [u8; 32]), DomainAddress> for AccountConverter {
 				DomainAddress::EVM(chain_id, bytes20)
 			}
 		}
-	}
-}
-
-impl Convert<(Domain, [u8; 32]), AccountId32> for AccountConverter {
-	fn convert(pair: (Domain, [u8; 32])) -> AccountId32 {
-		Self::convert(<Self as Convert<_, DomainAddress>>::convert(pair))
 	}
 }
 

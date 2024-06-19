@@ -1670,8 +1670,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1720,8 +1720,8 @@ mod foreign_investments {
 				let invest_amount: u128 = 10 * decimals(12);
 				let decrease_amount = invest_amount / 3;
 				let final_amount = invest_amount - decrease_amount;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1811,8 +1811,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1911,8 +1911,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -2058,8 +2058,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -2290,8 +2290,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -2345,8 +2345,8 @@ mod foreign_investments {
 				let redeem_amount = 10 * decimals(12);
 				let decrease_amount = redeem_amount / 3;
 				let final_amount = redeem_amount - decrease_amount;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -2463,8 +2463,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -2561,8 +2561,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -2711,8 +2711,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -2922,8 +2922,10 @@ mod foreign_investments {
 						let pool_id = POOL_ID;
 						let invest_amount: u128 = 10 * decimals(12);
 						let decrease_amount = invest_amount + 1;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -2968,8 +2970,10 @@ mod foreign_investments {
 						let pool_id = POOL_ID;
 						let redeem_amount: u128 = 10 * decimals(12);
 						let decrease_amount = redeem_amount + 1;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3016,8 +3020,10 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3095,8 +3101,10 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3184,8 +3192,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3260,8 +3270,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3340,8 +3352,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3413,8 +3427,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
@@ -3527,8 +3541,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
@@ -3666,8 +3680,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let trader: AccountId = Keyring::Alice.into();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3781,8 +3795,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
