@@ -44,7 +44,7 @@ impl Keyring {
 
 	/// NOTE: Needs to be executed in an externalities environment
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		runtime_common::account_conversion::AccountConverter::into_account_id::<T>(self.into())
+		runtime_common::account_conversion::AccountConverter::evm_to_account::<T>(self.into())
 	}
 
 	pub fn as_multi(self) -> sp_runtime::MultiSigner {
