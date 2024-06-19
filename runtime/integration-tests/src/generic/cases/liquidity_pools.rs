@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency},
-	liquidity_pools::{Codec, InboundQueue, OutboundQueue},
+	liquidity_pools::{InboundQueue, OutboundQueue},
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
@@ -30,7 +30,7 @@ use liquidity_pools_gateway_routers::{
 use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
+use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::{
@@ -51,7 +51,10 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
+		envs::fudge_env::{
+			handle::{FudgeHandle, SIBLING_ID},
+			FudgeEnv, FudgeSupport,
+		},
 		utils::{
 			democracy::execute_via_democracy, genesis, genesis::Genesis,
 			xcm::enable_para_to_sibling_communication,
@@ -3879,118 +3882,6 @@ mod foreign_investments {
 				}));
 			});
 		}
-	}
-}
-
-mod transfers {
-	use super::*;
-
-	// TODO: Must be moved to lp/transfers.rs (?) or to UT? It seems more an UT.
-
-	#[test_runtimes([development])]
-	fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let initial_balance = 2 * AUSD_ED;
-			let amount = initial_balance / 2;
-			let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
-			let currency_id = AUSD_CURRENCY_ID;
-			let source_account = Keyring::Charlie;
-
-			// Mint sufficient balance
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				0
-			);
-			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-				currency_id,
-				&source_account.into(),
-				initial_balance
-			));
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				initial_balance
-			);
-
-			// Only `ForeignAsset` can be transferred
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Tranche(42u64, [0u8; 16]),
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::InvalidTransferCurrency
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Native,
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-
-			// Cannot transfer as long as cross chain transferability is disabled
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					currency_id,
-					dest_address.clone(),
-					initial_balance,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-
-			// Enable LiquidityPools transferability
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			// Cannot transfer more than owned
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					currency_id,
-					dest_address.clone(),
-					initial_balance.saturating_add(1),
-				),
-				pallet_liquidity_pools::Error::<T>::BalanceTooLow
-			);
-
-			let pre_total_issuance = orml_tokens::Pallet::<T>::total_issuance(currency_id);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
-				RawOrigin::Signed(source_account.into()).into(),
-				currency_id,
-				dest_address.clone(),
-				amount,
-			));
-
-			assert_eq!(
-				orml_tokens::Pallet::<T>::total_issuance(currency_id),
-				pre_total_issuance - amount
-			);
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				initial_balance - amount
-			);
-		});
 	}
 }
 
