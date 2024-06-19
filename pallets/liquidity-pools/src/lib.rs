@@ -581,10 +581,7 @@ pub mod pallet {
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					sender: who
-						.encode()
-						.try_into()
-						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					sender: who.into(),
 					receiver: domain_address.address(),
 				},
 			)?;
@@ -659,10 +656,7 @@ pub mod pallet {
 				Message::Transfer {
 					amount,
 					currency,
-					sender: who
-						.encode()
-						.try_into()
-						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					sender: who.into(),
 					receiver: receiver.address(),
 				},
 			)?;
