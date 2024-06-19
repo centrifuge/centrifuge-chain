@@ -14,6 +14,7 @@
 
 use ethabi::ethereum_types::{H160, H256};
 use frame_support::traits::OriginTrait;
+use runtime_common::account_conversion::AccountConverter;
 use sp_core::{ecdsa, ed25519, sr25519, Hasher, Pair as PairT};
 use sp_runtime::AccountId32;
 
@@ -44,7 +45,7 @@ impl Keyring {
 
 	/// NOTE: Needs to be executed in an externalities environment
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		runtime_common::account_conversion::AccountConverter::evm_to_account::<T>(self.into())
+		AccountConverter::evm_address_to_account::<T>(self.into())
 	}
 
 	pub fn as_multi(self) -> sp_runtime::MultiSigner {

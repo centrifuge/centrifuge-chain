@@ -61,7 +61,7 @@ impl AccountConverter {
 		}
 	}
 
-	pub fn evm_to_account<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
+	pub fn evm_address_to_account<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
 		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
 		Self::convert_evm_address(chain_id, address.0)
 	}
@@ -101,7 +101,7 @@ pub struct RuntimeAccountConverter<R>(sp_std::marker::PhantomData<R>);
 
 impl<R: pallet_evm_chain_id::Config> AddressMapping<AccountId> for RuntimeAccountConverter<R> {
 	fn into_account_id(address: H160) -> AccountId {
-		AccountConverter::evm_to_account::<R>(address)
+		AccountConverter::evm_address_to_account::<R>(address)
 	}
 }
 

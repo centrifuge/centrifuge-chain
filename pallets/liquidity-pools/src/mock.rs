@@ -25,7 +25,7 @@ frame_support::construct_runtime!(
 		ForeignInvestment: cfg_mocks::foreign_investment::pallet,
 		Gateway: cfg_mocks::outbound_queue::pallet,
 		DomainAddressToAccountId: cfg_mocks::converter::pallet::<Instance1>,
-		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance3>,
+		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance2>,
 		TransferFilter: cfg_mocks::pre_conditions::pallet,
 		Tokens: orml_tokens,
 		LiquidityPools: pallet_liquidity_pools,
@@ -76,14 +76,12 @@ impl cfg_mocks::outbound_queue::pallet::Config for Runtime {
 	type Sender = AccountId;
 }
 
-type I1 = cfg_mocks::converter::pallet::Instance1;
-impl cfg_mocks::converter::pallet::Config<I1> for Runtime {
+impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance1> for Runtime {
 	type From = DomainAddress;
 	type To = AccountId;
 }
 
-type I3 = cfg_mocks::converter::pallet::Instance3;
-impl cfg_mocks::converter::pallet::Config<I3> for Runtime {
+impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance2> for Runtime {
 	type From = (Domain, [u8; 32]);
 	type To = DomainAddress;
 }
