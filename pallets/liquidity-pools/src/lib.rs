@@ -41,7 +41,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::liquidity_pools::{InboundQueue, OutboundQueue};
+use cfg_traits::{
+	liquidity_pools::{InboundQueue, OutboundQueue},
+	PreConditions,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
@@ -73,16 +76,13 @@ use staging_xcm::{
 pub mod defensive_weights;
 
 mod message;
-pub use message::*;
-
-mod routers;
-pub use routers::*;
-
-mod contract;
-pub use contract::*;
+pub use message::Message;
 
 pub mod hooks;
 mod inbound;
+
+#[cfg(test)]
+mod mock;
 
 /// The Parachains that Centrifuge Liquidity Pools support.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -113,8 +113,7 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_traits::{
 		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, PreConditions, Seconds, TimeAsSecs,
-		TrancheTokenPrice,
+		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -171,10 +170,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ FixedPointNumber
 			+ TypeInfo;
-
-		/// The origin allowed to make admin-like changes, such calling
-		/// `set_domain_router`.
-		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The source of truth for pool inspection operations such as its
 		/// existence, the corresponding tranche token or the investment
@@ -256,10 +251,6 @@ pub mod pallet {
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
 
-		/// The converter from a Domain and 32 byte array to Substrate
-		/// AccountId.
-		type DomainAccountToAccountId: Convert<(Domain, [u8; 32]), Self::AccountId>;
-
 		/// The converter from a Domain and a 32 byte array to DomainAddress.
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
@@ -274,13 +265,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
-		#[pallet::constant]
 		/// The type for paying the transaction fees for the dispatch of
 		/// `Executed*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
 		/// message.
+		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		type PreTransferFilter: PreConditions<
@@ -954,6 +945,11 @@ pub mod pallet {
 
 			Ok((currency, chain_id))
 		}
+
+		fn domain_account_to_account_id(domain_account: (Domain, [u8; 32])) -> T::AccountId {
+			let domain_address = T::DomainAccountToDomainAddress::convert(domain_account);
+			T::DomainAddressToAccountId::convert(domain_address)
+		}
 	}
 
 	impl<T: Config> InboundQueue for Pallet<T>
@@ -1000,7 +996,7 @@ pub mod pallet {
 				} => Self::handle_increase_invest_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					amount,
 				),
@@ -1013,7 +1009,7 @@ pub mod pallet {
 				} => Self::handle_decrease_invest_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					amount,
 				),
@@ -1026,7 +1022,7 @@ pub mod pallet {
 				} => Self::handle_increase_redeem_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					amount,
 					currency.into(),
 					sender,
@@ -1040,7 +1036,7 @@ pub mod pallet {
 				} => Self::handle_decrease_redeem_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					amount,
 					currency.into(),
 					sender,
@@ -1053,7 +1049,7 @@ pub mod pallet {
 				} => Self::handle_collect_investment(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
 				Message::CollectRedeem {
@@ -1064,7 +1060,7 @@ pub mod pallet {
 				} => Self::handle_collect_redemption(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
 				Message::CancelInvestOrder {
@@ -1075,7 +1071,7 @@ pub mod pallet {
 				} => Self::handle_cancel_invest_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
 				Message::CancelRedeemOrder {
@@ -1086,7 +1082,7 @@ pub mod pallet {
 				} => Self::handle_cancel_redeem_order(
 					pool_id,
 					tranche_id,
-					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
+					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					sender,
 				),

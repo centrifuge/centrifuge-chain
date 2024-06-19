@@ -310,6 +310,16 @@ impl<T> PreConditions<T> for Always {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct AlwaysOk;
+impl<T> PreConditions<T> for AlwaysOk {
+	type Result = DispatchResult;
+
+	fn check(_t: T) -> DispatchResult {
+		Ok(())
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Never;
 impl<T> PreConditions<T> for Never {
 	type Result = bool;

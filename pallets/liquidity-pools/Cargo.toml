@@ -13,7 +13,6 @@ documentation.workspace = true
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-ethabi = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex = { workspace = true }
@@ -22,15 +21,8 @@ parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-
-# Substrate crates
 sp-core = { workspace = true }
-
-# Optional dependencies for benchmarking
-frame-benchmarking = { workspace = true, optional = true }
-orml-tokens = { workspace = true, optional = true }
-pallet-balances = { workspace = true, optional = true }
-pallet-uniques = { workspace = true, optional = true }
+staging-xcm = { workspace = true }
 
 # Our custom pallets
 cfg-primitives = { workspace = true }
@@ -38,27 +30,16 @@ cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
 
-# Polkadot
-staging-xcm = { workspace = true }
-
-fp-self-contained = { workspace = true }
-pallet-ethereum = { workspace = true }
-xcm-primitives = { workspace = true }
-
 [dev-dependencies]
-hex = { workspace = true, default-features = true }
-
-# Substrate crates & pallets
-pallet-balances = { workspace = true }
-pallet-timestamp = { workspace = true }
-pallet-uniques = { workspace = true }
-sp-core = { workspace = true }
+orml-tokens = { workspace = true, default-features = true }
 sp-io = { workspace = true }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
   "parity-scale-codec/std",
+  "cfg-primitives/std",
   "cfg-types/std",
   "cfg-traits/std",
   "cfg-utils/std",
@@ -66,22 +47,11 @@ std = [
   "frame-system/std",
   "sp-std/std",
   "sp-runtime/std",
-  "orml-tokens/std",
   "orml-traits/std",
-  "pallet-balances/std",
   "staging-xcm/std",
-  "pallet-ethereum/std",
-  "xcm-primitives/std",
-  "ethabi/std",
-  "pallet-uniques/std",
-  "cfg-primitives/std",
-  "frame-benchmarking/std",
   "scale-info/std",
-  "fp-self-contained/std",
 ]
 runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "pallet-balances/runtime-benchmarks",
   "orml-tokens/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
@@ -89,9 +59,8 @@ runtime-benchmarks = [
   "cfg-utils/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "pallet-ethereum/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
@@ -101,8 +70,6 @@ try-runtime = [
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
   "frame-system/try-runtime",
-  "pallet-ethereum/try-runtime",
-  "pallet-balances/try-runtime",
-  "fp-self-contained/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-mocks/try-runtime",
 ]

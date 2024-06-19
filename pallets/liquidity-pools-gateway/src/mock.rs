@@ -1,13 +1,10 @@
-use cfg_mocks::{
-	pallet_mock_liquidity_pools, pallet_mock_routers, pallet_mock_try_convert, MessageMock,
-	RouterMock,
-};
+use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
 use cfg_primitives::OutboundMessageNonce;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::derive_impl;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU128, H256};
-use sp_runtime::{traits::IdentityLookup, BuildStorage, DispatchError};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
 
@@ -26,7 +23,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockRouters: pallet_mock_routers,
-		MockOriginRecovery: pallet_mock_try_convert,
+		MockOriginRecovery: cfg_mocks::converter::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
 );
@@ -55,8 +52,7 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 
 impl pallet_mock_routers::Config for Runtime {}
 
-impl pallet_mock_try_convert::Config for Runtime {
-	type Error = DispatchError;
+impl cfg_mocks::converter::pallet::Config for Runtime {
 	type From = (Vec<u8>, Vec<u8>);
 	type To = DomainAddress;
 }

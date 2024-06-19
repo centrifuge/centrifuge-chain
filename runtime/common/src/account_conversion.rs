@@ -90,16 +90,8 @@ impl Convert<(Domain, [u8; 32]), DomainAddress> for AccountConverter {
 }
 
 impl Convert<(Domain, [u8; 32]), AccountId32> for AccountConverter {
-	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId32 {
-		match domain {
-			Domain::Centrifuge => AccountId32::new(account),
-			// EVM AccountId20 addresses are right-padded to 32 bytes
-			Domain::EVM(chain_id) => {
-				let mut bytes20 = [0; 20];
-				bytes20.copy_from_slice(&account[..20]);
-				Self::convert_evm_address(chain_id, bytes20)
-			}
-		}
+	fn convert(pair: (Domain, [u8; 32])) -> AccountId32 {
+		Self::convert(<Self as Convert<_, DomainAddress>>::convert(pair))
 	}
 }
 
