@@ -51,7 +51,7 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
+		envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
 		utils::{
 			democracy::execute_via_democracy, genesis, genesis::Genesis,
 			xcm::enable_para_to_sibling_communication,
@@ -108,7 +108,7 @@ mod utils {
 			location: Some(VersionedLocation::V4(Location::new(
 				1,
 				[
-					Parachain(T::FudgeHandle::SIBLING_ID),
+					Parachain(SIBLING_ID),
 					general_key(parachains::kusama::karura::AUSD_KEY),
 				],
 			))),
@@ -212,7 +212,7 @@ mod utils {
 			existential_deposit: GLMR_ED,
 			location: Some(VersionedLocation::V4(Location::new(
 				1,
-				[Parachain(T::FudgeHandle::SIBLING_ID), general_key(&[0, 1])],
+				[Parachain(SIBLING_ID), general_key(&[0, 1])],
 			))),
 			additional: CustomMetadata {
 				transferability: CrossChainTransferability::Xcm(Default::default()),
@@ -348,7 +348,7 @@ mod utils {
 
 			set_test_domain_router::<T>(
 				MOONBEAM_EVM_CHAIN_ID,
-				Location::new(1, Junction::Parachain(T::FudgeHandle::SIBLING_ID)).into(),
+				Location::new(1, Junction::Parachain(SIBLING_ID)).into(),
 				GLMR_CURRENCY_ID,
 			);
 		});
@@ -4169,7 +4169,7 @@ mod routers {
 
 				env.parachain_state_mut(|| {
 					let domain_router = router_creation_fn(
-						Location::new(1, Parachain(T::FudgeHandle::SIBLING_ID)).into(),
+						Location::new(1, Parachain(SIBLING_ID)).into(),
 						GLMR_CURRENCY_ID,
 					);
 

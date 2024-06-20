@@ -32,6 +32,8 @@ use crate::generic::config::Runtime;
 /// Start date used for timestamps in test-enviornments
 /// Sat Jan 01 2022 00:00:00 GMT+0000
 pub const START_DATE: u64 = 1640995200u64;
+pub const PARA_ID: u32 = 1001;
+pub const SIBLING_ID: u32 = 1002;
 
 type InherentCreator<Block, InherentParachain, InherentDataProvider> = Box<
 	dyn CreateInherentDataProviders<
@@ -117,9 +119,6 @@ pub trait FudgeHandle<T: Runtime> {
 
 	const RELAY_CODE: Option<&'static [u8]>;
 	const PARACHAIN_CODE: Option<&'static [u8]>;
-
-	const PARA_ID: u32;
-	const SIBLING_ID: u32;
 
 	fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime>;
 	fn relay_mut(&mut self) -> &mut RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime>;

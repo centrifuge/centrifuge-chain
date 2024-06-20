@@ -7,7 +7,10 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{Blocks, Env},
-		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport, RelayRuntime},
+		envs::fudge_env::{
+			handle::{PARA_ID, SIBLING_ID},
+			FudgeEnv, FudgeSupport, RelayRuntime,
+		},
 		utils::{
 			currency::{cfg, CurrencyInfo, CustomCurrency},
 			genesis,
@@ -37,7 +40,7 @@ fn create_transfeable_currency(decimals: u32, para_id: Option<u32>) -> CustomCur
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(6, Some(T::FudgeHandle::PARA_ID));
+	let curr = create_transfeable_currency(6, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -57,7 +60,7 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
 			curr.id(),
 			curr.val(TRANSFER),
-			account_location(1, Some(T::FudgeHandle::SIBLING_ID), Keyring::Bob.id()),
+			account_location(1, Some(SIBLING_ID), Keyring::Bob.id()),
 			WeightLimit::Unlimited,
 		));
 
@@ -79,7 +82,7 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(18, Some(T::FudgeHandle::PARA_ID));
+	let curr = create_transfeable_currency(18, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -99,7 +102,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
 			Native,
 			cfg(TRANSFER),
-			account_location(1, Some(T::FudgeHandle::SIBLING_ID), Keyring::Bob.id()),
+			account_location(1, Some(SIBLING_ID), Keyring::Bob.id()),
 			WeightLimit::Unlimited,
 		));
 
@@ -121,7 +124,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(18, Some(T::FudgeHandle::PARA_ID));
+	let curr = create_transfeable_currency(18, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -141,7 +144,7 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 			RawOrigin::Signed(Keyring::Alice.id()).into(),
 			curr.id(),
 			curr.val(TRANSFER),
-			account_location(1, Some(T::FudgeHandle::SIBLING_ID), Keyring::Bob.id()),
+			account_location(1, Some(SIBLING_ID), Keyring::Bob.id()),
 			WeightLimit::Unlimited,
 		));
 
@@ -182,7 +185,7 @@ fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
 		assert_ok!(
 			pallet_xcm::Pallet::<RelayRuntime<T>>::reserve_transfer_assets(
 				RawOrigin::Signed(Keyring::Alice.id()).into(),
-				Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
+				Box::new(Parachain(PARA_ID).into()),
 				account_location(0, None, Keyring::Bob.id()),
 				Box::new((Here, curr.val(TRANSFER)).into()),
 				0,
