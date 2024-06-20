@@ -182,7 +182,7 @@ mod transfer {
 		}
 
 		#[test]
-		fn without_correct_location() {
+		fn with_wrong_location() {
 			System::externalities().execute_with(|| {
 				AssetRegistry::mock_metadata(|_| Some(transferable_metadata()));
 
@@ -199,7 +199,7 @@ mod transfer {
 		}
 
 		#[test]
-		fn without_correct_domain() {
+		fn with_wrong_domain() {
 			System::externalities().execute_with(|| {
 				AssetRegistry::mock_metadata(|_| Some(wrapped_transferable_metadata()));
 
@@ -216,7 +216,7 @@ mod transfer {
 		}
 
 		#[test]
-		fn without_satisfy_lp_filter() {
+		fn without_satisfy_filter() {
 			System::externalities().execute_with(|| {
 				AssetRegistry::mock_metadata(|_| Some(wrapped_transferable_metadata()));
 				TransferFilter::mock_check(|_| Err(DispatchError::Other("Err")));
@@ -322,7 +322,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn with_no_tranche_investor_role() {
+		fn with_wrong_permissions() {
 			System::externalities().execute_with(|| {
 				DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 				Time::mock_now(|| NOW);
@@ -342,7 +342,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn without_correct_pool() {
+		fn with_wrong_pool() {
 			System::externalities().execute_with(|| {
 				DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 				Time::mock_now(|| NOW);
@@ -363,7 +363,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn without_correct_tranche_id() {
+		fn with_wrong_tranche_id() {
 			System::externalities().execute_with(|| {
 				DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 				Time::mock_now(|| NOW);
@@ -385,7 +385,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn without_satisfy_lp_filter() {
+		fn without_satisfy_filter() {
 			System::externalities().execute_with(|| {
 				DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 				Time::mock_now(|| NOW);
@@ -403,6 +403,73 @@ mod transfer_tranche_tokens {
 						AMOUNT
 					),
 					DispatchError::Other("Err"),
+				);
+			})
+		}
+	}
+}
+
+mod add_pool {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Permissions::mock_has(move |scope, who, role| {
+				assert_eq!(who, ALICE);
+				assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+				assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
+				true
+			});
+			Pools::mock_pool_exists(|_| true);
+
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_ADDRESS.domain());
+				assert_eq!(msg, Message::AddPool { pool_id: POOL_ID });
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::add_pool(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				EVM_ADDRESS.domain(),
+			));
+		})
+	}
+
+	mod erroring_out_when {
+		use super::*;
+
+		#[test]
+		fn with_wrong_pool() {
+			System::externalities().execute_with(|| {
+				Pools::mock_pool_exists(|_| true);
+				Permissions::mock_has(move |_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::add_pool(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_permissions() {
+			System::externalities().execute_with(|| {
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::add_pool(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::PoolNotFound
 				);
 			})
 		}

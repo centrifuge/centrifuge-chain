@@ -706,56 +706,6 @@ mod add_allow_upgrade {
 	use super::*;
 
 	#[test_runtimes([development])]
-	fn add_pool<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let pool_id = POOL_ID;
-
-			// Verify that the pool must exist before we can call
-			// pallet_liquidity_pools::Pallet::<T>::add_pool
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_pool(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::PoolNotFound
-			);
-
-			// Now create the pool
-			create_ausd_pool::<T>(pool_id);
-
-			// Verify ALICE can't call `add_pool` given she is not the `PoolAdmin`
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_pool(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::NotPoolAdmin
-			);
-
-			// Verify that it works if it's BOB calling it (the pool admin)
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-				RawOrigin::Signed(POOL_ADMIN.into()).into(),
-				pool_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
 	fn add_tranche<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
