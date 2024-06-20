@@ -16,7 +16,6 @@ use frame_support::pallet_prelude::*;
 use frame_support::traits::ReservableCurrency;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -34,8 +33,8 @@ pub use weights::*;
 #[scale_info(skip_type_params(T))]
 pub struct Anchor<T: Config> {
 	account_id: T::AccountId,
-	document_id: T::DocumentId,
-	document_version: T::DocumentVersion,
+	document_id: u128,
+	document_version: u64,
 	hash: T::Hash,
 	deposit: T::Balance,
 }
@@ -55,31 +54,6 @@ pub mod pallet {
 		/// Default deposit that will be taken when adding an anchor.
 		type DefaultAnchorDeposit: Get<Self::Balance>;
 
-		/// The type used to identify a document.
-		type DocumentId: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
-
-		/// The type used to version a document.
-		type DocumentVersion: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ TypeInfo
-			+ TryInto<u64>;
-
 		/// Origin used when setting a deposit.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
@@ -93,14 +67,8 @@ pub mod pallet {
 	/// Storage for document anchors.
 	#[pallet::storage]
 	#[pallet::getter(fn get_anchor)]
-	pub type Anchors<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_256,
-		(T::DocumentId, T::DocumentVersion),
-		Blake2_256,
-		T::AccountId,
-		Anchor<T>,
-	>;
+	pub type Anchors<T: Config> =
+		StorageDoubleMap<_, Blake2_256, (u128, u64), Blake2_256, T::AccountId, Anchor<T>>;
 
 	/// Storage for document anchors specific to an account.
 	#[pallet::storage]
@@ -109,8 +77,8 @@ pub mod pallet {
 		_,
 		(
 			NMapKey<Blake2_256, T::AccountId>,
-			NMapKey<Blake2_256, T::DocumentId>,
-			NMapKey<Blake2_256, T::DocumentVersion>,
+			NMapKey<Blake2_256, u128>,
+			NMapKey<Blake2_256, u64>,
 		),
 		Anchor<T>,
 		OptionQuery,
@@ -128,16 +96,16 @@ pub mod pallet {
 		/// An anchor was added.
 		AnchorAdded {
 			account_id: T::AccountId,
-			document_id: T::DocumentId,
-			document_version: T::DocumentVersion,
+			document_id: u128,
+			document_version: u64,
 			hash: T::Hash,
 			deposit: T::Balance,
 		},
 		/// An anchor was removed.
 		AnchorRemoved {
 			account_id: T::AccountId,
-			document_id: T::DocumentId,
-			document_version: T::DocumentVersion,
+			document_id: u128,
+			document_version: u64,
 			hash: T::Hash,
 			deposit: T::Balance,
 		},
@@ -167,8 +135,8 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		pub fn set_anchor(
 			origin: OriginFor<T>,
-			document_id: T::DocumentId,
-			document_version: T::DocumentVersion,
+			document_id: u128,
+			document_version: u64,
 			hash: T::Hash,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -224,8 +192,8 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn remove_anchor(
 			origin: OriginFor<T>,
-			document_id: T::DocumentId,
-			document_version: T::DocumentVersion,
+			document_id: u128,
+			document_version: u64,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 

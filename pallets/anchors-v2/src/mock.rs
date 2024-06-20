@@ -55,8 +55,6 @@ impl Config for Runtime {
 	type DefaultAnchorDeposit = DefaultAnchorDeposit;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type DocumentId = u128;
-	type DocumentVersion = u64;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

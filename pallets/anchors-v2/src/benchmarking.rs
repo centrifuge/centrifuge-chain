@@ -21,7 +21,7 @@ use super::*;
 
 #[benchmarks(
 	where
-		T: Config<Balance = u128, DocumentId = u128, DocumentVersion = u64, Hash = H256>,
+		T: Config<Balance = u128, Hash = H256>,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 )]
 mod benchmarks {
