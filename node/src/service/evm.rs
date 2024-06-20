@@ -167,14 +167,14 @@ fn db_config_dir(config: &Configuration) -> PathBuf {
 /// Assembly of PartialComponents (enough to run chain ops subcommands)
 ///
 /// NOTE: Based on Polkadot SDK
-pub type Service<RuntimeApi, Executor> = PartialComponents<
-	FullClient<RuntimeApi, Executor>,
+pub type Service<RuntimeApi> = PartialComponents<
+	FullClient<RuntimeApi>,
 	FullBackend,
 	(),
 	sc_consensus::DefaultImportQueue<Block>,
-	sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
+	sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
 	(
-		ParachainBlockImport<RuntimeApi, Executor>,
+		ParachainBlockImport<RuntimeApi>,
 		Option<Telemetry>,
 		Option<TelemetryWorkerHandle>,
 		FrontierBackend<Block>,
@@ -188,20 +188,19 @@ pub type Service<RuntimeApi, Executor> = PartialComponents<
 /// Use this macro if you don't actually need the full service, but just the
 /// builder in order to be able to perform chain operations.
 #[allow(clippy::type_complexity)]
-pub fn new_partial<RuntimeApi, BIQ, Executor>(
+pub fn new_partial<RuntimeApi, BIQ>(
 	config: &Configuration,
 	first_evm_block: BlockNumber,
 	build_import_queue: BIQ,
-) -> Result<Service<RuntimeApi, Executor>, sc_service::Error>
+) -> Result<Service<RuntimeApi>, sc_service::Error>
 where
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
 	BIQ: FnOnce(
-		Arc<FullClient<RuntimeApi, Executor>>,
-		ParachainBlockImport<RuntimeApi, Executor>,
+		Arc<FullClient<RuntimeApi>>,
+		ParachainBlockImport<RuntimeApi>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
@@ -229,15 +228,13 @@ where
 				}
 			});
 
-	let wasm = sc_executor::WasmExecutor::builder()
+	let executor = sc_executor::WasmExecutor::builder()
 		.with_execution_method(config.wasm_method)
 		.with_onchain_heap_alloc_strategy(heap_pages)
 		.with_offchain_heap_alloc_strategy(heap_pages)
 		.with_max_runtime_instances(config.max_runtime_instances)
 		.with_runtime_cache_size(config.runtime_cache_size)
 		.build();
-
-	let executor = sc_executor::NativeElseWasmExecutor::<Executor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
@@ -313,7 +310,7 @@ where
 /// runtime api.
 #[allow(clippy::too_many_arguments)]
 #[sc_tracing::logging::prefix_logs_with("🌀Parachain")]
-pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ>(
+pub(crate) async fn start_node_impl<RuntimeApi, RB, BIQ>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
@@ -323,16 +320,15 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ>(
 	first_evm_block: BlockNumber,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
-			Arc<FullClient<RuntimeApi, Executor>>,
-			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+			Arc<FullClient<RuntimeApi>>,
+			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 			DenyUnsafe,
 			SubscriptionTaskExecutor,
 			Arc<NetworkService<Block, Hash>>,
@@ -345,8 +341,8 @@ where
 		) -> Result<rpc::RpcExtension, sc_service::Error>
 		+ 'static,
 	BIQ: FnOnce(
-		Arc<FullClient<RuntimeApi, Executor>>,
-		ParachainBlockImport<RuntimeApi, Executor>,
+		Arc<FullClient<RuntimeApi>>,
+		ParachainBlockImport<RuntimeApi>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
@@ -356,7 +352,7 @@ where
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let params = new_partial::<RuntimeApi, BIQ, Executor>(
+	let params = new_partial::<RuntimeApi, BIQ>(
 		&parachain_config,
 		first_evm_block,
 		build_import_queue,
@@ -456,7 +452,7 @@ where
 		telemetry: telemetry.as_mut(),
 	})?;
 
-	spawn_frontier_tasks::<RuntimeApi, Executor>(
+	spawn_frontier_tasks::<RuntimeApi>(
 		&task_manager,
 		client.clone(),
 		backend.clone(),
@@ -524,7 +520,7 @@ where
 
 	// Follows Polkadot SDK
 	if validator {
-		start_consensus::<RuntimeApi, Executor>(
+		start_consensus::<RuntimeApi>(
 			client.clone(),
 			block_import,
 			prometheus_registry.as_ref(),
@@ -548,9 +544,9 @@ where
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::extra_unused_type_parameters)]
-fn spawn_frontier_tasks<RuntimeApi, Executor>(
+fn spawn_frontier_tasks<RuntimeApi>(
 	task_manager: &TaskManager,
-	client: Arc<FullClient<RuntimeApi, Executor>>,
+	client: Arc<FullClient<RuntimeApi>>,
 	backend: Arc<FullBackend>,
 	frontier_backend: FrontierBackend<Block>,
 	filter_pool: FilterPool,
@@ -565,9 +561,8 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	>,
 ) where
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	match frontier_backend {
 		FrontierBackend::KeyValue(fb) => {
