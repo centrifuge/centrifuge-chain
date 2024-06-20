@@ -302,11 +302,11 @@ pub trait InterestAccrual<Rate, Balance> {
 
 	fn stop_accrual_at(&mut self, deactivation: Seconds) -> Result<(), DispatchError>;
 
-	fn last_updated(&self) -> Seconds;
+	fn accrued_updated(&self) -> Seconds;
 
 	fn accrued_since(&self) -> Seconds;
 
-	fn accruing_till(&self) -> Option<Seconds>;
+	fn accrued_till(&self) -> Option<Seconds>;
 }
 
 /// A trait that can be used to calculate interest accrual for debt

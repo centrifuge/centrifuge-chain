@@ -103,3 +103,21 @@ fn calculate_interest_secondly_compounding() {
 		assert_eq!(interest.total().unwrap(), expected);
 	});
 }
+
+#[test]
+fn no_delta_no_interest() {
+	new_test_ext().execute_with(|| {
+		let interest = InterestAccrual::calculate_interest(
+			BASE_NOTIONAL,
+			&utils::model(Period::by_seconds(1)),
+			utils::before_start(0),
+			utils::after_start(0),
+		)
+		.unwrap();
+
+		assert!(interest.try_map_front(utils::map_partial).is_none());
+		assert!(interest.try_map_back(utils::map_partial).is_none());
+		assert!(interest.try_map_full(utils::map_full).is_none());
+		assert_eq!(interest.total().unwrap(), 0);
+	});
+}

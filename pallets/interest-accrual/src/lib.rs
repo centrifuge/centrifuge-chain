@@ -285,7 +285,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 		Ok(())
 	}
 
-	fn last_updated(&self) -> Seconds {
+	fn accrued_updated(&self) -> Seconds {
 		self.last_updated
 	}
 
@@ -293,7 +293,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 		self.activation
 	}
 
-	fn accruing_till(&self) -> Option<Seconds> {
+	fn accrued_till(&self) -> Option<Seconds> {
 		self.deactivation
 	}
 }

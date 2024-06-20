@@ -803,7 +803,7 @@ impl Period {
 		let to = to.into_seconds();
 
 		ensure!(
-			to > from,
+			to >= from,
 			DispatchError::Other("Invalid period. `to` is before `from`."),
 		);
 
