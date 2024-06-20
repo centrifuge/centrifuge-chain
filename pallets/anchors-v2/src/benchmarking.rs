@@ -21,7 +21,7 @@ use super::*;
 
 #[benchmarks(
 	where
-		T: Config<Balance = u128, Hash = H256, AnchorIdNonce = u128>,
+		T: Config<Balance = u128, Hash = H256>,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 )]
 mod benchmarks {
@@ -59,10 +59,8 @@ mod benchmarks {
 		let document_version = 456;
 		let hash = H256::from_low_u64_be(1);
 		let deposit = AnchorDeposit::<T>::get();
-		let anchor_id = 1;
 
 		let anchor = Anchor::<T> {
-			anchor_id,
 			account_id: caller.clone(),
 			document_id,
 			document_version,
@@ -70,9 +68,8 @@ mod benchmarks {
 			deposit,
 		};
 
-		Anchors::<T>::insert(anchor_id, anchor.clone());
-		DocumentAnchors::<T>::insert((document_id, document_version), anchor_id);
-		PersonalAnchors::<T>::insert(caller.clone(), (document_id, document_version), anchor_id);
+		Anchors::<T>::insert((document_id, document_version), anchor);
+		PersonalAnchors::<T>::insert(caller.clone(), (document_id, document_version), ());
 
 		#[extrinsic_call]
 		remove_anchor(RawOrigin::Signed(caller), document_id, document_version);

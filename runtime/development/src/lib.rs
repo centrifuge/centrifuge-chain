@@ -1654,7 +1654,6 @@ impl pallet_anchors_v2::pallet::Config for Runtime {
 	type DefaultAnchorDeposit = DefaultAnchorDeposit;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_anchors_v2::WeightInfo<Runtime>;
-	type AnchorIdNonce = u128;
 }
 
 parameter_types! {
