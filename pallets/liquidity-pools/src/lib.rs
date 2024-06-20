@@ -371,11 +371,6 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
-			);
-
-			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
