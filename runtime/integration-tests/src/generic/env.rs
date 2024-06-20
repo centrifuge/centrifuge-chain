@@ -111,13 +111,21 @@ pub trait Env<T: Runtime>: Default {
 			)
 		});
 
+		let mut found_event = false;
 		for i in blocks.range_for(current, slot) {
 			self.__priv_build_block(i);
 
 			if let Blocks::UntilEvent { event, .. } = blocks.clone() {
 				if self.check_event(event).is_some() {
+					found_event = true;
 					break;
 				}
+			}
+		}
+
+		if let Blocks::UntilEvent { event, limit } = blocks.clone() {
+			if !found_event {
+				panic!("Event {event:?} was not found producing {limit} blocks");
 			}
 		}
 	}
