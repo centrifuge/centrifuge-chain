@@ -31,8 +31,10 @@ mod set_anchor {
 			let document_version = 456;
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
+			let anchor_id = 1;
 
 			let anchor = Anchor::<Runtime> {
+				anchor_id,
 				account_id: origin,
 				document_id,
 				document_version,
@@ -48,18 +50,25 @@ mod set_anchor {
 				document_version,
 				hash,
 			));
+
 			assert_eq!(
-				Anchors::<Runtime>::get((document_id, document_version), origin),
+				Anchors::<Runtime>::get(anchor_id),
 				Some(anchor.clone()),
-				"anchors should be in storage"
+				"anchor should be in storage"
 			);
 			assert_eq!(
-				PersonalAnchors::<Runtime>::get((origin, document_id, document_version)),
-				Some(anchor),
-				"personal anchors should be in storage"
+				DocumentAnchors::<Runtime>::get((document_id, document_version)),
+				Some(anchor_id),
+				"document anchor should be in storage"
+			);
+			assert_eq!(
+				PersonalAnchors::<Runtime>::get(origin, (document_id, document_version)),
+				Some(anchor_id),
+				"personal anchor should be in storage"
 			);
 
 			event_exists(Event::<Runtime>::AnchorAdded {
+				anchor_id,
 				account_id: origin,
 				document_id,
 				document_version,
@@ -97,8 +106,10 @@ mod set_anchor {
 			let document_version = 456;
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
+			let anchor_id = 1;
 
 			let anchor = Anchor::<Runtime> {
+				anchor_id,
 				account_id: origin,
 				document_id,
 				document_version,
@@ -106,7 +117,7 @@ mod set_anchor {
 				deposit,
 			};
 
-			Anchors::<Runtime>::insert((document_id, document_version), origin, anchor);
+			Anchors::<Runtime>::insert(anchor_id, anchor);
 
 			assert_err!(
 				AnchorsV2::set_anchor(
@@ -121,23 +132,38 @@ mod set_anchor {
 	}
 
 	#[test]
+	fn document_anchor_present() {
+		new_test_ext().execute_with(|| {
+			let origin: u64 = 1;
+			let document_id = 123;
+			let document_version = 456;
+			let hash = H256::random();
+			let anchor_id = 1;
+
+			DocumentAnchors::<Runtime>::insert((document_id, document_version), anchor_id);
+
+			assert_err!(
+				AnchorsV2::set_anchor(
+					RuntimeOrigin::signed(origin),
+					document_id,
+					document_version,
+					hash,
+				),
+				Error::<Runtime>::DocumentAnchorAlreadyExists
+			);
+		});
+	}
+
+	#[test]
 	fn personal_anchor_present() {
 		new_test_ext().execute_with(|| {
 			let origin: u64 = 1;
 			let document_id = 123;
 			let document_version = 456;
 			let hash = H256::random();
-			let deposit = AnchorDeposit::<Runtime>::get();
+			let anchor_id = 1;
 
-			let anchor = Anchor::<Runtime> {
-				account_id: origin,
-				document_id,
-				document_version,
-				hash,
-				deposit,
-			};
-
-			PersonalAnchors::<Runtime>::insert((origin, document_id, document_version), anchor);
+			PersonalAnchors::<Runtime>::insert(origin, (document_id, document_version), anchor_id);
 
 			assert_err!(
 				AnchorsV2::set_anchor(
@@ -183,8 +209,10 @@ mod remove_anchor {
 			let document_version = 456;
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
+			let anchor_id = 1;
 
 			let anchor = Anchor::<Runtime> {
+				anchor_id,
 				account_id: origin,
 				document_id,
 				document_version,
@@ -192,8 +220,9 @@ mod remove_anchor {
 				deposit,
 			};
 
-			Anchors::<Runtime>::insert((document_id, document_version), origin, anchor.clone());
-			PersonalAnchors::<Runtime>::insert((origin, document_id, document_version), anchor);
+			Anchors::<Runtime>::insert(anchor_id, anchor);
+			DocumentAnchors::<Runtime>::insert((document_id, document_version), anchor_id);
+			PersonalAnchors::<Runtime>::insert(origin, (document_id, document_version), anchor_id);
 
 			Balances::force_set_balance(RuntimeOrigin::root(), origin, deposit * 2).unwrap();
 			assert_ok!(Balances::reserve(&origin, deposit));
@@ -204,15 +233,14 @@ mod remove_anchor {
 				document_version,
 			));
 
-			assert_eq!(
-				Anchors::<Runtime>::iter_prefix_values((document_id, document_version)).count(),
-				0
-			);
+			assert!(Anchors::<Runtime>::get(anchor_id).is_none(),);
+			assert!(DocumentAnchors::<Runtime>::get((document_id, document_version)).is_none());
 			assert!(
-				PersonalAnchors::<Runtime>::get((origin, document_id, document_version)).is_none()
+				PersonalAnchors::<Runtime>::get(origin, (document_id, document_version)).is_none()
 			);
 
 			event_exists(Event::<Runtime>::AnchorRemoved {
+				anchor_id,
 				account_id: origin,
 				document_id,
 				document_version,
@@ -238,7 +266,7 @@ mod remove_anchor {
 	}
 
 	#[test]
-	fn personal_anchor_not_present() {
+	fn personal_anchor_not_found() {
 		new_test_ext().execute_with(|| {
 			let origin: u64 = 1;
 			let document_id = 123;
@@ -256,23 +284,36 @@ mod remove_anchor {
 	}
 
 	#[test]
-	fn anchor_not_present() {
+	fn document_anchor_not_found() {
 		new_test_ext().execute_with(|| {
 			let origin: u64 = 1;
 			let document_id = 123;
 			let document_version = 456;
-			let hash = H256::random();
-			let deposit = AnchorDeposit::<Runtime>::get();
+			let anchor_id = 1;
 
-			let anchor = Anchor::<Runtime> {
-				account_id: origin,
-				document_id,
-				document_version,
-				hash,
-				deposit,
-			};
+			PersonalAnchors::<Runtime>::insert(origin, (document_id, document_version), anchor_id);
 
-			PersonalAnchors::<Runtime>::insert((origin, document_id, document_version), anchor);
+			assert_err!(
+				AnchorsV2::remove_anchor(
+					RuntimeOrigin::signed(origin),
+					document_id,
+					document_version,
+				),
+				Error::<Runtime>::DocumentAnchorNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn anchor_not_found() {
+		new_test_ext().execute_with(|| {
+			let origin: u64 = 1;
+			let document_id = 123;
+			let document_version = 456;
+			let anchor_id = 1;
+
+			PersonalAnchors::<Runtime>::insert(origin, (document_id, document_version), anchor_id);
+			DocumentAnchors::<Runtime>::insert((document_id, document_version), anchor_id);
 
 			assert_err!(
 				AnchorsV2::remove_anchor(
@@ -292,7 +333,8 @@ mod set_deposit {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let new_deposit = 123;
+			let deposit = AnchorDeposit::<Runtime>::get();
+			let new_deposit = deposit * 2;
 
 			assert_ok!(AnchorsV2::set_deposit_value(
 				RuntimeOrigin::root(),

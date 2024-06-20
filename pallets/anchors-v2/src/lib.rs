@@ -16,6 +16,7 @@ use frame_support::pallet_prelude::*;
 use frame_support::traits::ReservableCurrency;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
+use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -29,12 +30,19 @@ pub mod weights;
 pub use pallet::*;
 pub use weights::*;
 
+/// Document ID type.
+pub type DocumentId = u128;
+
+/// Document version type.
+pub type DocumentVersion = u64;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct Anchor<T: Config> {
+	anchor_id: T::AnchorIdNonce,
 	account_id: T::AccountId,
-	document_id: u128,
-	document_version: u64,
+	document_id: DocumentId,
+	document_version: DocumentVersion,
 	hash: T::Hash,
 	deposit: T::Balance,
 }
@@ -42,6 +50,7 @@ pub struct Anchor<T: Config> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use sp_runtime::traits::{EnsureAddAssign, One};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -57,6 +66,17 @@ pub mod pallet {
 		/// Origin used when setting a deposit.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
+		/// Type used for AnchorId. AnchorIdNonce ensures each
+		/// Anchor is unique. AnchorIdNonce is incremented with each new anchor.
+		type AnchorIdNonce: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ EnsureAdd
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+
 		/// Weight information.
 		type WeightInfo: WeightInfo;
 	}
@@ -64,24 +84,31 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	/// Storage for document anchors.
+	/// Stores AnchorIdNonce and ensure that each anchor has an unique ID.
+	#[pallet::storage]
+	pub type AnchorIdNonceStore<T: Config> = StorageValue<_, T::AnchorIdNonce, ValueQuery>;
+
+	/// Storage for anchors.
 	#[pallet::storage]
 	#[pallet::getter(fn get_anchor)]
-	pub type Anchors<T: Config> =
-		StorageDoubleMap<_, Blake2_256, (u128, u64), Blake2_256, T::AccountId, Anchor<T>>;
+	pub type Anchors<T: Config> = StorageMap<_, Blake2_256, T::AnchorIdNonce, Anchor<T>>;
+
+	/// Storage for document anchors.
+	#[pallet::storage]
+	#[pallet::getter(fn get_document_anchor)]
+	pub type DocumentAnchors<T: Config> =
+		StorageMap<_, Blake2_256, (DocumentId, DocumentVersion), T::AnchorIdNonce>;
 
 	/// Storage for document anchors specific to an account.
 	#[pallet::storage]
 	#[pallet::getter(fn get_personal_anchor)]
-	pub type PersonalAnchors<T: Config> = StorageNMap<
+	pub type PersonalAnchors<T: Config> = StorageDoubleMap<
 		_,
-		(
-			NMapKey<Blake2_256, T::AccountId>,
-			NMapKey<Blake2_256, u128>,
-			NMapKey<Blake2_256, u64>,
-		),
-		Anchor<T>,
-		OptionQuery,
+		Blake2_256,
+		T::AccountId,
+		Blake2_256,
+		(DocumentId, DocumentVersion),
+		T::AnchorIdNonce,
 	>;
 
 	/// Stores the current deposit that will be taken when storing an anchor.
@@ -95,6 +122,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An anchor was added.
 		AnchorAdded {
+			anchor_id: T::AnchorIdNonce,
 			account_id: T::AccountId,
 			document_id: u128,
 			document_version: u64,
@@ -103,6 +131,7 @@ pub mod pallet {
 		},
 		/// An anchor was removed.
 		AnchorRemoved {
+			anchor_id: T::AnchorIdNonce,
 			account_id: T::AccountId,
 			document_id: u128,
 			document_version: u64,
@@ -118,11 +147,17 @@ pub mod pallet {
 		/// The anchor already exists.
 		AnchorAlreadyExists,
 
+		/// The document anchor already exists.
+		DocumentAnchorAlreadyExists,
+
 		/// The personal anchor already exists.
 		PersonalAnchorAlreadyExists,
 
 		/// The anchor was not found in storage.
 		AnchorNotFound,
+
+		/// The document anchor was not found in storage.
+		DocumentAnchorNotFound,
 
 		/// The personal anchor was not found in storage.
 		PersonalAnchorNotFound,
@@ -141,14 +176,23 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			// Only one anchor should be stored for a particular document ID and version.
+			let anchor_id = AnchorIdNonceStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
+				Ok::<_, DispatchError>(*n)
+			})?;
+
 			ensure!(
-				Anchors::<T>::iter_prefix_values((document_id, document_version)).count() == 0,
+				Anchors::<T>::get(anchor_id).is_none(),
 				Error::<T>::AnchorAlreadyExists
 			);
 
+			// Only one anchor should be stored for a particular document ID and version.
 			ensure!(
-				PersonalAnchors::<T>::get((account_id.clone(), document_id, document_version))
+				DocumentAnchors::<T>::get((document_id, document_version)).is_none(),
+				Error::<T>::DocumentAnchorAlreadyExists
+			);
+			ensure!(
+				PersonalAnchors::<T>::get(account_id.clone(), (document_id, document_version))
 					.is_none(),
 				Error::<T>::PersonalAnchorAlreadyExists
 			);
@@ -158,6 +202,7 @@ pub mod pallet {
 			T::Currency::reserve(&account_id, deposit)?;
 
 			let anchor = Anchor::<T> {
+				anchor_id,
 				account_id: account_id.clone(),
 				document_id,
 				document_version,
@@ -165,18 +210,18 @@ pub mod pallet {
 				deposit,
 			};
 
-			Anchors::<T>::insert(
-				(document_id, document_version),
-				account_id.clone(),
-				anchor.clone(),
-			);
+			Anchors::<T>::insert(anchor_id, anchor);
+
+			DocumentAnchors::<T>::insert((document_id, document_version), anchor_id);
 
 			PersonalAnchors::<T>::insert(
-				(account_id.clone(), document_id, document_version),
-				anchor,
+				account_id.clone(),
+				(document_id, document_version),
+				anchor_id,
 			);
 
 			Self::deposit_event(Event::AnchorAdded {
+				anchor_id,
 				account_id,
 				document_id,
 				document_version,
@@ -198,20 +243,24 @@ pub mod pallet {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(
-				PersonalAnchors::<T>::get((account_id.clone(), document_id, document_version))
+				PersonalAnchors::<T>::get(account_id.clone(), (document_id, document_version))
 					.is_some(),
 				Error::<T>::PersonalAnchorNotFound
 			);
 
-			let anchor = Anchors::<T>::get((document_id, document_version), account_id.clone())
-				.ok_or(Error::<T>::AnchorNotFound)?;
+			let anchor_id = DocumentAnchors::<T>::get((document_id, document_version))
+				.ok_or(Error::<T>::DocumentAnchorNotFound)?;
+
+			let anchor = Anchors::<T>::get(anchor_id).ok_or(Error::<T>::AnchorNotFound)?;
 
 			T::Currency::unreserve(&account_id, anchor.deposit);
 
-			Anchors::<T>::remove((document_id, document_version), account_id.clone());
-			PersonalAnchors::<T>::remove((account_id.clone(), document_id, document_version));
+			Anchors::<T>::remove(anchor_id);
+			DocumentAnchors::<T>::remove((document_id, document_version));
+			PersonalAnchors::<T>::remove(account_id.clone(), (document_id, document_version));
 
 			Self::deposit_event(Event::AnchorRemoved {
+				anchor_id,
 				account_id,
 				document_id,
 				document_version,

@@ -55,6 +55,7 @@ impl Config for Runtime {
 	type DefaultAnchorDeposit = DefaultAnchorDeposit;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type AnchorIdNonce = u128;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
