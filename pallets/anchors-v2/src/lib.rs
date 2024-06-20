@@ -17,6 +17,7 @@ use frame_support::traits::ReservableCurrency;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd};
+use sp_runtime::traits::{EnsureAddAssign, One};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -50,7 +51,6 @@ pub struct Anchor<T: Config> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use sp_runtime::traits::{EnsureAddAssign, One};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
