@@ -11,32 +11,56 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
 use parity_scale_codec::EncodeLike;
-use scale_info::prelude::format;
 use sp_core::H256;
-use sp_runtime::traits::Hash;
 
 use super::*;
 
-benchmarks! {
-	where_clause {
+#[benchmarks(
 	where
 		T: Config<Balance = u128, DocumentId = u128, DocumentVersion = u64, Hash = H256>,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
-	}
+)]
+mod benchmarks {
+	use super::*;
 
-	set_anchor {
+	#[benchmark]
+	fn set_anchor() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = account("acc_0", 0, 0);
 
 		let document_id = 123;
 		let document_version = 456;
-		let hash = H256::random();
+		let hash = H256::from_low_u64_be(1);
+
+		let _ = T::Currency::deposit_creating(
+			&caller.clone().into(),
+			T::Currency::minimum_balance() + T::DefaultAnchorDeposit::get(),
+		);
+
+		#[extrinsic_call]
+		set_anchor(
+			RawOrigin::Signed(caller),
+			document_id,
+			document_version,
+			hash,
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn remove_anchor() -> Result<(), BenchmarkError> {
+		let caller: T::AccountId = account("acc_0", 0, 0);
+
+		let document_id = 123;
+		let document_version = 456;
+		let hash = H256::from_low_u64_be(1);
 		let deposit = AnchorDeposit::<T>::get();
 
-		let anchor = AnchorOf::<T> {
+		let anchor = Anchor::<T> {
 			account_id: caller.clone(),
 			document_id,
 			document_version,
@@ -44,46 +68,28 @@ benchmarks! {
 			deposit,
 		};
 
-		let _ = T::Currency::deposit_creating(&caller.clone().into(), T::Currency::minimum_balance() + T::DefaultAnchorDeposit::get());
-		let origin = RawOrigin::Signed(caller.clone());
-	}: set_anchor(origin.clone(), document_id, document_version, hash)
-	verify {
-		assert_eq!(Anchors::<T>::get((document_id, document_version), caller.clone()), Some(anchor.clone()));
-		assert_eq!(PersonalAnchors::<T>::get((caller, document_id, document_version)), Some(anchor));
-	}
-
-	remove_anchor {
-		let caller: T::AccountId = account("acc_0", 0, 0);
-
-		let document_id = 123;
-		let document_version = 456;
-		let hash = H256::random();
-		let deposit = AnchorDeposit::<T>::get();
-
-		let anchor = AnchorOf::<T> {
-			account_id: caller.clone(),
-			document_id,
-			document_version,
-			hash,
-			deposit,
-		};
-
-		Anchors::<T>::insert((document_id, document_version), caller.clone(), anchor.clone());
+		Anchors::<T>::insert(
+			(document_id, document_version),
+			caller.clone(),
+			anchor.clone(),
+		);
 		PersonalAnchors::<T>::insert((caller.clone(), document_id, document_version), anchor);
 
-		let origin = RawOrigin::Signed(caller.clone());
-	}: remove_anchor(origin.clone(), document_id, document_version)
-	verify {
-		assert_eq!(Anchors::<T>::get((document_id, document_version), caller.clone()), None);
-		assert_eq!(PersonalAnchors::<T>::get((caller, document_id, document_version)), None);
+		#[extrinsic_call]
+		remove_anchor(RawOrigin::Signed(caller), document_id, document_version);
+
+		Ok(())
 	}
 
-	set_deposit {
+	#[benchmark]
+	fn set_deposit_value() -> Result<(), BenchmarkError> {
 		let deposit = 2 * T::DefaultAnchorDeposit::get();
-	}: set_deposit(RawOrigin::Root, deposit)
-	verify {
-		assert_eq!(AnchorDeposit::<T>::get(), 2 * T::DefaultAnchorDeposit::get());
-	}
-}
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
+		#[extrinsic_call]
+		set_deposit_value(RawOrigin::Root, deposit);
+
+		Ok(())
+	}
+
+	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
+}

@@ -11,8 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{derive_impl, parameter_types, traits::EitherOfDiverse};
-use frame_system::{EnsureRoot, EnsureSigned};
+use frame_support::{derive_impl, parameter_types};
+use frame_system::EnsureRoot;
 use sp_runtime::traits::ConstU128;
 
 use crate::{self as pallet_anchors_v2, Config};

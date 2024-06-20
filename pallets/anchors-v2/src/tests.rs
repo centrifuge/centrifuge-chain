@@ -12,8 +12,6 @@
 // GNU General Public License for more details.
 
 use frame_support::{assert_err, assert_ok};
-use frame_system::{Account, AccountInfo};
-use pallet_balances::AccountData;
 use sp_runtime::testing::H256;
 
 use super::*;
@@ -34,7 +32,7 @@ mod set_anchor {
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
 
-			let anchor = AnchorOf::<Runtime> {
+			let anchor = Anchor::<Runtime> {
 				account_id: origin,
 				document_id,
 				document_version,
@@ -42,7 +40,7 @@ mod set_anchor {
 				deposit,
 			};
 
-			Balances::force_set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY).unwrap();
+			Balances::force_set_balance(RuntimeOrigin::root(), origin, deposit * 2).unwrap();
 
 			assert_ok!(AnchorsV2::set_anchor(
 				RuntimeOrigin::signed(origin),
@@ -69,11 +67,9 @@ mod set_anchor {
 				deposit,
 			});
 
-			let account_info: AccountInfo<_, AccountData<Balance>> =
-				Account::<Runtime>::get(origin);
-
 			assert_eq!(
-				account_info.data.reserved, deposit,
+				Balances::reserved_balance(&origin),
+				deposit,
 				"correct amount should be reserved"
 			);
 		});
@@ -102,7 +98,7 @@ mod set_anchor {
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
 
-			let anchor = AnchorOf::<Runtime> {
+			let anchor = Anchor::<Runtime> {
 				account_id: origin,
 				document_id,
 				document_version,
@@ -133,7 +129,7 @@ mod set_anchor {
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
 
-			let anchor = AnchorOf::<Runtime> {
+			let anchor = Anchor::<Runtime> {
 				account_id: origin,
 				document_id,
 				document_version,
@@ -188,7 +184,7 @@ mod remove_anchor {
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
 
-			let anchor = AnchorOf::<Runtime> {
+			let anchor = Anchor::<Runtime> {
 				account_id: origin,
 				document_id,
 				document_version,
@@ -199,20 +195,8 @@ mod remove_anchor {
 			Anchors::<Runtime>::insert((document_id, document_version), origin, anchor.clone());
 			PersonalAnchors::<Runtime>::insert((origin, document_id, document_version), anchor);
 
-			let account_info = AccountInfo::<_, AccountData<Balance>> {
-				nonce: 0,
-				consumers: 0,
-				providers: 0,
-				sufficients: 0,
-				data: AccountData::<Balance> {
-					free: 0,
-					reserved: deposit,
-					frozen: 0,
-					flags: Default::default(),
-				},
-			};
-
-			Account::<Runtime>::insert(origin, account_info);
+			Balances::force_set_balance(RuntimeOrigin::root(), origin, deposit * 2).unwrap();
+			assert_ok!(Balances::reserve(&origin, deposit));
 
 			assert_ok!(AnchorsV2::remove_anchor(
 				RuntimeOrigin::signed(origin),
@@ -236,10 +220,7 @@ mod remove_anchor {
 				deposit,
 			});
 
-			let account_info: AccountInfo<_, AccountData<Balance>> =
-				Account::<Runtime>::get(origin);
-
-			assert_eq!(account_info.data.reserved, 0);
+			assert_eq!(Balances::reserved_balance(&origin), 0);
 		});
 	}
 
@@ -283,7 +264,7 @@ mod remove_anchor {
 			let hash = H256::random();
 			let deposit = AnchorDeposit::<Runtime>::get();
 
-			let anchor = AnchorOf::<Runtime> {
+			let anchor = Anchor::<Runtime> {
 				account_id: origin,
 				document_id,
 				document_version,
@@ -313,7 +294,10 @@ mod set_deposit {
 		new_test_ext().execute_with(|| {
 			let new_deposit = 123;
 
-			assert_ok!(AnchorsV2::set_deposit(RuntimeOrigin::root(), new_deposit));
+			assert_ok!(AnchorsV2::set_deposit_value(
+				RuntimeOrigin::root(),
+				new_deposit
+			));
 			assert_eq!(AnchorDeposit::<Runtime>::get(), new_deposit);
 
 			event_exists(Event::<Runtime>::DepositSet { new_deposit });
@@ -325,7 +309,7 @@ mod set_deposit {
 		new_test_ext().execute_with(|| {
 			let new_deposit = 123;
 			assert_err!(
-				AnchorsV2::set_deposit(RuntimeOrigin::signed(1), new_deposit),
+				AnchorsV2::set_deposit_value(RuntimeOrigin::signed(1), new_deposit),
 				BadOrigin
 			);
 		})

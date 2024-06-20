@@ -31,21 +31,14 @@ pub use pallet::*;
 pub use weights::*;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct Anchor<AccountId, DocumentId, DocumentVersion, Hash, Balance> {
-	account_id: AccountId,
-	document_id: DocumentId,
-	document_version: DocumentVersion,
-	hash: Hash,
-	deposit: Balance,
+#[scale_info(skip_type_params(T))]
+pub struct Anchor<T: Config> {
+	account_id: T::AccountId,
+	document_id: T::DocumentId,
+	document_version: T::DocumentVersion,
+	hash: T::Hash,
+	deposit: T::Balance,
 }
-
-pub type AnchorOf<T> = Anchor<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::DocumentId,
-	<T as Config>::DocumentVersion,
-	<T as frame_system::Config>::Hash,
-	<T as Config>::Balance,
->;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -55,17 +48,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Balance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
+		type Balance: frame_support::traits::tokens::Balance;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 
@@ -116,7 +99,7 @@ pub mod pallet {
 		(T::DocumentId, T::DocumentVersion),
 		Blake2_256,
 		T::AccountId,
-		AnchorOf<T>,
+		Anchor<T>,
 	>;
 
 	/// Storage for document anchors specific to an account.
@@ -129,7 +112,7 @@ pub mod pallet {
 			NMapKey<Blake2_256, T::DocumentId>,
 			NMapKey<Blake2_256, T::DocumentVersion>,
 		),
-		AnchorOf<T>,
+		Anchor<T>,
 		OptionQuery,
 	>;
 
@@ -206,7 +189,7 @@ pub mod pallet {
 
 			T::Currency::reserve(&account_id, deposit)?;
 
-			let anchor = AnchorOf::<T> {
+			let anchor = Anchor::<T> {
 				account_id: account_id.clone(),
 				document_id,
 				document_version,
@@ -272,9 +255,9 @@ pub mod pallet {
 		}
 
 		/// Set a new anchor deposit.
-		#[pallet::weight(T::WeightInfo::set_deposit())]
+		#[pallet::weight(T::WeightInfo::set_deposit_value())]
 		#[pallet::call_index(2)]
-		pub fn set_deposit(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
+		pub fn set_deposit_value(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			<AnchorDeposit<T>>::set(new_deposit);

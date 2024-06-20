@@ -2142,6 +2142,8 @@ construct_runtime!(
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
+
+		// our pallets part 2
 		AnchorsV2: pallet_anchors_v2::{Pallet, Call, Storage, Event<T>} = 130,
 
 		// XCM

@@ -16,7 +16,7 @@ use frame_support::weights::Weight;
 pub trait WeightInfo {
 	fn set_anchor() -> Weight;
 	fn remove_anchor() -> Weight;
-	fn set_deposit() -> Weight;
+	fn set_deposit_value() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -26,7 +26,7 @@ impl WeightInfo for () {
 	fn remove_anchor() -> Weight {
 		Weight::zero()
 	}
-	fn set_deposit() -> Weight {
+	fn set_deposit_value() -> Weight {
 		Weight::zero()
 	}
 }
