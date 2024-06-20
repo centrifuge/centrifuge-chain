@@ -59,8 +59,6 @@ use frame_support::{
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
@@ -86,15 +84,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-/// The Parachains that Centrifuge Liquidity Pools support.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub enum ParachainId {
-	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or
-	/// Moonbase on a testnet.
-	Moonbeam,
-}
 
 // Type aliases
 pub type MessageOf<T> = Message<
@@ -343,7 +332,7 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
 		/// Add a pool to a given domain
-		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		#[pallet::weight(T::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
 		pub fn add_pool(
 			origin: OriginFor<T>,
@@ -371,7 +360,7 @@ pub mod pallet {
 		}
 
 		/// Add a tranche to a given domain
-		#[pallet::weight(< T as Config >::WeightInfo::add_tranche())]
+		#[pallet::weight(T::WeightInfo::add_tranche())]
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
@@ -428,7 +417,7 @@ pub mod pallet {
 		/// domain, this call origin can be permissionless.
 		///
 		/// The `currency_id` parameter is necessary for the EVM side.
-		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
+		#[pallet::weight(T::WeightInfo::update_token_price())]
 		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
@@ -472,7 +461,7 @@ pub mod pallet {
 		}
 
 		/// Update a member
-		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
+		#[pallet::weight(T::WeightInfo::update_member())]
 		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
@@ -527,7 +516,7 @@ pub mod pallet {
 		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
-		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
 		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
@@ -589,7 +578,7 @@ pub mod pallet {
 		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
-		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::transfer())]
 		#[pallet::call_index(7)]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -736,7 +725,7 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(<T as Config>::WeightInfo::cancel_upgrade())]
+		#[pallet::weight(T::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
 		pub fn cancel_upgrade(
 			origin: OriginFor<T>,
@@ -757,7 +746,7 @@ pub mod pallet {
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
 		/// beforehand.
-		#[pallet::weight(<T as Config>::WeightInfo::update_tranche_token_metadata())]
+		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
 		pub fn update_tranche_token_metadata(
 			origin: OriginFor<T>,
