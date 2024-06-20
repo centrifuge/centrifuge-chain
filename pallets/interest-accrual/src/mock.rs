@@ -6,7 +6,7 @@ use sp_runtime::BuildStorage;
 use crate::*;
 
 pub type Balance = u128;
-pub type Rate = sp_arithmetic::fixed_point::FixedU128;
+pub type Rate = cfg_types::fixed_point::FixedU128<1_000_000_000_000>;
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -33,11 +33,10 @@ impl Config for Runtime {
 	type Weights = ();
 }
 
-#[allow(unused)]
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	const SECONDS: u64 = 1000;
-	const START_DATE: u64 = 1640995200;
+pub const SECONDS: u64 = 1000;
+pub const START_DATE: u64 = 1640995200;
 
+pub fn new_test_ext() -> sp_io::TestExternalities {
 	let storage = frame_system::GenesisConfig::<Runtime>::default()
 		.build_storage()
 		.unwrap();

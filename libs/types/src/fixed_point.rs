@@ -489,6 +489,29 @@ impl<N: FixedPointOperand, D: FixedPointOperand, const DIV: u128> From<(N, D)> f
 	}
 }
 
+impl<const DIV: u128> Into<u128> for FixedU128<DIV> {
+	fn into(self) -> u128 {
+		self.0
+	}
+}
+
+/*
+impl<const DIV: u128> TryFrom<u128> for FixedU128<DIV> {
+	type Error = ();
+
+	fn try_from(value: u128) -> Result<Self, Self::Error> {
+		Ok(FixedU128::from_inner(value))
+	}
+}
+
+ */
+
+impl<const DIV: u128> num_traits::CheckedNeg for FixedU128<DIV> {
+	fn checked_neg(&self) -> Option<Self> {
+		Some(Self(self.0.checked_neg()?))
+	}
+}
+
 impl<const DIV: u128> FixedPointNumber for FixedU128<DIV> {
 	type Inner = u128;
 

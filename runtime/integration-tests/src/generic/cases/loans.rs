@@ -138,7 +138,7 @@ mod common {
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {
-				rate_per_year: rate_from_percent(20),
+				rate_per_base: rate_from_percent(20),
 				compounding: CompoundingSchedule::Secondly,
 			},
 			collateral: NFT_A,

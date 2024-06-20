@@ -92,7 +92,7 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 			pay_down_schedule: PayDownSchedule::None,
 		},
 		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			rate_per_base: Rate::from_float(DEFAULT_INTEREST_RATE),
 			compounding: CompoundingSchedule::Secondly,
 		},
 		collateral: ASSET_AA,
@@ -121,7 +121,7 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 			pay_down_schedule: PayDownSchedule::None,
 		},
 		interest_rate: InterestRate::Fixed {
-			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			rate_per_base: Rate::from_float(DEFAULT_INTEREST_RATE),
 			compounding: CompoundingSchedule::Secondly,
 		},
 		collateral: ASSET_AA,

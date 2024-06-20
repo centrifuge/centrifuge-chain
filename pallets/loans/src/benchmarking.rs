@@ -131,7 +131,7 @@ where
 			},
 			collateral: (COLLECION_ID.into(), item_id),
 			interest_rate: InterestRate::Fixed {
-				rate_per_year: T::Rate::saturating_from_rational(1, 5000),
+				rate_per_base: T::Rate::saturating_from_rational(1, 5000),
 				compounding: CompoundingSchedule::Secondly,
 			},
 			pricing: Pricing::Internal(InternalPricing {
@@ -143,7 +143,7 @@ where
 					probability_of_default: T::Rate::zero(),
 					loss_given_default: T::Rate::zero(),
 					discount_rate: InterestRate::Fixed {
-						rate_per_year: T::Rate::saturating_from_rational(1, 5000),
+						rate_per_base: T::Rate::saturating_from_rational(1, 5000),
 						compounding: CompoundingSchedule::Secondly,
 					},
 				}),
@@ -288,7 +288,7 @@ where
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			T::InterestAccrual::reference_rate(&InterestRate::Fixed {
-				rate_per_year: T::Rate::saturating_from_rational(i + 1, 5000),
+				rate_per_base: T::Rate::saturating_from_rational(i + 1, 5000),
 				compounding: CompoundingSchedule::Secondly,
 			})
 			.unwrap();

@@ -5,34 +5,73 @@ use frame_support::{
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_arithmetic::{
-	traits::{BaseArithmetic, EnsureAdd, EnsureDiv, EnsureSub},
+	traits::{BaseArithmetic, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureSub},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::{
-	traits::{CheckedAdd, Get, Member, Zero},
+	traits::{checked_pow, CheckedAdd, Get, Member, Zero},
 	BoundedBTreeSet, DispatchError,
 };
 use strum::EnumCount;
 
 use super::time::{Period, Seconds};
-use crate::{adjustments::Adjustment, time::PassedPeriods};
+use crate::{
+	adjustments::Adjustment,
+	time::{PassedPeriods, SECONDS_PER_MONTH_AVERAGE},
+};
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct InterestModel<Rate> {
 	pub rate: InterestRate<Rate>,
 	pub compounding: Option<Period>,
 }
 
-impl<Rate: FixedPointNumber> InterestModel<Rate> {
+impl<Rate: FixedPointNumber + num_traits::CheckedNeg + TryFrom<u128> + Into<u128>>
+	InterestModel<Rate>
+{
+	pub fn base(&self) -> Result<Period, DispatchError> {
+		match self {
+			InterestModel {
+				rate: InterestRate::Fixed { base, .. },
+				..
+			} => Ok(*base),
+		}
+	}
+
+	/// Provides the APY from the given APR
 	pub fn rate_per_schedule(&self) -> Result<Rate, DispatchError> {
-		let rate = match self.rate {
-			InterestRate::Fixed { rate_per_year } => rate_per_year,
+		let (apr, base) = match self.rate {
+			InterestRate::Fixed {
+				rate_per_base: rate_per_year,
+				base,
+			} => (rate_per_year, base),
 		};
 
 		if let Some(compounding) = self.compounding {
-			rate.ensure_div(compounding.periods_per_year()?)
-				.map_err(Into::into)
+			let periods_per_schedule = compounding.periods_per_base(base)?;
+			let interest_rate_per_schedule = apr.ensure_div(periods_per_schedule)?;
+			/*
+			let one = Rate::one();
+
+			let interest_rate_per_sec = Rate::saturating_from_rational(5, 100)
+				/ Rate::saturating_from_integer(SECONDS_PER_MONTH_AVERAGE * 12);
+
+			let pow = compounding
+				.periods_per_base::<Rate>(base)?
+				.ensure_mul_int(1usize)?;
+			let apy = checked_pow(
+				one.ensure_add(adjusted_rate)?,
+				compounding
+					.periods_per_base::<Rate>(base)?
+					.ensure_mul_int(1usize)?,
+			)
+			.ok_or(ArithmeticError::Overflow)?
+			.ensure_sub(one)?;
+
+			 */
+			Ok(interest_rate_per_schedule)
 		} else {
-			Ok(rate)
+			Ok(apr)
 		}
 	}
 }
@@ -41,7 +80,7 @@ impl<Rate: FixedPointNumber> InterestModel<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestRate<Rate> {
 	/// Interest accrues at a fixed rate
-	Fixed { rate_per_year: Rate },
+	Fixed { rate_per_base: Rate, base: Period },
 }
 
 impl<Rate> InterestRate<Rate> {
@@ -50,8 +89,12 @@ impl<Rate> InterestRate<Rate> {
 		F: FnOnce(Rate) -> Result<Rate, E>,
 	{
 		Ok(match self {
-			Self::Fixed { rate_per_year } => Self::Fixed {
-				rate_per_year: f(rate_per_year)?,
+			Self::Fixed {
+				rate_per_base: rate_per_year,
+				base,
+			} => Self::Fixed {
+				rate_per_base: f(rate_per_year)?,
+				base,
 			},
 		})
 	}
@@ -67,6 +110,7 @@ impl<Rate: EnsureAdd + EnsureSub> InterestRate<Rate> {
 	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct InterestPayment<Balance> {
 	from: Seconds,
 	to: Seconds,
@@ -79,6 +123,7 @@ impl<Balance> InterestPayment<Balance> {
 	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct FullPeriod<Balance> {
 	payment: InterestPayment<Balance>,
 	periods: u64,
@@ -88,8 +133,13 @@ impl<Balance> FullPeriod<Balance> {
 	pub fn new(payment: InterestPayment<Balance>, periods: u64) -> Self {
 		FullPeriod { payment, periods }
 	}
+
+	pub fn periods(&self) -> u64 {
+		self.periods
+	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct Interest<Balance> {
 	partial_front_period: Option<InterestPayment<Balance>>,
 	full_periods: Option<FullPeriod<Balance>>,
@@ -133,55 +183,76 @@ impl<Balance> Interest<Balance> {
 		}
 	}
 
-	pub fn try_map_front<F: FnOnce(&InterestPayment<Balance>) -> Result<R, E>, R, E>(
-		&self,
-		f: F,
-	) -> Result<Option<R>, E> {
-		self.partial_front_period.as_ref().map(f).transpose()
+	pub fn try_map_front<F: FnOnce(&InterestPayment<Balance>) -> T, T>(&self, f: F) -> Option<T> {
+		self.partial_front_period.as_ref().map(f)
 	}
 
-	pub fn try_map_full<F: FnOnce(&FullPeriod<Balance>) -> Result<R, E>, R, E>(
-		&self,
-		f: F,
-	) -> Result<Option<R>, E> {
-		self.full_periods.as_ref().map(f).transpose()
+	pub fn try_map_full<F: FnOnce(&FullPeriod<Balance>) -> T, T>(&self, f: F) -> Option<T> {
+		self.full_periods.as_ref().map(f)
 	}
 
-	pub fn try_map_back<F: FnOnce(&InterestPayment<Balance>) -> Result<R, E>, R, E>(
-		&self,
-		f: F,
-	) -> Result<Option<R>, E> {
-		self.partial_back_period.as_ref().map(f).transpose()
+	pub fn try_map_back<F: FnOnce(&InterestPayment<Balance>) -> T, T>(&self, f: F) -> Option<T> {
+		self.partial_back_period.as_ref().map(f)
 	}
 }
 
 impl<Balance: Copy + BaseArithmetic> Interest<Balance> {
 	pub fn total(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		self.try_map_front(|f| f.amount)
+			.unwrap_or_else(Balance::zero)
+			.ensure_add(
+				self.try_map_full(|f| f.payment.amount)
+					.unwrap_or_else(Balance::zero),
+			)?
+			.ensure_add(
+				self.try_map_back(|f| f.amount)
+					.unwrap_or_else(Balance::zero),
+			)
 	}
 
 	pub fn total_partial_periods(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		self.try_map_front(|f| f.amount)
+			.unwrap_or_else(Balance::zero)
+			.ensure_add(
+				self.try_map_back(|f| f.amount)
+					.unwrap_or_else(Balance::zero),
+			)
 	}
 
 	pub fn total_full_periods(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		Ok(self
+			.try_map_full(|f| f.payment.amount)
+			.unwrap_or_else(Balance::zero))
 	}
 
 	pub fn total_front_partial_full_periods(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		self.try_map_front(|f| f.amount)
+			.unwrap_or_else(Balance::zero)
+			.ensure_add(
+				self.try_map_full(|f| f.payment.amount)
+					.unwrap_or_else(Balance::zero),
+			)
 	}
 
 	pub fn total_full_back_partial_periods(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		self.try_map_full(|f| f.payment.amount)
+			.unwrap_or_else(Balance::zero)
+			.ensure_add(
+				self.try_map_back(|f| f.amount)
+					.unwrap_or_else(Balance::zero),
+			)
 	}
 
 	pub fn total_front_partial_period(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		Ok(self
+			.try_map_front(|f| f.amount)
+			.unwrap_or_else(Balance::zero))
 	}
 
 	pub fn total_back_partial_period(&self) -> Result<Balance, ArithmeticError> {
-		todo!()
+		Ok(self
+			.try_map_back(|f| f.amount)
+			.unwrap_or_else(Balance::zero))
 	}
 }
 

@@ -411,7 +411,7 @@ pub mod tests {
 					last_secs_from_ymd(2022, 4, 16),
 					25000, /* principal */
 					&InterestRate::Fixed {
-						rate_per_year: Rate::from_float(0.01 * 12.0),
+						rate_per_base: Rate::from_float(0.01 * 12.0),
 						compounding: CompoundingSchedule::Secondly,
 					}
 				)

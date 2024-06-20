@@ -169,7 +169,7 @@ mod wrong_mutation {
 
 			// Too high
 			let mutation = LoanMutation::InterestRate(InterestRate::Fixed {
-				rate_per_year: Rate::from_float(3.0),
+				rate_per_base: Rate::from_float(3.0),
 				compounding: CompoundingSchedule::Secondly,
 			});
 
@@ -217,7 +217,7 @@ fn with_successful_mutation_application() {
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {
-				rate_per_year: Rate::from_float(0.1),
+				rate_per_base: Rate::from_float(0.1),
 				compounding: CompoundingSchedule::Secondly,
 			},
 			pricing: Pricing::Internal(InternalPricing {
@@ -225,7 +225,7 @@ fn with_successful_mutation_application() {
 					probability_of_default: Rate::from_float(0.1),
 					loss_given_default: Rate::from_float(0.1),
 					discount_rate: InterestRate::Fixed {
-						rate_per_year: Rate::from_float(0.1),
+						rate_per_base: Rate::from_float(0.1),
 						compounding: CompoundingSchedule::Secondly,
 					},
 				}),
@@ -246,7 +246,7 @@ fn with_successful_mutation_application() {
 			}),
 			LoanMutation::MaturityExtension(YEAR.as_secs()),
 			LoanMutation::InterestRate(InterestRate::Fixed {
-				rate_per_year: Rate::from_float(0.5),
+				rate_per_base: Rate::from_float(0.5),
 				compounding: CompoundingSchedule::Secondly,
 			}),
 			LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(Rate::from_float(
@@ -254,7 +254,7 @@ fn with_successful_mutation_application() {
 			))),
 			LoanMutation::Internal(InternalMutation::LossGivenDefault(Rate::from_float(0.5))),
 			LoanMutation::Internal(InternalMutation::DiscountRate(InterestRate::Fixed {
-				rate_per_year: Rate::from_float(0.5),
+				rate_per_base: Rate::from_float(0.5),
 				compounding: CompoundingSchedule::Secondly,
 			})),
 			LoanMutation::Internal(InternalMutation::ValuationMethod(

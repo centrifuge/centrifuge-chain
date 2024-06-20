@@ -115,7 +115,7 @@ fn with_wrong_valuation() {
 					probability_of_default: Rate::from_float(0.0),
 					loss_given_default: Rate::from_float(0.0),
 					discount_rate: InterestRate::Fixed {
-						rate_per_year: Rate::from_float(1.1), // Too high
+						rate_per_base: Rate::from_float(1.1), // Too high
 						compounding: CompoundingSchedule::Secondly,
 					},
 				}),
@@ -138,7 +138,7 @@ fn with_wrong_interest_rate() {
 
 		let loan = LoanInfo {
 			interest_rate: InterestRate::Fixed {
-				rate_per_year: Rate::from_float(3.0),
+				rate_per_base: Rate::from_float(3.0),
 				compounding: CompoundingSchedule::Secondly,
 			}, // Too high
 			..util::base_internal_loan()

@@ -1,11 +1,17 @@
 use std::num::ParseIntError;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeDelta};
-use frame_support::traits::UnixTime;
+use frame_support::{ensure, traits::UnixTime};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::{traits::EnsureInto, FixedPointNumber, Perquintill};
-use sp_runtime::DispatchError;
+use sp_arithmetic::{
+	traits::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	FixedPointNumber, FixedPointOperand, Perquintill,
+};
+use sp_runtime::{
+	traits::{CheckedDiv, One},
+	DispatchError,
+};
 
 macro_rules! implement_base_math {
 	(
@@ -617,6 +623,14 @@ pub struct PassedPeriods {
 }
 
 impl PassedPeriods {
+	pub fn only_full(full: FullPeriods) -> Self {
+		Self {
+			front: None,
+			full: Some(full),
+			back: None,
+		}
+	}
+
 	pub fn try_map_front<F: FnOnce(&PartialPeriod) -> Result<R, E>, R, E>(
 		&self,
 		f: F,
@@ -668,6 +682,10 @@ pub struct FullPeriods {
 }
 
 impl FullPeriods {
+	pub fn new(from: Seconds, to: Seconds, passed: u64) -> Self {
+		Self { from, passed, to }
+	}
+
 	pub fn passed(&self) -> u64 {
 		self.passed
 	}
@@ -680,6 +698,10 @@ impl FullPeriods {
 		self.to
 	}
 }
+
+pub const SECONDS_PER_WEEK: u64 = 604800;
+
+pub const SECONDS_PER_MONTH_AVERAGE: u64 = 2628288;
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
 pub enum Period {
@@ -707,8 +729,51 @@ pub enum Period {
 }
 
 impl Period {
-	pub fn periods_per_year<Rate: FixedPointNumber>(&self) -> Result<Rate, DispatchError> {
-		todo!("Implement the rest of the periods")
+	pub fn by_seconds(interval: u64) -> Self {
+		Period::BySeconds { interval }
+	}
+
+	pub fn by_weekdays(time: Daytime, interval: u64, weekday: Weekday) -> Self {
+		Period::ByWeekdays {
+			time,
+			interval,
+			weekday,
+		}
+	}
+
+	pub fn by_months(time: Daytime, day: MonthlyInterval, interval: u64) -> Self {
+		Period::ByMonths {
+			time,
+			day,
+			interval,
+		}
+	}
+
+	pub fn periods_per_base<Rate: FixedPointNumber>(
+		&self,
+		base: Period,
+	) -> Result<Rate, DispatchError> {
+		let base = Rate::checked_from_rational(base.interval(), self.interval())
+			.ok_or("Invalid period-base-combination.")?;
+
+		ensure!(
+			base.frac().is_zero(),
+			DispatchError::Other(
+				"Invalid period-base-combination. Base is not a multiple of period."
+			)
+		);
+
+		Ok(base)
+	}
+
+	pub fn interval(&self) -> Seconds {
+		match self {
+			Period::BySeconds { interval } => Seconds::from(*interval),
+			Period::ByWeekdays { interval, .. } => Seconds::from(*interval * SECONDS_PER_WEEK),
+			Period::ByMonths { interval, .. } => {
+				Seconds::from(*interval * SECONDS_PER_MONTH_AVERAGE)
+			}
+		}
 	}
 
 	pub fn current_period_start<T: IntoSeconds + Copy>(
@@ -734,7 +799,48 @@ impl Period {
 		from: T,
 		to: T,
 	) -> Result<PassedPeriods, DispatchError> {
-		todo!("Implement the rest of the periods")
+		let from = from.into_seconds();
+		let to = to.into_seconds();
+
+		ensure!(
+			to > from,
+			DispatchError::Other("Invalid period. `to` is before `from`."),
+		);
+
+		if to == from {
+			return Ok(PassedPeriods {
+				front: None,
+				full: None,
+				back: None,
+			});
+		};
+
+		match self {
+			Period::BySeconds { interval } => {
+				let delta = to.ensure_sub(from)?;
+				let periods = delta.ensure_div(Seconds::from(*interval))?;
+
+				Ok(PassedPeriods::only_full(FullPeriods::new(
+					from,
+					to,
+					periods.inner(),
+				)))
+			}
+			Period::ByWeekdays {
+				interval,
+				time,
+				weekday,
+			} => {
+				todo!()
+			}
+			Period::ByMonths {
+				interval,
+				time,
+				day,
+			} => {
+				todo!()
+			}
+		}
 	}
 }
 

@@ -30,8 +30,9 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{One, Zero};
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd, EnsureAddAssign, EnsureDiv,
-		EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
+		ensure_pow, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd, EnsureAddAssign,
+		EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, EnsureSubAssign,
+		Saturating,
 	},
 	DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
 };
@@ -61,7 +62,9 @@ pub struct ActiveInterestModel<T: Config> {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_types::fixed_point::FixedPointNumberExtension;
 	use frame_support::pallet_prelude::*;
+	use sp_runtime::traits::checked_pow;
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -96,7 +99,10 @@ pub mod pallet {
 			+ Copy
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ num_traits::CheckedNeg
+			+ TryFrom<u128>
+			+ Into<u128>;
 
 		type Time: TimeAsSecs;
 
@@ -125,46 +131,53 @@ pub mod pallet {
 		) -> Result<Interest<T::Balance>, DispatchError> {
 			let rate = model.rate_per_schedule()?;
 
-			let interest = match model.compounding {
-				None => Interest::only_full(FullPeriod::new(
-					InterestPayment::new(last_updated, at, rate.ensure_mul_int(notional)?),
-					1,
-				)),
-				Some(compounding) => {
-					let periods = compounding.periods_passed(last_updated, at)?;
-					Interest::new(
-						periods.try_map_front(|p| {
-							Ok::<_, DispatchError>(InterestPayment::new(
-								p.from(),
-								p.to(),
-								p.part().mul_floor(rate.ensure_mul_int(notional)?),
-							))
-						})?,
-						periods.try_map_full(|p| {
-							Ok::<_, DispatchError>(FullPeriod::new(
-								InterestPayment::new(
-									p.from(),
-									p.to(),
-									T::Rate::checked_from_integer(p.passed())
-										.ok_or(Error::<T>::RateCreationFailed)?
-										.ensure_mul(rate)?
-										.ensure_mul_int(notional)?,
-								),
-								p.passed(),
-							))
-						})?,
-						periods.try_map_back(|p| {
-							Ok::<_, DispatchError>(InterestPayment::new(
-								p.from(),
-								p.to(),
-								p.part().mul_floor(rate.ensure_mul_int(notional)?),
-							))
-						})?,
-					)
-				}
+			let periods = match model.compounding {
+				None => model.base()?.periods_passed(last_updated, at)?,
+				Some(compounding) => compounding.periods_passed(last_updated, at)?,
 			};
 
+			let interest = Interest::new(
+				periods.try_map_front(|p| {
+					Ok::<_, DispatchError>(InterestPayment::new(
+						p.from(),
+						p.to(),
+						p.part().mul_floor(Self::interest_inner(rate, notional, 1)?),
+					))
+				})?,
+				periods.try_map_full(|p| {
+					Ok::<_, DispatchError>(FullPeriod::new(
+						InterestPayment::new(
+							p.from(),
+							p.to(),
+							Self::interest_inner(rate, notional, p.passed())?,
+						),
+						p.passed(),
+					))
+				})?,
+				periods.try_map_back(|p| {
+					Ok::<_, DispatchError>(InterestPayment::new(
+						p.from(),
+						p.to(),
+						p.part().mul_floor(Self::interest_inner(rate, notional, 1)?),
+					))
+				})?,
+			);
+
 			Ok(interest)
+		}
+
+		fn interest_inner(
+			rate: T::Rate,
+			notional: T::Balance,
+			periods: impl TryInto<usize>,
+		) -> Result<T::Balance, DispatchError> {
+			let rate = rate.ensure_add(T::Rate::one())?;
+			let periods = periods.try_into().map_err(|_| "Usize must be u64. qed.")?;
+
+			ensure_pow(rate, periods)?
+				.ensure_mul_int(notional)?
+				.ensure_sub(notional)
+				.map_err(Into::into)
 		}
 	}
 }
@@ -176,6 +189,9 @@ impl<T: Config> InterestAccrualProvider<T::Rate, T::Balance> for Pallet<T> {
 		model: impl Into<InterestModel<T::Rate>>,
 		at: Seconds,
 	) -> Result<Self::InterestAccrual, DispatchError> {
+		// TODO: Validate model
+		// - is base multiple of period for example
+
 		Ok(ActiveInterestModel {
 			model: model.into(),
 			activation: at,
