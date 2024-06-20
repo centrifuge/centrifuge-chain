@@ -26,7 +26,7 @@ use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
 use fc_db::Backend as FrontierBackend;
 use fc_rpc::pending::{AuraConsensusDataProvider, ConsensusDataProvider};
 use polkadot_primitives::CollatorPair;
-use sc_executor::NativeElseWasmExecutor;
+use sc_executor::WasmExecutor;
 use sc_network_sync::SyncingService;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
@@ -40,13 +40,19 @@ use crate::rpc::{self};
 pub(crate) mod evm;
 use evm::EthConfiguration;
 
-type FullClient<RuntimeApi, Executor> =
-	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
+#[cfg(feature = "runtime-benchmarks")]
+type HostFunctions = (sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+type HostFunctions = sp_io::SubstrateHostFunctions;
+
+type FullClient<RuntimeApi> =
+	TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
 type FullBackend = TFullBackend<Block>;
 
-type ParachainBlockImport<RuntimeApi, Executor> =
-	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi, Executor>>, FullBackend>;
+type ParachainBlockImport<RuntimeApi> =
+	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi>>, FullBackend>;
 
 pub trait RuntimeApiCollection:
 	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
@@ -82,71 +88,8 @@ impl<Api> RuntimeApiCollection for Api where
 {
 }
 
-// Native Altair executor instance.
-pub struct AltairRuntimeExecutor;
-
-impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		altair_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		altair_runtime::native_version()
-	}
-}
-
-// Native Centrifuge executor instance.
-pub struct CentrifugeRuntimeExecutor;
-
-impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		centrifuge_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		centrifuge_runtime::native_version()
-	}
-}
-
-// Native Development executor instance.
-pub struct DevelopmentRuntimeExecutor;
-
-impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to
-	/// benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		development_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		development_runtime::native_version()
-	}
-}
-
 /// Start a generic parachain node.
-pub async fn start_node<RuntimeApi, Executor>(
+pub async fn start_node<RuntimeApi>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
@@ -154,16 +97,15 @@ pub async fn start_node<RuntimeApi, Executor>(
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	let is_authority = parachain_config.role.is_authority();
 
-	evm::start_node_impl::<RuntimeApi, Executor, _, _>(
+	evm::start_node_impl::<RuntimeApi, _, _>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -234,7 +176,7 @@ where
 			)?;
 			Ok(module)
 		},
-		build_import_queue::<RuntimeApi, Executor>,
+		build_import_queue::<RuntimeApi>,
 	)
 	.await
 }
@@ -243,9 +185,9 @@ where
 ///
 /// NOTE: Almost entirely taken from Polkadot SDK.
 #[allow(clippy::type_complexity)]
-pub fn build_import_queue<RuntimeApi, Executor>(
-	client: Arc<FullClient<RuntimeApi, Executor>>,
-	block_import: ParachainBlockImport<RuntimeApi, Executor>,
+pub fn build_import_queue<RuntimeApi>(
+	client: Arc<FullClient<RuntimeApi>>,
+	block_import: ParachainBlockImport<RuntimeApi>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
@@ -254,9 +196,8 @@ pub fn build_import_queue<RuntimeApi, Executor>(
 ) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
 where
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 	let block_import = evm::BlockImport::new(
@@ -293,14 +234,14 @@ where
 /// NOTE: Taken from Polkadot SDK because Moonbeam uses their custom Nimbus
 /// consensus
 #[allow(clippy::too_many_arguments)]
-fn start_consensus<RuntimeApi, Executor>(
-	client: Arc<FullClient<RuntimeApi, Executor>>,
-	block_import: ParachainBlockImport<RuntimeApi, Executor>,
+fn start_consensus<RuntimeApi>(
+	client: Arc<FullClient<RuntimeApi>>,
+	block_import: ParachainBlockImport<RuntimeApi>,
 	prometheus_registry: Option<&Registry>,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	relay_chain_interface: Arc<dyn RelayChainInterface>,
-	transaction_pool: Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+	transaction_pool: Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 	sync_oracle: Arc<SyncingService<Block>>,
 	keystore: KeystorePtr,
 	relay_chain_slot_duration: Duration,
@@ -311,9 +252,8 @@ fn start_consensus<RuntimeApi, Executor>(
 ) -> Result<(), sc_service::Error>
 where
 	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	use cumulus_client_consensus_aura::collators::basic::{
 		self as basic_aura, Params as BasicAuraParams,
