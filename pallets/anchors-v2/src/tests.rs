@@ -11,15 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{assert_err, assert_ok};
-use frame_support::dispatch::RawOrigin;
+use frame_support::{assert_err, assert_ok, dispatch::RawOrigin};
 use pallet_balances::Error::InsufficientBalance;
-use sp_runtime::DispatchError::BadOrigin;
-use sp_runtime::testing::H256;
-
-use crate::mock::{*, RuntimeEvent as MockEvent};
+use sp_runtime::{testing::H256, DispatchError::BadOrigin};
 
 use super::*;
+use crate::mock::{RuntimeEvent as MockEvent, *};
 
 mod set_anchor {
 	use super::*;

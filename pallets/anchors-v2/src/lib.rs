@@ -12,12 +12,10 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::pallet_prelude::*;
-use frame_support::traits::ReservableCurrency;
+use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 use frame_system::pallet_prelude::*;
-use scale_info::TypeInfo;
-
 pub use pallet::*;
+use scale_info::TypeInfo;
 pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]

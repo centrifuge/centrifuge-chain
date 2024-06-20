@@ -23,9 +23,11 @@ impl WeightInfo for () {
 	fn set_anchor() -> Weight {
 		Weight::zero()
 	}
+
 	fn remove_anchor() -> Weight {
 		Weight::zero()
 	}
+
 	fn set_deposit_value() -> Weight {
 		Weight::zero()
 	}
