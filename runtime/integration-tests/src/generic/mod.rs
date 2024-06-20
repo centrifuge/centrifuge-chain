@@ -24,6 +24,7 @@ mod cases {
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
+	mod routers;
 	mod xcm_transfers;
 }
 
