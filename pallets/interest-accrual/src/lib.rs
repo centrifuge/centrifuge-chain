@@ -16,6 +16,8 @@
 //! A pallet for calculating interest accrual on debt.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+
+use std::cmp::Ordering;
 use cfg_traits::{
 	adjustments::Adjustment,
 	interest::{
@@ -51,10 +53,31 @@ mod tests;
 
 pub use pallet::*;
 
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
+struct LastUpdated {
+	at: Seconds,
+	start_next_period: Seconds,
+}
+
+impl LastUpdated {
+	pub fn new(at: Seconds, start_next_period: Seconds) -> Self {
+		Self { at, start_next_period }
+	}
+
+	pub fn at(&self) -> Seconds {
+		self.at
+	}
+
+	pub fn next(&self) -> Seconds {
+		self.start_next_period
+	}
+}
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
 pub struct ActiveInterestModel<T: Config> {
 	model: InterestModel<T::Rate>,
 	activation: Seconds,
-	last_updated: Seconds,
+	last_updated: LastUpdated,
 	deactivation: Option<Seconds>,
 	notional: T::Balance,
 	interest: T::Balance,
@@ -100,6 +123,7 @@ pub mod pallet {
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>
 			+ MaxEncodedLen
+		// TODO: REMOVE
 			+ num_traits::CheckedNeg
 			+ TryFrom<u128>
 			+ Into<u128>;
@@ -126,14 +150,14 @@ pub mod pallet {
 		pub fn calculate_interest(
 			notional: T::Balance,
 			model: &InterestModel<T::Rate>,
-			last_updated: Seconds,
+			last_updated: LastUpdated,
 			at: Seconds,
 		) -> Result<Interest<T::Balance>, DispatchError> {
 			let rate = model.rate_per_schedule()?;
 
 			let periods = match model.compounding {
-				None => model.base()?.periods_passed(last_updated, at)?,
-				Some(compounding) => compounding.periods_passed(last_updated, at)?,
+				None => model.base()?.with_ref(last_updated.next()).periods_passed(last_updated.at(), at)?,
+				Some(compounding) => compounding.with_ref(last_updated.next()).periods_passed(last_updated.at(), at)?,
 			};
 
 			let interest = Interest::new(
@@ -188,14 +212,16 @@ impl<T: Config> InterestAccrualProvider<T::Rate, T::Balance> for Pallet<T> {
 	fn reference(
 		model: impl Into<InterestModel<T::Rate>>,
 		at: Seconds,
+		start: Seconds,
 	) -> Result<Self::InterestAccrual, DispatchError> {
 		// TODO: Validate model
 		// - is base multiple of period for example
 
+		let model = model.into();
 		Ok(ActiveInterestModel {
-			model: model.into(),
+			model,
 			activation: at,
-			last_updated: at,
+			last_updated: LastUpdated::new(at, model.base()?.start()
 			deactivation: None,
 			notional: T::Balance::zero(),
 			interest: T::Balance::zero(),
@@ -217,7 +243,13 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 			Pallet::<T>::calculate_interest(self.notional, &self.model, self.last_updated, at)?;
 
 		let (interest, last_updated) = result(interest)?;
-		self.last_updated = last_updated;
+
+		let start_next_period = match last_updated.cmp(&self.last_updated.next()) {
+			Ordering::Less | Ordering::Equal=> {self.last_updated.next()}
+			Ordering::Greater => {todo!("Find actual next start period")}
+		};
+
+		self.last_updated = LastUpdated::new(last_updated, start_next_period);
 		self.interest.ensure_add_assign(interest)?;
 
 		Ok(())
@@ -286,7 +318,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance> for ActiveInterestModel<T> 
 	}
 
 	fn accrued_updated(&self) -> Seconds {
-		self.last_updated
+		self.last_updated.at
 	}
 
 	fn accrued_since(&self) -> Seconds {

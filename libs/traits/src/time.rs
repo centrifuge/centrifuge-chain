@@ -776,24 +776,25 @@ impl Period {
 		}
 	}
 
-	pub fn current_period_start<T: IntoSeconds + Copy>(
-		&self,
-		t: T,
-	) -> Result<Seconds, DispatchError> {
+	pub fn next_period_start<T: IntoSeconds + Copy>(&self) -> Result<Seconds, DispatchError> {
 		todo!("Implement the rest of the periods")
 	}
 
-	pub fn current_period_end<T: IntoSeconds + Copy>(
-		&self,
-		t: T,
-	) -> Result<Seconds, DispatchError> {
-		todo!("Implement the rest of the periods")
+	pub fn with_ref(&self, reference: Seconds) -> PeriodWithReference {
+		PeriodWithReference {
+			period: *self,
+			ref_period_start: reference,
+		}
 	}
+}
 
-	pub fn next_period_start<T: IntoSeconds + Copy>(&self, t: T) -> Result<Seconds, DispatchError> {
-		todo!("Implement the rest of the periods")
-	}
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
+pub struct PeriodWithReference {
+	period: Period,
+	ref_period_start: Seconds,
+}
 
+impl PeriodWithReference {
 	pub fn periods_passed<T: IntoSeconds>(
 		&self,
 		from: T,
@@ -815,10 +816,10 @@ impl Period {
 			});
 		};
 
-		match self {
+		match self.period {
 			Period::BySeconds { interval } => {
 				let delta = to.ensure_sub(from)?;
-				let periods = delta.ensure_div(Seconds::from(*interval))?;
+				let periods = delta.ensure_div(Seconds::from(interval))?;
 
 				Ok(PassedPeriods::only_full(FullPeriods::new(
 					from,

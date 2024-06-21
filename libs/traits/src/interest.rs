@@ -38,6 +38,10 @@ impl<Rate: FixedPointNumber + num_traits::CheckedNeg + TryFrom<u128> + Into<u128
 		}
 	}
 
+	pub fn next_compounding(&self, at: Seconds) -> Result<Seconds, DispatchError> {
+		todo!()
+	}
+
 	/// Provides the APY from the given APR
 	pub fn rate_per_schedule(&self) -> Result<Rate, DispatchError> {
 		let (apr, base) = match self.rate {
@@ -50,25 +54,6 @@ impl<Rate: FixedPointNumber + num_traits::CheckedNeg + TryFrom<u128> + Into<u128
 		if let Some(compounding) = self.compounding {
 			let periods_per_schedule = compounding.periods_per_base(base)?;
 			let interest_rate_per_schedule = apr.ensure_div(periods_per_schedule)?;
-			/*
-			let one = Rate::one();
-
-			let interest_rate_per_sec = Rate::saturating_from_rational(5, 100)
-				/ Rate::saturating_from_integer(SECONDS_PER_MONTH_AVERAGE * 12);
-
-			let pow = compounding
-				.periods_per_base::<Rate>(base)?
-				.ensure_mul_int(1usize)?;
-			let apy = checked_pow(
-				one.ensure_add(adjusted_rate)?,
-				compounding
-					.periods_per_base::<Rate>(base)?
-					.ensure_mul_int(1usize)?,
-			)
-			.ok_or(ArithmeticError::Overflow)?
-			.ensure_sub(one)?;
-
-			 */
 			Ok(interest_rate_per_schedule)
 		} else {
 			Ok(apr)
