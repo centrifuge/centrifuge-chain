@@ -1099,11 +1099,11 @@ parameter_types! {
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
+	pub const DefaultMinEpochTime: u64 = 0; // No minimum epoch time
 	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
+	pub const MinEpochTimeLowerBound: u64 = 0; // Allow closing an epoch in the same block as the creation of a pool and also multiple per block if wanted
 	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
 	pub const MaxNAVAgeUpperBound: u64 = SECONDS_PER_HOUR; // 1 hour
 
