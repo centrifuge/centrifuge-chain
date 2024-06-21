@@ -377,6 +377,7 @@ try-runtime = [
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
   "pallet-anchors/try-runtime",
+  "pallet-anchors-v2/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
