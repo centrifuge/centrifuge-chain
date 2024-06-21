@@ -1329,7 +1329,7 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 300; // See #1024
-	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+	pub FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 100;

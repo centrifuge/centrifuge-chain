@@ -168,9 +168,16 @@ pub mod pallet {
 }
 
 pub mod util {
+	use parity_scale_codec::MaxEncodedLen;
+
 	use crate::pallet::{Config, MomentOf};
 
-	pub const fn size_of_feed<T: Config>() -> u32 {
-		sp_std::mem::size_of::<(T::OracleKey, T::OracleValue, MomentOf<T>)>() as u32
+	pub fn size_of_feed<T: Config>() -> u32 {
+		let max_len = <(T::OracleKey, T::OracleValue, MomentOf<T>)>::max_encoded_len();
+
+		match max_len.try_into() {
+			Ok(size) => size,
+			Err(_) => u32::MAX,
+		}
 	}
 }
