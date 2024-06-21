@@ -194,8 +194,7 @@ pub fn new_partial<RuntimeApi, BIQ>(
 	build_import_queue: BIQ,
 ) -> Result<Service<RuntimeApi>, sc_service::Error>
 where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
 	BIQ: FnOnce(
@@ -322,8 +321,7 @@ pub(crate) async fn start_node_impl<RuntimeApi, RB, BIQ>(
 	build_import_queue: BIQ,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sc_client_api::StateBackend<BlakeTwo256>,
 	RB: Fn(
@@ -352,11 +350,8 @@ where
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let params = new_partial::<RuntimeApi, BIQ>(
-		&parachain_config,
-		first_evm_block,
-		build_import_queue,
-	)?;
+	let params =
+		new_partial::<RuntimeApi, BIQ>(&parachain_config, first_evm_block, build_import_queue)?;
 	let (
 		block_import,
 		mut telemetry,
@@ -560,8 +555,7 @@ fn spawn_frontier_tasks<RuntimeApi>(
 		>,
 	>,
 ) where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	match frontier_backend {

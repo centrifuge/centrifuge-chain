@@ -41,13 +41,15 @@ pub(crate) mod evm;
 use evm::EthConfiguration;
 
 #[cfg(feature = "runtime-benchmarks")]
-type HostFunctions = (sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+type HostFunctions = (
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
 
-type FullClient<RuntimeApi> =
-	TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
+type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
 type FullBackend = TFullBackend<Block>;
 
@@ -99,8 +101,7 @@ pub async fn start_node<RuntimeApi>(
 	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	let is_authority = parachain_config.role.is_authority();
@@ -195,8 +196,7 @@ pub fn build_import_queue<RuntimeApi>(
 	first_evm_block: BlockNumber,
 ) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
 where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -251,8 +251,7 @@ fn start_consensus<RuntimeApi>(
 	announce_block: Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
 ) -> Result<(), sc_service::Error>
 where
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	use cumulus_client_consensus_aura::collators::basic::{
