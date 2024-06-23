@@ -5,7 +5,6 @@ on:
   issue_comment:
     types: [created]
   pull_request:
-    types: [labeled]
     paths:
       - '**.rs'
       - .github/workflows/try-runtime.yml
@@ -20,7 +19,6 @@ jobs:
         chain: [altair, centrifuge]
     if: >
       github.event_name == 'schedule' || 
-      contains(github.event.pull_request.labels.*.name, 'D8-migration') ||
       (github.event_name == 'issue_comment' && 
       contains(github.event.comment.body, '/try-runtime') &&
       github.event.issue.pull_request != '')
