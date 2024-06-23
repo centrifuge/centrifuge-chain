@@ -22,8 +22,6 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use std::collections::BTreeMap;
-
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
 	currency_decimals, parachains, AccountId, AuraId, Balance, BlockNumber, CFG, MILLI_CFG,
@@ -36,11 +34,11 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::{account_conversion::AccountConverter, evm::precompile::H160Addresses};
+use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{sr25519, Encode, Pair, Public, H160};
+use sp_core::{sr25519, Encode, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
@@ -58,10 +56,7 @@ pub type CentrifugeChainSpec =
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::RuntimeGenesisConfig, Extensions>;
 
-use altair_runtime::AltairPrecompiles;
-use centrifuge_runtime::CentrifugePrecompiles;
 use cfg_types::fixed_point::Rate;
-use development_runtime::DevelopmentPrecompiles;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -357,7 +352,7 @@ fn centrifuge_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": precompile_account_genesis::<CentrifugePrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<centrifuge_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -451,7 +446,7 @@ fn altair_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": precompile_account_genesis::<AltairPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<altair_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -594,7 +589,7 @@ fn development_genesis(
 			"chainId": Into::<u32>::into(chain_id),
 		},
 		"evm": {
-			"accounts": precompile_account_genesis::<DevelopmentPrecompiles>(),
+			"accounts": runtime_common::evm::precompile::utils::precompile_account_genesis::<development_runtime::Precompiles>(),
 		},
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
@@ -648,7 +643,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 						Parachain(parachains::rococo::acala::ID),
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
-							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
+							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY),
 						},
 					],
 				))),
@@ -723,21 +718,4 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 	]
-}
-
-fn precompile_account_genesis<PrecompileSet: H160Addresses>(
-) -> BTreeMap<H160, fp_evm::GenesisAccount> {
-	PrecompileSet::h160_addresses()
-		.map(|addr| {
-			(
-				addr,
-				fp_evm::GenesisAccount {
-					nonce: Default::default(),
-					balance: Default::default(),
-					storage: Default::default(),
-					code: runtime_common::evm::precompile::utils::REVERT_BYTECODE.to_vec(),
-				},
-			)
-		})
-		.collect()
 }

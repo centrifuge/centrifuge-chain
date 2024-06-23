@@ -80,7 +80,8 @@ use pallet_anchors::AnchorData;
 use pallet_collective::EnsureMember;
 use pallet_ethereum::{Call::transact, PostLogContent, Transaction as EthTransaction};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, GasWeightMapping, Runner,
+	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, GasWeightMapping,
+	Runner,
 };
 use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
@@ -107,7 +108,7 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	evm::{
-		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		self, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
@@ -1098,11 +1099,11 @@ parameter_types! {
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
+	pub const DefaultMinEpochTime: u64 = 0; // No minimum epoch time
 	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
+	pub const MinEpochTimeLowerBound: u64 = 0; // Allow closing an epoch in the same block as the creation of a pool and also multiple per block if wanted
 	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
 	pub const MaxNAVAgeUpperBound: u64 = SECONDS_PER_HOUR; // 1 hour
 
@@ -1956,11 +1957,11 @@ parameter_types! {
 pub type XcmWeigher =
 	staging_xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 
-pub type DevelopmentPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+pub type Precompiles = evm::precompile::Precompiles<crate::Runtime, TokenSymbol>;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: DevelopmentPrecompiles = Precompiles::<_, _>::new();
+	pub PrecompilesValue: Precompiles = Precompiles::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
 	pub const TokenSymbol: &'static str = "DCFG";
 }
@@ -1969,7 +1970,7 @@ impl pallet_evm::Config for Runtime {
 	type AddressMapping = RuntimeAccountConverter<Runtime>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
-	type CallOrigin = EnsureAddressTruncated;
+	type CallOrigin = EnsureAddressRoot<AccountId>;
 	type ChainId = EVMChainId;
 	type Currency = Balances;
 	type FeeCalculator = BaseFee;
@@ -1979,7 +1980,7 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = DevelopmentPrecompiles;
+	type PrecompilesType = Precompiles;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
@@ -1987,7 +1988,7 @@ impl pallet_evm::Config for Runtime {
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
+	type WithdrawOrigin = EnsureAddressNever<AccountId>;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}

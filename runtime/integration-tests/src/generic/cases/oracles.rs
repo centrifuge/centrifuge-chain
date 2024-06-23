@@ -27,7 +27,7 @@ mod ratio_provider {
 		config::Runtime,
 		env::Env,
 		envs::runtime_env::RuntimeEnv,
-		utils::currency::{register_currency, CurrencyInfo, CONST_DEFAULT_CUSTOM},
+		utils::currency::{register_currency, CurrencyInfo},
 	};
 
 	pub struct OtherLocal;
@@ -40,7 +40,7 @@ mod ratio_provider {
 			CustomMetadata {
 				pool_currency: true,
 				transferability: CrossChainTransferability::None,
-				..CONST_DEFAULT_CUSTOM
+				..Default::default()
 			}
 		}
 	}
@@ -55,7 +55,7 @@ mod ratio_provider {
 			CustomMetadata {
 				pool_currency: true,
 				transferability: CrossChainTransferability::None,
-				..CONST_DEFAULT_CUSTOM
+				..Default::default()
 			}
 		}
 	}
@@ -71,7 +71,7 @@ mod ratio_provider {
 				pool_currency: true,
 				transferability: CrossChainTransferability::LiquidityPools,
 				local_representation: Some(LocalAssetId(1)),
-				..CONST_DEFAULT_CUSTOM
+				..Default::default()
 			}
 		}
 	}

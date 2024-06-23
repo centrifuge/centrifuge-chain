@@ -16,6 +16,7 @@ macro_rules! impl_runtime {
 				type Api = Self;
 				type BlockExt = $runtime_path::Block;
 				type MaxTranchesExt = $runtime_path::MaxTranches;
+				type PrecompilesTypeExt = $runtime_path::Precompiles;
 				type RuntimeCallExt = $runtime_path::RuntimeCall;
 				type RuntimeEventExt = $runtime_path::RuntimeEvent;
 				type RuntimeOriginExt = $runtime_path::RuntimeOrigin;

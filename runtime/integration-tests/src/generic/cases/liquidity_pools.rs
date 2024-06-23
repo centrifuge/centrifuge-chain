@@ -71,10 +71,7 @@ use crate::{
 		config::Runtime,
 		env::{Blocks, Env},
 		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeRelayRuntime, FudgeSupport},
-		utils::{
-			democracy::execute_via_democracy, evm::mint_balance_into_derived_account, genesis,
-			genesis::Genesis, xcm::setup_xcm,
-		},
+		utils::{democracy::execute_via_democracy, genesis, genesis::Genesis, xcm::setup_xcm},
 	},
 	utils::accounts::Keyring,
 };
@@ -275,7 +272,9 @@ mod development {
 							token_name: BoundedVec::<
 								u8,
 								<T as pallet_pool_system::Config>::StringLimit,
-							>::try_from("A highly advanced tranche".as_bytes().to_vec())
+							>::try_from(
+								"A highly advanced tranche".as_bytes().to_vec()
+							)
 							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
@@ -566,7 +565,7 @@ mod development {
 					DEFAULT_VALIDITY,
 				)),
 			) {
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					investor.clone(),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -662,7 +661,7 @@ mod development {
 			);
 
 			// Make investor the MembersListAdmin of this Pool
-			crate::generic::utils::give_pool_role::<T>(
+			crate::generic::utils::pool::give_role::<T>(
 				investor.clone(),
 				pool_id,
 				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -976,7 +975,7 @@ mod development {
 				);
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				crate::generic::utils::give_pool_role::<T>(
+				crate::generic::utils::pool::give_role::<T>(
 					AccountConverter::convert(new_member.clone()),
 					pool_id,
 					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
@@ -4167,326 +4166,6 @@ mod development {
 			});
 		}
 
-		#[test_runtimes([development])]
-		fn transfer_non_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let amount = DEFAULT_BALANCE_GLMR / 2;
-				let currency_id = AUSD_CURRENCY_ID;
-				let receiver: AccountId = Keyring::Bob.into();
-
-				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::Transfer {
-					currency: general_currency_index::<T>(currency_id),
-					// sender is irrelevant for other -> local
-					sender: Keyring::Alice.into(),
-					receiver: receiver.clone().into(),
-					amount,
-				};
-
-				assert_eq!(orml_tokens::Pallet::<T>::total_issuance(currency_id), 0);
-
-				// Finally, verify that we can now transfer the tranche to the destination
-				// address
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg
-				));
-
-				// Verify that the correct amount was minted
-				assert_eq!(
-					orml_tokens::Pallet::<T>::total_issuance(currency_id),
-					amount
-				);
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(currency_id, &receiver),
-					amount
-				);
-
-				// Verify empty transfers throw
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						LiquidityPoolMessage::Transfer {
-							currency: general_currency_index::<T>(currency_id),
-							sender: Keyring::Alice.into(),
-							receiver: receiver.into(),
-							amount: 0,
-						},
-					),
-					pallet_liquidity_pools::Error::<T>::InvalidTransferAmount
-				);
-			});
-		}
-
-		#[test_runtimes([development])]
-		fn transfer_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let pool_id = POOL_ID;
-				let amount = 100_000;
-				let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-				let receiver = Keyring::Bob;
-
-				// Create the pool
-				create_ausd_pool::<T>(pool_id);
-
-				let tranche_tokens: CurrencyId = cfg_types::tokens::TrancheCurrency::generate(
-					pool_id,
-					default_tranche_id::<T>(pool_id),
-				)
-				.into();
-
-				// Verify that we first need the destination address to be whitelisted
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						dest_address.clone(),
-						amount,
-					),
-					pallet_liquidity_pools::Error::<T>::UnauthorizedTransfer
-				);
-
-				// Make receiver the MembersListAdmin of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
-					receiver.into(),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
-
-				// Whitelist destination as TrancheInvestor of this Pool
-				let valid_until = u64::MAX;
-
-				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::convert(dest_address.clone()),
-					pool_id,
-					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
-				);
-
-				// Call the pallet_liquidity_pools::Pallet::<T>::update_member which ensures the
-				// destination address is whitelisted.
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
-					RawOrigin::Signed(receiver.into()).into(),
-					pool_id,
-					default_tranche_id::<T>(pool_id),
-					dest_address.clone(),
-					valid_until,
-				));
-
-				// Give receiver enough Tranche balance to be able to transfer it
-				assert_ok!(orml_tokens::Pallet::<T>::deposit(
-					tranche_tokens,
-					&receiver.into(),
-					amount
-				));
-
-				// Finally, verify that we can now transfer the tranche to the destination
-				// address
-				assert_ok!(
-					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
-						RawOrigin::Signed(receiver.into()).into(),
-						pool_id,
-						default_tranche_id::<T>(pool_id),
-						dest_address.clone(),
-						amount,
-					)
-				);
-
-				// The account to which the tranche should have been transferred
-				// to on Centrifuge for bookkeeping purposes.
-				let domain_account: AccountId = Domain::convert(dest_address.domain());
-
-				// Verify that the correct amount of the Tranche token was transferred
-				// to the dest domain account on Centrifuge.
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &domain_account),
-					amount
-				);
-				assert!(
-					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &receiver.into())
-						.is_zero()
-				);
-			});
-		}
-
-		#[test_runtimes([development])]
-		fn transfer_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				// Create new pool
-				let pool_id = POOL_ID;
-				create_ausd_pool::<T>(pool_id);
-
-				let amount = 100_000_000;
-				let receiver: AccountId = Keyring::Bob.into();
-				let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
-				let tranche_id = default_tranche_id::<T>(pool_id);
-				let tranche_tokens: CurrencyId =
-					cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id).into();
-				let valid_until = u64::MAX;
-
-				// Fund `DomainLocator` account of origination domain tranche tokens are
-				// transferred from this account instead of minting
-				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-					tranche_tokens,
-					&sending_domain_locator,
-					amount
-				));
-
-				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::TransferTrancheTokens {
-					pool_id,
-					tranche_id,
-					sender: sender.address(),
-					domain: Domain::Centrifuge,
-					receiver: receiver.clone().into(),
-					amount,
-				};
-
-				// Verify that we first need the receiver to be whitelisted
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					),
-					pallet_liquidity_pools::Error::<T>::UnauthorizedTransfer
-				);
-
-				// Make receiver the MembersListAdmin of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
-					receiver.clone(),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
-
-				// Whitelist destination as TrancheInvestor of this Pool
-				crate::generic::utils::give_pool_role::<T>(
-					receiver.clone(),
-					pool_id,
-					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
-				);
-
-				// Finally, verify that we can now transfer the tranche to the destination
-				// address
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg
-				));
-
-				// Verify that the correct amount of the Tranche token was transferred
-				// to the dest domain account on Centrifuge.
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &receiver),
-					amount
-				);
-				assert!(orml_tokens::Pallet::<T>::free_balance(
-					tranche_tokens,
-					&sending_domain_locator
-				)
-				.is_zero());
-			});
-		}
-
-		/// Try to transfer tranches for non-existing pools or invalid tranche
-		/// ids for existing pools.
-		#[test_runtimes([development])]
-		fn transferring_invalid_tranche_tokens_should_fail<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-
-				let valid_pool_id: u64 = 42;
-				create_ausd_pool::<T>(valid_pool_id);
-				let valid_tranche_id = default_tranche_id::<T>(valid_pool_id);
-				let valid_until = u64::MAX;
-				let transfer_amount = 42;
-				let invalid_pool_id = valid_pool_id + 1;
-				let invalid_tranche_id = valid_tranche_id.map(|i| i.saturating_add(1));
-				assert!(pallet_pool_system::Pallet::<T>::pool(invalid_pool_id).is_none());
-
-				// Make Keyring::Bob the MembersListAdmin of both pools
-				crate::generic::utils::give_pool_role::<T>(
-					Keyring::Bob.into(),
-					valid_pool_id,
-					PoolRole::InvestorAdmin,
-				);
-				crate::generic::utils::give_pool_role::<T>(
-					Keyring::Bob.into(),
-					invalid_pool_id,
-					PoolRole::InvestorAdmin,
-				);
-
-				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
-				// (invalid_pool_id, valid_tranche_id)
-				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::convert(dest_address.clone()),
-					invalid_pool_id,
-					PoolRole::TrancheInvestor(valid_tranche_id, valid_until),
-				);
-				crate::generic::utils::give_pool_role::<T>(
-					AccountConverter::convert(dest_address.clone()),
-					valid_pool_id,
-					PoolRole::TrancheInvestor(invalid_tranche_id, valid_until),
-				);
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						invalid_pool_id,
-						valid_tranche_id,
-						dest_address.clone(),
-						transfer_amount
-					),
-					pallet_liquidity_pools::Error::<T>::PoolNotFound
-				);
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						valid_pool_id,
-						invalid_tranche_id,
-						dest_address,
-						transfer_amount
-					),
-					pallet_liquidity_pools::Error::<T>::TrancheNotFound
-				);
-			});
-		}
-
 		fn transfer_cfg_to_sibling<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 			let alice_initial_balance = cfg(1_000);
 			let transfer_amount = cfg(5);
@@ -4750,7 +4429,7 @@ mod development {
 					);
 				});
 
-				let sender = Keyring::Alice.to_account_id();
+				let sender = Keyring::Alice.id();
 				let gateway_sender = env.parachain_state(|| {
 					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
 				});
@@ -4762,8 +4441,8 @@ mod development {
 
 				let msg = LiquidityPoolMessage::Transfer {
 					currency: 0,
-					sender: Keyring::Alice.to_account_id().into(),
-					receiver: Keyring::Bob.to_account_id().into(),
+					sender: Keyring::Alice.id().into(),
+					receiver: Keyring::Bob.id().into(),
 					amount: 1_000u128,
 				};
 
@@ -4800,11 +4479,14 @@ mod development {
 				assert_ok!(env.parachain_state_mut(|| {
 					// Note how both the target address and the gateway sender need to have some
 					// balance.
-					mint_balance_into_derived_account::<T>(
+					crate::generic::utils::evm::mint_balance_into_derived_account::<T>(
 						axelar_contract_address,
 						cfg(1_000_000_000),
 					);
-					mint_balance_into_derived_account::<T>(gateway_sender_h160, cfg(1_000_000));
+					crate::generic::utils::evm::mint_balance_into_derived_account::<T>(
+						gateway_sender_h160,
+						cfg(1_000_000),
+					);
 
 					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
 						sender.clone(),
@@ -4941,7 +4623,9 @@ mod development {
 								axelar_target_chain: BoundedVec::<
 									u8,
 									ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>,
-								>::try_from("ethereum".as_bytes().to_vec())
+								>::try_from(
+									"ethereum".as_bytes().to_vec()
+								)
 								.unwrap(),
 								axelar_target_contract: H160::from_low_u64_be(111),
 								_marker: Default::default(),
@@ -5751,7 +5435,7 @@ mod altair {
 			env.sibling_state_mut(|| {
 				assert_ok!(pallet_balances::Pallet::<T>::force_set_balance(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Keyring::Alice.to_account_id().into(),
+					Keyring::Alice.id().into(),
 					transfer_amount * 2,
 				));
 
@@ -6060,7 +5744,7 @@ mod altair {
 					PalletInstance(PoolPalletIndex::get()),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				],
 			);
@@ -6724,7 +6408,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							USDC,
 							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
 						)],
@@ -6741,16 +6425,14 @@ mod centrifuge {
 						pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 							RawOrigin::Signed(Keyring::Alice.into()).into(),
 							FilterCurrency::All,
-							RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
+							RestrictedTransferLocation::Local(Keyring::Bob.id())
 						)
 					);
 
 					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 					)
 				});
 
@@ -6769,11 +6451,11 @@ mod centrifuge {
 			// Restrict also CFG local
 			env.parachain_state(|| {
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -6791,7 +6473,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							USDC,
 							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
 						)],
@@ -6805,7 +6487,7 @@ mod centrifuge {
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						FilterCurrency::All,
-						RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
+						RestrictedTransferLocation::Local(Keyring::Bob.id())
 					)
 				);
 			});
@@ -6815,11 +6497,11 @@ mod centrifuge {
 				register_usdc::<T>();
 
 				let pre_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let pre_transfer_bob =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.id());
 				let pre_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				assert_noop!(
 					pallet_restricted_tokens::Pallet::<T>::transfer(
@@ -6832,9 +6514,9 @@ mod centrifuge {
 				);
 
 				let after_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let after_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
@@ -6847,11 +6529,11 @@ mod centrifuge {
 				),);
 
 				let after_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let after_transfer_bob =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.id());
 				let after_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -6867,11 +6549,11 @@ mod centrifuge {
 				register_cfg::<T>(2031);
 
 				let pre_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let pre_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let pre_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_noop!(
 					pallet_restricted_tokens::Pallet::<T>::transfer(
@@ -6884,9 +6566,9 @@ mod centrifuge {
 				);
 
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
@@ -6899,11 +6581,11 @@ mod centrifuge {
 				),);
 
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -6921,7 +6603,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							LP_ETH_USDC,
 							T::ExistentialDeposit::get() + lp_eth_usdc(TRANSFER_AMOUNT),
 						)],
@@ -6932,23 +6614,17 @@ mod centrifuge {
 			env.parachain_state_mut(|| {
 				register_lp_eth_usdc::<T>();
 
-				let pre_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Alice.to_account_id(),
-				);
-				let pre_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Bob.to_account_id(),
-				);
-				let pre_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let pre_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Alice.id());
+				let pre_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Bob.id());
+				let pre_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Charlie.id());
 
 				add_allowance::<T>(
 					Keyring::Alice,
 					LP_ETH_USDC,
-					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.id()),
 				);
 
 				assert_noop!(
@@ -6961,14 +6637,10 @@ mod centrifuge {
 					pallet_restricted_tokens::Error::<T>::PreConditionsNotMet
 				);
 
-				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Alice.to_account_id(),
-				);
-				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Alice.id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
@@ -6980,18 +6652,12 @@ mod centrifuge {
 					lp_eth_usdc(TRANSFER_AMOUNT)
 				),);
 
-				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Alice.to_account_id(),
-				);
-				let after_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Bob.to_account_id(),
-				);
-				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					LP_ETH_USDC,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Alice.id());
+				let after_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Bob.id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -7012,7 +6678,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							LP_ETH_USDC,
 							T::ExistentialDeposit::get() + lp_eth_usdc(TRANSFER_AMOUNT),
 						)],
@@ -7064,9 +6730,8 @@ mod centrifuge {
 				);
 
 				let receiver = H160::from_slice(
-					&<sp_runtime::AccountId32 as AsRef<[u8; 32]>>::as_ref(
-						&Keyring::Charlie.to_account_id(),
-					)[0..20],
+					&<sp_runtime::AccountId32 as AsRef<[u8; 32]>>::as_ref(&Keyring::Charlie.id())
+						[0..20],
 				);
 
 				let domain_address = DomainAddress::EVM(1, receiver.into());
@@ -7110,7 +6775,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							USDC,
 							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
 						)],
@@ -7122,16 +6787,16 @@ mod centrifuge {
 				register_usdc::<T>();
 
 				let pre_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let pre_transfer_bob =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.id());
 				let pre_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				add_allowance::<T>(
 					Keyring::Alice,
 					USDC,
-					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.id()),
 				);
 
 				assert_noop!(
@@ -7145,9 +6810,9 @@ mod centrifuge {
 				);
 
 				let after_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let after_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
@@ -7160,11 +6825,11 @@ mod centrifuge {
 				),);
 
 				let after_transfer_alice =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.id());
 				let after_transfer_bob =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.id());
 				let after_transfer_charlie =
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -7309,7 +6974,7 @@ mod centrifuge {
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
 						balances: vec![(
-							Keyring::Alice.to_account_id(),
+							Keyring::Alice.id(),
 							DOT_ASSET_ID,
 							T::ExistentialDeposit::get() + dot(TRANSFER_AMOUNT),
 						)],
@@ -7320,23 +6985,17 @@ mod centrifuge {
 			env.parachain_state_mut(|| {
 				register_dot::<T>();
 
-				let pre_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Alice.to_account_id(),
-				);
-				let pre_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Bob.to_account_id(),
-				);
-				let pre_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let pre_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.id());
+				let pre_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Bob.id());
+				let pre_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Charlie.id());
 
 				add_allowance::<T>(
 					Keyring::Alice,
 					DOT_ASSET_ID,
-					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id()),
+					RestrictedTransferLocation::Local(Keyring::Bob.id()),
 				);
 
 				assert_noop!(
@@ -7349,14 +7008,10 @@ mod centrifuge {
 					pallet_restricted_tokens::Error::<T>::PreConditionsNotMet
 				);
 
-				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Alice.to_account_id(),
-				);
-				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
@@ -7368,18 +7023,12 @@ mod centrifuge {
 					dot(TRANSFER_AMOUNT)
 				),);
 
-				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Alice.to_account_id(),
-				);
-				let after_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Bob.to_account_id(),
-				);
-				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
-					DOT_ASSET_ID,
-					&Keyring::Charlie.to_account_id(),
-				);
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.id());
+				let after_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Bob.id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -7864,7 +7513,7 @@ mod centrifuge {
 			env.sibling_state_mut(|| {
 				assert_ok!(pallet_balances::Pallet::<T>::force_set_balance(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Keyring::Alice.to_account_id().into(),
+					Keyring::Alice.id().into(),
 					transfer_amount * 2,
 				));
 
@@ -8070,7 +7719,7 @@ mod all {
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				],
 			);
@@ -8118,7 +7767,7 @@ mod all {
 					PalletInstance(42),
 					GeneralKey {
 						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
+						data: vec_to_fixed_array(tranche_id),
 					},
 				],
 			);
