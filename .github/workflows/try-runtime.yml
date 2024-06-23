@@ -77,7 +77,7 @@ jobs:
       # - name: Install try-runtime-cli
       #   run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
       - name: cargo build
-        run: ./ci/run-check.sh -F try-runtime
+        run: ./ci/run-check.sh --features try-runtime
         env:
           TARGET: cargo-build
           RUSTC_WRAPPER: "sccache"
