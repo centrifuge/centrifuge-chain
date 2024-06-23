@@ -1,0 +1,7 @@
+{
+    "endpoint": "wss://fullnode.development.cntrfg.com",
+    "wasmFile": "./development.wasm",
+    "privateKeyUri": "//Alice",
+    "sudo": true,
+    "councilMembers": []
+  }
