@@ -46,6 +46,12 @@ case $TARGET in
 
   try-runtime)
     cargo build -p centrifuge-chain --release --features try-runtime
+    # Check if try-runtime is available
+    if ! command try-runtime --version &> /dev/null
+    then
+        echo "try-runtime could not be found, trying 'cargo install try-runtime-cli'"
+        cargo install try-runtime-cli
+    fi    
     if [ "$1" == "altair" ]; then
       echo "Running try-runtime for altair"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
