@@ -54,67 +54,10 @@ const run = async () => {
       console.log("Using sudo to perform the runtime upgrade");
       await sudoUpgrade(api, user, wasmHex);
     } else {
-      // Load council members
-      const councilMembers = config.councilMembers.map(member => {
-        if (member.startsWith('//')) {
-          return keyring.addFromUri(member);
-        } else {
-          return keyring.addFromSeed(member);
-        }
-      });
-
-      console.log("Council members loaded:", councilMembers.map(member => member.address));
-
-      // Implement council-based upgrade logic here
-      console.log("Proceeding with council-based runtime upgrade");
-
-      const wasm = fs.readFileSync(config.wasmFile);
-      const wasmHash = blake2AsHex(wasm);
-      console.log("Applying WASM Blake2 Hash:", wasmHash);
-
-      let nonce = await getNonce(api, user.address);
-      const preimageNoted = await notePreimageAuth(api, user, wasmHash, nonce);
-
-      console.log("Continuing with council proposal using", preimageNoted);
-      nonce = await getNonce(api, user.address);
-      const result = await councilProposeDemocracy(api, user, preimageNoted, nonce);
-
-      console.log("Continuing with council vote using", result[0], result[1]);
-      for (const member of councilMembers) {
-        nonce = await getNonce(api, member.address);
-        await councilVoteProposal(api, member, result[0], result[1], nonce, false);
-      }
-
-      console.log("Continuing to close council vote");
-      nonce = await getNonce(api, user.address);
-      const democracyIndex = await councilCloseProposal(api, user, result[0], result[1], nonce);
-
-      console.log("Continuing with democracy vote on ref index", democracyIndex);
-      nonce = await getNonce(api, user.address);
-      await voteReferenda(api, user, democracyIndex, nonce);
-
-      console.log("Waiting for referenda to be over and UpgradeAuthorized event is triggered");
-      await waitUntilEventFound(api, "UpgradeAuthorized");
-
-      console.log("Proceeding to enact upgrade");
-      nonce = await getNonce(api, user.address);
-      await enactUpgrade(api, user, `0x${wasm.toString('hex')}`, nonce);
-
-      console.log("Waiting for ValidationFunctionApplied event");
-      await waitUntilEventFound(api, "ValidationFunctionApplied");
-
-      console.log(`Waiting for ${POST_UPGRADE_WAITING_SESSIONS} NewSession events`);
-      let foundInBlock = 0;
-      for (let i = 0; i < POST_UPGRADE_WAITING_SESSIONS; i++) {
-        foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock + 1);
-        console.log(`Session ${i + 1}/${POST_UPGRADE_WAITING_SESSIONS}`);
-      }
-
-      console.log("Runtime Upgrade succeeded");
+      console.log("Using council proposal to perform the runtime upgrade");
+      await councilUpgrade(config, api, user)
     }
-
     // Check for specific events or transaction success as needed
-
   } catch (error) {
     console.error('Error:', error);
     exitCode = 1;
@@ -151,20 +94,69 @@ async function sudoUpgrade(api, sudoAccount, wasmHex) {
       }
   });
 }
+async function councilUpgrade(config,api) {
+  // THIS CODE HAS NOT BEEN TESTED AND WAS COPIED FROM ../runtime-upgrade-local
+  // Load council members
+  const councilMembers = config.councilMembers.map(member => {
+    if (member.startsWith('//')) {
+      return keyring.addFromUri(member);
+    } else {
+      return keyring.addFromSeed(member);
+    }
+  });
 
+  console.log("Council members loaded:", councilMembers.map(member => member.address));
+
+  // Implement council-based upgrade logic here
+  console.log("Proceeding with council-based runtime upgrade");
+
+  const wasm = fs.readFileSync(config.wasmFile);
+  const wasmHash = blake2AsHex(wasm);
+  console.log("Applying WASM Blake2 Hash:", wasmHash);
+
+  let nonce = await getNonce(api, user.address);
+  const preimageNoted = await notePreimageAuth(api, user, wasmHash, nonce);
+
+  console.log("Continuing with council proposal using", preimageNoted);
+  nonce = await getNonce(api, user.address);
+  const result = await councilProposeDemocracy(api, user, preimageNoted, nonce);
+
+  console.log("Continuing with council vote using", result[0], result[1]);
+  for (const member of councilMembers) {
+    nonce = await getNonce(api, member.address);
+    await councilVoteProposal(api, member, result[0], result[1], nonce, false);
+  }
+
+  console.log("Continuing to close council vote");
+  nonce = await getNonce(api, user.address);
+  const democracyIndex = await councilCloseProposal(api, user, result[0], result[1], nonce);
+
+  console.log("Continuing with democracy vote on ref index", democracyIndex);
+  nonce = await getNonce(api, user.address);
+  await voteReferenda(api, user, democracyIndex, nonce);
+
+  console.log("Waiting for referenda to be over and UpgradeAuthorized event is triggered");
+  await waitUntilEventFound(api, "UpgradeAuthorized");
+
+  console.log("Proceeding to enact upgrade");
+  nonce = await getNonce(api, user.address);
+  await enactUpgrade(api, user, `0x${wasm.toString('hex')}`, nonce);
+
+  console.log("Waiting for ValidationFunctionApplied event");
+  await waitUntilEventFound(api, "ValidationFunctionApplied");
+
+  console.log(`Waiting for ${POST_UPGRADE_WAITING_SESSIONS} NewSession events`);
+  let foundInBlock = 0;
+  for (let i = 0; i < POST_UPGRADE_WAITING_SESSIONS; i++) {
+    foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock + 1);
+    console.log(`Session ${i + 1}/${POST_UPGRADE_WAITING_SESSIONS}`);
+  }
+
+  console.log("Runtime Upgrade succeeded");
+}
 
 async function getNonce(api, address) {
   return Number((await api.query.system.account(address)).nonce)
-}
-
-async function execCommand(strCommand) {
-  try {
-    const { stdout, stderr } = await exec(strCommand);
-    console.log('stdout:', stdout);
-    console.log('stderr:', stderr);
-  } catch (err) {
-    console.error(err);
-  }
 }
 
 async function waitUntilEventFound(api, eventName, fromBlock = 0) {
