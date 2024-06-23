@@ -45,23 +45,23 @@ case $TARGET in
     ;;
 
   try-runtime)
-    cargo build -p centrifuge-chain --release --features try-runtime
     # Check if try-runtime is available
     if ! command try-runtime --version &> /dev/null
     then
         echo "try-runtime could not be found, trying 'cargo install try-runtime-cli'"
-        cargo install try-runtime-cli
+        curl -sL https://github.com/paritytech/try-runtime-cli/releases/download/v0.6.1/try-runtime-x86_64-unknown-linux-musl -o try-runtime
+        chmod +x ./try-runtime
     fi    
     if [ "$1" == "altair" ]; then
       echo "Running try-runtime for altair"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
-      try-runtime \
+      ./try-runtime \
       --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
       on-runtime-upgrade live --uri wss://fullnode.altair.centrifuge.io:443
     elif [ "$1" == "centrifuge" ]; then
       echo "Running try-runtime for centrifuge"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
-      try-runtime \
+      ./try-runtime \
       --runtime target/release/wbuild/centrifuge-runtime/centrifuge_runtime.wasm \
       on-runtime-upgrade live --uri wss://fullnode.centrifuge.io:443
     else
