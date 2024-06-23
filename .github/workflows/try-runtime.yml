@@ -38,9 +38,11 @@ jobs:
           echo "::set-output name=pr_author::$PR_AUTHOR"
           echo "::set-output name=comment_author::$COMMENT_AUTHOR"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Check if commenter is PR author and a repo contributor
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         if: >
           steps.get-users.outputs.pr_author == steps.get-users.outputs.comment_author &&
           github.event_name == 'issue_comment'
