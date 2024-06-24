@@ -1,6 +1,6 @@
 {
     "endpoint": "wss://fullnode.demo.k-f.dev",
-    "wasmFile": "./demo.wasm",
+    "wasmFile": "./development.wasm",
     "privateKey": "",
     "sudo": true,
     "councilMembers": []
