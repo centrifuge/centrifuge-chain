@@ -273,7 +273,9 @@ mod development {
 							token_name: BoundedVec::<
 								u8,
 								<T as pallet_pool_system::Config>::StringLimit,
-							>::try_from("A highly advanced tranche".as_bytes().to_vec())
+							>::try_from(
+								"A highly advanced tranche".as_bytes().to_vec()
+							)
 							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
@@ -4622,7 +4624,9 @@ mod development {
 								axelar_target_chain: BoundedVec::<
 									u8,
 									ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>,
-								>::try_from("ethereum".as_bytes().to_vec())
+								>::try_from(
+									"ethereum".as_bytes().to_vec()
+								)
 								.unwrap(),
 								axelar_target_contract: H160::from_low_u64_be(111),
 								_marker: Default::default(),
