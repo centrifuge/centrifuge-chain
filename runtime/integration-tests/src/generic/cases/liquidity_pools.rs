@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency},
-	liquidity_pools::{InboundQueue, OutboundQueue},
+	liquidity_pools::InboundQueue,
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
@@ -24,22 +24,20 @@ use frame_support::{
 	},
 };
 use liquidity_pools_gateway_routers::{
-	AxelarEVMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, EVMRouter, EthereumXCMRouter,
-	FeeValues, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE, MAX_AXELAR_EVM_CHAIN_SIZE,
+	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
 use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
-use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 	xcm::general_key,
 };
-use sp_core::{Get, H160, U256};
+use sp_core::{Get, H160};
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, Hash, One, Zero},
+	traits::{AccountIdConversion, BadOrigin, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 };
 use staging_xcm::{
@@ -50,9 +48,9 @@ use staging_xcm::{
 use crate::{
 	generic::{
 		config::Runtime,
-		env::{Blocks, Env},
+		env::Env,
 		envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
-		utils::{genesis, genesis::Genesis, xcm::enable_para_to_sibling_communication},
+		utils::{genesis, genesis::Genesis},
 	},
 	utils::{accounts::Keyring, orml_asset_registry},
 };
@@ -245,9 +243,7 @@ mod utils {
 					// 0.2 token
 					fee_amount: 200000000000000000,
 				},
-				_marker: Default::default(),
 			},
-			_marker: Default::default(),
 		};
 
 		let domain_router = DomainRouter::EthereumXCM(ethereum_xcm_router);
