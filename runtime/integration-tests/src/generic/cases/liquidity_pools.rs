@@ -525,7 +525,7 @@ mod utils {
 		// are transferred from this account instead of minting
 		assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 			default_investment_id::<T>().into(),
-			&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+			&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 			amount
 		));
 
@@ -1797,7 +1797,7 @@ mod foreign_investments {
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				enable_liquidity_pool_transferability::<T>(currency_id);
 
 				// Create new pool
@@ -1944,7 +1944,7 @@ mod foreign_investments {
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
 				do_initial_increase_investment::<T>(
 					pool_id,
@@ -2194,7 +2194,7 @@ mod foreign_investments {
 				// Increasing again should just bump redeeming amount
 				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 					default_investment_id::<T>().into(),
-					&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+					&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 					amount
 				));
 				let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
@@ -2231,7 +2231,7 @@ mod foreign_investments {
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 
 				// Create new pool
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -2349,7 +2349,7 @@ mod foreign_investments {
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 
 				// Create new pool
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3000,7 +3000,7 @@ mod foreign_investments {
 						// Mint more into DomainLocator required for subsequent invest attempt
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							1,
 						));
 
@@ -3170,7 +3170,7 @@ mod foreign_investments {
 						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							amount,
 						));
 
@@ -3252,7 +3252,7 @@ mod foreign_investments {
 						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							amount,
 						));
 
@@ -3315,7 +3315,7 @@ mod foreign_investments {
 				let pool_currency_decimals = currency_decimals::AUSD;
 				let invest_amount_pool_denominated: u128 = 6 * decimals(18);
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				let trader: AccountId = Keyring::Alice.into();
 				create_currency_pool::<T>(pool_id, pool_currency, pool_currency_decimals.into());
 
