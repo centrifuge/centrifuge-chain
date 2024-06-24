@@ -15,19 +15,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod account_conversion;
-pub mod apis;
-pub mod changes;
-pub mod evm;
-pub mod fees;
-pub mod gateway;
-pub mod migrations;
-pub mod oracle;
-pub mod pool;
-pub mod remarks;
-pub mod transfer_filter;
-pub mod xcm;
-
 use cfg_primitives::Balance;
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -43,6 +30,19 @@ use sp_runtime::{
 	DispatchError,
 };
 use sp_std::marker::PhantomData;
+
+pub mod account_conversion;
+pub mod apis;
+pub mod changes;
+pub mod evm;
+pub mod fees;
+pub mod gateway;
+pub mod migrations;
+pub mod oracle;
+pub mod pool;
+pub mod remarks;
+pub mod transfer_filter;
+pub mod xcm;
 
 pub mod instances {
 	/// The rewards associated to block rewards

@@ -81,6 +81,7 @@ orml-tokens = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xtokens = { workspace = true }
 pallet-anchors = { workspace = true }
+pallet-anchors-v2 = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-balances = { workspace = true }
@@ -206,6 +207,7 @@ std = [
   "orml-xcm/std",
   "orml-xtokens/std",
   "pallet-anchors/std",
+  "pallet-anchors-v2/std",
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
@@ -294,6 +296,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
+  "pallet-anchors-v2/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
@@ -374,6 +377,7 @@ try-runtime = [
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
   "pallet-anchors/try-runtime",
+  "pallet-anchors-v2/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
