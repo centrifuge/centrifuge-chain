@@ -14,10 +14,9 @@ use crate::generic::{
 	config::Runtime,
 	env::{Blocks, Env},
 	envs::fudge_env::{
-		handle::{FudgeHandle, PARA_ID, SIBLING_ID},
+		handle::{PARA_ID, SIBLING_ID},
 		FudgeEnv, FudgeSupport, RelayRuntime,
 	},
-	utils::currency::default_metadata,
 };
 
 pub fn enable_relay_to_para_communication<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
