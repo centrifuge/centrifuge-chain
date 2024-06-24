@@ -8,7 +8,10 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{fungibles::Mutate as _, PalletInfo as _},
+	traits::{
+		fungibles::{Inspect as _, Mutate as _},
+		PalletInfo as _,
+	},
 };
 use sp_runtime::{DispatchError, TokenError};
 use staging_xcm::{
@@ -31,6 +34,7 @@ const NOW: Millis = 0;
 const NAME: &[u8] = b"Token name";
 const SYMBOL: &[u8] = b"Token symbol";
 const DECIMALS: u8 = 6;
+const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
 
 mod util {
 	use super::*;
@@ -109,6 +113,8 @@ mod transfer {
 				EVM_ADDRESS,
 				AMOUNT
 			));
+
+			assert_eq!(Tokens::total_issuance(CURRENCY_ID), 0);
 		})
 	}
 
@@ -288,7 +294,7 @@ mod transfer_tranche_tokens {
 			Pools::mock_pool_exists(|_| true);
 			Pools::mock_tranche_exists(|_, _| true);
 			TransferFilter::mock_check(|_| Ok(()));
-			Tokens::mint_into(CurrencyId::Tranche(POOL_ID, TRANCHE_ID), &ALICE, AMOUNT).unwrap();
+			Tokens::mint_into(TRANCHE_CURRENCY, &ALICE, AMOUNT).unwrap();
 			Gateway::mock_submit(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_ADDRESS.domain());
@@ -312,7 +318,11 @@ mod transfer_tranche_tokens {
 				TRANCHE_ID,
 				EVM_ADDRESS,
 				AMOUNT
-			),);
+			));
+
+			let destination = EVM_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE), 0);
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		})
 	}
 

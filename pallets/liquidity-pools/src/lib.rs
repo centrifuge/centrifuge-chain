@@ -518,7 +518,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			amount: <T as pallet::Config>::Balance,
+			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -545,7 +545,7 @@ pub mod pallet {
 			T::Tokens::transfer(
 				invest_id.into(),
 				&who,
-				&Domain::convert(domain_address.domain()),
+				&domain_address.domain().into_account(),
 				amount,
 				// NOTE: Here, we allow death
 				Preservation::Expendable,
@@ -579,7 +579,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 			receiver: DomainAddress,
-			amount: <T as pallet::Config>::Balance,
+			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
