@@ -250,8 +250,7 @@ pub mod asset_registry {
 	impl<
 			Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>,
 			DefaultEnsureOrigin: EnsureOrigin<Origin>,
-		> EnsureOriginWithArg<Origin, Option<CurrencyId>>
-		for AuthorityOrigin<Origin, DefaultEnsureOrigin>
+		> EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin, DefaultEnsureOrigin>
 	{
 		type Success = ();
 

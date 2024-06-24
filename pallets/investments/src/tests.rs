@@ -2510,8 +2510,7 @@ fn collecting_fully_works() {
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT_C = 50 * CURRENCY;
 		#[allow(non_snake_case)]
-		let TOTAL_REDEEM_AMOUNT =
-			SINGLE_REDEEM_AMOUNT_A + SINGLE_REDEEM_AMOUNT_B + SINGLE_REDEEM_AMOUNT_C;
+		let TOTAL_REDEEM_AMOUNT = SINGLE_REDEEM_AMOUNT_A + SINGLE_REDEEM_AMOUNT_B + SINGLE_REDEEM_AMOUNT_C;
 		#[allow(non_snake_case)]
 		let SINGLE_INVEST_AMOUNT_A = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2519,8 +2518,7 @@ fn collecting_fully_works() {
 		#[allow(non_snake_case)]
 		let SINGLE_INVEST_AMOUNT_C = 50 * CURRENCY;
 		#[allow(non_snake_case)]
-		let TOTAL_INVEST_AMOUNT =
-			SINGLE_INVEST_AMOUNT_A + SINGLE_INVEST_AMOUNT_B + SINGLE_INVEST_AMOUNT_C;
+		let TOTAL_INVEST_AMOUNT = SINGLE_INVEST_AMOUNT_A + SINGLE_INVEST_AMOUNT_B + SINGLE_INVEST_AMOUNT_C;
 		#[allow(non_snake_case)]
 		let FULL_FULFILL = FulfillmentWithPrice {
 			of_amount: Perquintill::one(),
