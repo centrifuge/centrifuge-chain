@@ -26,7 +26,7 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1100 = (
+pub type UpgradeDevelopment1101 = (
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
 	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
 	cleanup_foreign_investments::Migration<crate::Runtime>,
