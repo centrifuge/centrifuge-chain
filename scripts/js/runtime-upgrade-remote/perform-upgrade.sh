@@ -21,7 +21,11 @@ GIT_HASH=$(git rev-parse --short $TAG)
 
 # Download the WASM file from Google Cloud Storage
 echo "Downloading WASM file..."
-gsutil cp gs://centrifuge-wasm-repo/"${ENVIRONMENT}"/"${ENVIRONMENT}"-"$GIT_HASH".wasm ./"${ENVIRONMENT}".wasm
+if [ "$ENVIRONMENT" == "demo" ]; then
+  gsutil cp gs://centrifuge-wasm-repo/development/development-"$GIT_HASH".wasm ./development.wasm
+else
+  gsutil cp gs://centrifuge-wasm-repo/"${ENVIRONMENT}"/"${ENVIRONMENT}"-"$GIT_HASH".wasm ./"${ENVIRONMENT}".wasm
+fi
 
 # Copy the corresponding configuration file
 echo "Copying configuration file..."
