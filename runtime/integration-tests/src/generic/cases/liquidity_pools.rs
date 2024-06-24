@@ -65,7 +65,6 @@ use staging_xcm::{
 	},
 	VersionedAsset, VersionedAssets, VersionedLocation,
 };
-use utils::*;
 
 use crate::{
 	generic::{
@@ -212,9 +211,9 @@ pub mod utils {
 	}
 }
 
-mod development {
-	use utils::*;
+use utils::*;
 
+mod development {
 	use super::*;
 
 	pub const GLMR_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(4);
@@ -798,6 +797,8 @@ mod development {
 			vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
 		}
 	}
+
+	use utils::*;
 
 	mod add_allow_upgrade {
 		use cfg_types::tokens::LiquidityPoolsWrappedToken;
@@ -4527,8 +4528,6 @@ mod development {
 		}
 
 		mod ethereum_xcm {
-			use utils::*;
-
 			use super::*;
 
 			mod utils {
@@ -4667,6 +4666,8 @@ mod development {
 					)
 				}
 			}
+
+			use utils::*;
 
 			const TEST_DOMAIN: Domain = Domain::EVM(1);
 
@@ -4872,11 +4873,10 @@ mod development {
 
 mod altair {
 	use altair_runtime::{xcm::CurrencyIdConvert, PoolPalletIndex};
-	use utils::*;
-
-	use super::*;
 
 	pub const KSM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1000);
+
+	use super::*;
 
 	mod utils {
 		use super::*;
@@ -4948,6 +4948,8 @@ mod altair {
 			calc_fee(ksm_per_second())
 		}
 	}
+
+	use utils::*;
 
 	mod transfers {
 		use super::*;
@@ -5843,7 +5845,6 @@ mod altair {
 
 mod centrifuge {
 	use centrifuge_runtime::xcm::CurrencyIdConvert;
-	use utils::*;
 
 	use super::*;
 
@@ -6118,6 +6119,8 @@ mod centrifuge {
 			});
 		}
 	}
+
+	use utils::*;
 
 	mod asset_registry {
 		use super::*;
