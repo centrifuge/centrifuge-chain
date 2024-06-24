@@ -433,7 +433,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
+	pub Period: u32 = 2 * MINUTES;
 	pub const Offset: u32 = 0;
 }
 
