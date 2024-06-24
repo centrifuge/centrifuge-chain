@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain: [altair, centrifuge]
+        chain: [altair, centrifuge, demo]
     if: >
       github.event_name == 'schedule' || 
       github.event_name == 'pull_request' ||
