@@ -1644,6 +1644,19 @@ impl pallet_keystore::pallet::Config for Runtime {
 }
 
 parameter_types! {
+	pub const DefaultAnchorDeposit: Balance = 100 * CFG;
+}
+
+impl pallet_anchors_v2::pallet::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type Balance = Balance;
+	type Currency = Balances;
+	type DefaultAnchorDeposit = DefaultAnchorDeposit;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_anchors_v2::WeightInfo<Runtime>;
+}
+
+parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
 impl pallet_investments::Config for Runtime {
@@ -2127,6 +2140,9 @@ construct_runtime!(
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
+
+		// our pallets part 2
+		AnchorsV2: pallet_anchors_v2::{Pallet, Call, Storage, Event<T>} = 130,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2831,6 +2847,7 @@ mod benches {
 		[pallet_preimage, Preimage]
 		[pallet_fees, Fees]
 		[pallet_anchors, Anchor]
+		[pallet_anchors_v2, AnchorsV2]
 		[pallet_block_rewards, BlockRewards]
 		[pallet_collator_allowlist, CollatorAllowlist]
 		[pallet_collator_selection, CollatorSelection]
