@@ -148,7 +148,7 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 		.expect("expected OutboundMessageExecutionSuccess event");
 }
 
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 	let router = DomainRouter::AxelarEVM(AxelarEVMRouter::<T> {
 		router: EVMRouter {
@@ -170,7 +170,7 @@ fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 	check_submission(environment_for_evm::<T>(), router);
 }
 
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn submit_by_ethereum_xcm<T: Runtime + FudgeSupport>() {
 	let router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
 		router: xcm_router(),
@@ -179,7 +179,7 @@ fn submit_by_ethereum_xcm<T: Runtime + FudgeSupport>() {
 	check_submission(environment_for_xcm::<T>(), router);
 }
 
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn submit_by_axelar_xcm<T: Runtime + FudgeSupport>() {
 	let router = DomainRouter::AxelarXCM(AxelarXCMRouter::<T> {
 		router: xcm_router(),
