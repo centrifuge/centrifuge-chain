@@ -63,7 +63,6 @@ fn xcm_router<T: Runtime>() -> XCMRouter<T> {
 			fee_currency: CURR.id(),
 			fee_amount: CURR.val(1),
 		},
-		_marker: Default::default(),
 	}
 }
 
@@ -166,7 +165,6 @@ fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 		},
 		evm_chain: Vec::from(b"ethereum").try_into().unwrap(),
 		liquidity_pools_contract_address: H160::from_low_u64_be(2),
-		_marker: Default::default(),
 	});
 
 	check_submission(environment_for_evm::<T>(), router);
@@ -176,7 +174,6 @@ fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 fn submit_by_ethereum_xcm<T: Runtime + FudgeSupport>() {
 	let router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
 		router: xcm_router(),
-		_marker: Default::default(),
 	});
 
 	check_submission(environment_for_xcm::<T>(), router);
@@ -188,7 +185,6 @@ fn submit_by_axelar_xcm<T: Runtime + FudgeSupport>() {
 		router: xcm_router(),
 		axelar_target_chain: Vec::from(b"ethereum").try_into().unwrap(),
 		axelar_target_contract: AXELAR_CONTRACT_ADDRESS,
-		_marker: Default::default(),
 	});
 
 	check_submission(environment_for_xcm::<T>(), router);

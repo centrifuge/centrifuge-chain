@@ -234,7 +234,6 @@ where
 	T: frame_system::Config + pallet_xcm_transactor::Config,
 {
 	pub xcm_domain: XcmDomain<T::CurrencyId>,
-	pub _marker: PhantomData<T>,
 }
 
 impl<T> XCMRouter<T>
