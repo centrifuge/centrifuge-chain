@@ -284,6 +284,7 @@ pub mod constants {
 	/// The maximum number of pool fees per pool fee bucket
 	pub const MAX_POOL_FEES_PER_BUCKET: u32 = 100;
 
+	/// Identification of the native token of the chain. Used in XCM locations.
 	pub const NATIVE_KEY: &[u8] = &[0, 1];
 }
 

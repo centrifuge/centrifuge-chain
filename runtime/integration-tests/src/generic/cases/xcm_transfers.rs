@@ -28,7 +28,7 @@ use crate::{
 const INITIAL: u32 = 100;
 const TRANSFER: u32 = 20;
 
-fn create_transfeable_currency(decimals: u32, para_id: Option<u32>) -> CustomCurrency {
+fn create_transferable_currency(decimals: u32, para_id: Option<u32>) -> CustomCurrency {
 	CustomCurrency(
 		CurrencyId::ForeignAsset(1),
 		AssetMetadata {
@@ -40,7 +40,7 @@ fn create_transfeable_currency(decimals: u32, para_id: Option<u32>) -> CustomCur
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(6, Some(PARA_ID));
+	let curr = create_transferable_currency(6, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -82,7 +82,7 @@ fn para_to_sibling_with_foreign_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(18, Some(PARA_ID));
+	let curr = create_transferable_currency(18, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -124,7 +124,7 @@ fn para_to_sibling_with_native_to_foreign_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(18, Some(PARA_ID));
+	let curr = create_transferable_currency(18, Some(PARA_ID));
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Default::default(),
@@ -166,7 +166,7 @@ fn para_to_sibling_with_foreign_to_native_tokens<T: Runtime + FudgeSupport>() {
 
 #[test_runtimes(all)]
 fn para_from_to_relay_using_relay_native_tokens<T: Runtime + FudgeSupport>() {
-	let curr = create_transfeable_currency(10, None);
+	let curr = create_transferable_currency(10, None);
 
 	let mut env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
