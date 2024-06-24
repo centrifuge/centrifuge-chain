@@ -68,7 +68,7 @@ case $TARGET in
       echo "Running try-runtime for demo env"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
       ./try-runtime \
-      --runtime target/release/wbuild/development-runtime/development.wasm \
+      --runtime target/release/wbuild/development_runtime/development.wasm \
       on-runtime-upgrade live --uri  wss://node-7118620155331796992.gx.onfinality.io/ws?apikey=00538f2d-6297-44e3-8812-4b9d579524b2
     else
       echo "Invalid argument. Please specify 'altair' or 'centrifuge'."
