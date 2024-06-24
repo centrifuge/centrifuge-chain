@@ -73,7 +73,7 @@ case $TARGET in
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
       ./try-runtime \
       --runtime target/release/wbuild/development-runtime/development_runtime.wasm \
-      on-runtime-upgrade live --uri  wss://fullnode-query.demo.k-f.dev # fullnode.demo.k-f.dev is throtlled and thus it might fail
+      on-runtime-upgrade live --uri  wss://fullnode-query.demo.k-f.dev:443 # fullnode.demo.k-f.dev is throtlled and thus it might fail
     else
       echo "Invalid argument. Please specify 'altair' or 'centrifuge'."
       exit 1
