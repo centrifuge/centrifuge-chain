@@ -91,16 +91,11 @@ all_pallets=$(
 for pallet in $all_pallets
 do
     output="${build_path}/${pallet}.rs"
+    run_benchmark $pallet $output
+    check $?
 
-    if [[ $pallet != "frame_system" ]]; then
-      run_benchmark $pallet $output
-      check $?
-
-      echo "pub mod ${pallet};" >> "${build_path}/mod.rs"
-      check $?
-    else
-      echo "WARNING: Skipping frame_system. Please re-enable at Polkadot v1.0.0+ support."
-    fi
+    echo "pub mod ${pallet};" >> "${build_path}/mod.rs"
+    check $?
 done
 
 echo "Removing old weights in '${weight_path}'"
