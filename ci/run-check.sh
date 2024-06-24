@@ -45,6 +45,10 @@ case $TARGET in
     ;;
 
   try-runtime)
+    echo "Contents of target/release/wbuild/:"
+    ls -l target/release/wbuild/
+    echo "Contents of subdirectories in target/release/wbuild/:"
+    ls -l target/release/wbuild/*/
     # Check if try-runtime is available
     if ! command try-runtime --version &> /dev/null
     then
