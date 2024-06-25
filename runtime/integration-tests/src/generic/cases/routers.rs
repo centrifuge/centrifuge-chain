@@ -140,12 +140,9 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 	});
 
 	env.pass(Blocks::UntilEvent {
-		event: expected_event.clone().into(),
+		event: expected_event.into(),
 		limit: 3,
 	});
-
-	env.check_event(expected_event)
-		.expect("expected OutboundMessageExecutionSuccess event");
 }
 
 #[test_runtimes(all)]
