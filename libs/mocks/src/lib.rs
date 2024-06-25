@@ -1,11 +1,14 @@
 pub mod asset_registry;
 pub mod change_guard;
+pub mod converter;
 pub mod currency_conversion;
 pub mod data;
 pub mod fees;
+pub mod foreign_investment;
 pub mod investment;
 pub mod liquidity_pools;
 pub mod liquidity_pools_gateway_routers;
+pub mod outbound_queue;
 pub mod pay_fee;
 pub mod permissions;
 pub mod pools;
@@ -14,7 +17,6 @@ pub mod rewards;
 pub mod status_notification;
 pub mod time;
 pub mod token_swaps;
-pub mod try_convert;
 pub mod value_provider;
 pub mod write_off_policy;
 
@@ -33,7 +35,6 @@ pub use rewards::pallet as pallet_mock_rewards;
 pub use status_notification::pallet as pallet_mock_status_notification;
 pub use time::pallet as pallet_mock_time;
 pub use token_swaps::pallet as pallet_mock_token_swaps;
-pub use try_convert::pallet as pallet_mock_try_convert;
 pub use value_provider::pallet as pallet_mock_value_provider;
 pub use write_off_policy::pallet as pallet_mock_write_off_policy;
 
