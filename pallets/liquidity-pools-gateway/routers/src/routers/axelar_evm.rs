@@ -22,7 +22,7 @@ use scale_info::{
 	TypeInfo,
 };
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
-use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use crate::{
 	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
@@ -44,7 +44,6 @@ where
 	pub router: EVMRouter<T>,
 	pub evm_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub liquidity_pools_contract_address: H160,
-	pub _marker: PhantomData<T>,
 }
 
 impl<T> AxelarEVMRouter<T>
@@ -66,7 +65,6 @@ where
 			router,
 			evm_chain,
 			liquidity_pools_contract_address,
-			_marker: Default::default(),
 		}
 	}
 

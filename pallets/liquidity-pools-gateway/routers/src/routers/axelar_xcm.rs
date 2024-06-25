@@ -16,7 +16,6 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_runtime::DispatchError;
-use sp_std::marker::PhantomData;
 
 use crate::{
 	axelar_evm::get_axelar_encoded_msg, AccountIdOf, CurrencyIdOf, MessageOf, XCMRouter, XcmDomain,
@@ -37,7 +36,6 @@ where
 	pub router: XCMRouter<T>,
 	pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub axelar_target_contract: H160,
-	pub _marker: PhantomData<T>,
 }
 
 impl<T> AxelarXCMRouter<T>
