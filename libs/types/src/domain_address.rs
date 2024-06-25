@@ -15,7 +15,7 @@ use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AccountIdConversion, Convert};
+use sp_runtime::traits::AccountIdConversion;
 use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
@@ -63,12 +63,12 @@ impl Codec for Domain {
 	}
 }
 
-impl<AccountId> Convert<Domain, AccountId> for Domain
-where
-	AccountId: Encode + Decode,
-{
-	fn convert(domain: Domain) -> AccountId {
-		DomainLocator { domain }.into_account_truncating()
+impl Domain {
+	pub fn into_account<AccountId: Encode + Decode>(&self) -> AccountId {
+		DomainLocator {
+			domain: self.clone(),
+		}
+		.into_account_truncating()
 	}
 }
 
@@ -116,5 +116,27 @@ impl DomainAddress {
 
 	pub fn domain(&self) -> Domain {
 		self.clone().into()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use parity_scale_codec::{Decode, Encode};
+
+	use super::*;
+
+	#[test]
+	fn test_domain_encode_decode() {
+		test_domain_identity(Domain::Centrifuge);
+		test_domain_identity(Domain::EVM(1284));
+		test_domain_identity(Domain::EVM(1));
+	}
+
+	/// Test that (decode . encode) results in the original value
+	fn test_domain_identity(domain: Domain) {
+		let encoded = domain.encode();
+		let decoded = Domain::decode(&mut encoded.as_slice()).unwrap();
+
+		assert_eq!(domain, decoded);
 	}
 }

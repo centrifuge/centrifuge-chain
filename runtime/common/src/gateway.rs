@@ -25,5 +25,5 @@ pub fn get_gateway_account<T: pallet_evm_chain_id::Config + staging_parachain_in
 	let truncated_sender_account =
 		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20]);
 
-	AccountConverter::into_account_id::<T>(truncated_sender_account)
+	AccountConverter::evm_address_to_account::<T>(truncated_sender_account)
 }

@@ -81,7 +81,7 @@ where
 
 		T::Tokens::transfer(
 			invest_id.into(),
-			&Domain::convert(sending_domain),
+			&sending_domain.into_account(),
 			&local_representation_of_receiver,
 			amount,
 			Preservation::Expendable,
@@ -206,7 +206,7 @@ where
 		// origination domain
 		T::Tokens::transfer(
 			invest_id.clone().into(),
-			&Domain::convert(sending_domain.domain()),
+			&sending_domain.domain().into_account(),
 			&investor,
 			amount,
 			Preservation::Expendable,
@@ -252,7 +252,7 @@ where
 		T::Tokens::transfer(
 			invest_id.clone().into(),
 			&investor,
-			&Domain::convert(destination.domain()),
+			&destination.domain().into_account(),
 			tranche_tokens_payout,
 			Preservation::Expendable,
 		)?;

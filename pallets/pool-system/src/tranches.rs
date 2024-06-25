@@ -1724,7 +1724,6 @@ pub mod test {
 	}
 
 	mod tranche {
-
 		use super::*;
 
 		#[test]

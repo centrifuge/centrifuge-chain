@@ -30,6 +30,8 @@ Centrifuge is the infrastructure that facilitates the decentralized financing of
 On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation:
 
 - [**anchors**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors) ([docs](https://reference.centrifuge.io/pallet_anchors/index.html)): Storing hashes of documents on-chain. The documents are stored in the Private Off-chain Data (POD) node network.
+- 
+- [**anchors-v2**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors-v2) ([docs](https://reference.centrifuge.io/pallet_anchors_v2/index.html)): Second version of the pallet used to store document hashes on-chain.
 
 - [**block-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/block-rewards) ([docs](https://reference.centrifuge.io/pallet_block_rewards/index.html)): Provides means of configuring and distributing block rewards to collators as well as the annual treasury inflation.
 
