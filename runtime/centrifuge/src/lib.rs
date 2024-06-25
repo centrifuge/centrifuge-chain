@@ -1880,12 +1880,10 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter;
 	type DomainAccountToDomainAddress = AccountConverter;
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
