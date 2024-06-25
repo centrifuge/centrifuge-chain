@@ -23,7 +23,9 @@
 
 use cfg_primitives::TRANSACTION_RECOVERY_ID;
 use cfg_traits::ethereum::EthereumTransactor;
-use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
+use ethereum::{
+	LegacyTransaction, ReceiptV3, TransactionAction, TransactionSignature, TransactionV2,
+};
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
@@ -39,7 +41,6 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ethereum::ReceiptV3;
 	use frame_system::pallet_prelude::OriginFor;
 
 	use super::*;
@@ -157,7 +158,7 @@ pub mod pallet {
 					}),
 			})?;
 
-			// NOTE: The Ethereuem side of things never returns a DispatchError
+			// NOTE: The Ethereum side of things never returns a DispatchError
 			//       if the execution failed. But we can check that manually by
 			//       querying the `Pending` storage of the pallet-ethereum.
 			let pending = pallet_ethereum::Pending::<T>::get();

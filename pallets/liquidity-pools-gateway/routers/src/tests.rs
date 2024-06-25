@@ -1,7 +1,6 @@
 use cfg_mocks::MessageMock;
 use cfg_primitives::CFG;
 use cfg_traits::liquidity_pools::{Codec, Router};
-use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
 use lazy_static::lazy_static;
 use pallet_evm::AddressMapping;
@@ -10,10 +9,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash},
 	DispatchError,
 };
-use staging_xcm::{
-	lts::WeightLimit,
-	v2::OriginKind,
-	v3::{Instruction::*, MultiAsset},
+use staging_xcm::latest::{
+	Asset, AssetId, Fungibility, Instruction::*, Location, OriginKind, WeightLimit,
 };
 
 use super::mock::*;
@@ -187,7 +184,7 @@ mod xcm_router {
 
 		pub struct XCMRouterTestData {
 			pub currency_id: CurrencyId,
-			pub dest: MultiLocation,
+			pub dest: Location,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
 			pub sender: AccountId32,
 			pub msg: Vec<u8>,
@@ -195,7 +192,7 @@ mod xcm_router {
 
 		pub fn get_test_data() -> XCMRouterTestData {
 			let currency_id = CurrencyId::OtherReserve(1);
-			let dest = CurrencyIdToMultiLocation::convert(currency_id.clone()).unwrap();
+			let dest = CurrencyIdToLocation::convert(currency_id.clone()).unwrap();
 
 			let xcm_domain = XcmDomain {
 				location: Box::new(dest.clone().into_versioned()),
@@ -260,21 +257,17 @@ mod xcm_router {
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
-					(MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					(Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
-					fees: MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					fees: Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
@@ -505,7 +498,7 @@ mod axelar_xcm {
 
 		pub struct AxelarXCMTestData {
 			pub currency_id: CurrencyId,
-			pub dest: MultiLocation,
+			pub dest: Location,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
 			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
@@ -515,7 +508,7 @@ mod axelar_xcm {
 
 		pub fn get_test_data() -> AxelarXCMTestData {
 			let currency_id = CurrencyId::OtherReserve(1);
-			let dest = CurrencyIdToMultiLocation::convert(currency_id.clone()).unwrap();
+			let dest = CurrencyIdToLocation::convert(currency_id.clone()).unwrap();
 
 			let xcm_domain = XcmDomain {
 				location: Box::new(dest.clone().into_versioned()),
@@ -601,21 +594,17 @@ mod axelar_xcm {
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
-					(MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					(Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
-					fees: MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					fees: Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
@@ -652,7 +641,7 @@ mod ethereum_xcm {
 
 		pub struct EthereumXCMTestData {
 			pub currency_id: CurrencyId,
-			pub dest: MultiLocation,
+			pub dest: Location,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
 			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
@@ -662,7 +651,7 @@ mod ethereum_xcm {
 
 		pub fn get_test_data() -> EthereumXCMTestData {
 			let currency_id = CurrencyId::OtherReserve(1);
-			let dest = CurrencyIdToMultiLocation::convert(currency_id.clone()).unwrap();
+			let dest = CurrencyIdToLocation::convert(currency_id.clone()).unwrap();
 
 			let xcm_domain = XcmDomain {
 				location: Box::new(dest.clone().into_versioned()),
@@ -741,21 +730,17 @@ mod ethereum_xcm {
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
-					(MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					(Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
 
 				assert!(xcm.0.contains(&BuyExecution {
-					fees: MultiAsset {
-						id: staging_xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: staging_xcm::v3::Fungibility::Fungible(
-							test_data.xcm_domain.fee_amount
-						),
+					fees: Asset {
+						id: AssetId(Location::here()),
+						fun: Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));

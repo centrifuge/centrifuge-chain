@@ -47,7 +47,6 @@ std = [
   "sp-runtime/std",
   "orml-traits/std",
   "staging-xcm/std",
-  "mock-builder/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

@@ -19,7 +19,6 @@ use cfg_traits::{
 use cfg_types::pools::PoolFeeEditor;
 use frame_benchmarking::v2::*;
 use frame_support::{assert_ok, dispatch::RawOrigin};
-use sp_std::vec; // required for #[benchmarks]
 
 use super::*;
 use crate::{types::Change, Pallet as PoolFees};

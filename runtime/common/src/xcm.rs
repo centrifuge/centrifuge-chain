@@ -19,14 +19,15 @@ use cfg_types::{
 };
 use frame_support::traits::{fungibles::Mutate, Everything, Get};
 use frame_system::pallet_prelude::BlockNumberFor;
+use orml_traits::asset_registry::Inspect;
 use polkadot_parachain_primitives::primitives::Sibling;
 use sp_runtime::traits::{AccountIdConversion, Convert, MaybeEquivalence, Zero};
 use sp_std::marker::PhantomData;
-use staging_xcm::v3::{
-	prelude::*,
+use staging_xcm::v4::{
+	Asset, AssetId,
+	Fungibility::Fungible,
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
-	Junctions::{X1, X2},
-	MultiAsset, MultiLocation, NetworkId, OriginKind,
+	Location, NetworkId, OriginKind,
 };
 use staging_xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -50,7 +51,7 @@ impl<
 		>,
 	> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
 {
-	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
+	fn get_fee_per_second(location: &Location) -> Option<u128> {
 		let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
 		match metadata.additional.transferability {
 			CrossChainTransferability::Xcm(xcm_metadata) => xcm_metadata
@@ -66,18 +67,18 @@ impl<
 pub fn general_key(data: &[u8]) -> staging_xcm::latest::Junction {
 	GeneralKey {
 		length: data.len().min(32) as u8,
-		data: cfg_utils::vec_to_fixed_array(data.to_vec()),
+		data: cfg_utils::vec_to_fixed_array(data),
 	}
 }
 
-/// How we convert an `[AccountId]` into an XCM MultiLocation
-pub struct AccountIdToMultiLocation;
-impl<AccountId: Into<[u8; 32]>> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
+/// How we convert an `[AccountId]` into an XCM Location
+pub struct AccountIdToLocation;
+impl<AccountId: Into<[u8; 32]>> Convert<AccountId, Location> for AccountIdToLocation {
+	fn convert(account: AccountId) -> Location {
+		AccountId32 {
 			network: None,
 			id: account.into(),
-		})
+		}
 		.into()
 	}
 }
@@ -93,35 +94,26 @@ where
 		From<pallet_liquidity_pools_gateway::GatewayOrigin>,
 {
 	fn convert_origin(
-		origin: impl Into<MultiLocation>,
+		origin: impl Into<Location>,
 		kind: OriginKind,
-	) -> Result<<Runtime as frame_system::Config>::RuntimeOrigin, MultiLocation> {
-		let location: MultiLocation = origin.into();
-		match kind {
-			OriginKind::SovereignAccount => match location {
-				MultiLocation {
-					parents: 1,
-					interior: X2(Parachain(para), AccountKey20 { key, .. }),
-				} => {
-					let evm_id = ParaAsEvmChain::try_convert(para).map_err(|_| location)?;
-					let domain_address = DomainAddress::EVM(evm_id, key);
+	) -> Result<<Runtime as frame_system::Config>::RuntimeOrigin, Location> {
+		let location = origin.into();
+		match (kind, location.clone().unpack()) {
+			(OriginKind::SovereignAccount, (1, [Parachain(para), AccountKey20 { key, .. }])) => {
+				let evm_id = ParaAsEvmChain::try_convert(*para).map_err(|_| location.clone())?;
+				let domain_address = DomainAddress::EVM(evm_id, *key);
 
-					if pallet_liquidity_pools_gateway::Pallet::<Runtime>::relayer(
-						Domain::EVM(evm_id),
-						&domain_address,
-					)
-					.is_some()
-					{
-						Ok(pallet_liquidity_pools_gateway::GatewayOrigin::AxelarRelay(
-							domain_address,
-						)
-						.into())
-					} else {
-						Err(location)
-					}
-				}
-				_ => Err(location),
-			},
+				pallet_liquidity_pools_gateway::Pallet::<Runtime>::relayer(
+					Domain::EVM(evm_id),
+					&domain_address,
+				)
+				.ok_or(location.clone())?;
+
+				Ok(
+					pallet_liquidity_pools_gateway::GatewayOrigin::AxelarRelay(domain_address)
+						.into(),
+				)
+			}
 			_ => Err(location),
 		}
 	}
@@ -149,97 +141,80 @@ where
 
 /// CurrencyIdConvert
 /// This type implements conversions from our `CurrencyId` type into
-/// `MultiLocation` and vice-versa. A currency locally is identified with a
+/// `Location` and vice-versa. A currency locally is identified with a
 /// `CurrencyId` variant but in the network it is identified in the form of a
-/// `MultiLocation`.
+/// `Location`.
 pub struct CurrencyIdConvert<T>(PhantomData<T>);
 
-impl<T> MaybeEquivalence<MultiLocation, CurrencyId> for CurrencyIdConvert<T>
+impl<T> MaybeEquivalence<Location, CurrencyId> for CurrencyIdConvert<T>
 where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+	T: orml_asset_registry::module::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ staging_parachain_info::Config,
 {
-	fn convert(location: &MultiLocation) -> Option<CurrencyId> {
-		let para_id = parachain_info::Pallet::<T>::parachain_id();
+	fn convert(location: &Location) -> Option<CurrencyId> {
+		let para_id = staging_parachain_info::Pallet::<T>::parachain_id();
 		let unanchored_location = match location {
-			MultiLocation {
+			Location {
 				parents: 0,
 				interior,
-			} => MultiLocation {
+			} => Location {
 				parents: 1,
 				interior: interior
+					.clone()
 					.pushed_front_with(Parachain(u32::from(para_id)))
 					.ok()?,
 			},
-			x => *x,
+			x => x.clone(),
 		};
 
-		orml_asset_registry::Pallet::<T>::location_to_asset_id(unanchored_location)
+		orml_asset_registry::module::Pallet::<T>::asset_id(&unanchored_location)
 	}
 
-	fn convert_back(id: &CurrencyId) -> Option<MultiLocation> {
-		orml_asset_registry::Pallet::<T>::metadata(id)
+	fn convert_back(id: &CurrencyId) -> Option<Location> {
+		orml_asset_registry::module::Pallet::<T>::metadata(id)
 			.filter(|m| m.additional.transferability.includes_xcm())
 			.and_then(|m| m.location)
 			.and_then(|l| l.try_into().ok())
 	}
 }
 
-/// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// We use the `AssetRegistry` to lookup the associated `MultiLocation` for
+/// Convert our `CurrencyId` type into its `Location` representation.
+/// We use the `AssetRegistry` to lookup the associated `Location` for
 /// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
-impl<T> Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert<T>
+impl<T> Convert<CurrencyId, Option<Location>> for CurrencyIdConvert<T>
 where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+	T: orml_asset_registry::module::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ staging_parachain_info::Config,
 {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+	fn convert(id: CurrencyId) -> Option<Location> {
 		<Self as MaybeEquivalence<_, _>>::convert_back(&id)
 	}
 }
 
-/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// Convert an incoming `Location` into a `CurrencyId` through a
 /// reverse-lookup using the AssetRegistry. In the registry, we register CFG
-/// using its absolute, non-anchored MultiLocation so we need to unanchor the
+/// using its absolute, non-anchored Location so we need to unanchor the
 /// input location for Centrifuge-native assets for that to work.
-impl<T> Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert<T>
+impl<T> Convert<Location, Option<CurrencyId>> for CurrencyIdConvert<T>
 where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
+	T: orml_asset_registry::module::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ staging_parachain_info::Config,
 {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+	fn convert(location: Location) -> Option<CurrencyId> {
 		<Self as MaybeEquivalence<_, _>>::convert(&location)
-	}
-}
-
-impl<T> Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert<T>
-where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config,
-{
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location),
-			..
-		} = asset
-		{
-			<Self as MaybeEquivalence<_, _>>::convert(&location)
-		} else {
-			None
-		}
 	}
 }
 
 pub struct ToTreasury<T>(PhantomData<T>);
 impl<T> TakeRevenue for ToTreasury<T>
 where
-	T: orml_asset_registry::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
-		+ parachain_info::Config
+	T: orml_asset_registry::module::Config<AssetId = CurrencyId, CustomMetadata = CustomMetadata>
+		+ staging_parachain_info::Config
 		+ pallet_restricted_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>,
 {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
+	fn take_revenue(revenue: Asset) {
+		if let Asset {
+			id: AssetId(location),
 			fun: Fungible(amount),
 		} = revenue
 		{
@@ -268,7 +243,7 @@ pub type Barrier<PolkadotXcm> = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-/// Type for specifying how a `MultiLocation` can be converted into an
+/// Type for specifying how a `Location` can be converted into an
 /// `AccountId`. This is used when determining ownership of accounts for asset
 /// transacting and when attempting to use XCM `Transact` in order to determine
 /// the dispatch Origin.
@@ -374,15 +349,15 @@ mod test {
 				Ok(RELAYER_EVM_ID)
 			});
 
-			let location: MultiLocation = MultiLocation::new(
+			let location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(RELAYER_PARA_ID),
 					AccountKey20 {
 						network: None,
 						key: RELAYER_ADDRESS,
 					},
-				),
+				],
 			);
 
 			let origin = LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
@@ -413,11 +388,11 @@ mod test {
 				Ok(RELAYER_EVM_ID)
 			});
 
-			let location: MultiLocation = MultiLocation::new(1, X1(Parachain(RELAYER_PARA_ID)));
+			let location = Location::new(1, Parachain(RELAYER_PARA_ID));
 
 			assert_eq!(
 				LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
-					location,
+					location.clone(),
 					OriginKind::SovereignAccount,
 				)
 				.unwrap_err(),
@@ -434,20 +409,20 @@ mod test {
 				Ok(RELAYER_EVM_ID)
 			});
 
-			let location: MultiLocation = MultiLocation::new(
+			let location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(RELAYER_PARA_ID),
 					AccountKey20 {
 						network: None,
 						key: RELAYER_ADDRESS,
 					},
-				),
+				],
 			);
 
 			assert_eq!(
 				LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
-					location,
+					location.clone(),
 					OriginKind::SovereignAccount,
 				)
 				.unwrap_err(),
@@ -471,20 +446,20 @@ mod test {
 				Err(())
 			});
 
-			let location: MultiLocation = MultiLocation::new(
+			let location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(RELAYER_PARA_ID),
 					AccountKey20 {
 						network: None,
 						key: RELAYER_ADDRESS,
 					},
-				),
+				],
 			);
 
 			assert_eq!(
 				LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
-					location,
+					location.clone(),
 					OriginKind::SovereignAccount,
 				)
 				.unwrap_err(),
@@ -508,20 +483,20 @@ mod test {
 				Err(())
 			});
 
-			let location: MultiLocation = MultiLocation::new(
+			let location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(1),
 					AccountKey20 {
 						network: None,
 						key: RELAYER_ADDRESS,
 					},
-				),
+				],
 			);
 
 			assert_eq!(
 				LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
-					location,
+					location.clone(),
 					OriginKind::SovereignAccount,
 				)
 				.unwrap_err(),
@@ -545,20 +520,20 @@ mod test {
 				Ok(RELAYER_EVM_ID)
 			});
 
-			let location: MultiLocation = MultiLocation::new(
+			let location = Location::new(
 				1,
-				X2(
+				[
 					Parachain(RELAYER_PARA_ID),
 					AccountKey20 {
 						network: None,
 						key: [0u8; 20],
 					},
-				),
+				],
 			);
 
 			assert_eq!(
 				LpInstanceRelayer::<MockParaAsEvmChain, Runtime>::convert_origin(
-					location,
+					location.clone(),
 					OriginKind::SovereignAccount,
 				)
 				.unwrap_err(),

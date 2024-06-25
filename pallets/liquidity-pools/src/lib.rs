@@ -64,9 +64,8 @@ use sp_runtime::{
 };
 use sp_std::{convert::TryInto, vec};
 use staging_xcm::{
-	latest::NetworkId,
-	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
-	VersionedMultiLocation,
+	v4::{Junction::*, NetworkId},
+	VersionedLocation,
 };
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
@@ -129,7 +128,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
-	use staging_xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
@@ -258,8 +256,12 @@ pub mod pallet {
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
 
-		/// The converter from a Domain 32 byte array to Substrate AccountId.
+		/// The converter from a Domain and 32 byte array to Substrate
+		/// AccountId.
 		type DomainAccountToAccountId: Convert<(Domain, [u8; 32]), Self::AccountId>;
+
+		/// The converter from a Domain and a 32 byte array to DomainAddress.
+		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
 		/// The type for processing outgoing messages.
 		type OutboundQueue: OutboundQueue<
@@ -409,8 +411,8 @@ pub mod pallet {
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name.into_inner());
-			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
+			let token_name = vec_to_fixed_array(metadata.name);
+			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
@@ -791,8 +793,8 @@ pub mod pallet {
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = vec_to_fixed_array(metadata.name.into_inner());
-			let token_symbol = vec_to_fixed_array(metadata.symbol.into_inner());
+			let token_name = vec_to_fixed_array(metadata.name);
+			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			T::OutboundQueue::submit(
 				who,
@@ -888,21 +890,26 @@ pub mod pallet {
 				Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 
-			match meta.location {
-				Some(VersionedMultiLocation::V3(MultiLocation {
-					parents: 0,
-					interior:
-						X3(
-							PalletInstance(pallet_instance),
-							GlobalConsensus(NetworkId::Ethereum { chain_id }),
-							AccountKey20 {
-								network: None,
-								key: address,
-							},
-						),
-				})) if Some(pallet_instance.into())
-					== <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>() =>
-				{
+			// We need to still support v3 until orml_asset_registry migrates to the last
+			// version.
+			let location = match meta.location {
+				Some(VersionedLocation::V3(location)) => location.try_into().map_err(|_| {
+					DispatchError::Other("v3 is isometric to v4 and should not fail")
+				})?,
+				Some(VersionedLocation::V4(location)) => location,
+				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken)?,
+			};
+
+			let pallet_index = <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>();
+
+			match location.unpack() {
+				(
+					0,
+					&[PalletInstance(pallet_instance), GlobalConsensus(NetworkId::Ethereum { chain_id }), AccountKey20 {
+						network: None,
+						key: address,
+					}],
+				) if Some(pallet_instance.into()) == pallet_index => {
 					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
 				}
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
@@ -973,14 +980,15 @@ pub mod pallet {
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
+					domain,
 					receiver,
 					amount,
 					..
 				} => Self::handle_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
-					sender,
-					receiver.into(),
+					sender.domain(),
+					T::DomainAccountToDomainAddress::convert((domain, receiver)),
 					amount,
 				),
 				Message::IncreaseInvestOrder {

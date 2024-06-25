@@ -26,9 +26,11 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
+#[cfg(feature = "runtime-benchmarks")]
+use frame_support::dispatch::RawOrigin;
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
-	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, PalletId, StorageHasher,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -37,11 +39,8 @@ use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
 use parity_scale_codec::Encode;
 use sp_arithmetic::FixedPointNumber;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{ConstU128, Zero},
-	BuildStorage,
-};
+use sp_core::{ConstU128, H256};
+use sp_runtime::{traits::Zero, BuildStorage};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -153,7 +152,7 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {
@@ -224,8 +223,6 @@ parameter_types! {
 	pub const MockParachainId: u32 = 100;
 }
 
-impl parachain_info::Config for Runtime {}
-
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -251,6 +248,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = ();
 }
 
@@ -385,7 +383,22 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
+pub struct All;
+impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
+	type Success = ();
+
+	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
+		Ok(())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		Ok(RawOrigin::Root.into())
+	}
+}
+
 impl Config for Runtime {
+	type AdminOrigin = All;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
@@ -492,6 +505,7 @@ fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+	pub SecondSeniorTrancheId: [u8; 16] = create_tranche_id(0, 2);
 }
 
 // Build genesis storage according to the mock runtime.

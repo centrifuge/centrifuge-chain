@@ -1347,12 +1347,17 @@ where
 	// previous more senior tranche - this tranche value.
 	let mut remaining_subordinate_value = pool_value;
 	let mut risk_buffers: Vec<Perquintill> = tranche_values
-		.iter()
+		.into_iter()
 		.rev()
 		.map(|tranche_value| {
-			remaining_subordinate_value =
-				remaining_subordinate_value.saturating_sub(*tranche_value);
-			Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			remaining_subordinate_value = remaining_subordinate_value.saturating_sub(tranche_value);
+			if tranche_value.is_zero() {
+				Perquintill::one()
+			} else if pool_value.is_zero() {
+				Perquintill::zero()
+			} else {
+				Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			}
 		})
 		.collect::<Vec<Perquintill>>();
 
@@ -1719,7 +1724,6 @@ pub mod test {
 	}
 
 	mod tranche {
-
 		use super::*;
 
 		#[test]

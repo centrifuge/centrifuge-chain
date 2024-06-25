@@ -13,7 +13,7 @@
 mod cfg {
 	use cfg_primitives::{currency_decimals, Balance};
 	use cfg_types::{
-		locations::Location,
+		locations::RestrictedTransferLocation,
 		tokens::{CurrencyId, FilterCurrency},
 	};
 	use frame_support::{assert_ok, dispatch::RawOrigin};
@@ -51,7 +51,7 @@ mod cfg {
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					filter,
-					Location::Local(Keyring::Bob.to_account_id())
+					RestrictedTransferLocation::Local(Keyring::Bob.id())
 				)
 			);
 
@@ -75,11 +75,9 @@ mod cfg {
 				env.parachain_state(|| {
 					// NOTE: The para-id is not relevant here
 					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 					)
 				});
 
@@ -89,11 +87,11 @@ mod cfg {
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
 				assert_eq!(after_transfer_bob, pre_transfer_bob);
@@ -109,11 +107,9 @@ mod cfg {
 				env.parachain_state(|| {
 					// NOTE: The para-id is not relevant here
 					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 					)
 				});
 
@@ -123,11 +119,11 @@ mod cfg {
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
 				assert_eq!(after_transfer_bob, pre_transfer_bob);
@@ -145,11 +141,9 @@ mod cfg {
 				env.parachain_state(|| {
 					// NOTE: The para-id is not relevant here
 					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 					)
 				});
 
@@ -160,11 +154,11 @@ mod cfg {
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -183,11 +177,9 @@ mod cfg {
 				env.parachain_state(|| {
 					// NOTE: The para-id is not relevant here
 					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 					)
 				});
 
@@ -197,11 +189,11 @@ mod cfg {
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
 				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 				assert_eq!(
 					after_transfer_alice,
@@ -214,14 +206,14 @@ mod cfg {
 	}
 
 	fn transfer_ok<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer {
+		pallet_balances::Call::<T>::transfer_allow_death {
 			dest: Keyring::Bob.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}
 	}
 
 	fn transfer_fail<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer {
+		pallet_balances::Call::<T>::transfer_allow_death {
 			dest: Keyring::Charlie.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}
@@ -239,9 +231,9 @@ mod cfg {
 			env.parachain_state(|| {
 				// NOTE: The para-id is not relevant here
 				(
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id()),
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
 				)
 			});
 
@@ -249,11 +241,10 @@ mod cfg {
 
 		env.parachain_state(|| {
 			let after_transfer_alice =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-			let after_transfer_bob =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+				pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id());
+			let after_transfer_bob = pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id());
 			let after_transfer_charlie =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+				pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id());
 
 			assert_eq!(
 				after_transfer_alice,

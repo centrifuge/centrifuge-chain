@@ -327,16 +327,18 @@ pub mod pallet {
 			bucket: PoolFeeBucket,
 			fee: PoolFeeInfoOf<T>,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			let who = ensure_signed_or_root(origin)?;
 
 			ensure!(
 				T::PoolReserve::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
-			ensure!(
-				T::IsPoolAdmin::check((who, pool_id)),
-				Error::<T>::NotPoolAdmin
-			);
+			if let Some(signer) = who {
+				ensure!(
+					T::IsPoolAdmin::check((signer, pool_id)),
+					Error::<T>::NotPoolAdmin
+				);
+			}
 
 			let fee_id = Self::generate_fee_id()?;
 			T::ChangeGuard::note(
@@ -385,11 +387,16 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::remove_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			let who = ensure_signed_or_root(origin)?;
 
 			let fee = Self::get_active_fee(fee_id)?;
+			//
 			ensure!(
-				matches!(fee.editor, PoolFeeEditor::Account(account) if account == who),
+				match (fee.editor, who) {
+					(PoolFeeEditor::Account(editor), Some(signer)) => editor == signer,
+					(PoolFeeEditor::Root, None) => true,
+					_ => false,
+				},
 				Error::<T>::UnauthorizedEdit
 			);
 			Self::do_remove_fee(fee_id)?;
@@ -726,7 +733,7 @@ pub mod pallet {
 		/// the valuation is maximized at this point in time because each unit
 		/// of reserve reduces the NAV by reducing pending to disbursment
 		/// amounts.
-		/// ```ignore
+		/// ```text
 		/// NAV(PoolFees) = sum(pending_fee_amount) = sum(epoch_amount - disbursement)
 		/// ```
 		pub fn update_portfolio_valuation_for_pool(

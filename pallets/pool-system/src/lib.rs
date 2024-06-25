@@ -184,9 +184,10 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		sp_runtime::traits::Convert,
-		traits::{tokens::Preservation, Contains},
+		traits::{tokens::Preservation, Contains, EnsureOriginWithArg},
 		PalletId,
 	};
+	use rev_slice::SliceExt;
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 	use super::*;
@@ -194,6 +195,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type AdminOrigin: EnsureOriginWithArg<Self::RuntimeOrigin, Self::PoolId>;
 
 		type Balance: Member
 			+ Parameter
@@ -613,7 +616,7 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -876,7 +879,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
 				let epoch = epoch_info
@@ -1237,15 +1240,43 @@ pub mod pallet {
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
 			let total_assets = epoch.nav.total(pool.reserve.total)?;
-			let tranche_ratios = epoch.tranches.combine_with_residual_top(
-				&executed_amounts,
-				|tranche, &(invest, redeem)| {
-					Ok(Perquintill::from_rational(
-						tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
-						total_assets,
-					))
-				},
-			)?;
+
+			let tranche_ratios = {
+				let mut sum_non_residual_tranche_ratios = Perquintill::zero();
+				let num_tranches = pool.tranches.num_tranches();
+				let mut current_tranche = 1;
+				let mut ratios = epoch
+					.tranches
+					// NOTE: Reversing amounts, as residual amount is on top.
+					.combine_with_non_residual_top(
+						executed_amounts.rev(),
+						|tranche, &(invest, redeem)| {
+							// NOTE: Need to have this clause as the current Perquintill
+							//       implementation defaults to 100% if the denominator is zero
+							let ratio = if total_assets.is_zero() {
+								Perquintill::zero()
+							} else if current_tranche < num_tranches {
+								Perquintill::from_rational(
+									tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+									total_assets,
+								)
+							} else {
+								Perquintill::one().ensure_sub(sum_non_residual_tranche_ratios)?
+							};
+
+							sum_non_residual_tranche_ratios.ensure_add_assign(ratio)?;
+							current_tranche.ensure_add_assign(1)?;
+
+							Ok(ratio)
+						},
+					)?;
+
+				// NOTE: We need to reverse the ratios here, as the residual tranche is on top
+				//       all the time
+				ratios.reverse();
+
+				ratios
+			};
 
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),

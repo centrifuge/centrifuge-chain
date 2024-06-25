@@ -9,6 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
+hex = { workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }
@@ -27,6 +28,7 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
+cumulus-primitives-core = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 staging-xcm = { workspace = true }
 staging-xcm-builder = { workspace = true }
@@ -45,6 +47,8 @@ precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
 
+fp-evm = { workspace = true }
+
 # Local
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
@@ -55,7 +59,6 @@ cfg-utils = { workspace = true }
 axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
-cumulus-pallet-dmp-queue = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
@@ -90,6 +93,7 @@ pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-message-queue = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
@@ -116,7 +120,7 @@ pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
-parachain-info = { workspace = true }
+staging-parachain-info = { workspace = true }
 
 # Optionals for benchmarking
 frame-benchmarking = { workspace = true, optional = true }
@@ -150,16 +154,8 @@ std = [
   "pallet-evm-precompile-sha3fips/std",
   "pallet-evm-precompile-simple/std",
   "precompile-utils/std",
-  "pallet-evm/std",
-  "pallet-investments/std",
-  "pallet-liquidity-pools-gateway/std",
-  "pallet-liquidity-pools/std",
-  "pallet-loans/std",
-  "pallet-pool-system/std",
-  "pallet-restricted-tokens/std",
-  "pallet-treasury/std",
-  "parachain-info/std",
   "polkadot-parachain-primitives/std",
+  "cumulus-primitives-core/std",
   "scale-info/std",
   "serde/std",
   "sp-api/std",
@@ -185,7 +181,6 @@ std = [
   "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
-  "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
@@ -246,7 +241,8 @@ std = [
   "pallet-vesting/std",
   "pallet-xcm/std",
   "pallet-xcm-transactor/std",
-  "parachain-info/std",
+  "pallet-message-queue/std",
+  "staging-parachain-info/std",
 ]
 runtime-benchmarks = [
   # Substrate related
@@ -258,6 +254,7 @@ runtime-benchmarks = [
   "xcm-primitives/runtime-benchmarks",
   "staging-xcm-builder/runtime-benchmarks",
   "polkadot-parachain-primitives/runtime-benchmarks",
+  "cumulus-primitives-core/runtime-benchmarks",
 
   # Locals
   "cfg-primitives/runtime-benchmarks",
@@ -321,6 +318,7 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
+  "pallet-message-queue/runtime-benchmarks",
 ]
 try-runtime = [
   "sp-runtime/try-runtime",
@@ -336,7 +334,6 @@ try-runtime = [
   "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
-  "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
@@ -397,7 +394,8 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
-  "parachain-info/try-runtime",
+  "pallet-message-queue/try-runtime",
+  "staging-parachain-info/try-runtime",
 ]
 on-chain-release-build = [
   "sp-api/disable-logging",

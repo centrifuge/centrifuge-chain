@@ -43,7 +43,6 @@ pub mod pallet_session;
 pub mod pallet_timestamp;
 pub mod pallet_token_mux;
 pub mod pallet_transfer_allowlist;
-pub mod pallet_treasury;
 pub mod pallet_uniques;
 pub mod pallet_utility;
 pub mod pallet_vesting;

@@ -1,6 +1,7 @@
 use super::*;
 
-const DEFAULT_MUTATION: LoanMutation<Rate> = LoanMutation::InterestPayments(InterestPayments::None);
+const DEFAULT_MUTATION: LoanMutation<Rate> =
+	LoanMutation::InterestPayments(InterestPayments::OnceAtMaturity);
 
 fn config_mocks(loan_id: LoanId, loan_mutation: &LoanMutation<Rate>) {
 	MockPermissions::mock_has(|scope, who, role| {
@@ -213,7 +214,7 @@ fn with_successful_mutation_application() {
 					date: (now() + YEAR).as_secs(),
 					extension: YEAR.as_secs(),
 				},
-				interest_payments: InterestPayments::None,
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {

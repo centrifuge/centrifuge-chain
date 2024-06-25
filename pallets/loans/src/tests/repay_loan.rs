@@ -1,3 +1,5 @@
+use sp_arithmetic::traits::Saturating;
+
 use super::*;
 
 pub fn config_mocks(deposit_amount: Balance) {
@@ -266,6 +268,82 @@ fn with_more_than_required() {
 				interest: u128::MAX, //Discarded
 				unscheduled: 0,
 			},
+		));
+	});
+}
+
+#[test]
+fn with_more_than_required_external() {
+	new_test_ext().execute_with(|| {
+		let variation = Rate::one();
+		let mut pricing = util::base_external_pricing();
+		pricing.max_price_variation = variation;
+		let mut info = util::base_external_loan();
+		info.pricing = Pricing::External(pricing);
+
+		let loan_id = util::create_loan(info);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
+
+		let amount = ExternalAmount::new(
+			QUANTITY.saturating_mul(Quantity::from_rational(2, 1)),
+			PRICE_VALUE + variation.checked_mul_int(PRICE_VALUE).unwrap(),
+		);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount.clone()),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		config_mocks_with_price(0, PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidInput {
+					principal: PrincipalInput::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				}
+			),
+			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
+		);
+
+		MockPrices::mock_unregister_id(move |id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok(())
+		});
+
+		assert_ok!(Loans::close(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
 		));
 	});
 }
@@ -821,5 +899,116 @@ fn with_unregister_price_id_and_oracle_not_required() {
 			(QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE * 2),
 			util::current_loan_pv(loan_id)
 		);
+	});
+}
+
+#[test]
+fn with_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		});
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
+
+		let amount = ExternalAmount::new(Quantity::one(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
+
+		let repay_amount = RepaidInput {
+			principal: PrincipalInput::External(amount),
+			interest: 0,
+			unscheduled: 0,
+		};
+
+		let current_price = || {
+			ActiveLoanInfo::try_from((POOL_A, util::get_loan(loan_id)))
+				.unwrap()
+				.current_price
+				.unwrap()
+		};
+
+		// Repay and check time without advance time
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), PRICE_VALUE);
+
+		// In the middle of the line
+		advance_time(YEAR / 2);
+		assert_eq!(current_price(), PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2);
+
+		// BEFORE: the loan not yet overdue
+		advance_time(YEAR / 2 - DAY);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert!(current_price() < NOTIONAL);
+
+		// EXACT: the loan is just at matuyrity date
+		advance_time(DAY);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), NOTIONAL);
+
+		// AFTER: the loan overpassing maturity date
+		advance_time(DAY);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount.clone()
+		));
+		assert_eq!(current_price(), NOTIONAL);
+	});
+}
+
+#[test]
+fn decrease_debt_does_not_deposit() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PrincipalInput::External(amount.clone()));
+
+		config_mocks(amount.balance().unwrap());
+		MockPools::mock_deposit(|_, _, _| {
+			unreachable!("decrease debt must not withdraw funds from the pool");
+		});
+
+		assert_ok!(Loans::decrease_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidInput {
+				principal: PrincipalInput::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			}
+		));
 	});
 }

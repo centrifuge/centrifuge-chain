@@ -1,8 +1,8 @@
 //! PLEASE be as much generic as possible because no domain or use cases are
 //! considered at this level.
 
-use cfg_primitives::{conversion, Balance, CFG};
-use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
+use cfg_primitives::{conversion, liquidity_pools::GeneralCurrencyPrefix, Balance, CFG};
+use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata, GeneralCurrencyIndex};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 
@@ -31,11 +31,13 @@ pub trait CurrencyInfo {
 		&self.symbol()
 	}
 
-	fn location(&self) -> Option<staging_xcm::VersionedMultiLocation> {
+	fn location(&self) -> Option<staging_xcm::VersionedLocation> {
 		None
 	}
 
-	fn custom(&self) -> CustomMetadata;
+	fn custom(&self) -> CustomMetadata {
+		CustomMetadata::default()
+	}
 
 	fn ed(&self) -> Balance {
 		0
@@ -51,16 +53,11 @@ pub trait CurrencyInfo {
 			additional: self.custom(),
 		}
 	}
-}
 
-/// Matches default() but for const support
-pub const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
-	transferability: CrossChainTransferability::None,
-	mintable: false,
-	permissioned: false,
-	pool_currency: false,
-	local_representation: None,
-};
+	fn general_currency_index(&self) -> Option<GeneralCurrencyIndex<u128, GeneralCurrencyPrefix>> {
+		TryFrom::try_from(*&self.id()).ok()
+	}
+}
 
 pub fn price_to_currency<N: FixedPointNumber<Inner = Balance>>(
 	price: N,
@@ -86,7 +83,7 @@ impl CurrencyInfo for Usd6 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
@@ -112,7 +109,7 @@ impl CurrencyInfo for Usd12 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
@@ -138,7 +135,7 @@ impl CurrencyInfo for Usd18 {
 	fn custom(&self) -> CustomMetadata {
 		CustomMetadata {
 			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
+			..Default::default()
 		}
 	}
 }
@@ -153,7 +150,7 @@ pub fn register_currency<T: Runtime>(
 ) {
 	let mut meta = currency.metadata();
 	adaptor(&mut meta);
-	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+	assert_ok!(orml_asset_registry::module::Pallet::<T>::register_asset(
 		<T as frame_system::Config>::RuntimeOrigin::root(),
 		meta,
 		Some(currency.id())

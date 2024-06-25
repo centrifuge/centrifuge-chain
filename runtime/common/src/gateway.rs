@@ -17,9 +17,10 @@ use sp_runtime::traits::AccountIdConversion;
 
 use crate::account_conversion::AccountConverter;
 
-pub fn get_gateway_account<T: pallet_evm_chain_id::Config + parachain_info::Config>() -> AccountId {
+pub fn get_gateway_account<T: pallet_evm_chain_id::Config + staging_parachain_info::Config>(
+) -> AccountId {
 	let sender_account: AccountId =
-		Sibling::from(parachain_info::Pallet::<T>::get()).into_account_truncating();
+		Sibling::from(staging_parachain_info::Pallet::<T>::get()).into_account_truncating();
 
 	let truncated_sender_account =
 		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20]);

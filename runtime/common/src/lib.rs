@@ -15,19 +15,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod account_conversion;
-pub mod apis;
-pub mod changes;
-pub mod evm;
-pub mod fees;
-pub mod gateway;
-pub mod migrations;
-pub mod oracle;
-pub mod origins;
-pub mod remarks;
-pub mod transfer_filter;
-pub mod xcm;
-
 use cfg_primitives::Balance;
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -43,6 +30,20 @@ use sp_runtime::{
 	DispatchError,
 };
 use sp_std::marker::PhantomData;
+
+pub mod account_conversion;
+pub mod apis;
+pub mod changes;
+pub mod evm;
+pub mod fees;
+pub mod gateway;
+pub mod migrations;
+pub mod oracle;
+pub mod origins;
+pub mod pool;
+pub mod remarks;
+pub mod transfer_filter;
+pub mod xcm;
 
 pub mod instances {
 	/// The rewards associated to block rewards
@@ -66,10 +67,6 @@ parameter_types! {
 	/// The native currency identifier of our currency id enum
 	/// to be used for Get<CurrencyId> types.
 	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
-
-	/// The hold identifier in our system to be used for
-	/// Get<()> types
-	pub const HoldId: HoldIdentifier = ();
 }
 
 pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
@@ -80,9 +77,6 @@ impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
 		T::fee_value(FeeKey::AllowanceCreation)
 	}
 }
-
-/// To be used with the transfer-allowlist pallet across runtimes
-pub type HoldIdentifier = ();
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -99,13 +93,13 @@ pub struct CurrencyED<T>(PhantomData<T>);
 impl<T> GetByKey<CurrencyId, Balance> for CurrencyED<T>
 where
 	T: pallet_balances::Config<Balance = Balance>
-		+ orml_asset_registry::Config<AssetId = CurrencyId, Balance = Balance>,
+		+ orml_asset_registry::module::Config<AssetId = CurrencyId, Balance = Balance>,
 {
 	fn get(currency_id: &CurrencyId) -> Balance {
 		match currency_id {
 			CurrencyId::Native => T::ExistentialDeposit::get(),
 			CurrencyId::Staking(StakingCurrency::BlockRewards) => T::ExistentialDeposit::get(),
-			currency_id => orml_asset_registry::Pallet::<T>::metadata(currency_id)
+			currency_id => orml_asset_registry::module::Pallet::<T>::metadata(currency_id)
 				.map(|metadata| metadata.existential_deposit)
 				.unwrap_or_default(),
 		}
@@ -126,12 +120,9 @@ where
 		>,
 {
 	let input_prices: PriceCollectionInput<T> =
-		if let Ok(prices) = pallet_loans::Pallet::<T>::registered_prices(pool_id) {
-			PriceCollectionInput::Custom(prices.try_into().map_err(|_| {
-				DispatchError::Other("Map expected to fit as it is coming from loans itself.")
-			})?)
-		} else {
-			PriceCollectionInput::Empty
+		match pallet_loans::Pallet::<T>::registered_prices(pool_id) {
+			Ok(_) => PriceCollectionInput::FromRegistry,
+			Err(_) => PriceCollectionInput::Empty,
 		};
 
 	update_nav_with_input::<T>(pool_id, input_prices)
@@ -299,16 +290,21 @@ pub mod asset_registry {
 
 /// Module for investment portfolio common to all runtimes
 pub mod investment_portfolios {
-	use cfg_primitives::{Balance, PoolId, TrancheId};
+	use cfg_primitives::{AccountId, Balance, PoolId};
 	use cfg_traits::{
-		investments::{InvestmentCollector, TrancheCurrency},
-		PoolInspect, Seconds,
+		investments::{InvestmentCollector, TrancheCurrency as _},
+		PoolInspect,
 	};
-	use cfg_types::{investments::InvestmentPortfolio, tokens::CurrencyId};
+	use cfg_types::{
+		investments::InvestmentPortfolio,
+		tokens::{CurrencyId, TrancheCurrency},
+	};
 	use frame_support::traits::{
 		fungibles,
 		tokens::{Fortitude, Preservation},
 	};
+	use fungibles::{Inspect, InspectHold};
+	use sp_runtime::DispatchError;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
@@ -317,76 +313,56 @@ pub mod investment_portfolios {
 	/// NOTE: Moving inner scope to any pallet would introduce tight(er)
 	/// coupling due to requirement of iterating over storage maps which in turn
 	/// require the pallet's Config trait.
-	pub fn get_account_portfolio<T, PoolInspector>(
-		investor: <T as frame_system::Config>::AccountId,
-	) -> Vec<(
-		<T as pallet_investments::Config>::InvestmentId,
-		InvestmentPortfolio<Balance, CurrencyId>,
-	)>
+	#[allow(clippy::type_complexity)]
+	pub fn get_account_portfolio<T>(
+		investor: AccountId,
+	) -> Result<Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)>, DispatchError>
 	where
-		T: frame_system::Config
-			+ pallet_investments::Config
-			+ orml_tokens::Config
-			+ pallet_restricted_tokens::Config,
-		<T as pallet_investments::Config>::InvestmentId: TrancheCurrency<PoolId, TrancheId>
-			+ Into<<T as orml_tokens::Config>::CurrencyId>
-			+ Ord
-			+ Into<<T as pallet_restricted_tokens::Config>::CurrencyId>,
-		CurrencyId: From<<T as orml_tokens::Config>::CurrencyId>
-			+ From<<T as pallet_restricted_tokens::Config>::CurrencyId>,
-		<T as pallet_restricted_tokens::Config>::CurrencyId:
-			From<<T as orml_tokens::Config>::CurrencyId>,
-		Balance: From<<T as pallet_investments::Config>::Amount>
-			+ From<<T as pallet_restricted_tokens::Config>::Balance>,
-		PoolInspector: PoolInspect<
-			<T as frame_system::Config>::AccountId,
-			<T as pallet_restricted_tokens::Config>::CurrencyId,
-			PoolId = PoolId,
-			TrancheId = TrancheId,
-			Moment = Seconds,
-		>,
+		T: frame_system::Config<AccountId = AccountId>
+			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
+			+ orml_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
+			+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
+			+ pallet_pool_system::Config<PoolId = PoolId, CurrencyId = CurrencyId>,
 	{
-		let mut portfolio = BTreeMap::<
-			<T as pallet_investments::Config>::InvestmentId,
-			InvestmentPortfolio<Balance, CurrencyId>,
-		>::new();
+		let mut portfolio =
+			BTreeMap::<TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>>::new();
 
 		// Denote current tranche token balances before dry running collecting
-		orml_tokens::Accounts::<T>::iter_key_prefix(&investor).for_each(|currency| {
-			if let CurrencyId::Tranche(pool_id, tranche_id) = CurrencyId::from(currency) {
-				let pool_currency = PoolInspector::currency_for(pool_id)
-					.expect("Pool must exist; qed")
-					.into();
-				let free_balance = <pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
-					T::AccountId,
-				>>::reducible_balance(
-					currency.into(),
+		for currency in orml_tokens::Accounts::<T>::iter_key_prefix(&investor) {
+			if let CurrencyId::Tranche(pool_id, tranche_id) = currency {
+				let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(pool_id)
+					.ok_or(DispatchError::Other("Pool must exist; qed"))?;
+
+				let free_balance = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
+					currency,
 					&investor,
 					Preservation::Preserve,
 					Fortitude::Polite,
 				);
-				let reserved_balance = <pallet_restricted_tokens::Pallet<T> as fungibles::InspectHold<
-					T::AccountId,
-				>>::balance_on_hold(currency.into(), &(), &investor);
+				let reserved_balance = pallet_restricted_tokens::Pallet::<T>::balance_on_hold(
+					currency,
+					&(),
+					&investor,
+				);
 
 				portfolio
 					.entry(TrancheCurrency::generate(pool_id, tranche_id))
 					.and_modify(|p| {
-						p.free_tranche_tokens = free_balance.into();
-						p.reserved_tranche_tokens = reserved_balance.into();
+						p.free_tranche_tokens = free_balance;
+						p.reserved_tranche_tokens = reserved_balance;
 					})
 					.or_insert(
 						InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency)
-							.with_free_tranche_tokens(free_balance.into())
-							.with_reserved_tranche_tokens(reserved_balance.into()),
+							.with_free_tranche_tokens(free_balance)
+							.with_reserved_tranche_tokens(reserved_balance),
 					);
 			}
-		});
+		}
 
 		// Set pending invest currency and claimable tranche tokens
-		pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
-			let pool_currency =
-				PoolInspector::currency_for(invest_id.of_pool()).expect("Pool must exist; qed");
+		for invest_id in pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor) {
+			let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(invest_id.of_pool())
+				.ok_or(DispatchError::Other("Pool must exist; qed"))?;
 
 			// Collect such that we can determine claimable tranche tokens
 			// NOTE: Does not modify storage since RtAPI is readonly
@@ -395,44 +371,40 @@ pub mod investment_portfolios {
 			let amount = pallet_investments::InvestOrders::<T>::get(&investor, invest_id)
 				.map(|order| order.amount())
 				.unwrap_or_default();
-			let free_tranche_tokens_new: Balance = <pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
-				T::AccountId,
-			>>::reducible_balance(
+			let free_tranche_tokens_new = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 				invest_id.into(),
 				&investor,
 				Preservation::Preserve,
 				Fortitude::Polite,
-			).into();
+			);
 
 			portfolio
 				.entry(invest_id)
 				.and_modify(|p| {
-					p.pending_invest_currency = amount.into();
+					p.pending_invest_currency = amount;
 					if p.free_tranche_tokens < free_tranche_tokens_new {
 						p.claimable_tranche_tokens =
 							free_tranche_tokens_new.saturating_sub(p.free_tranche_tokens);
 					}
 				})
 				.or_insert(
-					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency.into())
-						.with_pending_invest_currency(amount.into())
+					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency)
+						.with_pending_invest_currency(amount)
 						.with_claimable_tranche_tokens(free_tranche_tokens_new),
 				);
-		});
+		}
 
 		// Set pending tranche tokens and claimable invest currency
-		pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
-			let pool_currency =
-				PoolInspector::currency_for(invest_id.of_pool()).expect("Pool must exist; qed");
-			let balance_before: Balance =
-					<pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
-						T::AccountId,
-					>>::reducible_balance(
-						pool_currency,
-						&investor,
-						Preservation::Preserve,
-						Fortitude::Polite,
-					).into();
+		for invest_id in pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor) {
+			let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(invest_id.of_pool())
+				.ok_or(DispatchError::Other("Pool must exist; qed"))?;
+
+			let balance_before = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
+				pool_currency,
+				&investor,
+				Preservation::Preserve,
+				Fortitude::Polite,
+			);
 
 			// Collect such that we can determine claimable invest currency
 			// NOTE: Does not modify storage since RtAPI is readonly
@@ -441,32 +413,29 @@ pub mod investment_portfolios {
 			let amount = pallet_investments::RedeemOrders::<T>::get(&investor, invest_id)
 				.map(|order| order.amount())
 				.unwrap_or_default();
-			let balance_after: Balance =
-					<pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
-						T::AccountId,
-					>>::reducible_balance(
-						pool_currency,
-						&investor,
-						Preservation::Preserve,
-						Fortitude::Polite,
-					).into();
+			let balance_after = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
+				pool_currency,
+				&investor,
+				Preservation::Preserve,
+				Fortitude::Polite,
+			);
 
 			portfolio
 				.entry(invest_id)
 				.and_modify(|p| {
-					p.pending_redeem_tranche_tokens = amount.into();
+					p.pending_redeem_tranche_tokens = amount;
 					if balance_before < balance_after {
 						p.claimable_currency = balance_after.saturating_sub(balance_before);
 					}
 				})
 				.or_insert(
-					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency.into())
-						.with_pending_redeem_tranche_tokens(amount.into())
+					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency)
+						.with_pending_redeem_tranche_tokens(amount)
 						.with_claimable_currency(balance_after),
 				);
-		});
+		}
 
-		portfolio.into_iter().collect()
+		Ok(portfolio.into_iter().collect())
 	}
 }
 
@@ -488,7 +457,7 @@ pub mod xcm_transactor {
 	}
 
 	impl XcmTransact for NullTransactor {
-		fn destination(self) -> staging_xcm::latest::MultiLocation {
+		fn destination(self) -> staging_xcm::latest::Location {
 			Default::default()
 		}
 	}
@@ -807,5 +776,42 @@ pub mod rewards {
 	frame_support::parameter_types! {
 		#[derive(scale_info::TypeInfo)]
 		pub const SingleCurrencyMovement: u32 = 1;
+	}
+}
+
+/// Helpers to deal with configuring the message queue in the runtime.
+pub mod message_queue {
+	use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+	use frame_support::traits::{QueueFootprint, QueuePausedQuery};
+	use pallet_message_queue::OnQueueChanged;
+	use sp_std::marker::PhantomData;
+
+	pub struct NarrowOriginToSibling<Inner>(PhantomData<Inner>);
+	impl<Inner: QueuePausedQuery<ParaId>> QueuePausedQuery<AggregateMessageOrigin>
+		for NarrowOriginToSibling<Inner>
+	{
+		fn is_paused(origin: &AggregateMessageOrigin) -> bool {
+			match origin {
+				AggregateMessageOrigin::Sibling(id) => Inner::is_paused(id),
+				_ => false,
+			}
+		}
+	}
+
+	impl<Inner: OnQueueChanged<ParaId>> OnQueueChanged<AggregateMessageOrigin>
+		for NarrowOriginToSibling<Inner>
+	{
+		fn on_queue_changed(origin: AggregateMessageOrigin, fp: QueueFootprint) {
+			if let AggregateMessageOrigin::Sibling(id) = origin {
+				Inner::on_queue_changed(id, fp)
+			}
+		}
+	}
+
+	pub struct ParaIdToSibling;
+	impl sp_runtime::traits::Convert<ParaId, AggregateMessageOrigin> for ParaIdToSibling {
+		fn convert(para_id: ParaId) -> AggregateMessageOrigin {
+			AggregateMessageOrigin::Sibling(para_id)
+		}
 	}
 }

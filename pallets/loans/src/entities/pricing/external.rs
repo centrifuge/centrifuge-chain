@@ -9,11 +9,12 @@ use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{cmp::min, collections::btree_map::BTreeMap};
 
 use crate::{
 	entities::interest::ActiveInterestRate,
 	pallet::{Config, Error},
+	PriceOf,
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
@@ -76,6 +77,9 @@ pub struct ExternalPricing<T: Config> {
 	/// borrow/repay and the current oracle price.
 	/// See [`ExternalAmount::settlement_price`].
 	pub max_price_variation: T::Rate,
+
+	/// If the pricing is estimated with a linear pricing model.
+	pub with_linear_pricing: bool,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -150,60 +154,94 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	fn linear_accrual_price(&self, maturity: Seconds) -> Result<T::Balance, DispatchError> {
-		Ok(cfg_utils::math::y_coord_in_rect(
-			(self.settlement_price_updated, self.latest_settlement_price),
-			(maturity, self.info.notional),
-			T::Time::now(),
-		)?)
+	fn maybe_with_linear_accrual_price(
+		&self,
+		maturity: Option<Seconds>,
+		price: T::Balance,
+		price_last_updated: Seconds,
+	) -> Result<T::Balance, DispatchError> {
+		if let (Some(maturity), true) = (maturity, self.info.with_linear_pricing) {
+			if min(price_last_updated, maturity) == maturity {
+				// We can not have 2 'xs' with different 'y' in a rect.
+				// That only happens at maturity
+				return Ok(self.info.notional);
+			}
+
+			return Ok(cfg_utils::math::y_coord_in_rect(
+				(min(price_last_updated, maturity), price),
+				(maturity, self.info.notional),
+				min(T::Time::now(), maturity),
+			)?);
+		}
+
+		Ok(price)
 	}
 
 	pub fn current_price(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
-			Ok(data) => data.0,
-			Err(_) => self.linear_accrual_price(maturity)?,
-		})
+		self.current_price_inner(
+			maturity,
+			T::PriceRegistry::get(&self.info.price_id, &pool_id).ok(),
+		)
 	}
 
-	pub fn outstanding_principal(
+	fn current_price_inner(
+		&self,
+		maturity: Option<Seconds>,
+		oracle: Option<PriceOf<T>>,
+	) -> Result<T::Balance, DispatchError> {
+		if let Some((oracle_price, oracle_provided_at)) = oracle {
+			self.maybe_with_linear_accrual_price(
+				maturity,
+				oracle_price,
+				oracle_provided_at.into_seconds(),
+			)
+		} else {
+			self.maybe_with_linear_accrual_price(
+				maturity,
+				self.latest_settlement_price,
+				self.settlement_price_updated,
+			)
+		}
+	}
+
+	pub fn outstanding_notional_principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.outstanding_quantity
+			.ensure_mul_int(self.info.notional)?)
+	}
+
+	pub fn outstanding_priced_principal(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
 		let price = self.current_price(pool_id, maturity)?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
 	pub fn outstanding_interest(&self) -> Result<T::Balance, DispatchError> {
-		let outstanding_notional = self
-			.outstanding_quantity
-			.ensure_mul_int(self.info.notional)?;
-
 		let debt = self.interest.current_debt()?;
-		Ok(debt.ensure_sub(outstanding_notional)?)
+		Ok(debt.ensure_sub(self.outstanding_notional_principal()?)?)
 	}
 
 	pub fn present_value(
 		&self,
 		pool_id: T::PoolId,
-		maturity: Seconds,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
-		self.outstanding_principal(pool_id, maturity)
+		self.outstanding_priced_principal(pool_id, maturity)
 	}
 
 	pub fn present_value_cached(
 		&self,
-		cache: &BTreeMap<T::PriceId, T::Balance>,
-		maturity: Seconds,
+		cache: &BTreeMap<T::PriceId, PriceOf<T>>,
+		maturity: Option<Seconds>,
 	) -> Result<T::Balance, DispatchError> {
-		let price = match cache.get(&self.info.price_id) {
-			Some(data) => *data,
-			None => self.linear_accrual_price(maturity)?,
-		};
+		let price = self.current_price_inner(maturity, cache.get(&self.info.price_id).copied())?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -286,5 +324,97 @@ impl<T: Config> ExternalActivePricing<T> {
 		self.settlement_price_updated = T::Time::now();
 
 		Ok(())
+	}
+}
+
+/// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
+pub mod v3 {
+	use cfg_traits::Seconds;
+	use parity_scale_codec::{Decode, Encode};
+
+	use crate::{
+		entities::{
+			interest::ActiveInterestRate,
+			pricing::{external::MaxBorrowAmount, internal, internal::InternalActivePricing},
+		},
+		Config,
+	};
+
+	#[derive(Encode, Decode)]
+	pub enum Pricing<T: Config> {
+		Internal(internal::InternalPricing<T>),
+		External(ExternalPricing<T>),
+	}
+
+	impl<T: Config> Pricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> crate::entities::pricing::Pricing<T> {
+			match self {
+				Pricing::Internal(i) => crate::entities::pricing::Pricing::Internal(i),
+				Pricing::External(e) => {
+					crate::entities::pricing::Pricing::External(e.migrate(with_linear_pricing))
+				}
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct ExternalPricing<T: Config> {
+		pub price_id: T::PriceId,
+		pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
+		pub notional: T::Balance,
+		pub max_price_variation: T::Rate,
+	}
+
+	#[derive(Encode, Decode)]
+	pub enum ActivePricing<T: Config> {
+		Internal(InternalActivePricing<T>),
+		External(ExternalActivePricing<T>),
+	}
+
+	impl<T: Config> ActivePricing<T> {
+		pub fn migrate(
+			self,
+			with_linear_pricing: bool,
+		) -> crate::entities::pricing::ActivePricing<T> {
+			match self {
+				ActivePricing::Internal(i) => crate::entities::pricing::ActivePricing::Internal(i),
+				ActivePricing::External(e) => crate::entities::pricing::ActivePricing::External(
+					e.migrate(with_linear_pricing),
+				),
+			}
+		}
+	}
+
+	#[derive(Encode, Decode)]
+	pub struct ExternalActivePricing<T: Config> {
+		info: ExternalPricing<T>,
+		outstanding_quantity: T::Quantity,
+		pub interest: ActiveInterestRate<T>,
+		latest_settlement_price: T::Balance,
+		settlement_price_updated: Seconds,
+	}
+
+	impl<T: Config> ExternalActivePricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ExternalActivePricing<T> {
+			super::ExternalActivePricing {
+				info: self.info.migrate(with_linear_pricing),
+				outstanding_quantity: self.outstanding_quantity,
+				interest: self.interest,
+				latest_settlement_price: self.latest_settlement_price,
+				settlement_price_updated: self.settlement_price_updated,
+			}
+		}
+	}
+
+	impl<T: Config> ExternalPricing<T> {
+		pub fn migrate(self, with_linear_pricing: bool) -> super::ExternalPricing<T> {
+			super::ExternalPricing {
+				price_id: self.price_id,
+				max_borrow_amount: self.max_borrow_amount,
+				notional: self.notional,
+				max_price_variation: self.max_price_variation,
+				with_linear_pricing,
+			}
+		}
 	}
 }

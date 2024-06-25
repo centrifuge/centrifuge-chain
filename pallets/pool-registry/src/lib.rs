@@ -39,7 +39,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand,
 };
 use sp_std::vec::Vec;
-use staging_xcm::VersionedMultiLocation;
+use staging_xcm::VersionedLocation;
 pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -431,7 +431,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> cfg_traits::PoolMetadata<T::Balance, VersionedMultiLocation> for Pallet<T> {
+	impl<T: Config> cfg_traits::PoolMetadata<T::Balance, VersionedLocation> for Pallet<T> {
 		type AssetMetadata = AssetMetadataOf<T::AssetRegistry>;
 		type CustomMetadata = CustomMetadata;
 		type PoolId = T::PoolId;
@@ -471,7 +471,7 @@ pub mod pallet {
 			name: Option<Vec<u8>>,
 			symbol: Option<Vec<u8>>,
 			existential_deposit: Option<T::Balance>,
-			location: Option<Option<VersionedMultiLocation>>,
+			location: Option<Option<VersionedLocation>>,
 			additional: Option<Self::CustomMetadata>,
 		) -> DispatchResult {
 			let currency_id = T::TrancheCurrency::generate(pool_id, tranche).into();

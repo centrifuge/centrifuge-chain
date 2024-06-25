@@ -22,7 +22,6 @@ use sp_runtime::{
 	traits::{checked_pow, Zero},
 	FixedPointNumber,
 };
-use sp_std::vec; // required for #[benchmarks]
 
 use super::*;
 

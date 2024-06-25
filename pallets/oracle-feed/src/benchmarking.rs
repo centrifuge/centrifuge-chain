@@ -3,7 +3,6 @@ use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_support::traits::OriginTrait;
 use frame_system::RawOrigin;
 use parity_scale_codec::Decode;
-use sp_std::vec; // required for #[benchmarks]
 
 use crate::pallet::{Call, Config, Pallet};
 

@@ -33,7 +33,7 @@ use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::DispatchError,
 	parameter_types,
-	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
 use frame_system::EnsureSigned;
@@ -115,7 +115,23 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 	type PoolId = PoolId;
 }
 
+pub struct All;
+impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
+	type Success = ();
+
+	fn try_origin(_: RuntimeOrigin, _: &PoolId) -> Result<Self::Success, RuntimeOrigin> {
+		Ok(())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
+		Ok(RawOrigin::Root.into())
+	}
+}
+
 impl pallet_pool_system::Config for Test {
+	type AdminOrigin = All;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
