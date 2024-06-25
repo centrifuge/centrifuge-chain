@@ -76,14 +76,8 @@ fn environment_for_evm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
 	env.parachain_state_mut(|| {
 		pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
 
-		utils::evm::mint_balance_into_derived_account::<T>(
-			AXELAR_CONTRACT_ADDRESS,
-			cfg(1_000_000_000),
-		);
-		utils::evm::mint_balance_into_derived_account::<T>(
-			get_gateway_h160_account::<T>(),
-			cfg(1_000_000),
-		);
+		utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
+		utils::evm::mint_balance_into_derived_account::<T>(get_gateway_h160_account::<T>(), cfg(1));
 	});
 
 	env
@@ -140,12 +134,9 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 	});
 
 	env.pass(Blocks::UntilEvent {
-		event: expected_event.clone().into(),
+		event: expected_event.into(),
 		limit: 3,
 	});
-
-	env.check_event(expected_event)
-		.expect("expected OutboundMessageExecutionSuccess event");
 }
 
 #[test_runtimes(all)]
