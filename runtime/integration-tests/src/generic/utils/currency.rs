@@ -9,17 +9,6 @@ use staging_xcm::VersionedLocation;
 
 use crate::generic::config::Runtime;
 
-pub fn default_metadata() -> AssetMetadata {
-	AssetMetadata {
-		decimals: 0,
-		name: Default::default(),
-		symbol: Default::default(),
-		existential_deposit: 0,
-		location: None,
-		additional: Default::default(),
-	}
-}
-
 const fn amount_pow(amount: Balance, exp: u32) -> Balance {
 	amount * 10u128.pow(exp)
 }

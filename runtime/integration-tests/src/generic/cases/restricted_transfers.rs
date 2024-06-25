@@ -15,7 +15,8 @@ use cfg_types::{
 	domain_address::DomainAddress,
 	locations::RestrictedTransferLocation,
 	tokens::{
-		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata, FilterCurrency,
+		default_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		FilterCurrency,
 	},
 };
 use cumulus_primitives_core::WeightLimit;
@@ -33,7 +34,7 @@ use crate::{
 		env::Env,
 		envs::runtime_env::RuntimeEnv,
 		utils::{
-			currency::{cfg, default_metadata, CurrencyInfo, CustomCurrency},
+			currency::{cfg, CurrencyInfo, CustomCurrency},
 			genesis,
 			genesis::Genesis,
 			xcm::{account_location, transferable_metadata},

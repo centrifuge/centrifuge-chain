@@ -1,11 +1,9 @@
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{default_metadata, CurrencyId};
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 
 use crate::{
-	generic::{
-		config::Runtime, env::Env, envs::runtime_env::RuntimeEnv, utils::currency::default_metadata,
-	},
+	generic::{config::Runtime, env::Env, envs::runtime_env::RuntimeEnv},
 	utils::orml_asset_registry,
 };
 

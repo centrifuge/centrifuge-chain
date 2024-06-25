@@ -1,5 +1,7 @@
 use cfg_primitives::AccountId;
-use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CustomMetadata};
+use cfg_types::tokens::{
+	default_metadata, AssetMetadata, CrossChainTransferability, CustomMetadata,
+};
 use frame_support::{assert_ok, dispatch::RawOrigin};
 use polkadot_parachain_primitives::primitives::Id;
 use staging_xcm::{
@@ -15,7 +17,6 @@ use crate::generic::{
 		handle::{PARA_ID, SIBLING_ID},
 		FudgeEnv, FudgeSupport, RelayRuntime,
 	},
-	utils::currency::default_metadata,
 };
 
 pub fn enable_relay_to_para_communication<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {

@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency},
-	liquidity_pools::{Codec, InboundQueue, OutboundQueue},
+	liquidity_pools::{InboundQueue, OutboundQueue},
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
@@ -30,7 +30,7 @@ use liquidity_pools_gateway_routers::{
 use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
+use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::{
@@ -52,10 +52,7 @@ use crate::{
 		config::Runtime,
 		env::{Blocks, Env},
 		envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
-		utils::{
-			democracy::execute_via_democracy, genesis, genesis::Genesis,
-			xcm::enable_para_to_sibling_communication,
-		},
+		utils::{genesis, genesis::Genesis, xcm::enable_para_to_sibling_communication},
 	},
 	utils::{accounts::Keyring, orml_asset_registry},
 };
@@ -522,7 +519,7 @@ mod utils {
 		// are transferred from this account instead of minting
 		assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 			default_investment_id::<T>().into(),
-			&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+			&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 			amount
 		));
 
@@ -701,128 +698,6 @@ mod add_allow_upgrade {
 	use cfg_types::tokens::LiquidityPoolsWrappedToken;
 
 	use super::*;
-
-	#[test_runtimes([development])]
-	fn add_pool<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let pool_id = POOL_ID;
-
-			// Verify that the pool must exist before we can call
-			// pallet_liquidity_pools::Pallet::<T>::add_pool
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_pool(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::PoolNotFound
-			);
-
-			// Now create the pool
-			create_ausd_pool::<T>(pool_id);
-
-			// Verify ALICE can't call `add_pool` given she is not the `PoolAdmin`
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_pool(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::NotPoolAdmin
-			);
-
-			// Verify that it works if it's BOB calling it (the pool admin)
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
-				RawOrigin::Signed(POOL_ADMIN.into()).into(),
-				pool_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn add_tranche<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			// Now create the pool
-			let pool_id = POOL_ID;
-			create_ausd_pool::<T>(pool_id);
-
-			// Verify we can't call pallet_liquidity_pools::Pallet::<T>::add_tranche with a
-			// non-existing tranche_id
-			let nonexistent_tranche = [71u8; 16];
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_tranche(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					nonexistent_tranche,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::TrancheNotFound
-			);
-			let tranche_id = default_tranche_id::<T>(pool_id);
-
-			// Verify ALICE can't call `add_tranche` given she is not the `PoolAdmin`
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_tranche(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::NotPoolAdmin
-			);
-
-			// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
-			// successfully when called by the PoolAdmin with the right pool + tranche id
-			// pair.
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_tranche(
-				RawOrigin::Signed(POOL_ADMIN.into()).into(),
-				pool_id,
-				tranche_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-
-			// Edge case: Should throw if tranche exists but metadata does not exist
-			let tranche_currency_id = CurrencyId::Tranche(pool_id, tranche_id);
-
-			orml_asset_registry::Metadata::<T>::remove(tranche_currency_id);
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-					RawOrigin::Signed(POOL_ADMIN.into()).into(),
-					pool_id,
-					tranche_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::TrancheMetadataNotFound
-			);
-		});
-	}
 
 	#[test_runtimes([development])]
 	fn update_member<T: Runtime + FudgeSupport>() {
@@ -1670,8 +1545,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1720,8 +1595,8 @@ mod foreign_investments {
 				let invest_amount: u128 = 10 * decimals(12);
 				let decrease_amount = invest_amount / 3;
 				let final_amount = invest_amount - decrease_amount;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1811,8 +1686,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1911,12 +1786,12 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				enable_liquidity_pool_transferability::<T>(currency_id);
 
 				// Create new pool
@@ -2058,12 +1933,12 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
 				do_initial_increase_investment::<T>(
 					pool_id,
@@ -2290,8 +2165,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -2313,7 +2188,7 @@ mod foreign_investments {
 				// Increasing again should just bump redeeming amount
 				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 					default_investment_id::<T>().into(),
-					&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+					&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 					amount
 				));
 				let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
@@ -2345,12 +2220,12 @@ mod foreign_investments {
 				let redeem_amount = 10 * decimals(12);
 				let decrease_amount = redeem_amount / 3;
 				let final_amount = redeem_amount - decrease_amount;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 
 				// Create new pool
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -2463,12 +2338,12 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 
 				// Create new pool
 				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -2561,8 +2436,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -2711,8 +2586,8 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -2922,8 +2797,10 @@ mod foreign_investments {
 						let pool_id = POOL_ID;
 						let invest_amount: u128 = 10 * decimals(12);
 						let decrease_amount = invest_amount + 1;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -2968,8 +2845,10 @@ mod foreign_investments {
 						let pool_id = POOL_ID;
 						let redeem_amount: u128 = 10 * decimals(12);
 						let decrease_amount = redeem_amount + 1;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3016,8 +2895,10 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3095,8 +2976,10 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -3111,7 +2994,7 @@ mod foreign_investments {
 						// Mint more into DomainLocator required for subsequent invest attempt
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							1,
 						));
 
@@ -3184,8 +3067,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3260,8 +3145,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3277,7 +3164,7 @@ mod foreign_investments {
 						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							amount,
 						));
 
@@ -3340,8 +3227,10 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor: AccountId =
-							AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+						let investor = AccountConverter::domain_account_to_account(
+							DOMAIN_MOONBEAM,
+							Keyring::Bob.id(),
+						);
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3357,7 +3246,7 @@ mod foreign_investments {
 						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
 						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 							default_investment_id::<T>().into(),
-							&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 							amount,
 						));
 
@@ -3413,14 +3302,14 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
 				let invest_amount_pool_denominated: u128 = 6 * decimals(18);
 				let sending_domain_locator =
-					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
 				let trader: AccountId = Keyring::Alice.into();
 				create_currency_pool::<T>(pool_id, pool_currency, pool_currency_decimals.into());
 
@@ -3527,8 +3416,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
@@ -3666,8 +3555,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let trader: AccountId = Keyring::Alice.into();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -3781,8 +3670,8 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor: AccountId =
-					AccountConverter::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
+				let investor =
+					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
@@ -3865,118 +3754,6 @@ mod foreign_investments {
 				}));
 			});
 		}
-	}
-}
-
-mod transfers {
-	use super::*;
-
-	// TODO: Must be moved to lp/transfers.rs (?) or to UT? It seems more an UT.
-
-	#[test_runtimes([development])]
-	fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let initial_balance = 2 * AUSD_ED;
-			let amount = initial_balance / 2;
-			let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
-			let currency_id = AUSD_CURRENCY_ID;
-			let source_account = Keyring::Charlie;
-
-			// Mint sufficient balance
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				0
-			);
-			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-				currency_id,
-				&source_account.into(),
-				initial_balance
-			));
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				initial_balance
-			);
-
-			// Only `ForeignAsset` can be transferred
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Tranche(42u64, [0u8; 16]),
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::InvalidTransferCurrency
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					CurrencyId::Native,
-					dest_address.clone(),
-					amount,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-
-			// Cannot transfer as long as cross chain transferability is disabled
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					currency_id,
-					dest_address.clone(),
-					initial_balance,
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-
-			// Enable LiquidityPools transferability
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			// Cannot transfer more than owned
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(source_account.into()).into(),
-					currency_id,
-					dest_address.clone(),
-					initial_balance.saturating_add(1),
-				),
-				pallet_liquidity_pools::Error::<T>::BalanceTooLow
-			);
-
-			let pre_total_issuance = orml_tokens::Pallet::<T>::total_issuance(currency_id);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
-				RawOrigin::Signed(source_account.into()).into(),
-				currency_id,
-				dest_address.clone(),
-				amount,
-			));
-
-			assert_eq!(
-				orml_tokens::Pallet::<T>::total_issuance(currency_id),
-				pre_total_issuance - amount
-			);
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
-				initial_balance - amount
-			);
-		});
 	}
 }
 
@@ -4292,191 +4069,5 @@ mod routers {
 		fn submit_axelar_xcm<T: Runtime + FudgeSupport>() {
 			submit_test_fn::<T>(get_axelar_xcm_router_fn::<T>());
 		}
-	}
-}
-
-mod gateway {
-	use super::*;
-
-	#[test_runtimes([development])]
-	fn set_domain_router<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::council_members::<T>(get_council_members()))
-				.storage(),
-		);
-
-		let test_domain = Domain::EVM(1);
-
-		let axelar_contract_address = H160::from_low_u64_be(1);
-		let axelar_contract_code: Vec<u8> = vec![0, 0, 0];
-		let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
-		let liquidity_pools_contract_address = H160::from_low_u64_be(2);
-
-		env.parachain_state_mut(|| {
-			pallet_evm::AccountCodes::<T>::insert(axelar_contract_address, axelar_contract_code)
-		});
-
-		let evm_domain = EVMDomain {
-			target_contract_address: axelar_contract_address,
-			target_contract_hash: axelar_contract_hash,
-			fee_values: FeeValues {
-				value: U256::from(10),
-				gas_limit: U256::from(1_000_000),
-				gas_price: U256::from(10),
-			},
-		};
-
-		let axelar_evm_router = AxelarEVMRouter::<T> {
-			router: EVMRouter {
-				evm_domain,
-				_marker: Default::default(),
-			},
-			evm_chain: BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
-				"ethereum".as_bytes().to_vec(),
-			)
-			.unwrap(),
-			_marker: Default::default(),
-			liquidity_pools_contract_address,
-		};
-
-		let test_router = DomainRouter::<T>::AxelarEVM(axelar_evm_router);
-
-		let set_domain_router_call =
-			set_domain_router_call(test_domain.clone(), test_router.clone());
-
-		let council_threshold = 2;
-		let voting_period = 3;
-
-		execute_via_democracy::<T>(
-			&mut env,
-			get_council_members(),
-			set_domain_router_call,
-			council_threshold,
-			voting_period,
-			0,
-			0,
-		);
-
-		env.parachain_state(|| {
-			let router = pallet_liquidity_pools_gateway::Pallet::<T>::domain_routers(test_domain)
-				.expect("domain router is set");
-
-			assert!(router.eq(&test_router));
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn add_remove_instances<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::council_members::<T>(get_council_members()))
-				.storage(),
-		);
-
-		let test_instance = DomainAddress::EVM(1, [0; 20]);
-
-		let add_instance_call = add_instance_call::<T>(test_instance.clone());
-
-		let council_threshold = 2;
-		let voting_period = 3;
-
-		let (prop_index, ref_index) = execute_via_democracy::<T>(
-			&mut env,
-			get_council_members(),
-			add_instance_call,
-			council_threshold,
-			voting_period,
-			0,
-			0,
-		);
-
-		env.parachain_state(|| {
-			assert!(
-				pallet_liquidity_pools_gateway::Allowlist::<T>::contains_key(
-					test_instance.domain(),
-					test_instance.clone()
-				)
-			);
-		});
-
-		let remove_instance_call = remove_instance_call::<T>(test_instance.clone());
-
-		execute_via_democracy::<T>(
-			&mut env,
-			get_council_members(),
-			remove_instance_call,
-			council_threshold,
-			voting_period,
-			prop_index,
-			ref_index,
-		);
-
-		env.parachain_state(|| {
-			assert!(
-				!pallet_liquidity_pools_gateway::Allowlist::<T>::contains_key(
-					test_instance.domain(),
-					test_instance.clone()
-				)
-			);
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn process_msg<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::council_members::<T>(get_council_members()))
-				.storage(),
-		);
-
-		let test_instance = DomainAddress::EVM(1, [0; 20]);
-
-		let add_instance_call = add_instance_call::<T>(test_instance.clone());
-
-		let council_threshold = 2;
-		let voting_period = 3;
-
-		execute_via_democracy::<T>(
-			&mut env,
-			get_council_members(),
-			add_instance_call,
-			council_threshold,
-			voting_period,
-			0,
-			0,
-		);
-
-		env.parachain_state(|| {
-			assert!(
-				pallet_liquidity_pools_gateway::Allowlist::<T>::contains_key(
-					test_instance.domain(),
-					test_instance.clone()
-				)
-			);
-		});
-
-		let msg = LiquidityPoolMessage::AddPool { pool_id: 123 };
-
-		let encoded_msg = msg.serialize();
-
-		let gateway_msg = BoundedVec::<
-			u8,
-			<T as pallet_liquidity_pools_gateway::Config>::MaxIncomingMessageSize,
-		>::try_from(encoded_msg)
-		.unwrap();
-
-		env.parachain_state_mut(|| {
-			assert_noop!(
-				pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
-					GatewayOrigin::Domain(test_instance).into(),
-					gateway_msg,
-				),
-				pallet_liquidity_pools::Error::<T>::InvalidIncomingMessage,
-			);
-		});
 	}
 }

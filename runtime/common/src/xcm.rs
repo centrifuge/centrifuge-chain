@@ -272,10 +272,7 @@ pub type LocationToAccountId<RelayNetwork> = (
 
 #[cfg(test)]
 mod test {
-	use cfg_mocks::{
-		pallet_mock_liquidity_pools, pallet_mock_routers, pallet_mock_try_convert, MessageMock,
-		RouterMock,
-	};
+	use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
 	use cfg_primitives::OutboundMessageNonce;
 	use frame_support::{assert_ok, derive_impl, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
@@ -288,18 +285,14 @@ mod test {
 
 	type AccountId = u64;
 
-	pub fn new_test_ext() -> sp_io::TestExternalities {
-		System::externalities()
-	}
-
 	// For testing the pallet, we construct a mock runtime.
 	frame_support::construct_runtime!(
 		pub enum Runtime {
 			System: frame_system,
 			Gateway: pallet_liquidity_pools_gateway,
 			MockLP: pallet_mock_liquidity_pools,
-			MockParaAsEvmChain: pallet_mock_try_convert::<Instance1>,
-			MockOriginRecovery: pallet_mock_try_convert::<Instance2>,
+			MockParaAsEvmChain: cfg_mocks::converter::pallet::<Instance1>,
+			MockOriginRecovery: cfg_mocks::converter::pallet::<Instance2>,
 		}
 	);
 
@@ -308,14 +301,12 @@ mod test {
 		type Block = frame_system::mocking::MockBlock<Runtime>;
 	}
 
-	impl pallet_mock_try_convert::Config<pallet_mock_try_convert::Instance1> for Runtime {
-		type Error = ();
+	impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance1> for Runtime {
 		type From = ParaId;
 		type To = EVMChainId;
 	}
 
-	impl pallet_mock_try_convert::Config<pallet_mock_try_convert::Instance2> for Runtime {
-		type Error = DispatchError;
+	impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance2> for Runtime {
 		type From = (Vec<u8>, Vec<u8>);
 		type To = DomainAddress;
 	}
@@ -348,7 +339,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_converts_correctly() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			let expected_address = DomainAddress::EVM(RELAYER_EVM_ID, RELAYER_ADDRESS);
 
 			assert_ok!(Gateway::add_relayer(
@@ -387,7 +378,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_fails_with_wrong_location() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			let expected_address = DomainAddress::EVM(RELAYER_EVM_ID, RELAYER_ADDRESS);
 
 			assert_ok!(Gateway::add_relayer(
@@ -415,7 +406,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_fails_if_relayer_not_set() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			MockParaAsEvmChain::mock_try_convert(|from| {
 				assert_eq!(from, RELAYER_PARA_ID);
 				Ok(RELAYER_EVM_ID)
@@ -445,7 +436,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_fails_if_para_to_evm_fails() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			let expected_address = DomainAddress::EVM(RELAYER_EVM_ID, RELAYER_ADDRESS);
 
 			assert_ok!(Gateway::add_relayer(
@@ -455,7 +446,7 @@ mod test {
 
 			MockParaAsEvmChain::mock_try_convert(|from| {
 				assert_eq!(from, RELAYER_PARA_ID);
-				Err(())
+				Err(DispatchError::Other(""))
 			});
 
 			let location = Location::new(
@@ -482,7 +473,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_fails_if_wrong_para() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			let expected_address = DomainAddress::EVM(RELAYER_EVM_ID, RELAYER_ADDRESS);
 
 			assert_ok!(Gateway::add_relayer(
@@ -492,7 +483,7 @@ mod test {
 
 			MockParaAsEvmChain::mock_try_convert(|from| {
 				assert_eq!(from, 1);
-				Err(())
+				Err(DispatchError::Other(""))
 			});
 
 			let location = Location::new(
@@ -519,7 +510,7 @@ mod test {
 
 	#[test]
 	fn lp_instance_relayer_fails_if_wrong_address() {
-		new_test_ext().execute_with(|| {
+		System::externalities().execute_with(|| {
 			let expected_address = DomainAddress::EVM(RELAYER_EVM_ID, RELAYER_ADDRESS);
 
 			assert_ok!(Gateway::add_relayer(
