@@ -4,16 +4,6 @@ const { blake2AsHex } = require('@polkadot/util-crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Constants
-const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
-const COUNCIL_PROPOSAL_BYTES = 90;
-const FAST_TRACK_VOTE_BLOCKS = 5;
-const FAST_TRACK_DELAY_BLOCKS = 0;
-// const MAX_COUNT_DOWN_BLOCKS = 30;
-// const POST_UPGRADE_WAITING_SESSIONS = 5;
-// const COUNCIL_CLOSE_PROOF_SIZE = 1126;
-// const COUNCIL_CLOSE_REF_TIME = 514033761;
-
 // Load configuration
 const configPath = path.resolve(__dirname, 'config.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -124,116 +114,6 @@ async function enactUpgrade(api, sudoAccount, wasmFile) {
     catch (error) {
       reject(error)
     }
-  });
-}
-
-async function councilUpgrade(config, api, user) {
-  // This code should handle enacting upgrades on a production chain
-  // Use with caution as it has not been tested yet
-  console.log("Proceeding with council-based runtime upgrade");
-
-  const wasm = fs.readFileSync(config.wasmFile);
-  const wasmHash = blake2AsHex(wasm);
-  console.log("Applying WASM Blake2 Hash:", wasmHash);
-
-  try {
-    let nonce = await getNonce(api, user.address);
-    const preimageNoted = await notePreimageAuth(api, user, wasmHash, nonce);
-
-    console.log("Continuing with council proposal using", preimageNoted);
-    nonce = await getNonce(api, user.address);
-    const [councilProposalHash, councilProposalIndex] = await councilProposeDemocracy(api, user, preimageNoted, nonce);
-
-    console.log("Runtime Upgrade proposed. Council proposal hash:", councilProposalHash, "Index:", councilProposalIndex);
-    console.log("The proposal process will take over a week. Please monitor the chain for the outcome.");
-  } catch (error) {
-    console.error("Error during council upgrade process:", error);
-    throw error;
-  }
-}
-
-async function getNonce(api, address) {
-  return Number((await api.query.system.account(address)).nonce)
-}
-
-async function notePreimageAuth(api, user, wasmFileHash, nonce) {
-  return new Promise((resolve, reject) => {
-    let authorizeUpgradeCall = api.tx.parachainSystem.authorizeUpgrade(wasmFileHash)
-
-    let preimageNoted = "";
-    console.log(
-      `--- Submitting extrinsic to notePreimage ${wasmFileHash}. (nonce: ${nonce}) ---`
-    );
-    api.tx.preimage.notePreimage(authorizeUpgradeCall.method.toHex())
-      .signAndSend(user, { nonce: nonce, era: 0 }, (result) => {
-        console.log(`Current status is ${result.status}`);
-        if (result.status.isInBlock) {
-          console.log(
-            `Transaction included at blockHash ${result.status.asInBlock}`
-          );
-          result.events.forEach((er) => {
-            if (er.event.method === "Noted") {
-              preimageNoted = er.event.data[0].toHex()
-            }
-          })
-          console.log("Noted", preimageNoted);
-          resolve(preimageNoted)
-        } else if (result.dispatchError) {
-          if (result.dispatchError.isModule) {
-            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-            const { docs, name, section } = decoded;
-            reject(`${section}.${name}: ${docs.join(' ')}`);
-          } else {
-            reject(result.dispatchError.toString());
-          }
-        } else if (result.isError) {
-          reject(result)
-        }
-      });
-  });
-}
-
-async function councilProposeDemocracy(api, user, preimageHash, nonce) {
-  return new Promise((resolve, reject) => {
-    const proposeTx = api.tx.democracy.externalProposeMajority({
-      Lookup: {
-        hash: preimageHash,
-        len: AUTHORIZE_UPGRADE_PREIMAGE_BYTES
-      }
-    });
-
-    console.log(
-      `--- Submitting extrinsic to propose preimage to council. (nonce: ${nonce}) ---`
-    );
-    api.tx.council.propose(api.consts.council.proposalThreshold, proposeTx, COUNCIL_PROPOSAL_BYTES)
-      .signAndSend(user, { nonce: nonce, era: 0 }, (result) => {
-        console.log(`Current status is ${result.status}`);
-        if (result.status.isInBlock) {
-          console.log(
-            `Transaction included at blockHash ${result.status.asInBlock}`
-          );
-          let councilProposalHash = "";
-          let councilProposalIndex = "";
-          result.events.forEach((er) => {
-            if (er.event.method === "Proposed") {
-              councilProposalIndex = er.event.data[1]
-              councilProposalHash = er.event.data[2].toHex()
-            }
-          })
-          console.log("CouncilProposalHashAndIndex", councilProposalHash, councilProposalIndex);
-          resolve([councilProposalHash, councilProposalIndex])
-        } else if (result.dispatchError) {
-          if (result.dispatchError.isModule) {
-            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-            const { docs, name, section } = decoded;
-            reject(`${section}.${name}: ${docs.join(' ')}`);
-          } else {
-            reject(result.dispatchError.toString());
-          }
-        } else if (result.isError) {
-          reject(result)
-        }
-      });
   });
 }
 
