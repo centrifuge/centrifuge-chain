@@ -57,8 +57,6 @@ pub type UpgradeAltair1100 = (
 	cumulus_pallet_xcmp_queue::migration::v4::MigrationToV4<crate::Runtime>,
 	pallet_identity::migration::versioned::V0ToV1<crate::Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
 	pallet_uniques::migration::MigrateV0ToV1<crate::Runtime, ()>,
-	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
-	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 	// Initialize OpenGov TechnicalCommittee
 	runtime_common::migrations::technical_comittee::InitMigration<crate::Runtime, InitialTcMembers>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::Referenda, 0, 1>,
