@@ -76,7 +76,7 @@ mod common {
 				.add(genesis::balances::<T>(
 					T::ExistentialDeposit::get() + FOR_FEES,
 				))
-				.add(genesis::assets::<T>(vec![Box::new(Usd6)]))
+				.add(genesis::assets::<T>(vec![(Usd6.id(), &Usd6.metadata())]))
 				.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 				.storage(),
 		);

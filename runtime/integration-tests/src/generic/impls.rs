@@ -46,8 +46,6 @@ macro_rules! impl_fudge_support {
 		$relay_path:ident,
 		$relay_session_keys:expr,
 		$parachain_path:ident,
-		$parachain_id:literal,
-		$sibling_id:literal
 	) => {
 		const _: () = {
 			use fudge::primitives::{Chain, ParaId};
@@ -58,6 +56,7 @@ macro_rules! impl_fudge_support {
 			use crate::generic::envs::fudge_env::{
 				handle::{
 					FudgeHandle, ParachainBuilder, ParachainClient, RelayClient, RelaychainBuilder,
+					PARA_ID, SIBLING_ID,
 				},
 				FudgeSupport,
 			};
@@ -67,11 +66,11 @@ macro_rules! impl_fudge_support {
 				#[fudge::relaychain]
 				pub relay: RelaychainBuilder<$relay_path::RuntimeApi, $relay_path::Runtime>,
 
-				#[fudge::parachain($parachain_id)]
+				#[fudge::parachain(PARA_ID)]
 				pub parachain:
 					ParachainBuilder<$parachain_path::Block, $parachain_path::RuntimeApi>,
 
-				#[fudge::parachain($sibling_id)]
+				#[fudge::parachain(SIBLING_ID)]
 				pub sibling: ParachainBuilder<$parachain_path::Block, $parachain_path::RuntimeApi>,
 			}
 
@@ -91,9 +90,7 @@ macro_rules! impl_fudge_support {
 				type RelayRuntime = $relay_path::Runtime;
 
 				const PARACHAIN_CODE: Option<&'static [u8]> = $parachain_path::WASM_BINARY;
-				const PARA_ID: u32 = $parachain_id;
 				const RELAY_CODE: Option<&'static [u8]> = $relay_path::WASM_BINARY;
-				const SIBLING_ID: u32 = $sibling_id;
 
 				fn new(
 					relay_storage: Storage,
@@ -102,12 +99,12 @@ macro_rules! impl_fudge_support {
 				) -> Self {
 					let relay = Self::new_relay_builder(relay_storage, $relay_session_keys);
 					let parachain = Self::new_parachain_builder(
-						ParaId::from(Self::PARA_ID),
+						ParaId::from(PARA_ID),
 						&relay,
 						parachain_storage,
 					);
 					let sibling = Self::new_parachain_builder(
-						ParaId::from(Self::SIBLING_ID),
+						ParaId::from(SIBLING_ID),
 						&relay,
 						sibling_storage,
 					);
@@ -183,8 +180,6 @@ impl_fudge_support!(
 	rococo_runtime,
 	default_rococo_session_keys(),
 	development_runtime,
-	2000,
-	2001
 );
 
 impl_fudge_support!(
@@ -192,8 +187,6 @@ impl_fudge_support!(
 	rococo_runtime,
 	default_rococo_session_keys(),
 	altair_runtime,
-	2088,
-	2089
 );
 
 impl_fudge_support!(
@@ -201,8 +194,6 @@ impl_fudge_support!(
 	rococo_runtime,
 	default_rococo_session_keys(),
 	centrifuge_runtime,
-	2031,
-	2032
 );
 
 pub fn default_rococo_session_keys() -> rococo_runtime::SessionKeys {

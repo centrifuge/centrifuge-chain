@@ -12,6 +12,7 @@
 pub mod cumulus_pallet_xcmp_queue;
 pub mod frame_system;
 pub mod pallet_anchors;
+pub mod pallet_anchors_v2;
 pub mod pallet_balances;
 pub mod pallet_block_rewards;
 pub mod pallet_collator_allowlist;

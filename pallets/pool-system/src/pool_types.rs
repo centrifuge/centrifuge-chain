@@ -12,6 +12,7 @@
 
 use cfg_traits::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
+pub use changes::PoolChangeProposal;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{DispatchError, RuntimeDebug},
@@ -419,5 +420,3 @@ pub mod changes {
 		pub change: ChangeProposal,
 	}
 }
-
-pub use changes::PoolChangeProposal;

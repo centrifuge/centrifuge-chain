@@ -3129,6 +3129,7 @@ dependencies = [
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
+ "pallet-anchors-v2",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -7383,6 +7384,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-anchors-v2"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-asset-conversion"
 version = "10.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#c00ca35b403a95e344d03e229b3f85baa3b96c89"
@@ -8198,22 +8215,16 @@ dependencies = [
 name = "pallet-liquidity-pools"
 version = "0.0.1"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "ethabi",
- "fp-self-contained",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
  "orml-tokens",
  "orml-traits",
- "pallet-balances",
- "pallet-ethereum",
- "pallet-timestamp",
- "pallet-uniques",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -8221,7 +8232,6 @@ dependencies = [
  "sp-runtime",
  "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
  "staging-xcm",
- "xcm-primitives",
 ]
 
 [[package]]
