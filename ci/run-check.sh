@@ -53,7 +53,7 @@ case $TARGET in
     if ! command try-runtime --version &> /dev/null
     then
         echo "try-runtime could not be found, trying 'cargo install try-runtime-cli'"
-        curl -sL https://github.com/paritytech/try-runtime-cli/releases/download/v0.6.1/try-runtime-x86_64-unknown-linux-musl -o try-runtime
+        curl -sL https://github.com/paritytech/try-runtime-cli/releases/download/v0.7.0/try-runtime-x86_64-unknown-linux-musl -o try-runtime
         chmod +x ./try-runtime
     fi    
     if [ "$1" == "altair" ]; then
