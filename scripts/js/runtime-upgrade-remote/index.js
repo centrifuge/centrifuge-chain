@@ -1,4 +1,5 @@
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
+const { u8aToHex } = require('@polkadot/util');
 const { blake2AsHex } = require('@polkadot/util-crypto');
 const fs = require('fs');
 const path = require('path');
@@ -36,23 +37,23 @@ const run = async () => {
     const keyring = new Keyring({ type: "sr25519" });
     let user;
     if (config.privateKey.startsWith('//')) {
-        user = keyring.addFromUri(config.privateKey);
+      user = keyring.addFromUri(config.privateKey);
     } else {
-        user = keyring.addFromSeed(config.privateKey);
+      user = keyring.addFromSeed(config.privateKey);
     }
 
     console.log(`Using account: ${user.address}`);
 
     const wasm = fs.readFileSync(config.wasmFile);
     const wasmHex = `0x${wasm.toString('hex')}`;
+    const wasmBytes = u8aToHex(wasm);
 
     console.log("WASM file loaded and ready for deployment");
 
-    let nonce = await getNonce(api, user.address);
-
     if (config.sudo) {
       console.log("Using sudo to perform the runtime upgrade");
-      await sudoUpgrade(api, user, wasmHex);
+      await sudoAuthorize(api, user, wasmHex);
+      await enactUpgrade(api, user, wasmBytes);
     } else {
       console.log("Using council proposal to perform the runtime upgrade");
       await councilUpgrade(config, api, user)
@@ -66,35 +67,65 @@ const run = async () => {
   }
 };
 
-async function sudoUpgrade(api, sudoAccount, wasmHex) {
-  // Hash the WASM blob
-  const wasmHash = blake2AsHex(wasmHex);
+async function sudoAuthorize(api, sudoAccount, wasmHex) {
+  const nonce = await getNonce(api, user.address);
 
-  // Authorize the upgrade
-  const authorizeTx = api.tx.sudo.sudo(
-      api.tx.parachainSystem.authorizeUpgrade(wasmHash, false)
-  );
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Hash the WASM blob
+      const wasmHash = blake2AsHex(wasmHex);
+      console.log(wasmHash);
 
-  console.log("Authorizing the upgrade");
-  await authorizeTx.signAndSend(sudoAccount, async ({ status }) => {
-      if (status.isInBlock) {
+      // Authorize the upgrade
+      const authorizeTx = api.tx.sudo.sudo(
+        api.tx.parachainSystem.authorizeUpgrade(wasmHash, true)
+      );
+
+      const unsub = await authorizeTx.signAndSend(sudoAccount, { nonce }, ({ status, dispatchError }) => {
+        console.log(`Authorizing upgrade with status ${status}`);
+        if (status.isInBlock) {
           console.log(`Authorization included in block ${status.asInBlock}`);
-
-          // Enact the authorized upgrade
-          const enactTx = api.tx.sudo.sudo(
-              api.tx.parachainSystem.enactAuthorizedUpgrade(wasmHash)
-          );
-
-          console.log("Enacting the upgrade");
-          await enactTx.signAndSend(sudoAccount, ({ status }) => {
-              if (status.isInBlock) {
-                  console.log(`Enactment included in block ${status.asInBlock}`);
-              }
-          });
-      }
+          resolve();
+          unsub();
+        }
+        if (dispatchError) {
+          console.error(`Error: ${dispatchError}`);
+          reject(dispatchError);
+        }
+      });
+    }
+    catch (error) {
+      reject(error)
+    }
   });
 }
 
+async function enactUpgrade(api, sudoAccount, wasmFile) {
+  const nonce = await getNonce(api, user.address);
+
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Enact the authorized upgrade
+      const enactTx = api.tx.parachainSystem.enactAuthorizedUpgrade(wasmFile);
+
+      const unsub = await enactTx.signAndSend(sudoAccount, { nonce }, ({ status, dispatchError }) => {
+        console.log(`Enacting upgrade with status ${status}`);
+        if (status.isInBlock) {
+          console.log(`Enactment included in block ${status}`);
+          resolve();
+          unsub();
+        }
+        if (dispatchError) {
+          console.error(`Error: ${dispatchError}`);
+          reject(dispatchError);
+        }
+      });
+    }
+    catch (error) {
+      reject(error)
+    }
+  });
+}
 
 async function councilUpgrade(config, api, user) {
   // This code should handle enacting upgrades on a production chain
