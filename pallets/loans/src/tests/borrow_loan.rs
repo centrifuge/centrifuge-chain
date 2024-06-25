@@ -586,10 +586,6 @@ fn twice_with_elapsed_time() {
 #[test]
 fn increase_debt_does_not_withdraw() {
 	new_test_ext().execute_with(|| {
-		MockPools::mock_withdraw(|_, _, _| {
-			unreachable!("increase debt must not withdraw funds from the pool");
-		});
-
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
@@ -601,13 +597,97 @@ fn increase_debt_does_not_withdraw() {
 		let loan_id = util::create_loan(loan);
 
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
 
-		assert_ok!(Loans::borrow(
+		config_mocks(amount.balance().unwrap());
+		MockPools::mock_withdraw(|_, _, _| {
+			unreachable!("increase debt must not withdraw funds from the pool");
+		});
+
+		assert_ok!(Loans::increase_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
 			PrincipalInput::External(amount)
 		));
 	});
+}
+
+mod cashflow {
+	use super::*;
+
+	#[test]
+	fn computed_correctly_internal_pricing() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
+			));
+
+			let loan = util::get_loan(loan_id);
+
+			let principal = COLLATERAL_VALUE / 2;
+			let acc_interest_rate_per_year = checked_pow(
+				util::default_interest_rate().per_sec().unwrap(),
+				SECONDS_PER_YEAR as usize,
+			)
+			.unwrap();
+			let interest = acc_interest_rate_per_year.saturating_mul_int(principal) - principal;
+
+			assert_eq!(
+				loan.expected_cashflows()
+					.unwrap()
+					.into_iter()
+					.map(|payment| (payment.when, payment.principal, payment.interest))
+					.collect::<Vec<_>>(),
+				vec![(loan.maturity_date().unwrap(), principal, interest)]
+			);
+		});
+	}
+
+	#[test]
+	fn computed_correctly_external_pricing() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+
+			let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+			config_mocks(amount.balance().unwrap());
+
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PrincipalInput::External(amount.clone())
+			));
+
+			let loan = util::get_loan(loan_id);
+
+			let principal = amount.balance().unwrap();
+			let acc_interest_rate_per_year = checked_pow(
+				util::default_interest_rate().per_sec().unwrap(),
+				SECONDS_PER_YEAR as usize,
+			)
+			.unwrap();
+
+			let outstanding_notional = util::current_extenal_pricing(loan_id)
+				.outstanding_notional_principal()
+				.unwrap();
+
+			let interest =
+				acc_interest_rate_per_year.saturating_mul_int(principal) - outstanding_notional;
+
+			assert_eq!(
+				loan.expected_cashflows()
+					.unwrap()
+					.into_iter()
+					.map(|payment| (payment.when, payment.principal, payment.interest))
+					.collect::<Vec<_>>(),
+				vec![(loan.maturity_date().unwrap(), principal, interest)]
+			);
+		});
+	}
 }

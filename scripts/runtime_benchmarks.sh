@@ -41,7 +41,7 @@ echo "Benchmarking pallets for runtime ${runtime}..."
 if [[ $runtime == "development" ]];
 then
   runtime_path="runtime/development"
-  chain="development-local"
+  chain="development"
 elif [[ $runtime == "centrifuge" ]];
 then
   runtime_path="runtime/centrifuge"

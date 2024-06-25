@@ -61,9 +61,14 @@ impl AccountConverter {
 		}
 	}
 
-	pub fn into_account_id<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
+	pub fn evm_address_to_account<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
 		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
 		Self::convert_evm_address(chain_id, address.0)
+	}
+
+	pub fn domain_account_to_account(domain: Domain, account_id: AccountId) -> AccountId {
+		let domain_address = Self::convert((domain, account_id.into()));
+		Self::convert(domain_address)
 	}
 }
 
@@ -76,15 +81,14 @@ impl Convert<DomainAddress, AccountId> for AccountConverter {
 	}
 }
 
-impl Convert<(Domain, [u8; 32]), AccountId> for AccountConverter {
-	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId {
+impl Convert<(Domain, [u8; 32]), DomainAddress> for AccountConverter {
+	fn convert((domain, account): (Domain, [u8; 32])) -> DomainAddress {
 		match domain {
-			Domain::Centrifuge => AccountId::new(account),
-			// EVM AccountId20 addresses are right-padded to 32 bytes
+			Domain::Centrifuge => DomainAddress::Centrifuge(account),
 			Domain::EVM(chain_id) => {
 				let mut bytes20 = [0; 20];
 				bytes20.copy_from_slice(&account[..20]);
-				Self::convert_evm_address(chain_id, bytes20)
+				DomainAddress::EVM(chain_id, bytes20)
 			}
 		}
 	}
@@ -97,7 +101,7 @@ pub struct RuntimeAccountConverter<R>(sp_std::marker::PhantomData<R>);
 
 impl<R: pallet_evm_chain_id::Config> AddressMapping<AccountId> for RuntimeAccountConverter<R> {
 	fn into_account_id(address: H160) -> AccountId {
-		AccountConverter::into_account_id::<R>(address)
+		AccountConverter::evm_address_to_account::<R>(address)
 	}
 }
 

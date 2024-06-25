@@ -78,14 +78,15 @@ use pallet_anchors::AnchorData;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_ethereum::{Call::transact, PostLogContent};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressRoot, EnsureAddressTruncated, FeeCalculator,
-	GasWeightMapping, Runner,
+	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, GasWeightMapping,
+	Runner,
 };
 use pallet_investments::OrderType;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
+use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -102,7 +103,7 @@ use runtime_common::{
 	account_conversion::{AccountConverter, RuntimeAccountConverter},
 	asset_registry,
 	evm::{
-		precompile::Precompiles, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
+		self, BaseFeeThreshold, FindAuthorTruncated, GAS_LIMIT_POV_SIZE_RATIO,
 		GAS_LIMIT_STORAGE_GROWTH_RATIO, WEIGHT_PER_GAS,
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
@@ -133,7 +134,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_staking::currency_to_vote::U128CurrencyToVote;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*, vec::Vec};
 use sp_version::RuntimeVersion;
 use staging_xcm::v4::{Asset, Location};
 use static_assertions::const_assert;
@@ -162,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1035,
+	spec_version: 1100,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -306,7 +307,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfParaId = staging_parachain_info::Pallet<Runtime>;
-	type WeightInfo = ();
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
 }
 
@@ -334,7 +335,7 @@ impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ServiceWeight = MessageQueueServiceWeight;
 	type Size = u32;
-	type WeightInfo = ();
+	type WeightInfo = pallet_message_queue::weights::SubstrateWeight<Runtime>;
 }
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from
@@ -351,9 +352,16 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
 }
 
+impl cumulus_pallet_dmp_queue::Config for Runtime {
+	type DmpSink = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = cumulus_pallet_dmp_queue::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
 }
+
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
@@ -593,30 +601,32 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, RuntimeCall::Proxy(..))
 			}
-			ProxyType::Borrow => matches!(
-				c,
-				RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
-                RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
-                // Borrowers should be able to close and execute an epoch
-                // in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch{..}) |
-				// Borrowers should be able to swap back and forth between local currencies and their variants
-				RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
-				RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
-				RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
-			),
+			ProxyType::Borrow => {
+				matches!(
+					c,
+					RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
+                    // Borrowers should be able to close and execute an epoch
+                    // in order to get liquidity from repayments in previous epochs.
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+                    RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+                    RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+                    RuntimeCall::Utility(pallet_utility::Call::batch{..}) |
+                    // Borrowers should be able to swap back and forth between local currencies and their variants
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::burn {..}) |
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::deposit {..}) |
+                    RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..})
+				) | ProxyType::PodOperation.filter(c)
+			}
 			ProxyType::Invest => matches!(
 				c,
 				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
@@ -976,7 +986,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = (); // Using default weights for recomended hardware
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1769,12 +1779,11 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter;
+	type DomainAccountToDomainAddress = AccountConverter;
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
@@ -1855,11 +1864,11 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
 
-pub type AltairPrecompiles = Precompiles<crate::Runtime, TokenSymbol>;
+pub type Precompiles = evm::precompile::Precompiles<crate::Runtime, TokenSymbol>;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: AltairPrecompiles = Precompiles::<_, _>::new();
+	pub PrecompilesValue: Precompiles = Precompiles::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
 	pub const TokenSymbol: &'static str = "AIR";
 }
@@ -1878,7 +1887,7 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = AltairPrecompiles;
+	type PrecompilesType = Precompiles;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
@@ -1886,7 +1895,7 @@ impl pallet_evm::Config for Runtime {
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
+	type WithdrawOrigin = EnsureAddressNever<AccountId>;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -1957,7 +1966,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1035,
+	migrations::UpgradeAltair1100,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2032,7 +2041,7 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config<T>, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
-		// Removed: DmpQueue = 123
+		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: pallet_restricted_xtokens::{Pallet, Call} = 124,
 		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 		OrmlXTokens: orml_xtokens::{Pallet, Event<T>} = 126,
@@ -2365,13 +2374,16 @@ impl_runtime_apis! {
 		) -> Result<Balance, DispatchError> {
 			Ok(runtime_common::update_nav_with_input(pool_id, input_prices)?.nav_aum)
 		}
-	}
 
+		fn expected_cashflows(pool_id: PoolId, loan_id: LoanId) -> Result<Vec<CashflowPayment<Balance>>, DispatchError> {
+			Loans::expected_cashflows(pool_id, loan_id)
+		}
+	}
 
 	// Investment Runtime APIs
 	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>> for Runtime {
 		fn investment_portfolio(account_id: AccountId) -> Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)> {
-			runtime_common::investment_portfolios::get_account_portfolio::<Runtime>(account_id)
+			runtime_common::investment_portfolios::get_account_portfolio::<Runtime>(account_id).unwrap_or_default()
 		}
 	}
 

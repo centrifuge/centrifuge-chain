@@ -1347,12 +1347,17 @@ where
 	// previous more senior tranche - this tranche value.
 	let mut remaining_subordinate_value = pool_value;
 	let mut risk_buffers: Vec<Perquintill> = tranche_values
-		.iter()
+		.into_iter()
 		.rev()
 		.map(|tranche_value| {
-			remaining_subordinate_value =
-				remaining_subordinate_value.saturating_sub(*tranche_value);
-			Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			remaining_subordinate_value = remaining_subordinate_value.saturating_sub(tranche_value);
+			if tranche_value.is_zero() {
+				Perquintill::one()
+			} else if pool_value.is_zero() {
+				Perquintill::zero()
+			} else {
+				Perquintill::from_rational(remaining_subordinate_value, pool_value)
+			}
 		})
 		.collect::<Vec<Perquintill>>();
 
@@ -1719,7 +1724,6 @@ pub mod test {
 	}
 
 	mod tranche {
-
 		use super::*;
 
 		#[test]
@@ -2904,10 +2908,11 @@ pub mod test {
 		mod rebalance {
 			use super::*;
 
-			const TOTAL_ASSETS: Balance = DEBT_RES
-				+ RESERVE_RES + DEBT_NONRES_1
-				+ RESERVE_NONRES_1
-				+ DEBT_NONRES_2 + RESERVE_NONRES_2;
+			const TOTAL_ASSETS: Balance =
+				DEBT_RES
+					+ RESERVE_RES + DEBT_NONRES_1
+					+ RESERVE_NONRES_1
+					+ DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const RATIO_NONRES_1: Balance = DEBT_NONRES_1 + RESERVE_NONRES_1;
 			const RATIO_NONRES_2: Balance = DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const DEFAULT_NAV: Balance = 1_234_567_890;

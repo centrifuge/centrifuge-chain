@@ -14,6 +14,7 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
 };
+use fp_evm::PrecompileSet;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -26,6 +27,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
+	evm::precompile::H160Addresses,
 	fees::{DealWithFees, WeightToFee},
 	instances,
 	oracle::Feeder,
@@ -66,20 +68,23 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		PoolId = PoolId,
+		Rate = Rate,
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
+		TrancheCurrency = TrancheCurrency,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
+		InterestRate = Rate,
 		Balance = Balance,
 		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
 	+ pallet_investments::Config<
-		InvestmentId = TrancheCurrency,
+		InvestmentId = <Self as pallet_pool_system::Config>::TrancheCurrency,
 		Amount = Balance,
 		BalanceRatio = Ratio,
 	> + pallet_loans::Config<
@@ -173,12 +178,21 @@ pub trait Runtime:
 			FixedI128,
 			SingleCurrencyMovement,
 		>,
+	> + pallet_evm::Config<
+		Runner = pallet_evm::runner::stack::Runner<Self>,
+		Currency = pallet_balances::Pallet<Self>,
 	> + pallet_block_rewards::Config<
 		Rate = Rate,
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
 	> + axelar_gateway_precompile::Config
+	+ pallet_token_mux::Config<
+		BalanceIn = Balance,
+		BalanceOut = Balance,
+		CurrencyId = CurrencyId,
+		OrderId = OrderId,
+	>
 {
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
@@ -232,6 +246,7 @@ pub trait Runtime:
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
 		+ TryInto<pallet_ethereum::Event>
+		+ TryInto<pallet_evm::Event<Self>>
 		+ TryInto<pallet_collator_selection::Event<Self>>
 		+ TryInto<pallet_rewards::Event<Self, instances::BlockRewards>>
 		+ TryInto<pallet_block_rewards::Event<Self>>
@@ -252,6 +267,8 @@ pub trait Runtime:
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
 		+ From<pallet_proxy::Event<Self>>
 		+ From<pallet_democracy::Event<Self>>
+		+ From<pallet_ethereum::Event>
+		+ From<pallet_evm::Event<Self>>
 		+ From<pallet_rewards::Event<Self, instances::BlockRewards>>
 		+ From<pallet_block_rewards::Event<Self>>
 		+ From<pallet_ethereum::Event>;
@@ -290,7 +307,7 @@ pub trait Runtime:
 	/// You can extend this bounds to give extra API support
 	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::BlockExt>
 		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::BlockExt>
-		+ apis::runtime_decl_for_loans_api::LoansApiV2<
+		+ apis::runtime_decl_for_loans_api::LoansApiV3<
 			Self::BlockExt,
 			PoolId,
 			LoanId,
@@ -323,6 +340,8 @@ pub trait Runtime:
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
 
 	type SessionKeysExt: OpaqueKeys + Member + Parameter + MaybeSerializeDeserialize;
+
+	type PrecompilesTypeExt: PrecompileSet + H160Addresses;
 
 	fn initialize_session_keys(public_id: Public) -> Self::SessionKeysExt;
 }

@@ -24,7 +24,7 @@ pub trait FudgeSupport: Runtime {
 	type FudgeHandle: FudgeHandle<Self>;
 }
 
-pub type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
+pub type RelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::RelayRuntime;
 
 /// Evironment that uses fudge to interact with the runtime
 pub struct FudgeEnv<T: Runtime + FudgeSupport> {
@@ -48,6 +48,8 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		parachain_storage: Storage,
 		sibling_storage: Storage,
 	) -> Self {
+		crate::utils::logs::init_logs();
+
 		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();
@@ -159,7 +161,7 @@ mod tests {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);

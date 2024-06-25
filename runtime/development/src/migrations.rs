@@ -10,10 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::AccountId;
 use sp_core::parameter_types;
+use sp_std::{vec, vec::Vec};
+
 parameter_types! {
 	pub const CollatorReward: cfg_primitives::Balance = cfg_primitives::constants::CFG;
 	pub const AnnualTreasuryInflationPercent: u32 = 3;
+	pub AccountMap: Vec<(AccountId, AccountId)> = vec![];
+
 }
 
 // Number of identities on Dev and Demo Chain on 30.05.2024 was both 0
@@ -21,8 +26,9 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1047 = (
+pub type UpgradeDevelopment1100 = (
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
 	cleanup_foreign_investments::Migration<crate::Runtime>,
 	// v0 -> v1
 	pallet_multisig::migrations::v1::MigrateToV1<crate::Runtime>,
@@ -52,6 +58,10 @@ pub type UpgradeDevelopment1047 = (
 		crate::Runtime,
 		CollatorReward,
 		AnnualTreasuryInflationPercent,
+	>,
+	runtime_common::migrations::restricted_location::MigrateRestrictedTransferLocation<
+		crate::Runtime,
+		AccountMap,
 	>,
 	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 	runtime_common::migrations::hold_reason::MigrateTransferAllowListHolds<

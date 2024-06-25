@@ -8,6 +8,7 @@ use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
 	storage::{transactional, TransactionOutcome},
+	traits::BuildGenesisConfig,
 };
 use frame_system::LastRuntimeUpgradeInfo;
 use parity_scale_codec::Encode;
@@ -25,7 +26,8 @@ use sp_timestamp::Timestamp;
 use crate::{
 	generic::{
 		config::Runtime,
-		env::{utils, Env},
+		env::{utils, Env, EnvEvmExtension},
+		envs::evm_env::EvmEnv,
 	},
 	utils::accounts::Keyring,
 };
@@ -36,12 +38,29 @@ pub struct RuntimeEnv<T: Runtime> {
 	parachain_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
+	evm: Rc<RefCell<EvmEnv<T>>>,
 	_config: PhantomData<T>,
 }
 
 impl<T: Runtime> Default for RuntimeEnv<T> {
 	fn default() -> Self {
 		Self::from_storage(Default::default(), Default::default(), Default::default())
+	}
+}
+
+impl<T: Runtime> EnvEvmExtension<T> for RuntimeEnv<T> {
+	type EvmEnv = EvmEnv<T>;
+
+	fn state_mut<R>(&mut self, f: impl FnOnce(&mut Self::EvmEnv) -> R) -> R {
+		self.parachain_ext
+			.borrow_mut()
+			.execute_with(|| f(&mut *self.evm.borrow_mut()))
+	}
+
+	fn state<R>(&self, f: impl FnOnce(&Self::EvmEnv) -> R) -> R {
+		self.parachain_ext
+			.borrow_mut()
+			.execute_with(|| f(&*self.evm.borrow()))
 	}
 }
 
@@ -59,6 +78,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			parachain_ext: Self::build_externality(parachain_storage),
 			sibling_ext: Self::build_externality(sibling_storage),
 			pending_extrinsics: Vec::default(),
+			evm: Rc::new(RefCell::new(EvmEnv::default())),
 			_config: PhantomData,
 		}
 	}
@@ -72,7 +92,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		let info = self.parachain_state(|| call.get_dispatch_info());
 
 		let extrinsic = self.parachain_state(|| {
-			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+			let nonce = frame_system::Pallet::<T>::account(who.id()).nonce;
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
 		let len = extrinsic.encoded_size();
@@ -171,6 +191,15 @@ impl<T: Runtime> RuntimeEnv<T> {
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
+			// Precompiles need to have code-set
+			pallet_evm::GenesisConfig::<T> {
+				accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
+					T::PrecompilesTypeExt,
+				>(),
+				_marker: PhantomData::default(),
+			}
+			.build();
+
 			// NOTE: Setting the current on-chain runtime version to the latest one, to
 			//       prevent running migrations
 			frame_system::LastRuntimeUpgrade::<T>::put(LastRuntimeUpgradeInfo::from(
@@ -193,7 +222,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 
 		for (who, call) in pending_extrinsics {
 			let extrinsic = self.parachain_state(|| {
-				let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+				let nonce = frame_system::Pallet::<T>::account(who.id()).nonce;
 				utils::create_extrinsic::<T>(who, call, nonce)
 			});
 
@@ -201,7 +230,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 		}
 	}
 
-	fn prepare_block(i: BlockNumber) {
+	pub fn prepare_block(i: BlockNumber) {
 		let slot = Slot::from(i as u64);
 		let digest = Digest {
 			logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
@@ -286,7 +315,7 @@ mod tests {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);
@@ -309,7 +338,7 @@ mod tests {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
-					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+					balances: vec![(Keyring::Alice.id(), 1 * CFG)],
 				})
 				.storage(),
 		);

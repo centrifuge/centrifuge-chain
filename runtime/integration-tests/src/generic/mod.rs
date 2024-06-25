@@ -1,5 +1,6 @@
 pub mod env;
 pub mod envs {
+	pub mod evm_env;
 	pub mod fudge_env;
 	pub mod runtime_env;
 }
@@ -10,16 +11,20 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod account_derivation;
+	mod assets;
 	mod block_rewards;
+	mod currency_conversions;
 	mod ethereum_transaction;
 	mod example;
 	mod investments;
 	mod liquidity_pools;
 	mod loans;
+	mod lp;
 	mod oracles;
 	mod precompile;
 	mod proxy;
 	mod restricted_transfers;
+	mod xcm_transfers;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.

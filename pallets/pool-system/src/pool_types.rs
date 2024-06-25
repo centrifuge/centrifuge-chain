@@ -12,6 +12,7 @@
 
 use cfg_traits::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
+pub use changes::PoolChangeProposal;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{DispatchError, RuntimeDebug},
@@ -208,7 +209,8 @@ impl<
 		TrancheId,
 		PoolId,
 		MaxTranches,
-	> where
+	>
+where
 	Balance:
 		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
@@ -418,5 +420,3 @@ pub mod changes {
 		pub change: ChangeProposal,
 	}
 }
-
-pub use changes::PoolChangeProposal;

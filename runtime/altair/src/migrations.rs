@@ -17,12 +17,13 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1035 = (
+pub type UpgradeAltair1100 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OrderBook, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<ForeignInvestments, 0, 1>,
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,
+	pallet_collator_selection::migration::v2::MigrationToV2<crate::Runtime>,
 	runtime_common::migrations::loans::AddWithLinearPricing<crate::Runtime>,
 	// As of May 2024, the `pallet_balances::Hold` storage was empty. But better be safe.
 	runtime_common::migrations::hold_reason::MigrateTransferAllowListHolds<

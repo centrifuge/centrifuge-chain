@@ -9,6 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
+hex = { workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }
@@ -45,6 +46,8 @@ pallet-evm-precompile-simple = { workspace = true }
 precompile-utils = { workspace = true }
 
 xcm-primitives = { workspace = true }
+
+fp-evm = { workspace = true }
 
 # Local
 cfg-primitives = { workspace = true }

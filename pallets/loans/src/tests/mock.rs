@@ -22,7 +22,7 @@ use frame_support::{
 	derive_impl,
 	traits::{
 		tokens::nonfungibles::{Create, Mutate},
-		AsEnsureOriginWithArg, ConstU64, Hooks, UnixTime,
+		AsEnsureOriginWithArg, Hooks, UnixTime,
 	},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -64,6 +64,9 @@ pub const POOL_OTHER_ACCOUNT: AccountId = 100;
 
 pub const COLLATERAL_VALUE: Balance = 10000;
 pub const DEFAULT_INTEREST_RATE: f64 = 0.5;
+pub const DEFAULT_DISCOUNT_RATE: f64 = 0.02;
+pub const DEFAULT_PROBABILITY_OF_DEFAULT: f64 = 0.1;
+pub const DEFAULT_LOSS_GIVEN_DEFAULT: f64 = 0.5;
 pub const POLICY_PERCENTAGE: f64 = 0.5;
 pub const POLICY_PENALTY: f64 = 0.5;
 pub const REGISTER_PRICE_ID: PriceId = 42;
@@ -93,7 +96,7 @@ pub type ChangeId = H256;
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		Timer: pallet_timestamp,
+		MockTimer: cfg_mocks::time::pallet,
 		Balances: pallet_balances,
 		Uniques: pallet_uniques,
 		InterestAccrual: pallet_interest_accrual,
@@ -117,11 +120,8 @@ impl frame_system::Config for Runtime {
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<BLOCK_TIME_MS>;
+impl cfg_mocks::time::pallet::Config for Runtime {
 	type Moment = Millis;
-	type OnTimestampSet = ();
-	type WeightInfo = ();
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
@@ -159,7 +159,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Timer;
+	type Time = MockTimer;
 	type Weights = ();
 }
 
@@ -212,14 +212,14 @@ impl pallet_loans::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Timer;
+	type Time = MockTimer;
 	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = System::externalities();
 	ext.execute_with(|| {
-		advance_time(BLOCK_TIME);
+		MockTimer::mock_now(|| BLOCK_TIME.as_millis() as u64);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
@@ -234,10 +234,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn now() -> Duration {
-	<Timer as UnixTime>::now()
+	<MockTimer as UnixTime>::now()
 }
 
 pub fn advance_time(elapsed: Duration) {
-	Timer::set_timestamp(Timer::get() + elapsed.as_millis() as u64);
+	let before = now();
+	MockTimer::mock_now(move || (before + elapsed).as_millis() as u64);
 	InterestAccrual::on_initialize(0);
 }

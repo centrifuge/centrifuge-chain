@@ -9,6 +9,7 @@ members = [
   "libs/types",
   "libs/utils",
   "pallets/anchors",
+  "pallets/anchors-v2",
   "pallets/bridge",
   "pallets/block-rewards",
   "pallets/collator-allowlist",
@@ -52,6 +53,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
+version = "0.11.0"
 
 [workspace.dependencies]
 hex-literal = { version = "0.4.1" }
@@ -82,9 +84,11 @@ rev_slice = { version = "0.1.5", default-features = false }
 impl-trait-for-tuples = "0.2.2"
 num-traits = { version = "0.2.17", default-features = false }
 num_enum = { version = "0.5.3", default-features = false }
+chrono = { version = "0.4", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -217,6 +221,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-s
 axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
 liquidity-pools-gateway-routers = { path = "pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "pallets/anchors", default-features = false }
+pallet-anchors-v2 = { path = "pallets/anchors-v2", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }

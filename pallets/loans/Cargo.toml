@@ -43,6 +43,7 @@ pallet-timestamp = { workspace = true, default-features = true }
 pallet-uniques = { workspace = true, default-features = true }
 
 cfg-mocks = { workspace = true, default-features = true }
+chrono = { workspace = true }
 
 [features]
 default = ["std"]

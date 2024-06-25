@@ -121,7 +121,7 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.35"
+version = "0.11.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -129,6 +129,7 @@ dependencies = [
  "cfg-types",
  "chainbridge",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -695,7 +696,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "synstructure",
+ "synstructure 0.12.6",
 ]
 
 [[package]]
@@ -1360,9 +1361,9 @@ checksum = "fd6c0e7b807d60291f42f33f58480c0bfafe28ed08286446f45e463728cf9c1c"
 
 [[package]]
 name = "cc"
-version = "1.0.98"
+version = "1.0.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41c270e7540d725e65ac7f1b212ac8ce349719624d7bcff99f8e2e488e8cf03f"
+checksum = "96c51067fd44124faa7f870b4b1c969379ad32b2ba805aa959430ceaa384f695"
 dependencies = [
  "jobserver",
  "libc",
@@ -1371,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.39"
+version = "0.11.0"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1464,7 +1465,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.29"
+version = "0.11.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1472,6 +1473,7 @@ dependencies = [
  "cfg-types",
  "chainbridge",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -1854,9 +1856,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.4"
+version = "4.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90bc066a67923782aa8515dbaea16946c5bcc5addbd668bb80af688e53e548a0"
+checksum = "a9689a29b593160de5bc4aacab7b5d54fb52231de70122626c178e6a368994c7"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1864,9 +1866,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.2"
+version = "4.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae129e2e766ae0ec03484e609954119f123cc1fe650337e155d03b022f24f7b4"
+checksum = "2e5387378c84f6faa26890ebf9f0a92989f8873d4d380467bcd0d8d8620424df"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1877,9 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.4"
+version = "4.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "528131438037fd55894f62d6e9f068b8f45ac57ffa77517819645d10aed04f64"
+checksum = "c780290ccf4fb26629baa7a1081e68ced113f1d3ec302fa5948f1c381ebf06c6"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -1889,9 +1891,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
+checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
 name = "coarsetime"
@@ -2545,6 +2547,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-dmp-queue"
+version = "0.7.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#c00ca35b403a95e344d03e229b3f85baa3b96c89"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+ "staging-xcm",
+]
+
+[[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.7.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#c00ca35b403a95e344d03e229b3f85baa3b96c89"
@@ -3075,7 +3095,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.46"
+version = "0.11.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -3083,6 +3103,7 @@ dependencies = [
  "cfg-types",
  "chainbridge",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -3111,6 +3132,7 @@ dependencies = [
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
+ "pallet-anchors-v2",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -3486,18 +3508,18 @@ dependencies = [
 
 [[package]]
 name = "enumflags2"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3278c9d5fb675e0a51dabcf4c0d355f692b064171535ba72361be1528a9d8e8d"
+checksum = "d232db7f5956f3f14313dc2f87985c58bd2c695ce124c8cdd984e08e15ac133d"
 dependencies = [
  "enumflags2_derive",
 ]
 
 [[package]]
 name = "enumflags2_derive"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c785274071b1b420972453b306eeca06acf4633829db4223b58a2a8c5953bc4"
+checksum = "de0d48a183585823424a4ce1aa132d174a6a81bd540895822eb4c8373a8e49e8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3558,7 +3580,10 @@ checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
 dependencies = [
  "ethereum-types",
  "hex",
+ "once_cell",
+ "regex",
  "serde",
+ "serde_json",
  "sha3",
  "thiserror",
  "uint",
@@ -4539,7 +4564,7 @@ dependencies = [
 [[package]]
 name = "fudge"
 version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#28d89354f04b3caaf9991c59f75793d13e826a1d"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#356314d65f43519a6182fea1bf0befc196051b67"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -4552,7 +4577,7 @@ dependencies = [
 [[package]]
 name = "fudge-companion"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#28d89354f04b3caaf9991c59f75793d13e826a1d"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#356314d65f43519a6182fea1bf0befc196051b67"
 dependencies = [
  "proc-macro-crate 1.3.1",
  "proc-macro2",
@@ -4563,7 +4588,7 @@ dependencies = [
 [[package]]
 name = "fudge-core"
 version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#28d89354f04b3caaf9991c59f75793d13e826a1d"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v1.7.2#356314d65f43519a6182fea1bf0befc196051b67"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -4571,7 +4596,6 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-interface",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "fudge-companion",
@@ -6758,7 +6782,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "synstructure",
+ "synstructure 0.12.6",
 ]
 
 [[package]]
@@ -6774,16 +6798,16 @@ dependencies = [
 
 [[package]]
 name = "multihash-derive-impl"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38685e08adb338659871ecfc6ee47ba9b22dcc8abcf6975d379cc49145c3040"
+checksum = "3958713ce794e12f7c6326fac9aa274c68d74c4881dd37b3e2662b8a2046bb19"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 2.0.0",
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
- "synstructure",
+ "syn 2.0.66",
+ "synstructure 0.13.1",
 ]
 
 [[package]]
@@ -7370,6 +7394,22 @@ dependencies = [
  "serde",
  "sp-arithmetic",
  "sp-consensus-aura",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "pallet-anchors-v2"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -8192,22 +8232,16 @@ dependencies = [
 name = "pallet-liquidity-pools"
 version = "0.0.1"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "ethabi",
- "fp-self-contained",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
  "orml-tokens",
  "orml-traits",
- "pallet-balances",
- "pallet-ethereum",
- "pallet-timestamp",
- "pallet-uniques",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -8215,7 +8249,6 @@ dependencies = [
  "sp-runtime",
  "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
  "staging-xcm",
- "xcm-primitives",
 ]
 
 [[package]]
@@ -8269,6 +8302,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "chrono",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -10834,6 +10868,15 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e8366a6159044a37876a2b9817124296703c586a5c92e2c53751fa06d8d43e8"
+dependencies = [
+ "toml_edit 0.20.7",
+]
+
+[[package]]
+name = "proc-macro-crate"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d37c51ca738a55da99dc0c4a34860fd675453b8b36209178c2249bb13651284"
@@ -11596,9 +11639,11 @@ dependencies = [
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
+ "fp-evm",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
  "hex-literal",
  "log",
  "num_enum 0.5.11",
@@ -11709,6 +11754,7 @@ dependencies = [
  "development-runtime",
  "ethabi",
  "ethereum",
+ "fp-evm",
  "fp-self-contained",
  "frame-metadata-hash-extension",
  "frame-support",
@@ -11772,6 +11818,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-swaps",
  "pallet-timestamp",
+ "pallet-token-mux",
  "pallet-transaction-payment",
  "pallet-transfer-allowlist",
  "pallet-treasury",
@@ -11795,6 +11842,7 @@ dependencies = [
  "sc-executor",
  "sc-service",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -13169,9 +13217,9 @@ dependencies = [
 
 [[package]]
 name = "scale-decode"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b12ebca36cec2a3f983c46295b282b35e5f8496346fb859a8776dad5389e5389"
+checksum = "e98f3262c250d90e700bb802eb704e1f841e03331c2eb815e46516c4edbf5b27"
 dependencies = [
  "derive_more",
  "parity-scale-codec",
@@ -15062,6 +15110,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "synstructure"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8af7666ab7b6390ab78131fb5b0fce11d6b7a6951602017c35fa82800708971"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
+]
+
+[[package]]
 name = "system-configuration"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15405,6 +15464,17 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
+version = "0.20.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
+dependencies = [
+ "indexmap 2.2.6",
+ "toml_datetime",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
@@ -15424,7 +15494,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.6.11",
+ "winnow 0.6.13",
 ]
 
 [[package]]
@@ -16742,9 +16812,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.6.11"
+version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c52728401e1dc672a56e81e593e912aa54c78f40246869f78359a2bf24d29d"
+checksum = "59b5e5f6c299a3c7890b876a2a587f3115162487e704907d9b6cd29473052ba1"
 dependencies = [
  "memchr",
 ]

@@ -175,18 +175,18 @@ pub struct GeneralCurrencyIndex<Index, Prefix> {
 	_phantom: PhantomData<Prefix>,
 }
 
-impl<Index, Prefix> TryInto<GeneralCurrencyIndex<Index, Prefix>> for CurrencyId
+impl<Index, Prefix> TryFrom<CurrencyId> for GeneralCurrencyIndex<Index, Prefix>
 where
 	Index: From<u128>,
 	Prefix: Get<[u8; 12]>,
 {
 	type Error = DispatchError;
 
-	fn try_into(self) -> Result<GeneralCurrencyIndex<Index, Prefix>, Self::Error> {
+	fn try_from(value: CurrencyId) -> Result<GeneralCurrencyIndex<Index, Prefix>, Self::Error> {
 		let mut bytes = [0u8; 16];
 		bytes[..12].copy_from_slice(&Prefix::get());
 
-		let currency_bytes: [u8; 4] = match &self {
+		let currency_bytes: [u8; 4] = match &value {
 			CurrencyId::ForeignAsset(id32) => Ok(id32.to_be_bytes()),
 			_ => Err(DispatchError::Token(TokenError::Unsupported)),
 		}?;
@@ -321,6 +321,18 @@ pub struct CustomMetadata {
 	pub local_representation: Option<LocalAssetId>,
 }
 
+#[cfg(feature = "std")]
+pub fn default_metadata() -> AssetMetadata {
+	AssetMetadata {
+		decimals: 0,
+		name: Default::default(),
+		symbol: Default::default(),
+		existential_deposit: 0,
+		location: None,
+		additional: Default::default(),
+	}
+}
+
 /// The Cross Chain Transferability property of an asset describes the way(s),
 /// if any, that said asset is cross-chain transferable. It may currently be
 /// transferable through Xcm, Centrifuge Liquidity Pools, or All .
@@ -363,6 +375,23 @@ impl CrossChainTransferability {
 
 	pub fn includes_liquidity_pools(self) -> bool {
 		matches!(self, Self::LiquidityPools)
+	}
+
+	/// Fees will be charged using `FixedRateOfFungible`.
+	#[cfg(feature = "std")]
+	pub fn xcm_default() -> Self {
+		Self::Xcm(XcmMetadata {
+			fee_per_second: None,
+		})
+	}
+
+	/// Fees will be charged using `AssetRegistryTrader`.
+	/// If value is 0, no fees will be charged.
+	#[cfg(feature = "std")]
+	pub fn xcm_with_fees(value: Balance) -> Self {
+		Self::Xcm(XcmMetadata {
+			fee_per_second: Some(value),
+		})
 	}
 }
 

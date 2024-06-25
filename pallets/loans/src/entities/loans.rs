@@ -14,7 +14,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
 	entities::{
@@ -27,9 +27,10 @@ use crate::{
 	},
 	pallet::{AssetOf, Config, Error},
 	types::{
+		cashflow::{CashflowPayment, RepaymentSchedule},
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
-		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
 	},
 	PriceOf,
 };
@@ -71,7 +72,7 @@ impl<T: Config> LoanInfo<T> {
 		T::InterestAccrual::validate_rate(&self.interest_rate)?;
 
 		ensure!(
-			self.schedule.is_valid(now),
+			self.schedule.is_valid(now)?,
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
@@ -223,7 +224,11 @@ impl<T: Config> ActiveLoan<T> {
 		&self.borrower
 	}
 
-	pub fn maturity_date(&self) -> Seconds {
+	pub fn origination_date(&self) -> Seconds {
+		self.origination_date
+	}
+
+	pub fn maturity_date(&self) -> Option<Seconds> {
 		self.schedule.maturity.date()
 	}
 
@@ -238,13 +243,28 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
+	pub fn principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.total_borrowed
+			.ensure_sub(self.total_repaid.principal)?)
+	}
+
+	pub fn expected_cashflows(&self) -> Result<Vec<CashflowPayment<T::Balance>>, DispatchError> {
+		self.schedule.generate_cashflows(
+			self.repayments_on_schedule_until,
+			self.principal()?,
+			match &self.pricing {
+				ActivePricing::Internal(_) => self.principal()?,
+				ActivePricing::External(inner) => inner.outstanding_notional_principal()?,
+			},
+			self.pricing.interest().rate(),
+		)
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
-			penalty: match &self.pricing {
-				ActivePricing::Internal(inner) => inner.interest.penalty(),
-				ActivePricing::External(inner) => inner.interest.penalty(),
-			},
+			penalty: self.pricing.interest().penalty(),
 		}
 	}
 
@@ -260,9 +280,10 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<bool, DispatchError> {
 		let now = T::Time::now();
 		match trigger {
-			WriteOffTrigger::PrincipalOverdue(overdue_secs) => {
-				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
-			}
+			WriteOffTrigger::PrincipalOverdue(overdue_secs) => match self.maturity_date() {
+				Some(maturity) => Ok(now >= maturity.ensure_add(*overdue_secs)?),
+				None => Ok(false),
+			},
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
 				ActivePricing::External(pricing) => {
 					Ok(now >= pricing.last_updated(pool_id).ensure_add(*secs)?)
@@ -363,6 +384,8 @@ impl<T: Config> ActiveLoan<T> {
 			}
 		}
 
+		self.repayments_on_schedule_until = T::Time::now();
+
 		Ok(())
 	}
 
@@ -379,11 +402,8 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<RepaidInput<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				amount.principal.internal()?;
-
-				let principal = self
-					.total_borrowed
-					.ensure_sub(self.total_repaid.principal)?;
+				let _ = amount.principal.internal()?;
+				let principal = self.principal()?;
 
 				(principal, inner.outstanding_interest(principal)?)
 			}
@@ -437,15 +457,15 @@ impl<T: Config> ActiveLoan<T> {
 			}
 		}
 
+		self.repayments_on_schedule_until = T::Time::now();
+
 		Ok(amount)
 	}
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
-		let penalty = new_status.penalty;
-		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.interest.set_penalty(penalty)?,
-			ActivePricing::External(inner) => inner.interest.set_penalty(penalty)?,
-		}
+		self.pricing
+			.interest_mut()
+			.set_penalty(new_status.penalty)?;
 
 		self.write_off_percentage = new_status.percentage;
 
@@ -453,12 +473,10 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {
-		let can_close = match &self.pricing {
-			ActivePricing::Internal(inner) => !inner.interest.has_debt(),
-			ActivePricing::External(inner) => !inner.interest.has_debt(),
-		};
-
-		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));
+		ensure!(
+			!self.pricing.interest().has_debt(),
+			Error::<T>::from(CloseLoanError::NotFullyRepaid)
+		);
 
 		Ok(())
 	}
@@ -501,10 +519,7 @@ impl<T: Config> ActiveLoan<T> {
 				.maturity
 				.extends(extension)
 				.map_err(|_| Error::<T>::from(MutationError::MaturityExtendedTooMuch))?,
-			LoanMutation::InterestRate(rate) => match &mut self.pricing {
-				ActivePricing::Internal(inner) => inner.interest.set_base_rate(rate)?,
-				ActivePricing::External(inner) => inner.interest.set_base_rate(rate)?,
-			},
+			LoanMutation::InterestRate(rate) => self.pricing.interest_mut().set_base_rate(rate)?,
 			LoanMutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
 			LoanMutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
 			LoanMutation::Internal(mutation) => match &mut self.pricing {
@@ -520,7 +535,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Seconds) {
-		self.schedule.maturity = crate::types::Maturity::fixed(duration);
+		self.schedule.maturity = crate::types::cashflow::Maturity::fixed(duration);
 	}
 }
 
@@ -556,9 +571,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 		Ok(match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
-				let principal = active_loan
-					.total_borrowed
-					.ensure_sub(active_loan.total_repaid.principal)?;
+				let principal = active_loan.principal()?;
 
 				Self {
 					present_value,
@@ -573,7 +586,7 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 				Self {
 					present_value,
-					outstanding_principal: inner.outstanding_principal(pool_id, maturity)?,
+					outstanding_principal: inner.outstanding_priced_principal(pool_id, maturity)?,
 					outstanding_interest: inner.outstanding_interest()?,
 					current_price: Some(inner.current_price(pool_id, maturity)?),
 					active_loan,
@@ -593,7 +606,7 @@ pub mod v3 {
 			loans::BlockNumberFor,
 			pricing::external::v3::{ActivePricing, Pricing},
 		},
-		types::{LoanRestrictions, RepaidAmount, RepaymentSchedule},
+		types::{cashflow::RepaymentSchedule, LoanRestrictions, RepaidAmount},
 		AssetOf, Config,
 	};
 

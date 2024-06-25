@@ -1,7 +1,7 @@
 [package]
 name = "development-runtime"
-version = "0.10.46"
 build = "build.rs"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,7 +11,7 @@ documentation.workspace = true
 
 [dependencies]
 hex = { workspace = true }
-hex-literal = { workspace = true, optional = true }
+hex-literal = { workspace = true }
 log = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
@@ -73,6 +73,7 @@ runtime-common = { workspace = true }
 axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
+cumulus-pallet-dmp-queue = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
@@ -81,6 +82,7 @@ orml-tokens = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xtokens = { workspace = true }
 pallet-anchors = { workspace = true }
+pallet-anchors-v2 = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-balances = { workspace = true }
@@ -198,6 +200,7 @@ std = [
   "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
+  "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
@@ -206,6 +209,7 @@ std = [
   "orml-xcm/std",
   "orml-xtokens/std",
   "pallet-anchors/std",
+  "pallet-anchors-v2/std",
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
@@ -266,7 +270,6 @@ std = [
 
 runtime-benchmarks = [
   # Enabling optional
-  "hex-literal",
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
@@ -295,6 +298,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
+  "pallet-anchors-v2/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
@@ -366,6 +370,7 @@ try-runtime = [
   "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
+  "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
@@ -374,6 +379,7 @@ try-runtime = [
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
   "pallet-anchors/try-runtime",
+  "pallet-anchors-v2/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",

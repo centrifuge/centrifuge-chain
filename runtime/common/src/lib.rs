@@ -15,19 +15,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod account_conversion;
-pub mod apis;
-pub mod changes;
-pub mod evm;
-pub mod fees;
-pub mod gateway;
-pub mod migrations;
-pub mod oracle;
-pub mod pool;
-pub mod remarks;
-pub mod transfer_filter;
-pub mod xcm;
-
 use cfg_primitives::Balance;
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -43,6 +30,19 @@ use sp_runtime::{
 	DispatchError,
 };
 use sp_std::marker::PhantomData;
+
+pub mod account_conversion;
+pub mod apis;
+pub mod changes;
+pub mod evm;
+pub mod fees;
+pub mod gateway;
+pub mod migrations;
+pub mod oracle;
+pub mod pool;
+pub mod remarks;
+pub mod transfer_filter;
+pub mod xcm;
 
 pub mod instances {
 	/// The rewards associated to block rewards
@@ -250,7 +250,8 @@ pub mod asset_registry {
 	impl<
 			Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>,
 			DefaultEnsureOrigin: EnsureOrigin<Origin>,
-		> EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin, DefaultEnsureOrigin>
+		> EnsureOriginWithArg<Origin, Option<CurrencyId>>
+		for AuthorityOrigin<Origin, DefaultEnsureOrigin>
 	{
 		type Success = ();
 
@@ -290,6 +291,7 @@ pub mod investment_portfolios {
 		tokens::{Fortitude, Preservation},
 	};
 	use fungibles::{Inspect, InspectHold};
+	use sp_runtime::DispatchError;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
@@ -298,9 +300,10 @@ pub mod investment_portfolios {
 	/// NOTE: Moving inner scope to any pallet would introduce tight(er)
 	/// coupling due to requirement of iterating over storage maps which in turn
 	/// require the pallet's Config trait.
+	#[allow(clippy::type_complexity)]
 	pub fn get_account_portfolio<T>(
 		investor: AccountId,
-	) -> Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)>
+	) -> Result<Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)>, DispatchError>
 	where
 		T: frame_system::Config<AccountId = AccountId>
 			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
@@ -312,10 +315,10 @@ pub mod investment_portfolios {
 			BTreeMap::<TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>>::new();
 
 		// Denote current tranche token balances before dry running collecting
-		orml_tokens::Accounts::<T>::iter_key_prefix(&investor).for_each(|currency| {
+		for currency in orml_tokens::Accounts::<T>::iter_key_prefix(&investor) {
 			if let CurrencyId::Tranche(pool_id, tranche_id) = currency {
 				let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(pool_id)
-					.expect("Pool must exist; qed");
+					.ok_or(DispatchError::Other("Pool must exist; qed"))?;
 
 				let free_balance = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 					currency,
@@ -341,12 +344,12 @@ pub mod investment_portfolios {
 							.with_reserved_tranche_tokens(reserved_balance),
 					);
 			}
-		});
+		}
 
 		// Set pending invest currency and claimable tranche tokens
-		pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
+		for invest_id in pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor) {
 			let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(invest_id.of_pool())
-				.expect("Pool must exist; qed");
+				.ok_or(DispatchError::Other("Pool must exist; qed"))?;
 
 			// Collect such that we can determine claimable tranche tokens
 			// NOTE: Does not modify storage since RtAPI is readonly
@@ -376,12 +379,12 @@ pub mod investment_portfolios {
 						.with_pending_invest_currency(amount)
 						.with_claimable_tranche_tokens(free_tranche_tokens_new),
 				);
-		});
+		}
 
 		// Set pending tranche tokens and claimable invest currency
-		pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
+		for invest_id in pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor) {
 			let pool_currency = pallet_pool_system::Pallet::<T>::currency_for(invest_id.of_pool())
-				.expect("Pool must exist; qed");
+				.ok_or(DispatchError::Other("Pool must exist; qed"))?;
 
 			let balance_before = pallet_restricted_tokens::Pallet::<T>::reducible_balance(
 				pool_currency,
@@ -417,9 +420,9 @@ pub mod investment_portfolios {
 						.with_pending_redeem_tranche_tokens(amount)
 						.with_claimable_currency(balance_after),
 				);
-		});
+		}
 
-		portfolio.into_iter().collect()
+		Ok(portfolio.into_iter().collect())
 	}
 }
 

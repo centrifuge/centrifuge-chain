@@ -10,34 +10,43 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-mod cfg {
-	use cfg_primitives::{currency_decimals, Balance};
-	use cfg_types::{
-		locations::RestrictedTransferLocation,
-		tokens::{CurrencyId, FilterCurrency},
-	};
-	use frame_support::{assert_ok, dispatch::RawOrigin};
-	use runtime_common::remarks::Remark;
-	use sp_runtime::traits::Zero;
+use cfg_primitives::Balance;
+use cfg_types::{
+	domain_address::DomainAddress,
+	locations::RestrictedTransferLocation,
+	tokens::{
+		default_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		FilterCurrency,
+	},
+};
+use cumulus_primitives_core::WeightLimit;
+use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
+use runtime_common::remarks::Remark;
+use sp_runtime::traits::Zero;
+use staging_xcm::{
+	v4::{Junction::*, Location, NetworkId},
+	VersionedLocation,
+};
 
-	use crate::{
-		generic::{
-			config::Runtime,
-			env::Env,
-			envs::runtime_env::RuntimeEnv,
-			utils::{genesis, genesis::Genesis},
+use crate::{
+	generic::{
+		config::Runtime,
+		env::Env,
+		envs::runtime_env::RuntimeEnv,
+		utils::{
+			currency::{cfg, CurrencyInfo, CustomCurrency},
+			genesis,
+			genesis::Genesis,
+			xcm::{account_location, transferable_metadata},
 		},
-		utils::accounts::Keyring,
-	};
+	},
+	utils::accounts::Keyring,
+};
 
-	const TRANSFER_AMOUNT: Balance = 100;
+mod local {
+	use super::*;
 
-	pub fn decimals(decimals: u32) -> Balance {
-		10u128.saturating_pow(decimals)
-	}
-	pub fn cfg(amount: Balance) -> Balance {
-		amount * decimals(currency_decimals::NATIVE)
-	}
+	const TRANSFER_AMOUNT: u32 = 100;
 
 	fn setup<T: Runtime>(filter: FilterCurrency) -> RuntimeEnv<T> {
 		let mut env = RuntimeEnv::<T>::from_parachain_storage(
@@ -51,7 +60,7 @@ mod cfg {
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					filter,
-					RestrictedTransferLocation::Local(Keyring::Bob.to_account_id())
+					RestrictedTransferLocation::Local(Keyring::Bob.id())
 				)
 			);
 
@@ -66,163 +75,76 @@ mod cfg {
 		env
 	}
 
-	fn validate_fail<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
-		// With FilterCurrencyAll
-		{
-			let mut env = setup::<T>(FilterCurrency::All);
+	fn people_balances<T: Runtime>() -> (Balance, Balance, Balance) {
+		(
+			pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.id()),
+			pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.id()),
+			pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.id()),
+		)
+	}
 
-			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
-				env.parachain_state(|| {
-					// NOTE: The para-id is not relevant here
-					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
-					)
-				});
+	fn process_ok<T: Runtime>(
+		env: &mut RuntimeEnv<T>,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) {
+		let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
+			env.parachain_state(|| people_balances::<T>());
 
-			let fee = env.submit_now(who, call.clone()).unwrap();
-			// NOTE: Only use fee, if submitter is Alice
-			let fee = if who != Keyring::Alice { 0 } else { fee };
+		let fee = env.submit_now(who, call).unwrap();
+		// NOTE: Only use fee, if submitter is Alice
+		let fee = if who != Keyring::Alice { 0 } else { fee };
 
-			env.parachain_state(|| {
-				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
-				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+		let (after_transfer_alice, after_transfer_bob, after_transfer_charlie) =
+			env.parachain_state(|| people_balances::<T>());
 
-				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
-				assert_eq!(after_transfer_bob, pre_transfer_bob);
-				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
-			});
-		}
+		assert_eq!(
+			after_transfer_alice,
+			pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
+		);
+		assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
+		assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+	}
 
-		// With FilterCurrency::Specific(CurrencyId::Native)
-		{
-			let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
+	fn process_fail<T: Runtime>(
+		env: &mut RuntimeEnv<T>,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) {
+		let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
+			env.parachain_state(|| people_balances::<T>());
 
-			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
-				env.parachain_state(|| {
-					// NOTE: The para-id is not relevant here
-					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
-					)
-				});
+		let fee = env.submit_now(who, call).unwrap();
+		// NOTE: Only use fee, if submitter is Alice
+		let fee = if who != Keyring::Alice { 0 } else { fee };
 
-			let fee = env.submit_now(who, call).unwrap();
-			// NOTE: Only use fee, if submitter is Alice
-			let fee = if who != Keyring::Alice { 0 } else { fee };
+		let (after_transfer_alice, after_transfer_bob, after_transfer_charlie) =
+			env.parachain_state(|| people_balances::<T>());
 
-			env.parachain_state(|| {
-				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
-				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
-
-				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
-				assert_eq!(after_transfer_bob, pre_transfer_bob);
-				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
-			});
-		}
+		assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
+		assert_eq!(after_transfer_bob, pre_transfer_bob);
+		assert_eq!(after_transfer_charlie, pre_transfer_charlie);
 	}
 
 	fn validate_ok<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
-		// With FilterCurrencyAll
-		{
-			let mut env = setup::<T>(FilterCurrency::All);
+		let mut env = setup::<T>(FilterCurrency::All);
+		process_ok(&mut env, who, call.clone());
 
-			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
-				env.parachain_state(|| {
-					// NOTE: The para-id is not relevant here
-					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
-					)
-				});
-
-			let fee = env.submit_now(who, call.clone()).unwrap();
-
-			// NOTE: Only use fee, if submitter is Alice
-			let fee = if who != Keyring::Alice { 0 } else { fee };
-
-			env.parachain_state(|| {
-				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
-				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
-
-				assert_eq!(
-					after_transfer_alice,
-					pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
-				);
-				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
-				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
-			});
-		}
-
-		// With FilterCurrency::Specific(CurrencyId::Native)
-		{
-			let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
-
-			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
-				env.parachain_state(|| {
-					// NOTE: The para-id is not relevant here
-					(
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-						pallet_balances::Pallet::<T>::free_balance(
-							&Keyring::Charlie.to_account_id(),
-						),
-					)
-				});
-
-			let fee = env.submit_now(who, call).unwrap();
-			// NOTE: Only use fee, if submitter is Alice
-			let fee = if who != Keyring::Alice { 0 } else { fee };
-
-			env.parachain_state(|| {
-				let after_transfer_alice =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-				let after_transfer_bob =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
-				let after_transfer_charlie =
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
-
-				assert_eq!(
-					after_transfer_alice,
-					pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
-				);
-				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
-				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
-			});
-		}
+		let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
+		process_ok(&mut env, who, call.clone());
 	}
 
-	fn transfer_ok<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer_allow_death {
-			dest: Keyring::Bob.into(),
-			value: cfg(TRANSFER_AMOUNT),
-		}
+	fn validate_fail<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
+		let mut env = setup::<T>(FilterCurrency::All);
+		process_fail(&mut env, who, call.clone());
+
+		let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
+		process_fail(&mut env, who, call.clone());
 	}
 
-	fn transfer_fail<T: Runtime>() -> pallet_balances::Call<T> {
-		pallet_balances::Call::<T>::transfer_allow_death {
-			dest: Keyring::Charlie.into(),
+	fn transfer_to<T: Runtime>(dest: Keyring) -> pallet_balances::Call<T> {
+		pallet_balances::Call::transfer_allow_death {
+			dest: dest.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}
 	}
@@ -235,39 +157,13 @@ mod cfg {
 				.storage(),
 		);
 
-		let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
-			env.parachain_state(|| {
-				// NOTE: The para-id is not relevant here
-				(
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
-					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id()),
-				)
-			});
-
-		let fee = env.submit_now(Keyring::Alice, transfer_ok::<T>()).unwrap();
-
-		env.parachain_state(|| {
-			let after_transfer_alice =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
-			let after_transfer_bob =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
-			let after_transfer_charlie =
-				pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
-
-			assert_eq!(
-				after_transfer_alice,
-				pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
-			);
-			assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
-			assert_eq!(after_transfer_charlie, pre_transfer_charlie);
-		});
+		process_ok(&mut env, Keyring::Alice, transfer_to(Keyring::Bob));
 	}
 
 	#[test_runtimes(all)]
 	fn basic_transfer<T: Runtime>() {
-		validate_ok::<T>(Keyring::Alice, transfer_ok::<T>());
-		validate_fail::<T>(Keyring::Alice, transfer_fail::<T>());
+		validate_ok::<T>(Keyring::Alice, transfer_to(Keyring::Bob));
+		validate_fail::<T>(Keyring::Alice, transfer_to(Keyring::Charlie));
 	}
 
 	#[test_runtimes(all)]
@@ -277,7 +173,7 @@ mod cfg {
 			pallet_proxy::Call::<T>::proxy {
 				real: Keyring::Alice.into(),
 				force_proxy_type: None,
-				call: Box::new(transfer_ok::<T>().into()),
+				call: Box::new(transfer_to(Keyring::Bob).into()),
 			},
 		);
 		validate_fail::<T>(
@@ -285,7 +181,7 @@ mod cfg {
 			pallet_proxy::Call::<T>::proxy {
 				real: Keyring::Alice.into(),
 				force_proxy_type: None,
-				call: Box::new(transfer_fail::<T>().into()),
+				call: Box::new(transfer_to(Keyring::Charlie).into()),
 			},
 		);
 	}
@@ -299,7 +195,7 @@ mod cfg {
 				force_proxy_type: None,
 				call: Box::new(
 					pallet_utility::Call::<T>::batch {
-						calls: vec![transfer_ok::<T>().into()],
+						calls: vec![transfer_to(Keyring::Bob).into()],
 					}
 					.into(),
 				),
@@ -312,7 +208,7 @@ mod cfg {
 				force_proxy_type: None,
 				call: Box::new(
 					pallet_utility::Call::<T>::batch {
-						calls: vec![transfer_fail::<T>().into()],
+						calls: vec![transfer_to(Keyring::Charlie).into()],
 					}
 					.into(),
 				),
@@ -325,16 +221,16 @@ mod cfg {
 		validate_ok::<T>(
 			Keyring::Alice,
 			pallet_utility::Call::<T>::batch {
-				calls: vec![transfer_ok::<T>().into()],
+				calls: vec![transfer_to(Keyring::Bob).into()],
 			},
 		);
 		validate_fail::<T>(
 			Keyring::Alice,
 			pallet_utility::Call::<T>::batch {
 				calls: vec![
-					transfer_fail::<T>().into(),
-					transfer_fail::<T>().into(),
-					transfer_fail::<T>().into(),
+					transfer_to(Keyring::Charlie).into(),
+					transfer_to(Keyring::Charlie).into(),
+					transfer_to(Keyring::Charlie).into(),
 				],
 			},
 		);
@@ -345,16 +241,16 @@ mod cfg {
 		validate_ok::<T>(
 			Keyring::Alice,
 			pallet_utility::Call::<T>::batch_all {
-				calls: vec![transfer_ok::<T>().into()],
+				calls: vec![transfer_to(Keyring::Bob).into()],
 			},
 		);
 		validate_fail::<T>(
 			Keyring::Alice,
 			pallet_utility::Call::<T>::batch_all {
 				calls: vec![
-					transfer_fail::<T>().into(),
-					transfer_fail::<T>().into(),
-					transfer_fail::<T>().into(),
+					transfer_to(Keyring::Charlie).into(),
+					transfer_to(Keyring::Charlie).into(),
+					transfer_to(Keyring::Charlie).into(),
 				],
 			},
 		);
@@ -375,7 +271,7 @@ mod cfg {
 				)]
 				.try_into()
 				.expect("Small enough. qed."),
-				call: Box::new(transfer_ok::<T>().into()),
+				call: Box::new(transfer_to(Keyring::Bob).into()),
 			},
 		);
 		validate_fail::<T>(
@@ -391,8 +287,149 @@ mod cfg {
 				)]
 				.try_into()
 				.expect("Small enough. qed."),
-				call: Box::new(transfer_fail::<T>().into()),
+				call: Box::new(transfer_to(Keyring::Charlie).into()),
 			},
 		);
+	}
+}
+
+mod xcm {
+	use super::*;
+
+	const TRANSFER: u32 = 100;
+	const PARA_ID: u32 = 1000;
+
+	#[test_runtimes(all)]
+	fn restrict_xcm_transfer<T: Runtime>() {
+		let curr = CustomCurrency(
+			CurrencyId::ForeignAsset(1),
+			AssetMetadata {
+				decimals: 6,
+				..transferable_metadata(Some(PARA_ID))
+			},
+		);
+
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
+			Genesis::default()
+				.add(genesis::balances::<T>(cfg(1))) // For fees
+				.add(genesis::tokens::<T>([(curr.id(), curr.val(TRANSFER))]))
+				.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
+				.storage(),
+		);
+
+		env.parachain_state_mut(|| {
+			assert_ok!(
+				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					FilterCurrency::Specific(curr.id()),
+					RestrictedTransferLocation::Xcm(account_location(
+						1,
+						Some(PARA_ID),
+						Keyring::Alice.id()
+					)),
+				)
+			);
+
+			assert_noop!(
+				pallet_restricted_xtokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					curr.val(TRANSFER),
+					account_location(1, Some(PARA_ID), Keyring::Bob.id()),
+					WeightLimit::Unlimited,
+				),
+				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+			);
+
+			assert_noop!(
+				pallet_restricted_xtokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					curr.val(TRANSFER),
+					account_location(1, Some(PARA_ID), Keyring::Alice.id()),
+					WeightLimit::Unlimited,
+				),
+				// But it's ok, we do not care about the xcm transaction in this context.
+				// It is already checked at `xcm_transfers.rs`
+				orml_xtokens::Error::<T>::XcmExecutionFailed
+			);
+		});
+	}
+}
+
+mod eth_address {
+	use super::*;
+
+	const TRANSFER: u32 = 10;
+	const CHAIN_ID: u64 = 1;
+	const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
+
+	#[test_runtimes(all)]
+	fn restrict_lp_eth_transfer<T: Runtime>() {
+		let pallet_index = T::PalletInfo::index::<pallet_liquidity_pools::Pallet<T>>();
+		let curr = CustomCurrency(
+			CurrencyId::ForeignAsset(1),
+			AssetMetadata {
+				decimals: 6,
+				location: Some(VersionedLocation::V4(Location::new(
+					0,
+					[
+						PalletInstance(pallet_index.unwrap() as u8),
+						GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+						AccountKey20 {
+							network: None,
+							key: CONTRACT_ACCOUNT,
+						},
+					],
+				))),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					..CustomMetadata::default()
+				},
+				..default_metadata()
+			},
+		);
+
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
+			Genesis::default()
+				.add(genesis::balances::<T>(cfg(10)))
+				.add(genesis::tokens::<T>([(curr.id(), curr.val(TRANSFER))]))
+				.add(genesis::assets::<T>([(curr.id(), curr.metadata())]))
+				.storage(),
+		);
+
+		env.parachain_state_mut(|| {
+			let curr_contract = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
+
+			assert_ok!(
+				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					FilterCurrency::Specific(curr.id()),
+					RestrictedTransferLocation::Address(curr_contract.clone()),
+				)
+			);
+
+			assert_noop!(
+				pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					DomainAddress::EVM(CHAIN_ID, [2; 20]), // Not the allowed contract account
+					curr.val(TRANSFER),
+				),
+				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+			);
+
+			assert_noop!(
+				pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					curr.id(),
+					curr_contract,
+					curr.val(TRANSFER),
+				),
+				// But it's ok, we do not care about the router transaction in this context.
+				// Is already checked at `liquidity_pools.rs`
+				pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
+			);
+		});
 	}
 }

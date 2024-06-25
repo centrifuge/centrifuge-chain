@@ -22,14 +22,16 @@ use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_core::Hasher;
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
+	traits::{Convert, DispatchInfoOf, SignedExtension, StaticLookup},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
-use sp_std::vec::Vec;
-use staging_xcm::v4::{Asset, Location};
+use sp_std::{boxed::Box, vec::Vec};
+use staging_xcm::{
+	v4::{Asset, Location},
+	VersionedLocation,
+};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
@@ -45,16 +47,16 @@ impl<
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		let currency_based_check = |sender: AccountId, destination: Location, currency| {
+		let currency_based_check = |sender: AccountId, destination: VersionedLocation, currency| {
 			amalgamate_allowance(
 				T::allowance(
 					sender.clone(),
-					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::Xcm(Box::new(destination.clone())),
 					FilterCurrency::Specific(currency),
 				),
 				T::allowance(
 					sender,
-					RestrictedTransferLocation::XCM(BlakeTwo256::hash(&destination.encode())),
+					RestrictedTransferLocation::Xcm(Box::new(destination)),
 					FilterCurrency::All,
 				),
 			)

@@ -21,12 +21,13 @@ use pallet_loans::{
 		},
 	},
 	types::{
-		valuation::ValuationMethod, BorrowLoanError, BorrowRestrictions, InterestPayments,
-		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
+		valuation::ValuationMethod,
+		BorrowLoanError, BorrowRestrictions, LoanRestrictions, RepayRestrictions,
 	},
 };
 use runtime_common::{
-	apis::{runtime_decl_for_loans_api::LoansApiV2, runtime_decl_for_pools_api::PoolsApiV1},
+	apis::{runtime_decl_for_loans_api::LoansApiV3, runtime_decl_for_pools_api::PoolsApiV1},
 	oracle::Feeder,
 };
 use sp_runtime::FixedPointNumber;
@@ -41,7 +42,7 @@ use crate::{
 			self,
 			currency::{self, cfg, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
-			POOL_MIN_EPOCH_TIME,
+			pool::POOL_MIN_EPOCH_TIME,
 		},
 	},
 	utils::accounts::Keyring,
@@ -75,7 +76,7 @@ mod common {
 				.add(genesis::balances::<T>(
 					T::ExistentialDeposit::get() + FOR_FEES,
 				))
-				.add(genesis::assets::<T>(vec![Box::new(Usd6)]))
+				.add(genesis::assets::<T>(vec![(Usd6.id(), &Usd6.metadata())]))
 				.add(genesis::tokens::<T>(vec![(Usd6.id(), Usd6.ed())]))
 				.storage(),
 		);
@@ -83,19 +84,19 @@ mod common {
 		env.parachain_state_mut(|| {
 			// Creating a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6.id());
+			utils::pool::create_empty::<T>(POOL_ADMIN.id(), POOL_A, Usd6.id());
 
 			// Setting borrower
-			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
+			utils::pool::give_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
 			utils::give_nft::<T>(BORROWER.id(), NFT_A);
 
 			// Setting a loan admin
-			utils::give_pool_role::<T>(LOAN_ADMIN.id(), POOL_A, PoolRole::LoanAdmin);
+			utils::pool::give_role::<T>(LOAN_ADMIN.id(), POOL_A, PoolRole::LoanAdmin);
 
 			// Funding a pool
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
-			utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
+			utils::pool::give_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
 			utils::give_tokens::<T>(INVESTOR.id(), Usd6.id(), EXPECTED_POOL_BALANCE);
 			utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
 		});
@@ -104,7 +105,7 @@ mod common {
 
 		env.parachain_state_mut(|| {
 			// New epoch with the investor funds available
-			utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
+			utils::pool::close_epoch::<T>(POOL_ADMIN.id(), POOL_A);
 		});
 
 		env
@@ -133,7 +134,7 @@ mod common {
 					date: now + SECONDS_PER_MINUTE,
 					extension: SECONDS_PER_MINUTE / 2,
 				},
-				interest_payments: InterestPayments::None,
+				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			interest_rate: InterestRate::Fixed {
