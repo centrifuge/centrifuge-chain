@@ -32,7 +32,7 @@ parameter_types! {
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1101 = (
+pub type UpgradeCentrifuge1102 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	pallet_collator_selection::migration::v1::MigrateToV1<crate::Runtime>,

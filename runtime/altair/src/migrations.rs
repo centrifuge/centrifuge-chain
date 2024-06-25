@@ -17,7 +17,7 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = 1000;
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1101 = (
+pub type UpgradeAltair1102 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OrderBook, 0, 1>,
