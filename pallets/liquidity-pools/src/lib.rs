@@ -560,7 +560,7 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					amount: amount.into(),
-					domain: domain_address.domain(),
+					domain: domain_address.domain().into(),
 					sender: who.into(),
 					receiver: domain_address.address(),
 				},
@@ -967,7 +967,7 @@ pub mod pallet {
 					pool_id.into(),
 					tranche_id.into(),
 					sender.domain(),
-					T::DomainAccountToDomainAddress::convert((domain, receiver)),
+					T::DomainAccountToDomainAddress::convert((domain.try_into()?, receiver)),
 					amount.into(),
 				),
 				Message::IncreaseInvestOrder {

@@ -22,6 +22,42 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
+/// An isometric type to `Domain` that serializes as expected
+#[derive(
+	Encode,
+	Decode,
+	Serialize,
+	Deserialize,
+	Clone,
+	PartialEq,
+	Eq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+pub struct SerializableDomain(u8, u64);
+
+impl From<Domain> for SerializableDomain {
+	fn from(domain: Domain) -> Self {
+		match domain {
+			Domain::Centrifuge => Self(0, 0),
+			Domain::EVM(chain_id) => Self(1, chain_id),
+		}
+	}
+}
+
+impl TryInto<Domain> for SerializableDomain {
+	type Error = DispatchError;
+
+	fn try_into(self) -> Result<Domain, DispatchError> {
+		match self.0 {
+			0 => Ok(Domain::Centrifuge),
+			1 => Ok(Domain::EVM(self.1)),
+			_ => Err(DispatchError::Other("Unknown domain")),
+		}
+	}
+}
+
 /// A LiquidityPools Message
 ///
 /// A message requires a custom decoding & encoding, meeting the
@@ -128,7 +164,7 @@ pub enum Message {
 		pool_id: u64,
 		tranche_id: TrancheId,
 		sender: Address,
-		domain: Domain,
+		domain: SerializableDomain,
 		receiver: Address,
 		amount: u128,
 	},
@@ -595,7 +631,7 @@ mod tests {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				sender: default_address_32(),
-				domain: domain_address.clone().into(),
+				domain: domain_address.domain().into(),
 				receiver: domain_address.address(),
 				amount: AMOUNT,
 			},
@@ -610,7 +646,7 @@ mod tests {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				sender: vec_to_fixed_array(default_address_20()),
-				domain: Domain::Centrifuge,
+				domain: Domain::Centrifuge.into(),
 				receiver: default_address_32(),
 				amount: AMOUNT,
 			},
