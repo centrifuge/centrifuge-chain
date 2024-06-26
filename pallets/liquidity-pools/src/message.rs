@@ -1,10 +1,11 @@
+use bincode::Options;
 use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_types::domain_address::Domain;
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::{vec, vec::Vec};
 
@@ -59,13 +60,6 @@ impl TryInto<Domain> for SerializableDomain {
 }
 
 /// A LiquidityPools Message
-///
-/// A message requires a custom decoding & encoding, meeting the
-/// LiquidityPool Generic Message Passing Format (GMPF): Every message is
-/// encoded with a u8 at head flagging the message type, followed by its field.
-/// Integers are big-endian encoded and enum values (such as `[crate::Domain]`)
-/// also have a custom GMPF implementation, aiming for a fixed-size encoded
-/// representation for each message variant.
 ///
 /// NOTE: The sender of a message cannot ensure whether the
 /// corresponding receiver rejects it.
@@ -419,8 +413,15 @@ pub enum Message {
 	},
 }
 
+/// A message requires a custom decoding & encoding, meeting the
+/// LiquidityPool Generic Message Passing Format (GMPF): Every message is
+/// encoded with a u8 at head flagging the message type, followed by its field.
+/// Integers are big-endian encoded and enum values (such as `[crate::Domain]`)
+/// also have a custom GMPF implementation, aiming for a fixed-size encoded
+/// representation for each message variant.
+///
+/// Inverse of [`solidity_deserialization()`]
 pub fn solidity_serialization<T: Serialize>(ty: &T) -> Vec<u8> {
-	use bincode::Options;
 	bincode::DefaultOptions::new()
 		.with_fixint_encoding()
 		.with_big_endian()
@@ -428,10 +429,8 @@ pub fn solidity_serialization<T: Serialize>(ty: &T) -> Vec<u8> {
 		.expect("TODO")
 }
 
-pub fn solidity_deserialization<'a, T: Deserialize<'a>>(
-	data: &'a [u8],
-) -> Result<T, DispatchError> {
-	use bincode::Options;
+/// Inverse of [`solidity_serialization()`]
+pub fn solidity_deserialization<T: DeserializeOwned>(data: &[u8]) -> Result<T, DispatchError> {
 	bincode::DefaultOptions::new()
 		.with_fixint_encoding()
 		.with_big_endian()
@@ -441,11 +440,21 @@ pub fn solidity_deserialization<'a, T: Deserialize<'a>>(
 
 impl Message {
 	pub fn serialize(&self) -> Vec<u8> {
-		solidity_serialization(self)
+		let bytes = solidity_serialization(self);
+
+		// Bincode serializes the enum tag variants as 4 bytes.
+		// But solidity side expect 1 byte.
+		// We emulate here as if it was 1
+		bytes[3..].into()
 	}
 
 	pub fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
-		solidity_deserialization(data)
+		// Bincode serializes the enum tag variants as 4 bytes.
+		// But solidity side expect 1 byte.
+		// We emulate here as if it was so.
+		let data = [vec![0, 0, 0], data.into()].concat();
+
+		solidity_deserialization(&data)
 	}
 }
 
@@ -466,39 +475,41 @@ mod tests {
 
 	#[test]
 	fn invalid() {
-		todo!()
-		/*
 		let msg = Message::Invalid;
-		assert_eq!(msg.serialize(), vec![msg.call_type()]);
 		assert_eq!(msg.serialize(), vec![0]);
-		*/
 	}
 
-	/*
 	#[test]
 	fn encoding_domain() {
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(Domain::Centrifuge.serialize()),
+			hex::encode(solidity_serialization(&SerializableDomain::from(
+				Domain::Centrifuge
+			))),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
 		assert_eq!(
-			hex::encode(Domain::EVM(1).serialize()),
+			hex::encode(solidity_serialization(&SerializableDomain::from(
+				Domain::EVM(1)
+			))),
 			"010000000000000001"
 		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(Domain::EVM(1284).serialize()),
+			hex::encode(solidity_serialization(&SerializableDomain::from(
+				Domain::EVM(1284)
+			))),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(Domain::EVM(43114).serialize()),
+			hex::encode(solidity_serialization(&SerializableDomain::from(
+				Domain::EVM(43114)
+			))),
 			"01000000000000a86a"
 		);
 	}
-	*/
 
 	#[test]
 	fn add_currency_zero() {
