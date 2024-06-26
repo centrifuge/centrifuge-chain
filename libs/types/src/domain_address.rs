@@ -15,6 +15,7 @@ use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::{vec, vec::Vec};
 
@@ -24,7 +25,18 @@ use crate::EVMChainId;
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(
+	Encode,
+	Decode,
+	Serialize,
+	Deserialize,
+	Clone,
+	Eq,
+	MaxEncodedLen,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+)]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling
 	/// incoming messages.
@@ -36,6 +48,7 @@ pub enum Domain {
 	EVM(EVMChainId),
 }
 
+/*
 impl Codec for Domain {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
@@ -62,6 +75,7 @@ impl Codec for Domain {
 		}
 	}
 }
+*/
 
 impl Domain {
 	pub fn into_account<AccountId: Encode + Decode>(&self) -> AccountId {

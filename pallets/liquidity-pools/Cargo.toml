@@ -23,6 +23,9 @@ sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 staging-xcm = { workspace = true }
+serde = { workspace = true }
+serde-big-array = { workspace = true }
+bincode = { workspace = true }
 
 # Our custom pallets
 cfg-primitives = { workspace = true }
@@ -50,6 +53,7 @@ std = [
   "orml-traits/std",
   "staging-xcm/std",
   "scale-info/std",
+  "serde/std",
 ]
 runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",

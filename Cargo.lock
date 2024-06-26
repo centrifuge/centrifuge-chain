@@ -8231,6 +8231,7 @@ dependencies = [
 name = "pallet-liquidity-pools"
 version = "0.0.1"
 dependencies = [
+ "bincode",
  "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
@@ -8243,6 +8244,8 @@ dependencies = [
  "orml-traits",
  "parity-scale-codec",
  "scale-info",
+ "serde",
+ "serde-big-array",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -13440,6 +13443,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7253ab4de971e72fb7be983802300c30b5a7f0c2e56fab8abfc6a214307c0094"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-big-array"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
