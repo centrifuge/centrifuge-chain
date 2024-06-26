@@ -161,6 +161,10 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
+
+		/// Maximum number of routers allowed for a domain in a multi-router setup.
+		#[pallet::constant]
+		type MaxRouterCount: Get<u32>;
 	}
 
 	#[pallet::event]
@@ -204,6 +208,12 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		},
+
+		/// The router for a given domain was set.
+		DomainMultiRoutersSet {
+			domain: Domain,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
+		},
 	}
 
 	/// Storage for domain routers.
@@ -212,6 +222,14 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn domain_routers)]
 	pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
+
+	/// Storage for domain multi-routers.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn domain_multi_routers)]
+	pub type DomainMultiRouters<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Router, T::MaxRouterCount>>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -288,6 +306,9 @@ pub mod pallet {
 
 		/// Router not found.
 		RouterNotFound,
+
+		/// Multi-outer not found.
+		MultiRouterNotFound,
 
 		/// Relayer messages need to prepend the with
 		/// the original source chain and source address
@@ -600,6 +621,29 @@ pub mod pallet {
 				}
 			}
 		}
+
+		/// Set routers for a particular domain.
+		#[pallet::weight(T::WeightInfo::set_domain_multi_routers())]
+		#[pallet::call_index(8)]
+		pub fn set_domain_multi_routers(
+			origin: OriginFor<T>,
+			domain: Domain,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+
+			for router in &routers {
+				router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
+			}
+
+			<DomainMultiRouters<T>>::insert(domain.clone(), routers.clone());
+
+			Self::deposit_event(Event::DomainMultiRoutersSet { domain, routers });
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -715,8 +759,8 @@ pub mod pallet {
 			weight_used
 		}
 
-		/// Retrieves the router stored for the provided domain and sends the
-		/// message, calculating and returning the required weight for these
+		/// Retrieves the routers stored for the provided domain and sends the
+		/// message using each, calculating and returning the required weight for these
 		/// operations in the `DispatchResultWithPostInfo`.
 		fn process_message(
 			domain: Domain,
@@ -725,35 +769,59 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let read_weight = T::DbWeight::get().reads(1);
 
-			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(read_weight),
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<T>::RouterNotFound.into(),
-			})?;
-
-			let post_dispatch_info_fn =
-				|actual_weight: Option<Weight>, extra_weight: Weight| -> PostDispatchInfo {
-					PostDispatchInfo {
-						actual_weight: Some(Self::get_outbound_message_processing_weight(
-							actual_weight,
-							extra_weight,
-						)),
+			let routers =
+				DomainMultiRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
+					post_info: PostDispatchInfo {
+						actual_weight: Some(read_weight),
 						pays_fee: Pays::Yes,
-					}
-				};
+					},
+					error: Error::<T>::RouterNotFound.into(),
+				})?;
 
-			match router.send(sender, message.serialize()) {
-				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
-					dispatch_info.actual_weight,
-					read_weight,
-				)),
-				Err(e) => Err(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info_fn(e.post_info.actual_weight, read_weight),
-					error: e.error,
-				}),
+			let mut post_dispatch_info = PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes,
+			};
+
+			for router in routers {
+				match router.send(sender.clone(), message.serialize()) {
+					Ok(dispatch_info) => Self::update_total_post_dispatch_info_weight(
+						&mut post_dispatch_info,
+						dispatch_info.actual_weight,
+						read_weight,
+					),
+					Err(e) => {
+						Self::update_total_post_dispatch_info_weight(
+							&mut post_dispatch_info,
+							e.post_info.actual_weight,
+							read_weight,
+						);
+
+						return Err(DispatchErrorWithPostInfo {
+							post_info: post_dispatch_info,
+							error: e.error,
+						});
+					}
+				}
 			}
+
+			Ok(post_dispatch_info)
+		}
+
+		fn update_total_post_dispatch_info_weight(
+			post_dispatch_info: &mut PostDispatchInfo,
+			router_call_weight: Option<Weight>,
+			extra_weight: Weight,
+		) {
+			let router_call_weight =
+				Self::get_outbound_message_processing_weight(router_call_weight, extra_weight);
+
+			post_dispatch_info.actual_weight = Some(
+				post_dispatch_info
+					.actual_weight
+					.unwrap_or(Default::default())
+					.saturating_add(router_call_weight),
+			);
 		}
 
 		/// Calculates the weight used by a router when processing an outbound
@@ -797,8 +865,8 @@ pub mod pallet {
 			);
 
 			ensure!(
-				DomainRouters::<T>::contains_key(destination.clone()),
-				Error::<T>::RouterNotFound
+				DomainMultiRouters::<T>::contains_key(destination.clone()),
+				Error::<T>::MultiRouterNotFound
 			);
 
 			let nonce = <OutboundMessageNonceStore<T>>::try_mutate(|n| {
