@@ -35,6 +35,7 @@ const NAME: &[u8] = b"Token name";
 const SYMBOL: &[u8] = b"Token symbol";
 const DECIMALS: u8 = 6;
 const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
+const PRICE: Ratio = Ratio::from_rational(10, 1);
 
 mod util {
 	use super::*;
@@ -118,7 +119,7 @@ mod transfer {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -326,7 +327,7 @@ mod transfer_tranche_tokens {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -461,7 +462,7 @@ mod add_pool {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -540,7 +541,7 @@ mod add_tranche {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -613,6 +614,82 @@ mod add_tranche {
 						EVM_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheMetadataNotFound,
+				);
+			})
+		}
+	}
+}
+
+mod update_token_price {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Pools::mock_get_price(|_, _| Some((PRICE, 1234)));
+			AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::UpdateTrancheTokenPrice {
+						pool_id: POOL_ID,
+						tranche_id: TRANCHE_ID,
+						currency: util::currency_index(CURRENCY_ID),
+						price: PRICE,
+						computed_at: 1234
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::update_token_price(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				CURRENCY_ID,
+				EVM_ADDRESS.domain(),
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_missing_tranche_price() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| None);
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::MissingTranchePrice,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_transferible_asset() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| Some((PRICE, 1234)));
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
 				);
 			})
 		}
