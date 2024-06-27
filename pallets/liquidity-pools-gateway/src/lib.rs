@@ -162,7 +162,8 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// Maximum number of routers allowed for a domain in a multi-router setup.
+		/// Maximum number of routers allowed for a domain in a multi-router
+		/// setup.
 		#[pallet::constant]
 		type MaxRouterCount: Get<u32>;
 	}
@@ -760,8 +761,8 @@ pub mod pallet {
 		}
 
 		/// Retrieves the routers stored for the provided domain and sends the
-		/// message using each, calculating and returning the required weight for these
-		/// operations in the `DispatchResultWithPostInfo`.
+		/// message using each, calculating and returning the required weight
+		/// for these operations in the `DispatchResultWithPostInfo`.
 		fn process_message(
 			domain: Domain,
 			sender: T::AccountId,

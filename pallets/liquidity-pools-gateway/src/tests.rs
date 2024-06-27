@@ -22,8 +22,9 @@ use super::{
 };
 
 mod utils {
-	use super::*;
 	use sp_runtime::BoundedVec;
+
+	use super::*;
 
 	pub fn get_mock_routers(
 		count: usize,
@@ -791,16 +792,6 @@ mod process_outbound_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
 			let sender = get_test_account_id();
 			let msg = Message;
 
@@ -950,16 +941,6 @@ mod process_failed_outbound_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
 			let sender = get_test_account_id();
 			let msg = Message;
 			let err = DispatchError::Unavailable;
