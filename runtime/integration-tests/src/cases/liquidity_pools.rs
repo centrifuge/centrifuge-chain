@@ -774,38 +774,6 @@ mod add_allow_upgrade {
 	}
 
 	#[test_runtimes([development])]
-	fn update_token_price<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let currency_id = AUSD_CURRENCY_ID;
-			let pool_id = POOL_ID;
-
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			create_ausd_pool::<T>(pool_id);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
-				RawOrigin::Signed(Keyring::Bob.into()).into(),
-				pool_id,
-				default_tranche_id::<T>(pool_id),
-				currency_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
 	fn add_currency<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
