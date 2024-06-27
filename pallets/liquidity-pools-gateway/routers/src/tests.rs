@@ -229,7 +229,6 @@ mod xcm_router {
 
 				let router = XCMRouter::<Runtime> {
 					xcm_domain: test_data.xcm_domain.clone(),
-					_marker: Default::default(),
 				};
 
 				assert_ok!(router.do_init());
@@ -247,7 +246,6 @@ mod xcm_router {
 
 				let router = XCMRouter::<Runtime> {
 					xcm_domain: test_data.xcm_domain.clone(),
-					_marker: Default::default(),
 				};
 
 				assert_ok!(router.do_send(test_data.sender, test_data.msg.clone()));
@@ -293,7 +291,6 @@ mod xcm_router {
 
 				let router = XCMRouter::<Runtime> {
 					xcm_domain: test_data.xcm_domain.clone(),
-					_marker: Default::default(),
 				};
 
 				assert_ok!(router.do_init());
@@ -383,7 +380,6 @@ mod axelar_evm {
 						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.init());
@@ -404,7 +400,6 @@ mod axelar_evm {
 						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
-						_marker: Default::default(),
 					});
 
 				assert_noop!(
@@ -453,7 +448,6 @@ mod axelar_evm {
 						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.send(test_data.sender, test_data.msg));
@@ -474,7 +468,6 @@ mod axelar_evm {
 						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
-						_marker: Default::default(),
 					});
 
 				let res = domain_router.send(test_data.sender, test_data.msg);
@@ -551,11 +544,9 @@ mod axelar_xcm {
 					DomainRouter::<Runtime>::AxelarXCM(AxelarXCMRouter::<Runtime> {
 						router: XCMRouter {
 							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
 						},
 						axelar_target_chain: test_data.axelar_target_chain,
 						axelar_target_contract: test_data.axelar_target_contract,
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.init());
@@ -575,11 +566,9 @@ mod axelar_xcm {
 					DomainRouter::<Runtime>::AxelarXCM(AxelarXCMRouter::<Runtime> {
 						router: XCMRouter {
 							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
 						},
 						axelar_target_chain: test_data.axelar_target_chain.clone(),
 						axelar_target_contract: test_data.axelar_target_contract,
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.init());
@@ -694,9 +683,7 @@ mod ethereum_xcm {
 					DomainRouter::<Runtime>::EthereumXCM(EthereumXCMRouter::<Runtime> {
 						router: XCMRouter {
 							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
 						},
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.init());
@@ -716,9 +703,7 @@ mod ethereum_xcm {
 					DomainRouter::<Runtime>::EthereumXCM(EthereumXCMRouter::<Runtime> {
 						router: XCMRouter {
 							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
 						},
-						_marker: Default::default(),
 					});
 
 				assert_ok!(domain_router.init());

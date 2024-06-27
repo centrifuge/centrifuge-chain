@@ -17,7 +17,7 @@ use frame_support::{
 };
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use crate::{AccountIdOf, MessageOf, XCMRouter, FUNCTION_NAME, MESSAGE_PARAM};
 
@@ -30,7 +30,6 @@ where
 		+ pallet_liquidity_pools_gateway::Config,
 {
 	pub router: XCMRouter<T>,
-	pub _marker: PhantomData<T>,
 }
 
 impl<T> EthereumXCMRouter<T>
