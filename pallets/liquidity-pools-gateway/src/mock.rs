@@ -56,6 +56,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
 	type OriginRecovery = MockOriginRecovery;
 	type OutboundMessageNonce = OutboundMessageNonce;

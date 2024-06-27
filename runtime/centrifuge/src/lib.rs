@@ -1924,19 +1924,19 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeEvent = RuntimeEvent;
-	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type Message = pallet_liquidity_pools::Message;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type InboundQueue = LiquidityPools;
-	type OriginRecovery = LiquidityPoolsAxelarGateway;
-	type WeightInfo = ();
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Sender = Sender;
-	type OutboundMessageNonce = OutboundMessageNonce;
 	type MaxRouterCount = MaxRouterCount;
+	type Message = pallet_liquidity_pools::Message;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
 }
 
 parameter_types! {
