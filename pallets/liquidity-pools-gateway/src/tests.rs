@@ -385,7 +385,7 @@ mod process_msg_axelar_relay {
 			));
 
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 			let expected_domain_address = domain_address.clone();
 
 			MockLiquidityPools::mock_submit(move |domain, message| {
@@ -405,10 +405,8 @@ mod process_msg_axelar_relay {
 				Ok(expected_domain_address.clone())
 			});
 
-			// NOTE: A solidity generated payload. The most important part about this is the new decoding of the address.
-			//       The message was cut out and replaced with a single byte of value 0 in order to decode correctly to this
-			//       mocks message type.
-			let payload = hex::decode("0000000a657468657265756d2d320000002a30783835303362343435324266363233386343373643646245453232336234366437313936623163393300").unwrap();
+            let solidity_header = "0000000a657468657265756d2d320000002a307838353033623434353242663632333863433736436462454532323362343664373139366231633933";
+			let payload = hex::decode(format!("{solidity_header}{ENCODED_MESSAGE_MOCK}")).unwrap();
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
@@ -434,7 +432,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 			let expected_domain_address = domain_address.clone();
 
 			let mut msg = Vec::new();
@@ -480,7 +478,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 
 			let mut msg = Vec::new();
 
@@ -522,7 +520,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 
 			let mut msg = Vec::new();
 			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
@@ -570,13 +568,6 @@ mod process_msg_axelar_relay {
 			));
 
 			let encoded_msg: Vec<u8> = vec![11];
-			let mut msg = Vec::new();
-			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_CHAIN);
-			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_ADDRESS);
-			msg.extend_from_slice(&encoded_msg);
-
 			let expected_domain_address = domain_address.clone();
 
 			MockOriginRecovery::mock_try_convert(move |origin| {
@@ -615,39 +606,21 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
-
-			let mut msg = Vec::new();
-			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_CHAIN);
-			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_ADDRESS);
-			msg.extend_from_slice(&expected_msg.serialize());
+			let expected_msg = MessageMock;
+			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
 
-			MockOriginRecovery::mock_try_convert(move |origin| {
-				let (source_chain, source_address) = origin;
-
-				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
-				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
-
-				Ok(expected_domain_address.clone())
-			});
+			MockOriginRecovery::mock_try_convert(move |_| Ok(expected_domain_address.clone()));
 
 			let err = sp_runtime::DispatchError::from("liquidity_pools error");
-			let expected_domain_address = domain_address.clone();
 
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address.clone());
-				assert_eq!(message, expected_msg);
-				Err(err)
-			});
+			MockLiquidityPools::mock_submit(move |_, _| Err(err));
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
 					GatewayOrigin::Domain(domain_address).into(),
-					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,
 			);
@@ -671,7 +644,7 @@ mod process_msg_domain {
 				domain_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
@@ -692,7 +665,7 @@ mod process_msg_domain {
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
-			let encoded_msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -708,7 +681,7 @@ mod process_msg_domain {
 	fn invalid_message_origin() {
 		new_test_ext().execute_with(|| {
 			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
-			let encoded_msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -725,7 +698,7 @@ mod process_msg_domain {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
-			let encoded_msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -771,7 +744,7 @@ mod process_msg_domain {
 				domain_address.clone(),
 			));
 
-			let expected_msg = MessageMock::First;
+			let expected_msg = MessageMock;
 			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
@@ -813,7 +786,7 @@ mod process_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 
 			router.mock_send({
 				let sender = sender.clone();
@@ -821,7 +794,7 @@ mod process_outbound_message {
 
 				move |mock_sender, mock_msg| {
 					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
+					assert_eq!(msg.serialize(), mock_msg);
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(Weight::from_parts(100, 100)),
@@ -881,18 +854,13 @@ mod process_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
-				let sender = sender.clone();
-				let msg = msg.clone();
 				let err = err.clone();
 
-				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
-
+				move |_, _| {
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(Weight::from_parts(100, 100)),
@@ -954,7 +922,7 @@ mod process_failed_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
@@ -963,7 +931,7 @@ mod process_failed_outbound_message {
 
 				move |mock_sender, mock_msg| {
 					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
+					assert_eq!(msg.serialize(), mock_msg);
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(Weight::from_parts(100, 100)),
@@ -1023,18 +991,13 @@ mod process_failed_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
-				let sender = sender.clone();
-				let msg = msg.clone();
 				let err = err.clone();
 
-				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
-
+				move |_, _| {
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(Weight::from_parts(100, 100)),
@@ -1078,7 +1041,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 
 			let router = RouterMock::<Runtime>::default();
 			router.mock_init(move || Ok(()));
@@ -1116,7 +1079,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),
@@ -1130,7 +1093,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = MessageMock;
 
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),

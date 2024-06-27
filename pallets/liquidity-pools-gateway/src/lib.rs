@@ -744,7 +744,7 @@ pub mod pallet {
 					}
 				};
 
-			match router.send(sender, message) {
+			match router.send(sender, message.serialize()) {
 				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
 					dispatch_info.actual_weight,
 					read_weight,
