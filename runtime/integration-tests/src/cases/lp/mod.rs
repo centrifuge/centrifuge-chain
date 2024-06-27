@@ -1033,7 +1033,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			target_contract_address: evm.deployed("router").address(),
 			target_contract_hash: BlakeTwo256::hash_of(&evm.deployed("router").deployed_bytecode),
 			fee_values: FeeValues {
-				value: sp_core::U256::zero(),
+				value: U256::zero(),
 				// FIXME: Diverges from prod (500_000)
 				gas_limit: sp_core::U256::from(500_000_000),
 				gas_price: sp_core::U256::from(base_fee),
@@ -1050,10 +1050,12 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		);
 
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_routers(
 				RawOrigin::Root.into(),
 				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
-				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
+				vec![DomainRouter::<T>::AxelarEVM(axelar_evm_router)]
+					.try_into()
+					.unwrap_or_else(|_| panic!("can't create bounded vec for routers")),
 			)
 		);
 

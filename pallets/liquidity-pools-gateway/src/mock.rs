@@ -48,6 +48,7 @@ impl cfg_mocks::converter::pallet::Config for Runtime {
 frame_support::parameter_types! {
 	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub const MaxRouterCount: u32 = 5;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -61,6 +62,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type MaxRouterCount = MaxRouterCount;
 	type Sender = Sender;
 	type WeightInfo = ();
 }

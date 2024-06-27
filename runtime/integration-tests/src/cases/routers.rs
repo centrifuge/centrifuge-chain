@@ -98,13 +98,16 @@ fn environment_for_xcm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
 	env
 }
 
-fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRouter<T>) {
+fn check_submission<T: Runtime>(mut env: impl Env<T>, routers: Vec<T::Router>) {
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_routers(
 				RawOrigin::Root.into(),
 				TEST_DOMAIN,
-				domain_router,
+				routers
+					.try_into()
+					// T doesn't implement Debug.
+					.unwrap_or_else(|_| panic!("can't create bounded vec for routers")),
 			)
 		);
 
@@ -156,7 +159,7 @@ fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 		liquidity_pools_contract_address: H160::from_low_u64_be(2),
 	});
 
-	check_submission(environment_for_evm::<T>(), router);
+	check_submission(environment_for_evm::<T>(), vec![router]);
 }
 
 #[test_runtimes(all)]
@@ -165,7 +168,7 @@ fn submit_by_ethereum_xcm<T: Runtime + FudgeSupport>() {
 		router: xcm_router(),
 	});
 
-	check_submission(environment_for_xcm::<T>(), router);
+	check_submission(environment_for_xcm::<T>(), vec![router]);
 }
 
 #[test_runtimes(all)]
@@ -176,5 +179,23 @@ fn submit_by_axelar_xcm<T: Runtime + FudgeSupport>() {
 		axelar_target_contract: AXELAR_CONTRACT_ADDRESS,
 	});
 
-	check_submission(environment_for_xcm::<T>(), router);
+	check_submission(environment_for_xcm::<T>(), vec![router]);
+}
+
+#[test_runtimes(all)]
+fn submit_using_all_xcm_routers<T: Runtime + FudgeSupport>() {
+	let ethereum_xcm_router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
+		router: xcm_router(),
+	});
+
+	let axelar_xcm_router = DomainRouter::AxelarXCM(AxelarXCMRouter::<T> {
+		router: xcm_router(),
+		axelar_target_chain: Vec::from(b"ethereum").try_into().unwrap(),
+		axelar_target_contract: AXELAR_CONTRACT_ADDRESS,
+	});
+
+	check_submission(
+		environment_for_xcm::<T>(),
+		vec![ethereum_xcm_router, axelar_xcm_router],
+	);
 }

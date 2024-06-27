@@ -1924,21 +1924,23 @@ impl pallet_liquidity_pools::Config for Runtime {
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
+	pub const MaxRouterCount: u32 = 5;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
-	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
-	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = pallet_liquidity_pools::Message;
-	type OriginRecovery = LiquidityPoolsAxelarGateway;
-	type OutboundMessageNonce = OutboundMessageNonce;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Sender = Sender;
+	type RuntimeEvent = RuntimeEvent;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Message = pallet_liquidity_pools::Message;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type InboundQueue = LiquidityPools;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type WeightInfo = ();
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Sender = Sender;
+	type OutboundMessageNonce = OutboundMessageNonce;
+	type MaxRouterCount = MaxRouterCount;
 }
 
 parameter_types! {
