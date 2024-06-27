@@ -308,7 +308,7 @@ pub mod pallet {
 		/// Router not found.
 		RouterNotFound,
 
-		/// Multi-outer not found.
+		/// Multi-router not found.
 		MultiRouterNotFound,
 
 		/// Relayer messages need to prepend the with
@@ -820,7 +820,7 @@ pub mod pallet {
 			post_dispatch_info.actual_weight = Some(
 				post_dispatch_info
 					.actual_weight
-					.unwrap_or(Default::default())
+					.unwrap_or_default()
 					.saturating_add(router_call_weight),
 			);
 		}
