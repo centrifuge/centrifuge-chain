@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_traits::liquidity_pools::Codec;
+
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
@@ -25,19 +25,15 @@ use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use crate::{
-	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
-	AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM, AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM,
-	MAX_AXELAR_EVM_CHAIN_SIZE,
+	EVMRouter, AXELAR_DESTINATION_CHAIN_PARAM, AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM,
+	AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 
 /// The router used for executing the LiquidityPools contract via Axelar.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarEVMRouter<T>
 where
-	T: frame_system::Config
-		+ pallet_liquidity_pools_gateway::Config
-		+ pallet_ethereum_transaction::Config
-		+ pallet_evm::Config,
+	T: pallet_ethereum_transaction::Config + pallet_evm::Config,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
@@ -48,10 +44,7 @@ where
 
 impl<T> AxelarEVMRouter<T>
 where
-	T: frame_system::Config
-		+ pallet_liquidity_pools_gateway::Config
-		+ pallet_ethereum_transaction::Config
-		+ pallet_evm::Config,
+	T: pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
@@ -73,11 +66,10 @@ where
 		self.router.do_init()
 	}
 
-	/// Encodes the message to the required format,
-	/// then executes the EVM call using the generic EVM router.
-	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResultWithPostInfo {
+	/// Executes the EVM call using the generic EVM router.
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
 		let eth_msg = get_axelar_encoded_msg(
-			msg.serialize(),
+			msg,
 			self.evm_chain.clone().into_inner(),
 			self.liquidity_pools_contract_address,
 		)

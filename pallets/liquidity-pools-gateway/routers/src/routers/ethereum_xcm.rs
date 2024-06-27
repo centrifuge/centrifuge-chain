@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_traits::liquidity_pools::Codec;
+
 use ethabi::{Bytes, Contract};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
@@ -19,34 +19,23 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 
-use crate::{AccountIdOf, MessageOf, XCMRouter, FUNCTION_NAME, MESSAGE_PARAM};
+use crate::{XCMRouter, FUNCTION_NAME, MESSAGE_PARAM};
 
 /// The router used for submitting a message via Moonbeam XCM.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub struct EthereumXCMRouter<T>
-where
-	T: frame_system::Config
-		+ pallet_xcm_transactor::Config
-		+ pallet_liquidity_pools_gateway::Config,
-{
+pub struct EthereumXCMRouter<T: pallet_xcm_transactor::Config> {
 	pub router: XCMRouter<T>,
 }
 
-impl<T> EthereumXCMRouter<T>
-where
-	T: frame_system::Config
-		+ pallet_xcm_transactor::Config
-		+ pallet_liquidity_pools_gateway::Config,
-{
+impl<T: pallet_xcm_transactor::Config> EthereumXCMRouter<T> {
 	/// Calls the init function on the EVM router.
 	pub fn do_init(&self) -> DispatchResult {
 		self.router.do_init()
 	}
 
-	/// Encodes the message to the required format and executes the
-	/// call via the XCM router.
-	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResultWithPostInfo {
-		let contract_call = get_encoded_contract_call(msg.serialize())
+	/// Executes the call via the XCM router.
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
+		let contract_call = get_encoded_contract_call(msg)
 			.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
 
 		self.router.do_send(sender, contract_call)

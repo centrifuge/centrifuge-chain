@@ -3,8 +3,6 @@ use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use mock_builder::{execute_call, register_call};
 use sp_std::default::Default;
 
-use crate::MessageMock;
-
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use super::*;
@@ -24,21 +22,20 @@ pub mod pallet {
 		}
 
 		pub fn mock_send(
-			f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+			f: impl Fn(T::AccountId, Vec<u8>) -> DispatchResultWithPostInfo + 'static,
 		) {
 			register_call!(move |(sender, message)| f(sender, message));
 		}
 	}
 
 	impl<T: Config> MockedRouter for Pallet<T> {
-		type Message = MessageMock;
 		type Sender = T::AccountId;
 
 		fn init() -> DispatchResult {
 			execute_call!(())
 		}
 
-		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResultWithPostInfo {
+		fn send(sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 			execute_call!((sender, message))
 		}
 	}
@@ -67,7 +64,7 @@ impl<T: pallet::Config> RouterMock<T> {
 
 	pub fn mock_send(
 		&self,
-		f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+		f: impl Fn(T::AccountId, Vec<u8>) -> DispatchResultWithPostInfo + 'static,
 	) {
 		pallet::Pallet::<T>::mock_send(f)
 	}
@@ -76,14 +73,13 @@ impl<T: pallet::Config> RouterMock<T> {
 /// Here we implement the actual Router trait for the `RouterMock` which in turn
 /// calls the `MockedRouter` trait implementation.
 impl<T: pallet::Config> Router for RouterMock<T> {
-	type Message = MessageMock;
 	type Sender = T::AccountId;
 
 	fn init(&self) -> DispatchResult {
 		pallet::Pallet::<T>::init()
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
+	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 		pallet::Pallet::<T>::send(sender, message)
 	}
 }
@@ -98,12 +94,9 @@ trait MockedRouter {
 	/// The sender type of the outbound message.
 	type Sender;
 
-	/// The outbound message type.
-	type Message;
-
 	/// Initialize the router.
 	fn init() -> DispatchResult;
 
 	/// Send the message to the router's destination.
-	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo;
+	fn send(sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
 }

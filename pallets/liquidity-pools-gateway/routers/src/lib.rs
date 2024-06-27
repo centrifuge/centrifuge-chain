@@ -61,13 +61,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod routers;
+pub mod routers {
+	pub mod axelar_evm;
+	pub mod axelar_xcm;
+	pub mod ethereum_xcm;
+}
 
-pub use routers::*;
-
-type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
-type MessageOf<T> = <T as pallet_liquidity_pools_gateway::Config>::Message;
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub use routers::{axelar_evm::*, axelar_xcm::*, ethereum_xcm::*};
 
 /// Maximum size allowed for a byte representation of an Axelar EVM chain
 /// string, as found below:
@@ -87,11 +87,7 @@ const AXELAR_PAYLOAD_PARAM: &str = "payload";
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum DomainRouter<T>
 where
-	T: frame_system::Config
-		+ pallet_xcm_transactor::Config
-		+ pallet_liquidity_pools_gateway::Config
-		+ pallet_ethereum_transaction::Config
-		+ pallet_evm::Config,
+	T: pallet_xcm_transactor::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
@@ -103,17 +99,12 @@ where
 
 impl<T> Router for DomainRouter<T>
 where
-	T: frame_system::Config
-		+ pallet_xcm_transactor::Config
-		+ pallet_liquidity_pools_gateway::Config
-		+ pallet_ethereum_transaction::Config
-		+ pallet_evm::Config,
+	T: pallet_xcm_transactor::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
-	type Message = MessageOf<T>;
-	type Sender = AccountIdOf<T>;
+	type Sender = T::AccountId;
 
 	fn init(&self) -> DispatchResult {
 		match self {
@@ -123,7 +114,7 @@ where
 		}
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
+	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
 			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
@@ -136,7 +127,7 @@ where
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EVMRouter<T>
 where
-	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	T: pallet_ethereum_transaction::Config + pallet_evm::Config,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
@@ -146,7 +137,7 @@ where
 
 impl<T> EVMRouter<T>
 where
-	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	T: pallet_ethereum_transaction::Config + pallet_evm::Config,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
@@ -160,7 +151,7 @@ where
 
 impl<T> EVMRouter<T>
 where
-	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	T: pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
@@ -229,17 +220,11 @@ pub struct FeeValues {
 
 /// A generic router used for executing XCM calls.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub struct XCMRouter<T>
-where
-	T: frame_system::Config + pallet_xcm_transactor::Config,
-{
+pub struct XCMRouter<T: pallet_xcm_transactor::Config> {
 	pub xcm_domain: XcmDomain<T::CurrencyId>,
 }
 
-impl<T> XCMRouter<T>
-where
-	T: frame_system::Config + pallet_xcm_transactor::Config,
-{
+impl<T: pallet_xcm_transactor::Config> XCMRouter<T> {
 	/// Sets the weight information for the provided XCM domain location, and
 	/// the fee per second for the provided fee asset location.
 	pub fn do_init(&self) -> DispatchResult {
@@ -286,7 +271,7 @@ pub(crate) fn get_encoded_ethereum_xcm_call<T>(
 	msg: Vec<u8>,
 ) -> Result<Vec<u8>, ()>
 where
-	T: frame_system::Config + pallet_xcm_transactor::Config,
+	T: pallet_xcm_transactor::Config,
 {
 	let input =
 		BoundedVec::<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>::try_from(msg)
