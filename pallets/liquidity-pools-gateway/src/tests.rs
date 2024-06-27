@@ -23,6 +23,22 @@ use super::{
 
 mod utils {
 	use super::*;
+	use sp_runtime::BoundedVec;
+
+	pub fn get_mock_routers(
+		count: usize,
+	) -> BoundedVec<<Runtime as Config>::Router, <Runtime as Config>::MaxRouterCount> {
+		let mut routers = Vec::new();
+
+		for _ in 0..count {
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
+
+			routers.push(router);
+		}
+
+		BoundedVec::<_, _>::try_from(routers).expect("can create multi-router vec")
+	}
 
 	pub fn get_test_account_id() -> AccountId32 {
 		[0u8; 32].into()
@@ -788,7 +804,9 @@ mod process_outbound_message {
 			let sender = get_test_account_id();
 			let msg = Message;
 
-			router.mock_send({
+			let routers = get_mock_routers(3);
+
+			let mock_fn = {
 				let sender = sender.clone();
 				let msg = msg.clone();
 
@@ -801,7 +819,17 @@ mod process_outbound_message {
 						pays_fee: Pays::Yes,
 					})
 				}
-			});
+			};
+
+			for router in &routers {
+				router.mock_send(mock_fn.clone());
+			}
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_routers(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				routers,
+			));
 
 			let nonce = OutboundMessageNonce::one();
 
@@ -844,23 +872,34 @@ mod process_outbound_message {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
+			let routers = get_mock_routers(3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				router.clone(),
+				routers.clone(),
 			));
 
 			let sender = get_test_account_id();
 			let msg = Message;
 			let err = DispatchError::Unavailable;
 
-			router.mock_send({
+			routers[0].mock_send(move |mock_sender, mock_msg| {
+				Ok(PostDispatchInfo {
+					actual_weight: Some(Weight::from_parts(100, 100)),
+					pays_fee: Pays::Yes,
+				})
+			});
+
+			routers[1].mock_send({
+				let sender = sender.clone();
+				let msg = msg.clone();
 				let err = err.clone();
 
-				move |_, _| {
+				move |mock_sender, mock_msg| {
+					assert_eq!(sender, mock_sender);
+					assert_eq!(msg, mock_msg);
+
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(Weight::from_parts(100, 100)),
@@ -925,7 +964,9 @@ mod process_failed_outbound_message {
 			let msg = Message;
 			let err = DispatchError::Unavailable;
 
-			router.mock_send({
+			let routers = get_mock_routers(3);
+
+			let mock_fn = {
 				let sender = sender.clone();
 				let msg = msg.clone();
 
@@ -938,7 +979,17 @@ mod process_failed_outbound_message {
 						pays_fee: Pays::Yes,
 					})
 				}
-			});
+			};
+
+			for router in &routers {
+				router.mock_send(mock_fn.clone());
+			}
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_routers(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				routers,
+			));
 
 			let nonce = OutboundMessageNonce::one();
 
@@ -981,23 +1032,33 @@ mod process_failed_outbound_message {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
+			let routers = get_mock_routers(3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				router.clone(),
+				routers.clone(),
 			));
 
 			let sender = get_test_account_id();
 			let msg = Message;
 			let err = DispatchError::Unavailable;
 
-			router.mock_send({
+			routers[0].mock_send(move |mock_sender, mock_msg| {
+				Ok(PostDispatchInfo {
+					actual_weight: Some(Weight::from_parts(100, 100)),
+					pays_fee: Pays::Yes,
+				})
+			});
+			routers[1].mock_send({
+				let sender = sender.clone();
+				let msg = msg.clone();
 				let err = err.clone();
 
-				move |_, _| {
+				move |mock_sender, mock_msg| {
+					assert_eq!(sender, mock_sender);
+					assert_eq!(msg, mock_msg);
+
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(Weight::from_parts(100, 100)),
@@ -1046,10 +1107,16 @@ mod outbound_queue_impl {
 			let router = RouterMock::<Runtime>::default();
 			router.mock_init(move || Ok(()));
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+			let routers = BoundedVec::<
+				<Runtime as Config>::Router,
+				<Runtime as Config>::MaxRouterCount,
+			>::try_from(vec![router])
+			.expect("can create multi-router vec");
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				router.clone(),
+				routers,
 			));
 
 			assert_ok!(LiquidityPoolsGateway::submit(
@@ -1074,6 +1141,7 @@ mod outbound_queue_impl {
 			});
 		});
 	}
+
 	#[test]
 	fn local_domain() {
 		new_test_ext().execute_with(|| {
@@ -1097,7 +1165,7 @@ mod outbound_queue_impl {
 
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),
-				Error::<Runtime>::RouterNotFound
+				Error::<Runtime>::MultiRouterNotFound
 			);
 		});
 	}
