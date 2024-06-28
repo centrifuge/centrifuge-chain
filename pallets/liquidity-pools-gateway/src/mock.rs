@@ -65,7 +65,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type MaxRouterCount = MaxRouterCount;
 	type Sender = Sender;
 	type WeightInfo = ();
 }
