@@ -947,7 +947,7 @@ mod process_outbound_message {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = Message;
 
 			let nonce = OutboundMessageNonce::one();
 
@@ -964,7 +964,7 @@ mod process_outbound_message {
 			let (stored_domain, stored_sender, stored_message, stored_error): (
 				_,
 				AccountId32,
-				MessageMock,
+				Message,
 				_,
 			) = FailedOutboundMessages::<Runtime>::get(nonce).unwrap();
 
@@ -1006,7 +1006,7 @@ mod process_outbound_message {
 
 				move |mock_sender, mock_msg| {
 					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
+					assert_eq!(msg.serialize(), mock_msg);
 
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
@@ -1130,7 +1130,7 @@ mod process_failed_outbound_message {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock::First;
+			let msg = Message;
 			let err = DispatchError::Unavailable;
 
 			let nonce = OutboundMessageNonce::one();
@@ -1179,7 +1179,7 @@ mod process_failed_outbound_message {
 
 				move |mock_sender, mock_msg| {
 					assert_eq!(sender, mock_sender);
-					assert_eq!(msg, mock_msg);
+					assert_eq!(msg.serialize(), mock_msg);
 
 					Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
