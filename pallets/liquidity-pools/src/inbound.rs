@@ -149,7 +149,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let amount = T::ForeignInvestment::investment(&investor, invest_id)?;
+		let amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(

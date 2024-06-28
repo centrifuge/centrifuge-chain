@@ -968,7 +968,7 @@ pub mod pallet {
 					investor,
 					currency,
 					amount,
-				} => Self::handle_increase_invest_order(
+				} => Self::handle_deposit_request(
 					pool_id,
 					tranche_id,
 					Self::domain_account_to_account_id((sender.domain(), investor)),
@@ -981,7 +981,7 @@ pub mod pallet {
 					investor,
 					amount,
 					currency,
-				} => Self::handle_increase_redeem_order(
+				} => Self::handle_redeem_request(
 					pool_id,
 					tranche_id,
 					Self::domain_account_to_account_id((sender.domain(), investor)),
@@ -994,7 +994,7 @@ pub mod pallet {
 					tranche_id,
 					investor,
 					currency,
-				} => Self::handle_cancel_invest_order(
+				} => Self::handle_cancel_deposit_request(
 					pool_id,
 					tranche_id,
 					Self::domain_account_to_account_id((sender.domain(), investor)),
@@ -1005,7 +1005,7 @@ pub mod pallet {
 					tranche_id,
 					investor,
 					currency,
-				} => Self::handle_cancel_redeem_order(
+				} => Self::handle_cancel_redeem_request(
 					pool_id,
 					tranche_id,
 					Self::domain_account_to_account_id((sender.domain(), investor)),
