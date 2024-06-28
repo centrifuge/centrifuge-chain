@@ -10,14 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::liquidity_pools::Codec;
-use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
+use cfg_utils::vec_to_fixed_array;
 use frame_support::pallet_prelude::RuntimeDebug;
-use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 use sp_runtime::traits::AccountIdConversion;
-use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
 
