@@ -1050,7 +1050,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		);
 
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_routers(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_router(
 				RawOrigin::Root.into(),
 				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
 				vec![DomainRouter::<T>::AxelarEVM(axelar_evm_router)]

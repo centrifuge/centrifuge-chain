@@ -211,7 +211,7 @@ pub mod pallet {
 		},
 
 		/// The router for a given domain was set.
-		DomainMultiRoutersSet {
+		DomainMultiRouterSet {
 			domain: Domain,
 			routers: BoundedVec<T::Router, T::MaxRouterCount>,
 		},
@@ -624,9 +624,9 @@ pub mod pallet {
 		}
 
 		/// Set routers for a particular domain.
-		#[pallet::weight(T::WeightInfo::set_domain_multi_routers())]
+		#[pallet::weight(T::WeightInfo::set_domain_multi_router())]
 		#[pallet::call_index(8)]
-		pub fn set_domain_multi_routers(
+		pub fn set_domain_multi_router(
 			origin: OriginFor<T>,
 			domain: Domain,
 			routers: BoundedVec<T::Router, T::MaxRouterCount>,
@@ -641,7 +641,7 @@ pub mod pallet {
 
 			<DomainMultiRouters<T>>::insert(domain.clone(), routers.clone());
 
-			Self::deposit_event(Event::DomainMultiRoutersSet { domain, routers });
+			Self::deposit_event(Event::DomainMultiRouterSet { domain, routers });
 
 			Ok(())
 		}
@@ -776,7 +776,7 @@ pub mod pallet {
 						actual_weight: Some(read_weight),
 						pays_fee: Pays::Yes,
 					},
-					error: Error::<T>::RouterNotFound.into(),
+					error: Error::<T>::MultiRouterNotFound.into(),
 				})?;
 
 			let mut post_dispatch_info = PostDispatchInfo {

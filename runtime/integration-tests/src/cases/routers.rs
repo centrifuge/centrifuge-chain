@@ -101,7 +101,7 @@ fn environment_for_xcm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
 fn check_submission<T: Runtime>(mut env: impl Env<T>, routers: Vec<T::Router>) {
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_routers(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_router(
 				RawOrigin::Root.into(),
 				TEST_DOMAIN,
 				routers
