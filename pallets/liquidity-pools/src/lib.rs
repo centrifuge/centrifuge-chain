@@ -33,9 +33,9 @@
 //!   completion.
 //! - The pallet's associated `TreasuryAccount` holds sufficient balance for the
 //!   corresponding fee currencies of all possible recipient domains for the
-//!   following outgoing messages: [`Message::ExecutedDecreaseInvestOrder`],
-//!   [`Message::ExecutedDecreaseRedeemOrder`],
-//!   [`Message::ExecutedCollectInvest`], [`Message::ExecutedCollectRedeem`],
+//!   following outgoing messages: [`Message::FulfilledCancelDepositRequest`],
+//!   [`Message::FulfilledCancelRedeemRequest`],
+//!   [`Message::FulfilledDepositRequest`], [`Message::FulfilledRedeemRequest`],
 //!   [`Message::ScheduleUpgrade`].
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -252,7 +252,7 @@ pub mod pallet {
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
 		/// The type for paying the transaction fees for the dispatch of
-		/// `Executed*` and `ScheduleUpgrade` messages.
+		/// `Fulfilled*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
@@ -659,7 +659,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AddCurrency {
+				Message::AddAsset {
 					currency,
 					evm_address,
 				},
@@ -696,7 +696,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AllowInvestmentCurrency { pool_id, currency },
+				Message::AllowAsset { pool_id, currency },
 			)?;
 
 			Ok(())
@@ -799,7 +799,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::DisallowInvestmentCurrency { pool_id, currency },
+				Message::DisallowAsset { pool_id, currency },
 			)?;
 
 			Ok(())
@@ -962,7 +962,7 @@ pub mod pallet {
 					T::DomainAccountToDomainAddress::convert((domain, receiver)),
 					amount,
 				),
-				Message::IncreaseInvestOrder {
+				Message::DepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
@@ -975,20 +975,7 @@ pub mod pallet {
 					currency.into(),
 					amount,
 				),
-				Message::DecreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::handle_decrease_invest_order(
-					pool_id,
-					tranche_id,
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-					amount,
-				),
-				Message::IncreaseRedeemOrder {
+				Message::RedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
@@ -1002,43 +989,7 @@ pub mod pallet {
 					currency.into(),
 					sender,
 				),
-				Message::DecreaseRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::handle_decrease_redeem_order(
-					pool_id,
-					tranche_id,
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount,
-					currency.into(),
-					sender,
-				),
-				Message::CollectInvest {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_investment(
-					pool_id,
-					tranche_id,
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CollectRedeem {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_redemption(
-					pool_id,
-					tranche_id,
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelInvestOrder {
+				Message::CancelDepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
@@ -1049,7 +1000,7 @@ pub mod pallet {
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
-				Message::CancelRedeemOrder {
+				Message::CancelRedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,

@@ -1458,7 +1458,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
-/// Centrifuge Chain and trigger `AddCurrency` from Centrifuge Chain to EVM
+/// Centrifuge Chain and trigger `AddAsset` from Centrifuge Chain to EVM
 pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// EVM: Create currencies
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
@@ -1648,7 +1648,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
-	// Centrifuge Chain: Register currencies and trigger `AddCurrency`
+	// Centrifuge Chain: Register currencies and trigger `AddAsset`
 	register_currency::<T>(USDC, |meta| {
 		meta.location = Some(utils::lp_asset_location::<T>(
 			evm.deployed("usdc").address(),

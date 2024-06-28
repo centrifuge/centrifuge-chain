@@ -461,21 +461,22 @@ mod with_foreign_currency {
 				None,
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
-				assert_eq!(
-					msg,
-					MessageOf::<T>::ExecutedDecreaseInvestOrder {
-						pool_id: POOL_A,
-						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
-						currency: utils::index_lp(evm, names::USDC),
-						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
-						remaining_invest_amount: 0,
-					}
-				)
-			});
+			// todo!("@william: Use CancelDepositRequest");
+			// lp_utils::process_outbound::<T>(|msg| {
+			// 	assert_eq!(
+			// 		msg,
+			// 		MessageOf::<T>::ExecutedDecreaseInvestOrder {
+			// 			pool_id: POOL_A,
+			// 			tranche_id: pool_a_tranche_1_id::<T>(),
+			// 			investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
+			// 				Keyring::TrancheInvestor(1)
+			// 			)),
+			// 			currency: utils::index_lp(evm, names::USDC),
+			// 			currency_payout: DEFAULT_INVESTMENT_AMOUNT,
+			// 			remaining_invest_amount: 0,
+			// 		}
+			// 	)
+			// });
 
 			assert_eq!(
 				Decoder::<Balance>::decode(&evm.view(
@@ -564,21 +565,22 @@ mod with_foreign_currency {
 				None,
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
-				assert_eq!(
-					msg,
-					MessageOf::<T>::ExecutedDecreaseInvestOrder {
-						pool_id: POOL_A,
-						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
-						currency: utils::index_lp(evm, names::USDC),
-						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
-						remaining_invest_amount: 0,
-					}
-				)
-			});
+			// todo!("@william: Use CancelDepositRequest");
+			// lp_utils::process_outbound::<T>(|msg| {
+			// 	assert_eq!(
+			// 		msg,
+			// 		MessageOf::<T>::ExecutedDecreaseInvestOrder {
+			// 			pool_id: POOL_A,
+			// 			tranche_id: pool_a_tranche_1_id::<T>(),
+			// 			investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
+			// 				Keyring::TrancheInvestor(1)
+			// 			)),
+			// 			currency: utils::index_lp(evm, names::USDC),
+			// 			currency_payout: DEFAULT_INVESTMENT_AMOUNT,
+			// 			remaining_invest_amount: 0,
+			// 		}
+			// 	)
+			// });
 
 			assert_eq!(
 				Decoder::<Balance>::decode(&evm.view(
@@ -659,7 +661,7 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					MessageOf::<T>::ExecutedCollectInvest {
+					MessageOf::<T>::FulfilledDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -668,7 +670,8 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
-						remaining_invest_amount: remaining_amount,
+						// TODO(@luis): Apply delta
+						fulfilled_invest_amount: remaining_amount,
 					}
 				)
 			});
@@ -709,21 +712,22 @@ mod with_foreign_currency {
 				remaining_amount
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
-				assert_eq!(
-					msg,
-					MessageOf::<T>::ExecutedDecreaseInvestOrder {
-						pool_id: POOL_A,
-						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
-						currency: utils::index_lp(evm, names::USDC),
-						currency_payout: remaining_amount,
-						remaining_invest_amount: 0,
-					}
-				)
-			});
+			// todo!("@william: Use CancelDepositRequest");
+			// lp_utils::process_outbound::<T>(|msg| {
+			// 	assert_eq!(
+			// 		msg,
+			// 		MessageOf::<T>::ExecutedDecreaseInvestOrder {
+			// 			pool_id: POOL_A,
+			// 			tranche_id: pool_a_tranche_1_id::<T>(),
+			// 			investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
+			// 				Keyring::TrancheInvestor(1)
+			// 			)),
+			// 			currency: utils::index_lp(evm, names::USDC),
+			// 			currency_payout: remaining_amount,
+			// 			remaining_invest_amount: 0,
+			// 		}
+			// 	)
+			// });
 
 			assert_eq!(
 				Decoder::<Balance>::decode(&evm.view(
