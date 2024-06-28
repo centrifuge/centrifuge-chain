@@ -27,7 +27,7 @@ use sp_runtime::traits::AccountIdConversion;
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{evm, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor},
+	service::evm,
 };
 
 pub const LOCAL_PARA_ID: ParaId = ParaId::new(2000u32);
@@ -165,28 +165,28 @@ macro_rules! construct_async_run {
 
         match runner.config().chain_spec.identify() {
             ChainIdentity::Altair => runner.async_run(|$config| {
-                let $components = evm::new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
+                let $components = evm::new_partial::<altair_runtime::RuntimeApi, _>(
                     &$config,
                     first_evm_block,
-                    crate::service::build_import_queue::<altair_runtime::RuntimeApi, AltairRuntimeExecutor>
+                    crate::service::build_import_queue::<altair_runtime::RuntimeApi>
                 )?;
                 let task_manager = $components.task_manager;
                 { $( $code )* }.map(|v| (v, task_manager))
             }),
             ChainIdentity::Centrifuge => runner.async_run(|$config| {
-                let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
+                let $components = evm::new_partial::<centrifuge_runtime::RuntimeApi, _>(
                     &$config,
                     first_evm_block,
-                    crate::service::build_import_queue::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
+                    crate::service::build_import_queue::<centrifuge_runtime::RuntimeApi>,
                 )?;
                 let task_manager = $components.task_manager;
                 { $( $code )* }.map(|v| (v, task_manager))
             }),
             ChainIdentity::Development => runner.async_run(|$config| {
-                let $components = evm::new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
+                let $components = evm::new_partial::<development_runtime::RuntimeApi, _>(
                     &$config,
                     first_evm_block,
-                    crate::service::build_import_queue::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
+                    crate::service::build_import_queue::<development_runtime::RuntimeApi>,
                 )?;
                 let task_manager = $components.task_manager;
                 { $( $code )* }.map(|v| (v, task_manager))
@@ -351,51 +351,48 @@ pub fn run() -> Result<()> {
 				);
 
 				match config.chain_spec.identify() {
-					ChainIdentity::Altair => crate::service::start_node::<
-						altair_runtime::RuntimeApi,
-						AltairRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
-					ChainIdentity::Centrifuge => crate::service::start_node::<
-						centrifuge_runtime::RuntimeApi,
-						CentrifugeRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
-					ChainIdentity::Development => crate::service::start_node::<
-						development_runtime::RuntimeApi,
-						DevelopmentRuntimeExecutor,
-					>(
-						config,
-						polkadot_config,
-						cli.eth,
-						collator_options,
-						id,
-						hwbench,
-						first_evm_block,
-					)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into),
+					ChainIdentity::Altair => {
+						crate::service::start_node::<altair_runtime::RuntimeApi>(
+							config,
+							polkadot_config,
+							cli.eth,
+							collator_options,
+							id,
+							hwbench,
+							first_evm_block,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					}
+					ChainIdentity::Centrifuge => {
+						crate::service::start_node::<centrifuge_runtime::RuntimeApi>(
+							config,
+							polkadot_config,
+							cli.eth,
+							collator_options,
+							id,
+							hwbench,
+							first_evm_block,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					}
+					ChainIdentity::Development => {
+						crate::service::start_node::<development_runtime::RuntimeApi>(
+							config,
+							polkadot_config,
+							cli.eth,
+							collator_options,
+							id,
+							hwbench,
+							first_evm_block,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					}
 				}
 			})
 		}
