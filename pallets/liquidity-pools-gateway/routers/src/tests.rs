@@ -13,7 +13,10 @@ use staging_xcm::latest::{
 };
 
 use super::mock::*;
-use crate::*;
+use crate::{
+	routers::{axelar_evm::get_axelar_encoded_msg, ethereum_xcm::get_encoded_contract_call},
+	*,
+};
 
 lazy_static! {
 	static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
