@@ -22,6 +22,29 @@ pub trait Codec: Sized {
 	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error>;
 }
 
+#[cfg(any(test, feature = "std"))]
+pub mod test_util {
+	use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
+	use scale_info::TypeInfo;
+
+	use super::Codec;
+
+	#[derive(Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
+	pub struct Message;
+	impl Codec for Message {
+		fn serialize(&self) -> Vec<u8> {
+			vec![0x42]
+		}
+
+		fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
+			match input.read_byte()? {
+				0x42 => Ok(Self),
+				_ => Err("unsupported message".into()),
+			}
+		}
+	}
+}
+
 /// The trait required for sending outbound messages.
 pub trait Router {
 	/// The sender type of the outbound message.

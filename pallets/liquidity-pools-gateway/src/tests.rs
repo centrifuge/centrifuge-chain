@@ -1,6 +1,6 @@
 use cfg_mocks::*;
 use cfg_primitives::OutboundMessageNonce;
-use cfg_traits::liquidity_pools::{Codec, OutboundQueue};
+use cfg_traits::liquidity_pools::{test_util::Message, Codec, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{
 	assert_noop, assert_ok,
@@ -385,7 +385,7 @@ mod process_msg_axelar_relay {
 			));
 
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 			let expected_domain_address = domain_address.clone();
 
 			MockLiquidityPools::mock_submit(move |domain, message| {
@@ -432,7 +432,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 			let expected_domain_address = domain_address.clone();
 
 			let mut msg = Vec::new();
@@ -478,7 +478,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 
 			let mut msg = Vec::new();
 
@@ -520,7 +520,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 
 			let mut msg = Vec::new();
 			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
@@ -606,7 +606,7 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
@@ -644,7 +644,7 @@ mod process_msg_domain {
 				domain_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
@@ -665,7 +665,7 @@ mod process_msg_domain {
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
-			let encoded_msg = MessageMock.serialize();
+			let encoded_msg = Message.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -681,7 +681,7 @@ mod process_msg_domain {
 	fn invalid_message_origin() {
 		new_test_ext().execute_with(|| {
 			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
-			let encoded_msg = MessageMock.serialize();
+			let encoded_msg = Message.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -698,7 +698,7 @@ mod process_msg_domain {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
-			let encoded_msg = MessageMock.serialize();
+			let encoded_msg = Message.serialize();
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -744,7 +744,7 @@ mod process_msg_domain {
 				domain_address.clone(),
 			));
 
-			let expected_msg = MessageMock;
+			let expected_msg = Message;
 			let encoded_msg = expected_msg.serialize();
 
 			let expected_domain_address = domain_address.clone();
@@ -786,7 +786,7 @@ mod process_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 
 			router.mock_send({
 				let sender = sender.clone();
@@ -854,7 +854,7 @@ mod process_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
@@ -922,7 +922,7 @@ mod process_failed_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
@@ -991,7 +991,7 @@ mod process_failed_outbound_message {
 			));
 
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 			let err = DispatchError::Unavailable;
 
 			router.mock_send({
@@ -1041,7 +1041,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 
 			let router = RouterMock::<Runtime>::default();
 			router.mock_init(move || Ok(()));
@@ -1079,7 +1079,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),
@@ -1093,7 +1093,7 @@ mod outbound_queue_impl {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
-			let msg = MessageMock;
+			let msg = Message;
 
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),

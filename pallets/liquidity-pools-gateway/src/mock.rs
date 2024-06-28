@@ -1,11 +1,9 @@
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
 use cfg_primitives::OutboundMessageNonce;
-use cfg_traits::liquidity_pools::Codec;
+use cfg_traits::liquidity_pools::test_util::Message;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::derive_impl;
 use frame_system::EnsureRoot;
-use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
-use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::IdentityLookup;
 
@@ -19,21 +17,6 @@ pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
 pub const ENCODED_MESSAGE_MOCK: &str = "42";
-
-#[derive(Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct MessageMock;
-impl Codec for MessageMock {
-	fn serialize(&self) -> Vec<u8> {
-		vec![0x42]
-	}
-
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
-		match input.read_byte()? {
-			0x42 => Ok(Self),
-			_ => Err("unsupported message".into()),
-		}
-	}
-}
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -54,7 +37,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_mock_liquidity_pools::Config for Runtime {
 	type DomainAddress = DomainAddress;
-	type Message = MessageMock;
+	type Message = Message;
 }
 
 impl pallet_mock_routers::Config for Runtime {}
@@ -74,7 +57,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = MessageMock;
+	type Message = Message;
 	type OriginRecovery = MockOriginRecovery;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
