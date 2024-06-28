@@ -72,18 +72,18 @@ fn bincode_config() -> bincode::config::Configuration<
 	Default::default()
 }
 
-/// Inverse of [`solidity_deserialization()`]
+/// Inverse of [`base_deserialization()`]
 /// Note that the enum tags as treat as u32 by bincode instead of the expected
 /// u8. Only use this function if you can handle that.
-fn solidity_serialization<T: Serialize>(ty: &T) -> Result<Vec<u8>, DispatchError> {
+fn base_serialization<T: Serialize>(ty: &T) -> Result<Vec<u8>, DispatchError> {
 	bincode::serde::encode_to_vec(ty, bincode_config())
 		.map_err(|_| DispatchError::Other("Type can not be serialized"))
 }
 
-/// Inverse of [`solidity_serialization()`]
+/// Inverse of [`base_serialization()`]
 /// Note that the enum tags as treat as u32 by bincode instead of the expected
 /// u8. Only use this function if you can handle that.
-fn solidity_deserialization<T: DeserializeOwned>(data: &[u8]) -> Result<T, DispatchError> {
+fn base_deserialization<T: DeserializeOwned>(data: &[u8]) -> Result<T, DispatchError> {
 	bincode::serde::decode_from_slice(data, bincode_config())
 		.map(|(ty, _)| ty)
 		.map_err(|_| DispatchError::Other("Type can not be deserialized"))
@@ -442,7 +442,7 @@ pub enum Message {
 
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
-		match solidity_serialization(self) {
+		match base_serialization(self) {
 			Ok(bytes) => {
 				// Bincode serializes the enum tag variants as 4 bytes.
 				// But solidity side expect 1 byte.
@@ -464,7 +464,7 @@ impl LPEncoding for Message {
 		// We emulate here as if it was so.
 		let data = [vec![0, 0, 0], data.into()].concat();
 
-		solidity_deserialization(&data)
+		base_deserialization(&data)
 	}
 }
 
@@ -493,28 +493,22 @@ mod tests {
 	fn encoding_domain() {
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(
-				solidity_serialization(&SerializableDomain::from(Domain::Centrifuge)).unwrap()
-			),
+			hex::encode(base_serialization(&SerializableDomain::from(Domain::Centrifuge)).unwrap()),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
 		assert_eq!(
-			hex::encode(solidity_serialization(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
+			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
 			"010000000000000001"
 		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(
-				solidity_serialization(&SerializableDomain::from(Domain::EVM(1284))).unwrap()
-			),
+			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(1284))).unwrap()),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(
-				solidity_serialization(&SerializableDomain::from(Domain::EVM(43114))).unwrap()
-			),
+			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(43114))).unwrap()),
 			"01000000000000a86a"
 		);
 	}
