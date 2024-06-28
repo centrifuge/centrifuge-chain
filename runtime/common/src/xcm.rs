@@ -324,6 +324,7 @@ mod test {
 		type InboundQueue = MockLP;
 		type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 		type MaxIncomingMessageSize = ConstU32<1024>;
+		type MaxRouterCount = ConstU32<5>;
 		type Message = Message;
 		type OriginRecovery = MockOriginRecovery;
 		type OutboundMessageNonce = OutboundMessageNonce;
