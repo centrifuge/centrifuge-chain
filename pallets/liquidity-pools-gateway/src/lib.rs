@@ -125,7 +125,7 @@ pub mod pallet {
 		type Message: Codec + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// The message router type that is stored for each domain.
-		type Router: DomainRouter<Sender = Self::AccountId, Message = Self::Message>
+		type Router: DomainRouter<Sender = Self::AccountId>
 			+ Clone
 			+ Debug
 			+ MaxEncodedLen
@@ -744,7 +744,7 @@ pub mod pallet {
 					}
 				};
 
-			match router.send(sender, message) {
+			match router.send(sender, message.serialize()) {
 				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
 					dispatch_info.actual_weight,
 					read_weight,

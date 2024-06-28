@@ -25,7 +25,7 @@ pub use currency_conversion::pallet as pallet_mock_currency_conversion;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use investment::pallet as pallet_mock_investment;
-pub use liquidity_pools::{pallet as pallet_mock_liquidity_pools, MessageMock};
+pub use liquidity_pools::pallet as pallet_mock_liquidity_pools;
 pub use liquidity_pools_gateway_routers::{pallet as pallet_mock_routers, RouterMock};
 pub use pay_fee::pallet as pallet_mock_pay_fee;
 pub use permissions::pallet as pallet_mock_permissions;
