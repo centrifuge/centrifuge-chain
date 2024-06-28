@@ -54,6 +54,7 @@ std = [
   "staging-xcm/std",
   "scale-info/std",
   "serde/std",
+  "bincode/std",
 ]
 runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",

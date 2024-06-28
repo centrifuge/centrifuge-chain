@@ -1,4 +1,10 @@
-use bincode::Options;
+//! A message requires a custom decoding & encoding, meeting the
+//! LiquidityPool Generic Message Passing Format (GMPF): Every message is
+//! encoded with a u8 at head flagging the message type, followed by its field.
+//! Integers are big-endian encoded and enum values (such as `[crate::Domain]`)
+//! also have a custom GMPF implementation, aiming for a fixed-size encoded
+//! representation for each message variant.
+
 use cfg_traits::Seconds;
 use cfg_types::domain_address::Domain;
 use frame_support::pallet_prelude::RuntimeDebug;
@@ -58,28 +64,28 @@ impl TryInto<Domain> for SerializableDomain {
 	}
 }
 
-/// A message requires a custom decoding & encoding, meeting the
-/// LiquidityPool Generic Message Passing Format (GMPF): Every message is
-/// encoded with a u8 at head flagging the message type, followed by its field.
-/// Integers are big-endian encoded and enum values (such as `[crate::Domain]`)
-/// also have a custom GMPF implementation, aiming for a fixed-size encoded
-/// representation for each message variant.
-///
+fn bincode_config() -> bincode::config::Configuration<
+	bincode::config::BigEndian,
+	bincode::config::Fixint,
+	bincode::config::NoLimit,
+> {
+	Default::default()
+}
+
 /// Inverse of [`solidity_deserialization()`]
+/// Note that the enum tags as treat as u32 by bincode instead of the expected
+/// u8. Only use this function if you can handle that.
 fn solidity_serialization<T: Serialize>(ty: &T) -> Result<Vec<u8>, DispatchError> {
-	bincode::DefaultOptions::new()
-		.with_fixint_encoding()
-		.with_big_endian()
-		.serialize(ty)
+	bincode::serde::encode_to_vec(ty, bincode_config())
 		.map_err(|_| DispatchError::Other("Type can not be serialized"))
 }
 
 /// Inverse of [`solidity_serialization()`]
+/// Note that the enum tags as treat as u32 by bincode instead of the expected
+/// u8. Only use this function if you can handle that.
 fn solidity_deserialization<T: DeserializeOwned>(data: &[u8]) -> Result<T, DispatchError> {
-	bincode::DefaultOptions::new()
-		.with_fixint_encoding()
-		.with_big_endian()
-		.deserialize(data)
+	bincode::serde::decode_from_slice(data, bincode_config())
+		.map(|(ty, _)| ty)
 		.map_err(|_| DispatchError::Other("Type can not be deserialized"))
 }
 
