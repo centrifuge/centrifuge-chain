@@ -53,7 +53,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
-version = "0.11.0"
+version = "0.11.3"
 
 [workspace.dependencies]
 hex-literal = { version = "0.4.1" }
@@ -173,6 +173,7 @@ sp-staking = { git = "https://github.com/paritytech/polkadot-sdk", default-featu
 sp-trie = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
+frame-metadata-hash-extension = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, features = [
   "tuples-96",
 ], branch = "release-polkadot-v1.7.2" } # Check when tuples-96 can be removed

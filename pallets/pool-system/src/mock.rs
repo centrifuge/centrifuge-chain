@@ -393,6 +393,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
 		Ok(RawOrigin::Root.into())
 	}
 }
