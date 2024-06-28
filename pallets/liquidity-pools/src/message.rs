@@ -5,7 +5,7 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::Seconds;
+use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
 use cfg_types::domain_address::Domain;
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -440,17 +440,25 @@ pub enum Message {
 	},
 }
 
-impl Message {
-	pub fn serialize(&self) -> Result<Vec<u8>, DispatchError> {
-		let bytes = solidity_serialization(self)?;
-
-		// Bincode serializes the enum tag variants as 4 bytes.
-		// But solidity side expect 1 byte.
-		// We emulate here as if it was 1
-		Ok(bytes[3..].into())
+impl LPEncoding for Message {
+	fn serialize(&self) -> Vec<u8> {
+		match solidity_serialization(self) {
+			Ok(bytes) => {
+				// Bincode serializes the enum tag variants as 4 bytes.
+				// But solidity side expect 1 byte.
+				// We emulate here as if it was 1
+				bytes[3..].into()
+			}
+			Err(_) => {
+				// We assume the message is always correctly coded, not propagating an
+				// "imposible error". If it happen, is a programming error that should be
+				// caught in the tests.
+				vec![]
+			}
+		}
 	}
 
-	pub fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
+	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		// Bincode serializes the enum tag variants as 4 bytes.
 		// But solidity side expect 1 byte.
 		// We emulate here as if it was so.
@@ -478,7 +486,7 @@ mod tests {
 	#[test]
 	fn invalid() {
 		let msg = Message::Invalid;
-		assert_eq!(msg.serialize().unwrap(), vec![0]);
+		assert_eq!(LPEncoding::serialize(&msg), vec![0]);
 	}
 
 	#[test]
@@ -893,10 +901,10 @@ mod tests {
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(msg: Message, expected_hex: &str) {
-		let encoded = msg.serialize().unwrap();
+		let encoded = LPEncoding::serialize(&msg);
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded = Message::deserialize(
+		let decoded = LPEncoding::deserialize(
 			&mut hex::decode(expected_hex)
 				.expect("Decode should work")
 				.as_slice(),

@@ -1,6 +1,6 @@
 use cfg_mocks::*;
 use cfg_primitives::OutboundMessageNonce;
-use cfg_traits::liquidity_pools::{test_util::Message, Codec, OutboundQueue};
+use cfg_traits::liquidity_pools::{test_util::Message, LPEncoding, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{
 	assert_noop, assert_ok,

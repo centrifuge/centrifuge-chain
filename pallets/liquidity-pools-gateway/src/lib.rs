@@ -29,7 +29,7 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{Codec, InboundQueue, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -122,7 +122,7 @@ pub mod pallet {
 		///
 		/// NOTE - this `Codec` trait is the Centrifuge trait for liquidity
 		/// pools' messages.
-		type Message: Codec + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
+		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// The message router type that is stored for each domain.
 		type Router: DomainRouter<Sender = Self::AccountId>
