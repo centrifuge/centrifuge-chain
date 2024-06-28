@@ -39,7 +39,7 @@ parameter_types! {
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1103 = (
+pub type UpgradeAltair1200 = (
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceFeed, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OraclePriceCollection, 0, 1>,
 	runtime_common::migrations::increase_storage_version::Migration<OrderBook, 0, 1>,
