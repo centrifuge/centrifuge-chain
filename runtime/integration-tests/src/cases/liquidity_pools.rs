@@ -156,9 +156,7 @@ mod utils {
 							token_name: BoundedVec::<
 								u8,
 								<T as pallet_pool_system::Config>::StringLimit,
-							>::try_from(
-								"A highly advanced tranche".as_bytes().to_vec()
-							)
+							>::try_from("A highly advanced tranche".as_bytes().to_vec())
 							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
@@ -237,7 +235,7 @@ mod utils {
 		let domain = Domain::EVM(evm_chain_id);
 
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_routers(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_router(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
 				domain,
 				vec![domain_router]
