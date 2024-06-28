@@ -6318,7 +6318,6 @@ dependencies = [
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-simple",
- "pallet-liquidity-pools-gateway",
  "pallet-timestamp",
  "pallet-xcm-transactor",
  "parity-scale-codec",

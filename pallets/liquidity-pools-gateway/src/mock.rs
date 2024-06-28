@@ -1,14 +1,13 @@
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
 use cfg_primitives::OutboundMessageNonce;
+use cfg_traits::liquidity_pools::test_util::Message;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::derive_impl;
 use frame_system::EnsureRoot;
-use sp_core::{crypto::AccountId32, ConstU128, H256};
-use sp_runtime::{traits::IdentityLookup, BuildStorage};
+use sp_core::{crypto::AccountId32, H256};
+use sp_runtime::traits::IdentityLookup;
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
-
-pub type Balance = u128;
 
 pub const LENGTH_SOURCE_CHAIN: usize = 10;
 pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";
@@ -17,10 +16,11 @@ pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
 pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
+pub const ENCODED_MESSAGE_MOCK: &str = "42";
+
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		Balances: pallet_balances,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockRouters: pallet_mock_routers,
 		MockOriginRecovery: cfg_mocks::converter::pallet,
@@ -30,24 +30,14 @@ frame_support::construct_runtime!(
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId32;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU128<1>;
-	type RuntimeHoldReason = ();
-}
-
 impl pallet_mock_liquidity_pools::Config for Runtime {
 	type DomainAddress = DomainAddress;
-	type Message = MessageMock;
+	type Message = Message;
 }
 
 impl pallet_mock_routers::Config for Runtime {}
@@ -67,7 +57,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = MessageMock;
+	type Message = Message;
 	type OriginRecovery = MockOriginRecovery;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
@@ -78,12 +68,5 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::<Runtime>::default()
-		.build_storage()
-		.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(storage);
-	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
-
-	ext
+	System::externalities()
 }
