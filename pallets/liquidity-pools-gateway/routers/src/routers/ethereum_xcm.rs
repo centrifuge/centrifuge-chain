@@ -59,7 +59,7 @@ pub(crate) fn get_encoded_contract_call(encoded_msg: Vec<u8>) -> Result<Bytes, (
 /// Note: We only concern ourselves with the `handle` function of the
 /// contract since that's all we need to build the calls for remote EVM
 /// execution.
-pub(crate) fn get_xcm_router_contract() -> Contract {
+fn get_xcm_router_contract() -> Contract {
 	let mut functions = BTreeMap::new();
 	#[allow(deprecated)]
 	functions.insert(

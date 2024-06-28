@@ -67,7 +67,9 @@ pub mod routers {
 	pub mod ethereum_xcm;
 }
 
-pub use routers::{axelar_evm::*, axelar_xcm::*, ethereum_xcm::*};
+pub use routers::{
+	axelar_evm::AxelarEVMRouter, axelar_xcm::AxelarXCMRouter, ethereum_xcm::EthereumXCMRouter,
+};
 
 /// Maximum size allowed for a byte representation of an Axelar EVM chain
 /// string, as found below:

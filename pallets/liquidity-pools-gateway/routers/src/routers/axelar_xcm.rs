@@ -15,6 +15,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 use crate::{routers::axelar_evm::get_axelar_encoded_msg, XCMRouter, MAX_AXELAR_EVM_CHAIN_SIZE};
 
