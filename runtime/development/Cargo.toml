@@ -36,6 +36,7 @@ sp-version = { workspace = true }
 
 frame-benchmarking = { workspace = true, optional = true }        # For benchmarking
 frame-executive = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-system-benchmarking = { workspace = true, optional = true } # For benchmarking
@@ -176,6 +177,7 @@ std = [
   "frame-system/std",
   "frame-system-rpc-runtime-api/std",
   "frame-executive/std",
+  "frame-metadata-hash-extension/std",
   "frame-try-runtime?/std",
   "frame-system-benchmarking?/std",
   "frame-benchmarking?/std",
@@ -454,12 +456,22 @@ try-runtime = [
   "staging-parachain-info/try-runtime",
 ]
 
+# Enable the metadata hash generation.
+#
+# This is hidden behind a feature because it increases the compile time.
+# The wasm binary needs to be compiled twice, once to fetch the metadata,
+# generate the metadata hash and then a second time with the
+# `RUNTIME_METADATA_HASH` environment variable set for the `CheckMetadataHash`
+# extension.
+metadata-hash = ["substrate-wasm-builder/metadata-hash"]
+
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
 # to make it smaller like logging for example.
 on-chain-release-build = [
   "sp-api/disable-logging",
   "runtime-common/on-chain-release-build",
+  "metadata-hash",
 ]
 
 # Used by integration testing

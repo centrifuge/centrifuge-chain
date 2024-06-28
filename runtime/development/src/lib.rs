@@ -176,7 +176,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1100,
+	spec_version: 1103,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -442,7 +442,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
+	pub Period: u32 = 2 * MINUTES;
 	pub const Offset: u32 = 0;
 }
 
@@ -1357,7 +1357,7 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
-	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+	pub FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 10;
@@ -2155,6 +2155,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -2171,7 +2172,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1100,
+	crate::migrations::UpgradeDevelopment1103,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
