@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::{EnsureRootOr, HalfOfCouncil};
 use cfg_traits::TryConvert;
 use cfg_types::{tokens::CurrencyId, EVMChainId};
 use frame_support::{
@@ -23,6 +22,7 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use runtime_common::{
+	origins::gov::types::{EnsureRootOr, HalfOfCouncil},
 	transfer_filter::PreXcmTransfer,
 	xcm::{
 		AccountIdToLocation, Barrier, CanonicalNativePerSecond, FixedConversionRateProvider,

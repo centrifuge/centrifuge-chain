@@ -38,7 +38,7 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{sr25519, Encode, Pair, Public};
+use sp_core::{bounded_vec::BoundedVec, sr25519, Encode, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	FixedPointNumber,
@@ -451,6 +451,12 @@ fn altair_genesis(
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
+		"techhnicalCommittee": {
+			"members": council_members
+		},
+		"technicalCommitteeMembership": {
+			"members": BoundedVec::<_, altair_runtime::TechnicalMaxMembers>::truncate_from(council_members),
+		}
 	})
 }
 

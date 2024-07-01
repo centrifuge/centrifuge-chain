@@ -7,6 +7,7 @@ use cfg_types::{
 	tokens::{AssetMetadata, CurrencyId},
 };
 use parity_scale_codec::Encode;
+use runtime_common::instances::CouncilCollective;
 use sp_core::Get;
 use sp_runtime::{BuildStorage, FixedPointNumber, Storage};
 
@@ -78,7 +79,7 @@ pub fn assets<'a, T: Runtime>(
 pub fn council_members<T: Runtime>(
 	members: impl IntoIterator<Item = Keyring>,
 ) -> impl BuildStorage {
-	pallet_collective::GenesisConfig::<T, cfg_primitives::CouncilCollective> {
+	pallet_collective::GenesisConfig::<T, CouncilCollective> {
 		phantom: Default::default(),
 		members: members.into_iter().map(|acc| acc.id().into()).collect(),
 	}

@@ -121,12 +121,13 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "altair-runtime"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -167,6 +168,7 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
+ "pallet-conviction-voting",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -195,6 +197,7 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
+ "pallet-referenda",
  "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
@@ -212,6 +215,7 @@ dependencies = [
  "pallet-uniques",
  "pallet-utility",
  "pallet-vesting",
+ "pallet-whitelist",
  "pallet-xcm",
  "pallet-xcm-transactor",
  "parity-scale-codec",
@@ -221,6 +225,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
+ "sp-arithmetic",
  "sp-block-builder",
  "sp-consensus-aura",
  "sp-core",
@@ -1372,7 +1377,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1465,7 +1470,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1639,6 +1644,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-collective",
+ "pallet-membership",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -3095,12 +3101,13 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -3142,6 +3149,7 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
+ "pallet-conviction-voting",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -3170,6 +3178,7 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
+ "pallet-referenda",
  "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
@@ -3187,6 +3196,7 @@ dependencies = [
  "pallet-uniques",
  "pallet-utility",
  "pallet-vesting",
+ "pallet-whitelist",
  "pallet-xcm",
  "pallet-xcm-transactor",
  "parity-scale-codec",
@@ -3196,6 +3206,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
+ "sp-arithmetic",
  "sp-block-builder",
  "sp-consensus-aura",
  "sp-core",
