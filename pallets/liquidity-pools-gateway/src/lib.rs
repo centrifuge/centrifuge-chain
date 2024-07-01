@@ -634,7 +634,7 @@ pub mod pallet {
 				Error::<T>::UnknownInstance,
 			);
 
-			let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
+			let incoming_msg = T::Message::deserialize(msg.as_slice())
 				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
 
 			Ok((address, incoming_msg))
