@@ -266,7 +266,8 @@ where
 			remaining_redeem_amount: T::ForeignInvestment::redemption(
 				&investor,
 				invest_id.clone(),
-			)?.into(),
+			)?
+			.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

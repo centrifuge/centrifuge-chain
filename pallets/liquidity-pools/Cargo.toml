@@ -13,19 +13,19 @@ documentation.workspace = true
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+bincode = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex = { workspace = true }
 orml-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+serde = { workspace = true }
+serde-big-array = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 staging-xcm = { workspace = true }
-serde = { workspace = true }
-serde-big-array = { workspace = true }
-bincode = { workspace = true }
 
 # Our custom pallets
 cfg-primitives = { workspace = true }
