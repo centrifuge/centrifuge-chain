@@ -99,7 +99,9 @@ pub mod pallet {
 		swaps::Swaps,
 		PoolInspect, StatusNotificationHook,
 	};
-	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
+	use cfg_types::investments::{
+		ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
 
@@ -198,9 +200,8 @@ pub mod pallet {
 		/// The hook type which acts upon a finalized redemption collection.
 		type CollectedForeignRedemptionHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<
+			Status = ExecutedForeignCollectRedeem<
 				Self::ForeignBalance,
-				Self::TrancheBalance,
 				Self::TrancheBalance,
 				Self::CurrencyId,
 			>,
@@ -210,10 +211,9 @@ pub mod pallet {
 		/// The hook type which acts upon a finalized redemption collection.
 		type CollectedForeignInvestmentHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<
+			Status = ExecutedForeignCollectInvest<
 				Self::ForeignBalance,
 				Self::TrancheBalance,
-				Self::ForeignBalance,
 				Self::CurrencyId,
 			>,
 			Error = DispatchError,
@@ -267,6 +267,10 @@ pub mod pallet {
 
 		/// The decrease is greater than the current investment/redemption
 		TooMuchDecrease,
+
+		/// A cancel action is in progress and it needs to finish before
+		/// increasing again
+		CancellationInProgress,
 	}
 
 	#[pallet::event]

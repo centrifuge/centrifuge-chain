@@ -241,10 +241,9 @@ pub trait ForeignInvestment<AccountId> {
 	/// mismatch and that swapping one into the other happens asynchronously. In
 	/// that case, the finalization of updating the investment needs to be
 	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
-	fn decrease_foreign_investment(
+	fn cancel_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
@@ -268,30 +267,7 @@ pub trait ForeignInvestment<AccountId> {
 	///   incremented redemption amount.
 	/// * The `foreign_payout_currency` is only required for the potential
 	///   dispatch of a response message.
-	fn decrease_foreign_redemption(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		amount: Self::TrancheAmount,
-		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
-
-	/// Collect the results of a user's foreign invest orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	fn collect_foreign_investment(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		foreign_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
-
-	/// Collect the results of a user's foreign redeem orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	///
-	/// NOTE: The currency of the collected amount will be `pool_currency`
-	/// whereas the user eventually wants to receive it in
-	/// `foreign_payout_currency`.
-	fn collect_foreign_redemption(
+	fn cancel_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,

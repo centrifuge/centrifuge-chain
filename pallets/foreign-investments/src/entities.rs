@@ -5,19 +5,16 @@ use cfg_traits::{
 	swaps::{Swap, Swaps},
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
+	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
+	ExecutedForeignDecreaseInvest,
 };
 use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{
-		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
-		Zero,
-	},
-	ArithmeticError, DispatchError,
+	traits::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSubAssign, Zero},
+	DispatchError,
 };
-use sp_std::cmp::min;
 
 use crate::{
 	pallet::{Config, Error},
@@ -60,16 +57,31 @@ impl<T: Config> Correlation<T> {
 
 	/// Decrease a correlation
 	/// The foreign amount amount is proportionally decreased
-	pub fn decrease(&mut self, pool_amount: T::PoolBalance) -> DispatchResult {
-		let foreign_amount = self.pool_to_foreign(pool_amount)?;
+	pub fn decrease(
+		&mut self,
+		pool_amount: T::PoolBalance,
+	) -> Result<T::ForeignBalance, DispatchError> {
+		let mut foreign_amount = self.pool_to_foreign(pool_amount)?;
 
 		self.pool_amount.ensure_sub_assign(pool_amount)?;
-		self.foreign_amount.ensure_sub_assign(foreign_amount)?;
 
-		Ok(())
+		// If the pool amount is zero we consider the foreign amount must also be zero
+		// even if maths don't give us a zero (due some precision-lost)
+		if self.pool_amount.is_zero() {
+			foreign_amount = self.foreign_amount;
+		}
+
+		self.foreign_amount.ensure_sub_assign(foreign_amount)?;
+		Ok(foreign_amount)
 	}
 
-	/// Transform any pool amount into a foreign amount
+	pub fn decrease_all(&mut self) -> T::ForeignBalance {
+		let foreign_amount = self.foreign_amount;
+		self.pool_amount = Zero::zero();
+		self.foreign_amount = Zero::zero();
+		foreign_amount
+	}
+
 	pub fn pool_to_foreign(
 		&self,
 		pool_amount: T::PoolBalance,
@@ -81,21 +93,6 @@ impl<T: Config> Correlation<T> {
 		Ok(pool_amount
 			.ensure_mul(self.foreign_amount.into())?
 			.ensure_div(self.pool_amount)?
-			.into())
-	}
-
-	/// Transform any foreign amount into a pool amount
-	pub fn foreign_to_pool(
-		&self,
-		foreign_amount: T::ForeignBalance,
-	) -> Result<T::PoolBalance, DispatchError> {
-		if foreign_amount.is_zero() {
-			return Ok(T::PoolBalance::zero());
-		}
-
-		Ok(foreign_amount
-			.ensure_mul(self.pool_amount.into())?
-			.ensure_div(self.foreign_amount)?
 			.into())
 	}
 }
@@ -112,7 +109,8 @@ pub struct InvestmentInfo<T: Config> {
 	///
 	/// The correlation
 	/// - is increased when an increase swap is paritally swapped
-	/// - is decreased when a decrease swap is partially swapped.
+	/// - is decreased when a decrease swap is fully swapped or an amount is
+	///   collected.
 	///
 	/// Which can also be seen an addition of the following values:
 	/// - The invested amount.
@@ -142,6 +140,19 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
+	pub fn ensure_no_pending_cancel(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> DispatchResult {
+		ensure!(
+			self.pending_decrease_swap(who, investment_id)?.is_zero(),
+			Error::<T>::CancellationInProgress
+		);
+
+		Ok(())
+	}
+
 	/// This method is performed before applying the swap.
 	pub fn pre_increase_swap(
 		&mut self,
@@ -154,46 +165,6 @@ impl<T: Config> InvestmentInfo<T> {
 			currency_out: self.foreign_currency,
 			amount_out: foreign_amount.into(),
 		})
-	}
-
-	/// Decrease an investment taking into account that a previous increment
-	/// could be pending.
-	/// This method is performed before applying the swap.
-	pub fn pre_decrease_swap(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		foreign_amount: T::ForeignBalance,
-	) -> Result<(T::ForeignBalance, SwapOf<T>), DispatchError> {
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
-
-		// We do not want to decrease the whole `foreign_amount` from the investment
-		// amount if there is a pending investment swap.
-		let increasing_foreign_amount = self.pending_increase_swap(who, investment_id)?;
-		let foreign_investment_decrement = foreign_amount.saturating_sub(increasing_foreign_amount);
-
-		let pool_investment_decrement = self
-			.correlation
-			.foreign_to_pool(foreign_investment_decrement)
-			.map_err(|e| match e {
-				DispatchError::Arithmetic(ArithmeticError::DivisionByZero) => {
-					Error::<T>::TooMuchDecrease.into()
-				}
-				e => e,
-			})?;
-
-		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
-
-		let cancelation_amount = min(foreign_amount, increasing_foreign_amount);
-
-		Ok((
-			cancelation_amount,
-			Swap {
-				currency_in: self.foreign_currency,
-				currency_out: pool_currency,
-				amount_out: pool_investment_decrement.into(),
-			},
-		))
 	}
 
 	/// This method is performed after resolve the swap
@@ -210,64 +181,28 @@ impl<T: Config> InvestmentInfo<T> {
 		self.increase_investment(who, investment_id, swapped_pool_amount)
 	}
 
-	/// This method is performed after resolve the swap by cancelling it
-	#[allow(clippy::type_complexity)]
-	pub fn post_increase_swap_by_cancel(
+	/// Decrease an investment taking into account that a previous increment
+	/// could be pending.
+	/// This method is performed before applying the swap.
+	pub fn pre_cancel_swap(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		swapped_pool_amount: T::PoolBalance,
-		swapped_foreign_amount: T::ForeignBalance,
-	) -> Result<
-		Option<ExecutedForeignDecreaseInvest<T::ForeignBalance, T::CurrencyId>>,
-		DispatchError,
-	> {
-		self.increase_investment(who, investment_id, swapped_pool_amount)?;
-
-		self.decrease_swapped_foreign_amount
-			.ensure_add_assign(swapped_foreign_amount)?;
-
-		let no_pending_decrease = self.pending_decrease_swap(who, investment_id)?.is_zero();
-		if no_pending_decrease && !self.decrease_swapped_foreign_amount.is_zero() {
-			return Ok(Some(ExecutedForeignDecreaseInvest {
-				foreign_currency: self.foreign_currency,
-				amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
-				amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
-			}));
-		}
-
-		Ok(None)
+	) -> Result<(T::ForeignBalance, SwapOf<T>), DispatchError> {
+		Ok((
+			self.pending_increase_swap(who, investment_id)?,
+			Swap {
+				currency_in: self.foreign_currency,
+				currency_out: pool_currency_of::<T>(investment_id)?,
+				amount_out: self.decrease_all_investment(who, investment_id)?.into(),
+			},
+		))
 	}
 
 	/// This method is performed after resolve the swap
 	#[allow(clippy::type_complexity)]
-	pub fn post_decrease_swap(
+	pub fn post_cancel_swap(
 		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		swapped_foreign_amount: T::ForeignBalance,
-		swapped_pool_amount: T::PoolBalance,
-		pending_pool_amount: T::PoolBalance,
-	) -> Result<
-		Option<ExecutedForeignDecreaseInvest<T::ForeignBalance, T::CurrencyId>>,
-		DispatchError,
-	> {
-		self.correlation.decrease(swapped_pool_amount)?;
-
-		self.post_decrease_swap_by_cancel(
-			who,
-			investment_id,
-			swapped_foreign_amount,
-			pending_pool_amount,
-		)
-	}
-
-	/// This method is performed after resolve the swap by cancelling it
-	#[allow(clippy::type_complexity)]
-	pub fn post_decrease_swap_by_cancel(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
 		swapped_foreign_amount: T::ForeignBalance,
 		pending_pool_amount: T::PoolBalance,
 	) -> Result<
@@ -281,7 +216,7 @@ impl<T: Config> InvestmentInfo<T> {
 			return Ok(Some(ExecutedForeignDecreaseInvest {
 				foreign_currency: self.foreign_currency,
 				amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
-				amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
+				fulfilled: self.correlation.decrease_all(),
 			}));
 		}
 
@@ -292,28 +227,17 @@ impl<T: Config> InvestmentInfo<T> {
 	#[allow(clippy::type_complexity)]
 	pub fn post_collect(
 		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::TrancheBalance, T::PoolBalance>,
 	) -> Result<
-		ExecutedForeignCollect<
-			T::ForeignBalance,
-			T::TrancheBalance,
-			T::ForeignBalance,
-			T::CurrencyId,
-		>,
+		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
 		DispatchError,
 	> {
-		let collected_foreign_amount =
-			self.correlation.pool_to_foreign(collected.amount_payment)?;
+		let collected_foreign_amount = self.correlation.decrease(collected.amount_payment)?;
 
-		self.correlation.decrease(collected.amount_payment)?;
-
-		Ok(ExecutedForeignCollect {
+		Ok(ExecutedForeignCollectInvest {
 			currency: self.foreign_currency,
-			amount_currency_payout: collected_foreign_amount,
+			amount_currency_invested: collected_foreign_amount,
 			amount_tranche_tokens_payout: collected.amount_collected,
-			amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
 		})
 	}
 
@@ -334,40 +258,15 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
-	fn decrease_investment(
+	fn decrease_all_investment(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		pool_amount: T::PoolBalance,
-	) -> DispatchResult {
-		if !pool_amount.is_zero() {
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				T::Investment::investment(who, investment_id)?
-					.ensure_sub(pool_amount)
-					.map_err(|_| Error::<T>::TooMuchDecrease)?,
-			)?;
-		}
+	) -> Result<T::PoolBalance, DispatchError> {
+		let pool_amount = T::Investment::investment(who, investment_id)?;
+		T::Investment::update_investment(who, investment_id, pool_amount)?;
 
-		Ok(())
-	}
-
-	/// Remaining amount to finalize the investment, denominated in foreign
-	/// currency. It takes care of:
-	/// - Any investment amount
-	/// - Any increase pending amount to be swapped
-	/// - Any decrease pending amount to be swapped.
-	/// - Any decrease swapped amount.
-	fn remaining_foreign_amount(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::ForeignBalance, DispatchError> {
-		let investment_and_pending_decrease = self.correlation.foreign_amount;
-		Ok(investment_and_pending_decrease
-			.ensure_add(self.pending_increase_swap(who, investment_id)?)?
-			.ensure_add(self.decrease_swapped_foreign_amount)?)
+		Ok(pool_amount)
 	}
 
 	/// In foreign currency denomination
@@ -396,7 +295,13 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<bool, DispatchError> {
-		Ok(self.remaining_foreign_amount(who, investment_id)?.is_zero())
+		let pool_amount = self
+			.pending_decrease_swap(who, investment_id)?
+			.ensure_add(T::Investment::investment(who, investment_id)?)?;
+
+		let foreign_amount = self.pending_increase_swap(who, investment_id)?;
+
+		Ok(pool_amount.is_zero() && foreign_amount.is_zero())
 	}
 }
 
@@ -445,16 +350,11 @@ impl<T: Config> RedemptionInfo<T> {
 		)
 	}
 
-	pub fn decrease(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		tranche_tokens_amount: T::TrancheBalance,
-	) -> DispatchResult {
+	pub fn cancel(&mut self, who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		T::Investment::update_redemption(
 			who,
 			investment_id,
-			T::Investment::redemption(who, investment_id)?.ensure_sub(tranche_tokens_amount)?,
+			T::Investment::redemption(who, investment_id)?,
 		)
 	}
 
@@ -477,29 +377,19 @@ impl<T: Config> RedemptionInfo<T> {
 	#[allow(clippy::type_complexity)]
 	pub fn post_swap(
 		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
 		swapped_amount: T::ForeignBalance,
 		pending_amount: T::PoolBalance,
 	) -> Result<
-		Option<
-			ExecutedForeignCollect<
-				T::ForeignBalance,
-				T::TrancheBalance,
-				T::TrancheBalance,
-				T::CurrencyId,
-			>,
-		>,
+		Option<ExecutedForeignCollectRedeem<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>>,
 		DispatchError,
 	> {
 		self.swapped_amount.ensure_add_assign(swapped_amount)?;
 
 		if pending_amount.is_zero() {
-			let msg = ExecutedForeignCollect {
+			let msg = ExecutedForeignCollectRedeem {
 				currency: self.foreign_currency,
+				amount_tranche_tokens_redeemed: self.collected_tranche_tokens(),
 				amount_currency_payout: self.swapped_amount,
-				amount_tranche_tokens_payout: self.collected_tranche_tokens(),
-				amount_remaining: T::Investment::redemption(who, investment_id)?,
 			};
 
 			self.collected = CollectedAmount::default();
