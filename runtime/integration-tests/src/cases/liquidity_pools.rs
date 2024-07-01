@@ -8,7 +8,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::{Quantity, Ratio},
+	fixed_point::Ratio,
 	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},

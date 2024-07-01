@@ -23,10 +23,9 @@ use cfg_primitives::{
 	constants::*,
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
-		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
-		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, ItemId,
-		LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
-		Signature, ThreeFourthOfCouncil, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
+		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
+		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 };
 use cfg_traits::{
@@ -111,11 +110,15 @@ use runtime_common::{
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
+	instances::CouncilCollective,
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
 	},
 	origin::EnsureAccountOrRootOr,
+	origins::gov::types::{
+		AllOfCouncil, EnsureRootOr, HalfOfCouncil, ThreeFourthOfCouncil, TwoThirdOfCouncil,
+	},
 	permissions::PoolAdminCheck,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
@@ -164,7 +167,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1103,
+	spec_version: 1200,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -2079,7 +2082,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1103,
+	migrations::UpgradeCentrifuge1200,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
