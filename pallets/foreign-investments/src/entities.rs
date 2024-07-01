@@ -57,16 +57,31 @@ impl<T: Config> Correlation<T> {
 
 	/// Decrease a correlation
 	/// The foreign amount amount is proportionally decreased
-	pub fn decrease(&mut self, pool_amount: T::PoolBalance) -> DispatchResult {
-		let foreign_amount = self.pool_to_foreign(pool_amount)?;
+	pub fn decrease(
+		&mut self,
+		pool_amount: T::PoolBalance,
+	) -> Result<T::ForeignBalance, DispatchError> {
+		let mut foreign_amount = self.pool_to_foreign(pool_amount)?;
 
 		self.pool_amount.ensure_sub_assign(pool_amount)?;
-		self.foreign_amount.ensure_sub_assign(foreign_amount)?;
 
-		Ok(())
+		// If the pool amount is zero we consider the foreign amount must also be zero
+		// even if maths don't give us a zero (due some precision-lost)
+		if self.pool_amount.is_zero() {
+			foreign_amount = self.foreign_amount;
+		}
+
+		self.foreign_amount.ensure_sub_assign(foreign_amount)?;
+		Ok(foreign_amount)
 	}
 
-	/// Transform any pool amount into a foreign amount
+	pub fn decrease_all(&mut self) -> T::ForeignBalance {
+		let foreign_amount = self.foreign_amount;
+		self.pool_amount = Zero::zero();
+		self.foreign_amount = Zero::zero();
+		foreign_amount
+	}
+
 	pub fn pool_to_foreign(
 		&self,
 		pool_amount: T::PoolBalance,
@@ -94,7 +109,8 @@ pub struct InvestmentInfo<T: Config> {
 	///
 	/// The correlation
 	/// - is increased when an increase swap is paritally swapped
-	/// - is decreased when a decrease swap is partially swapped.
+	/// - is decreased when a decrease swap is fully swapped or an amount is
+	///   collected.
 	///
 	/// Which can also be seen an addition of the following values:
 	/// - The invested amount.
@@ -200,7 +216,7 @@ impl<T: Config> InvestmentInfo<T> {
 			return Ok(Some(ExecutedForeignDecreaseInvest {
 				foreign_currency: self.foreign_currency,
 				amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
-				fulfilled: self.correlation.foreign_amount,
+				fulfilled: self.correlation.decrease_all(),
 			}));
 		}
 
@@ -216,10 +232,7 @@ impl<T: Config> InvestmentInfo<T> {
 		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
 		DispatchError,
 	> {
-		let collected_foreign_amount =
-			self.correlation.pool_to_foreign(collected.amount_payment)?;
-
-		self.correlation.decrease(collected.amount_payment)?;
+		let collected_foreign_amount = self.correlation.decrease(collected.amount_payment)?;
 
 		Ok(ExecutedForeignCollectInvest {
 			currency: self.foreign_currency,
