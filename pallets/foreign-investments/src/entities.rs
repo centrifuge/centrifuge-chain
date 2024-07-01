@@ -350,11 +350,7 @@ impl<T: Config> RedemptionInfo<T> {
 		)
 	}
 
-	pub fn decrease(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> DispatchResult {
+	pub fn cancel(&mut self, who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		T::Investment::update_redemption(
 			who,
 			investment_id,
