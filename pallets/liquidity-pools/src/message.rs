@@ -395,7 +395,7 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Codec
 		todo!("@william")
 	}
 
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
+	fn deserialize<I: Input>(_input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		todo!("@william")
 	}
 }
