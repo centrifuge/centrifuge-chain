@@ -41,6 +41,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
+use crate::message::UpdateRestrictionMessage;
 use cfg_traits::{
 	liquidity_pools::{InboundQueue, OutboundQueue},
 	PreConditions,
@@ -494,12 +495,12 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain_address.domain(),
-				Message::UpdateMember {
+				Message::UpdateRestriction(UpdateRestrictionMessage::UpdateMember {
 					pool_id,
 					tranche_id,
 					valid_until,
 					member: domain_address.address(),
-				},
+				}),
 			)?;
 
 			Ok(())
