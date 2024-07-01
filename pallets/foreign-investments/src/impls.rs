@@ -34,8 +34,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(who, investment_id)?;
 
-			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
 			let swap_id = (investment_id, Action::Investment);
+			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
 
 			if !swap.has_same_currencies() {
 				let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
@@ -110,7 +110,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(payout_foreign_currency)?;
-			info.decrease(who, investment_id)?;
+			info.cancel(who, investment_id)?;
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;
