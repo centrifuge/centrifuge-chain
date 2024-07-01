@@ -30,7 +30,7 @@ use core::marker::PhantomData;
 
 /// Weight functions for `pallet_collective_council`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_collective_council::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 	/// Storage: `Council::Members` (r:1 w:1)
 	/// Proof: `Council::Members` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Council::Proposals` (r:1 w:0)
