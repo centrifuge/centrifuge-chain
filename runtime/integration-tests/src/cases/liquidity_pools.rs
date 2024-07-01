@@ -2965,7 +2965,7 @@ mod foreign_investments {
 				assert!(!outbound_message_dispatched::<T>(|| {
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
+						default_order_id::<T>(&investor),
 						invest_amount_pool_denominated / 4
 					));
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -2984,6 +2984,7 @@ mod foreign_investments {
 					}));
 				}));
 
+				let swap_order_id = default_order_id::<T>(&investor);
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					swap_order_id,
@@ -2992,7 +2993,7 @@ mod foreign_investments {
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_order_book::Event::<T>::OrderFulfillment {
-							order_id: default_order_id::<T>(&investor),
+							order_id: swap_order_id,
 							placing_account: investor.clone(),
 							fulfilling_account: trader.clone(),
 							partial_fulfillment: false,
@@ -3117,7 +3118,6 @@ mod foreign_investments {
 					invest_amount_pool_denominated / 4
 				));
 
-				dbg!(frame_system::Pallet::<T>::events());
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {

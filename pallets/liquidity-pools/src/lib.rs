@@ -41,7 +41,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use crate::message::UpdateRestrictionMessage;
 use cfg_traits::{
 	liquidity_pools::{InboundQueue, OutboundQueue},
 	PreConditions,
@@ -69,6 +68,8 @@ use staging_xcm::{
 	v4::{Junction::*, NetworkId},
 	VersionedLocation,
 };
+
+use crate::message::UpdateRestrictionMessage;
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
