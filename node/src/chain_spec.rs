@@ -393,7 +393,7 @@ fn altair_genesis(
 	serde_json::json!({
 		"balances": { "balances": balances },
 		"council": {
-			"members": council_members,
+			"members": council_members.clone(),
 		},
 		"fees": {
 			"initialFees": vec![(
@@ -451,6 +451,9 @@ fn altair_genesis(
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
+		"technicalCommittee": {
+			"members": council_members
+		}
 	})
 }
 

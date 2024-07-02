@@ -12,18 +12,18 @@
 
 use cfg_primitives::AccountId;
 use polkadot_parachain_primitives::primitives::Sibling;
-use sp_core::{crypto::AccountId32, Get, H160};
+use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::traits::AccountIdConversion;
 
 use crate::account_conversion::AccountConverter;
 
+pub fn get_gateway_h160_account<T: staging_parachain_info::Config>() -> H160 {
+	let para_id = staging_parachain_info::Pallet::<T>::parachain_id();
+	let sender_account = Sibling::from(para_id).into_account_truncating();
+	H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20])
+}
+
 pub fn get_gateway_account<T: pallet_evm_chain_id::Config + staging_parachain_info::Config>(
 ) -> AccountId {
-	let sender_account: AccountId =
-		Sibling::from(staging_parachain_info::Pallet::<T>::get()).into_account_truncating();
-
-	let truncated_sender_account =
-		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20]);
-
-	AccountConverter::into_account_id::<T>(truncated_sender_account)
+	AccountConverter::evm_address_to_account::<T>(get_gateway_h160_account::<T>())
 }

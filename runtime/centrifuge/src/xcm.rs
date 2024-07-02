@@ -10,10 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{
-	parachains,
-	types::{EnsureRootOr, HalfOfCouncil},
-};
 use cfg_traits::TryConvert;
 use cfg_types::{tokens::CurrencyId, EVMChainId};
 use frame_support::{
@@ -26,12 +22,12 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use runtime_common::{
+	origins::gov::types::{EnsureRootOr, HalfOfCouncil},
 	transfer_filter::PreXcmTransfer,
 	xcm::{
-		general_key, AccountIdToLocation, Barrier, FixedConversionRateProvider,
+		AccountIdToLocation, Barrier, CanonicalNativePerSecond, FixedConversionRateProvider,
 		LocalOriginToLocation, LpInstanceRelayer, ToTreasury,
 	},
-	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
 use staging_xcm::{
@@ -89,24 +85,12 @@ impl staging_xcm_executor::Config for XcmConfig {
 /// else the xcm executor won't know how to charge fees for a transfer of said
 /// token.
 pub type Trader = (
-	FixedRateOfFungible<CanonicalCfgPerSecond, ToTreasury<Runtime>>,
+	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury<Runtime>>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
 		ToTreasury<Runtime>,
 	>,
 );
-
-parameter_types! {
-	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
-	pub CanonicalCfgPerSecond: (AssetId, u128, u128) = (
-		Location::new(
-			0,
-			general_key(parachains::polkadot::centrifuge::CFG_KEY),
-		).into(),
-		native_per_second(),
-		0,
-	);
-}
 
 /// Means for transacting the fungibles assets of this parachain.
 pub type FungiblesTransactor = FungiblesAdapter<

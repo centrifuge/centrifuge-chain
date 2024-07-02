@@ -44,6 +44,7 @@ sp-timestamp = { workspace = true, features = ["std"] }
 sp-tracing = { workspace = true, features = ["std"] }
 sp-transaction-pool = { workspace = true, features = ["std"] }
 
+frame-metadata-hash-extension = { workspace = true, features = ["std"] }
 frame-support = { workspace = true, features = ["std"] }
 frame-system = { workspace = true, features = ["std"] }
 

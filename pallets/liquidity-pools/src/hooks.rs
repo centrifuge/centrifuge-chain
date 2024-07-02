@@ -15,7 +15,7 @@ use cfg_traits::{
 	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
 };
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::DomainAddress,
 	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
 };
 use frame_support::{
@@ -26,7 +26,7 @@ use frame_support::{
 	transactional,
 };
 use sp_core::Get;
-use sp_runtime::{traits::Convert, DispatchError, DispatchResult};
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
 use crate::{pallet::Config, Message, MessageOf, Pallet};
@@ -141,7 +141,7 @@ where
 		T::Tokens::transfer(
 			investment_id.clone().into(),
 			&investor,
-			&Domain::convert(domain_address.domain()),
+			&domain_address.domain().into_account(),
 			status.amount_tranche_tokens_payout,
 			Preservation::Expendable,
 		)?;
