@@ -73,6 +73,17 @@ use staging_xcm::{
 // be defensive.
 pub mod defensive_weights;
 
+/// Serializer for the LiquidityPool's Generic Message Parsing Format (GMPF)
+mod data_format {
+	mod de;
+	mod error;
+	mod ser;
+
+	pub use de::from_slice;
+	pub use error::{Error, Result};
+	pub use ser::to_vec;
+}
+
 mod message;
 pub use message::Message;
 

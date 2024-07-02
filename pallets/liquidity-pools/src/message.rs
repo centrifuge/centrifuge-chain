@@ -10,9 +10,11 @@ use cfg_types::domain_address::Domain;
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
-use sp_std::{vec, vec::Vec};
+use sp_std::vec::Vec;
+
+use crate::data_format as gmpf; // Generic Message Passing Format
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32
@@ -62,31 +64,6 @@ impl TryInto<Domain> for SerializableDomain {
 			_ => Err(DispatchError::Other("Unknown domain")),
 		}
 	}
-}
-
-fn bincode_config() -> bincode::config::Configuration<
-	bincode::config::BigEndian,
-	bincode::config::Fixint,
-	bincode::config::NoLimit,
-> {
-	Default::default()
-}
-
-/// Inverse of [`base_deserialization()`]
-/// Note that the enum tags as treat as u32 by bincode instead of the expected
-/// u8. Only use this function if you can handle that.
-fn base_serialization<T: Serialize>(ty: &T) -> Result<Vec<u8>, DispatchError> {
-	bincode::serde::encode_to_vec(ty, bincode_config())
-		.map_err(|_| DispatchError::Other("Type can not be serialized"))
-}
-
-/// Inverse of [`base_serialization()`]
-/// Note that the enum tags as treat as u32 by bincode instead of the expected
-/// u8. Only use this function if you can handle that.
-fn base_deserialization<T: DeserializeOwned>(data: &[u8]) -> Result<T, DispatchError> {
-	bincode::serde::decode_from_slice(data, bincode_config())
-		.map(|(ty, _)| ty)
-		.map_err(|_| DispatchError::Other("Type can not be deserialized"))
 }
 
 /// A LiquidityPools Message
@@ -442,29 +419,11 @@ pub enum Message {
 
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
-		match base_serialization(self) {
-			Ok(bytes) => {
-				// Bincode serializes the enum tag variants as 4 bytes.
-				// But solidity side expect 1 byte.
-				// We emulate here as if it was 1
-				bytes[3..].into()
-			}
-			Err(_) => {
-				// We assume the message is always correctly coded, not propagating an
-				// "imposible error". If it happen, is a programming error that should be
-				// caught in the tests.
-				vec![]
-			}
-		}
+		gmpf::to_vec(self).unwrap_or_default()
 	}
 
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
-		// Bincode serializes the enum tag variants as 4 bytes.
-		// But solidity side expect 1 byte.
-		// We emulate here as if it was so.
-		let data = [vec![0, 0, 0], data.into()].concat();
-
-		base_deserialization(&data)
+		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
 	}
 }
 
@@ -486,29 +445,29 @@ mod tests {
 	#[test]
 	fn invalid() {
 		let msg = Message::Invalid;
-		assert_eq!(LPEncoding::serialize(&msg), vec![0]);
+		assert_eq!(gmpf::to_vec(&msg).unwrap(), vec![0]);
 	}
 
 	#[test]
 	fn encoding_domain() {
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(base_serialization(&SerializableDomain::from(Domain::Centrifuge)).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Centrifuge)).unwrap()),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
 		assert_eq!(
-			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
 			"010000000000000001"
 		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(1284))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1284))).unwrap()),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(base_serialization(&SerializableDomain::from(Domain::EVM(43114))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(43114))).unwrap()),
 			"01000000000000a86a"
 		);
 	}
@@ -895,10 +854,10 @@ mod tests {
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(msg: Message, expected_hex: &str) {
-		let encoded = LPEncoding::serialize(&msg);
+		let encoded = gmpf::to_vec(&msg).unwrap();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded = LPEncoding::deserialize(
+		let decoded = gmpf::from_slice(
 			&mut hex::decode(expected_hex)
 				.expect("Decode should work")
 				.as_slice(),
