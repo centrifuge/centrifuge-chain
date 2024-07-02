@@ -7,13 +7,13 @@ use cfg_types::{
 };
 use frame_support::derive_impl;
 use orml_traits::parameter_type_with_key;
-use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU64};
+use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
 
 use crate::pallet as pallet_liquidity_pools;
 
 pub type Balance = u128;
 pub type AccountId = AccountId32;
-pub type Ratio = FixedU64;
+pub type Ratio = FixedU128;
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
