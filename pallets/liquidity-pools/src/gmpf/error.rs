@@ -31,7 +31,7 @@ impl de::Error for Error {
 impl Display for Error {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 		let msg = match self {
-			Error::Message(msg) => sp_std::str::from_utf8(&msg).unwrap_or(""),
+			Error::Message(msg) => sp_std::str::from_utf8(msg).unwrap_or(""),
 			Error::EnumSize => "enum variant size too large to serialize(> 255)",
 			Error::Unimplemented => "unimplemented serialization",
 			Error::UnknownSize => "sequence size is not known",
