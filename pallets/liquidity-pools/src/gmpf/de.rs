@@ -3,7 +3,7 @@ use serde::{
 	Deserialize,
 };
 
-use super::{Error, Result};
+use super::error::{Error, Result};
 
 struct Deserializer<'de> {
 	input: &'de [u8],

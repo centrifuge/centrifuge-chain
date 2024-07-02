@@ -74,14 +74,13 @@ use staging_xcm::{
 pub mod defensive_weights;
 
 /// Serializer for the LiquidityPool's Generic Message Parsing Format (GMPF)
-mod data_format {
+mod gmpf {
 	mod de;
 	mod error;
 	mod ser;
 
-	pub use de::from_slice;
-	pub use error::{Error, Result};
 	pub use ser::to_vec;
+	pub use de::from_slice;
 }
 
 mod message;

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-use crate::data_format as gmpf; // Generic Message Passing Format
+use crate::gmpf; // Generic Message Passing Format
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32

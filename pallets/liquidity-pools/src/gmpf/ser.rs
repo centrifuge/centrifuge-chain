@@ -1,7 +1,7 @@
 use serde::{ser, Serialize};
 use sp_std::vec::Vec;
 
-use super::{Error, Result};
+use super::error::{Error, Result};
 
 struct Serializer {
 	output: Vec<u8>,
