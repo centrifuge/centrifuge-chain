@@ -5,3 +5,5 @@ coverage:
     project:
       default:
         informational: true
+    patch:
+      informational: true
