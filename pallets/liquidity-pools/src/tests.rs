@@ -304,7 +304,7 @@ mod transfer_tranche_tokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
 						sender: ALICE.into(),
-						domain: EVM_ADDRESS.domain(),
+						domain: EVM_ADDRESS.domain().into(),
 						receiver: EVM_ADDRESS.address(),
 						amount: AMOUNT
 					}

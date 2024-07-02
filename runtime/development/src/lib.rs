@@ -113,7 +113,6 @@ use runtime_common::{
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
 	instances::{CouncilCollective, TechnicalCollective, TechnicalMembership},
-	liquidity_pools::LiquidityPoolsMessage,
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
@@ -1933,7 +1932,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = LiquidityPoolsMessage;
+	type Message = pallet_liquidity_pools::Message;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;

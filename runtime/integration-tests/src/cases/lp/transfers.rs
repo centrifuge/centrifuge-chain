@@ -271,7 +271,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 							)
 						)
 						.into(),
-					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
 					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
 					amount: AMOUNT,
 				}

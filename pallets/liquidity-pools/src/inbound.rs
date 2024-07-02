@@ -28,7 +28,7 @@ use sp_runtime::{
 	DispatchResult,
 };
 
-use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, MessageOf, Pallet};
+use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, Pallet};
 
 impl<T: Config> Pallet<T>
 where
@@ -257,16 +257,17 @@ where
 			Preservation::Expendable,
 		)?;
 
-		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
-			pool_id,
-			tranche_id,
+		let message: Message = Message::ExecutedDecreaseRedeemOrder {
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: investor.clone().into(),
 			currency: currency_u128,
-			tranche_tokens_payout,
+			tranche_tokens_payout: tranche_tokens_payout.into(),
 			remaining_redeem_amount: T::ForeignInvestment::redemption(
 				&investor,
 				invest_id.clone(),
-			)?,
+			)?
+			.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

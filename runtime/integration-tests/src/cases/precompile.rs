@@ -1,10 +1,7 @@
 use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, TrancheId, CFG};
-use cfg_traits::liquidity_pools::Codec;
-use cfg_types::{
-	domain_address::{Domain, DomainAddress},
-	fixed_point::Rate,
-};
+use cfg_primitives::CFG;
+use cfg_traits::liquidity_pools::LPEncoding;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use ethabi::{Function, Param, ParamType, Token};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
@@ -71,7 +68,7 @@ fn axelar_precompile_execute<T: Runtime>() {
 		)
 		.unwrap();
 
-		let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+		let msg = Message::Transfer {
 			currency: general_currency_id,
 			sender: derived_sender_account.clone().into(),
 			receiver: derived_receiver_account.clone().into(),

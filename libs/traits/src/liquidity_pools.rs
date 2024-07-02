@@ -12,34 +12,35 @@
 // GNU General Public License for more details.
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
-use parity_scale_codec::Input;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait Codec: Sized {
+pub trait LPEncoding: Sized {
 	fn serialize(&self) -> Vec<u8>;
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error>;
+	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 }
 
 #[cfg(any(test, feature = "std"))]
 pub mod test_util {
-	use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 
-	use super::Codec;
+	use super::*;
 
 	#[derive(Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
 	pub struct Message;
-	impl Codec for Message {
+	impl LPEncoding for Message {
 		fn serialize(&self) -> Vec<u8> {
 			vec![0x42]
 		}
 
-		fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
-			match input.read_byte()? {
-				0x42 => Ok(Self),
-				_ => Err("unsupported message".into()),
+		fn deserialize(input: &[u8]) -> Result<Self, DispatchError> {
+			match input.first() {
+				Some(0x42) => Ok(Self),
+				Some(_) => Err("unsupported message".into()),
+				None => Err("empty message".into()),
 			}
 		}
 	}

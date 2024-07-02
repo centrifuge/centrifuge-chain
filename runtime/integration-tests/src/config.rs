@@ -6,7 +6,6 @@ use cfg_primitives::{
 };
 use cfg_traits::Millis;
 use cfg_types::{
-	domain_address::Domain,
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
@@ -139,10 +138,8 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		TrancheCurrency = TrancheCurrency,
 		BalanceRatio = Ratio,
-	> + pallet_liquidity_pools_gateway::Config<
-		Router = DomainRouter<Self>,
-		Message = Message<Domain, PoolId, TrancheId, Balance, Quantity>,
-	> + pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
+	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
+	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
 	+ pallet_order_book::Config<

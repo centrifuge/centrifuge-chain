@@ -1,6 +1,6 @@
 use cfg_mocks::*;
 use cfg_primitives::OutboundMessageNonce;
-use cfg_traits::liquidity_pools::{test_util::Message, Codec, OutboundQueue};
+use cfg_traits::liquidity_pools::{test_util::Message, LPEncoding, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{
 	assert_noop, assert_ok,
@@ -406,7 +406,7 @@ mod process_msg_axelar_relay {
 			});
 
             let solidity_header = "0000000a657468657265756d2d320000002a307838353033623434353242663632333863433736436462454532323362343664373139366231633933";
-			let payload = hex::decode(format!("{solidity_header}{ENCODED_MESSAGE_MOCK}")).unwrap();
+			let payload = [hex::decode(solidity_header).unwrap(), Message.serialize()].concat();
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),

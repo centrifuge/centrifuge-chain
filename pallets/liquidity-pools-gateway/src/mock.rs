@@ -16,8 +16,6 @@ pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
 pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
-pub const ENCODED_MESSAGE_MOCK: &str = "42";
-
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
