@@ -73,7 +73,7 @@ use staging_xcm::{
 // be defensive.
 pub mod defensive_weights;
 
-/// Serializer for the LiquidityPool's Generic Message Parsing Format (GMPF)
+/// Serializer for the LiquidityPool's Generic Message Passing Format (GMPF)
 mod gmpf {
 	mod de;
 	mod error;
