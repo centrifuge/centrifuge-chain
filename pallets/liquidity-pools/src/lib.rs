@@ -79,8 +79,8 @@ mod gmpf {
 	mod error;
 	mod ser;
 
-	pub use ser::to_vec;
 	pub use de::from_slice;
+	pub use ser::to_vec;
 }
 
 mod message;
