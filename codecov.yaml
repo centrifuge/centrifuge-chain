@@ -6,4 +6,6 @@ coverage:
       default:
         informational: true
     patch:
-      informational: true
+      default:
+        informational: true
+        if_ci_failed: success
