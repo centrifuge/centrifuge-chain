@@ -1295,9 +1295,20 @@ mod investment {
 	}
 }
 
-/*
 mod redemption {
 	use super::*;
+
+	#[test]
+	fn cancel() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_err!(
+				ForeignInvestment::cancel_foreign_redemption(&USER, INVESTMENT_ID, FOREIGN_CURR),
+				Error::<Runtime>::InfoNotFound
+			);
+		});
+	}
 
 	#[test]
 	fn increase() {
@@ -1321,7 +1332,7 @@ mod redemption {
 			);
 
 			assert_eq!(
-				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				MockInvestment::redemption(&USER, INVESTMENT_ID),
 				Ok(TRANCHE_AMOUNT)
 			);
 		});
@@ -1356,14 +1367,14 @@ mod redemption {
 			);
 
 			assert_eq!(
-				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				MockInvestment::redemption(&USER, INVESTMENT_ID),
 				Ok(TRANCHE_AMOUNT + TRANCHE_AMOUNT)
 			);
 		});
 	}
 
 	#[test]
-	fn increase_and_decrease() {
+	fn increase_and_cancel() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -1374,10 +1385,9 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			assert_ok!(ForeignInvestment::decrease_foreign_redemption(
+			assert_ok!(ForeignInvestment::cancel_foreign_redemption(
 				&USER,
 				INVESTMENT_ID,
-				TRANCHE_AMOUNT,
 				FOREIGN_CURR
 			));
 
@@ -1386,7 +1396,7 @@ mod redemption {
 				None,
 			);
 
-			assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(MockInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -1404,11 +1414,7 @@ mod redemption {
 
 			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
-			assert_ok!(ForeignInvestment::collect_foreign_redemption(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_CURR
-			));
+			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1423,7 +1429,7 @@ mod redemption {
 			);
 
 			assert_eq!(
-				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				MockInvestment::redemption(&USER, INVESTMENT_ID),
 				Ok(TRANCHE_AMOUNT / 4)
 			);
 		});
@@ -1443,11 +1449,11 @@ mod redemption {
 
 			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
-			assert_ok!(ForeignInvestment::collect_foreign_redemption(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_CURR
-			));
+			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
+
+			MockCollectRedeemHook::mock_notify_status_change(|_, _| {
+				unreachable!("msg is only sent with fully fulfills")
+			});
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
@@ -1464,7 +1470,7 @@ mod redemption {
 			);
 
 			assert_eq!(
-				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				MockInvestment::redemption(&USER, INVESTMENT_ID),
 				Ok(TRANCHE_AMOUNT / 4)
 			);
 		});
@@ -1484,11 +1490,7 @@ mod redemption {
 
 			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
-			assert_ok!(ForeignInvestment::collect_foreign_redemption(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_CURR
-			));
+			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
@@ -1497,13 +1499,12 @@ mod redemption {
 				assert_eq!(investment_id, INVESTMENT_ID);
 				assert_eq!(
 					msg,
-					ExecutedForeignCollect {
+					ExecutedForeignCollectRedeem {
 						currency: FOREIGN_CURR,
 						amount_currency_payout: pool_to_foreign(tranche_to_pool(
 							3 * TRANCHE_AMOUNT / 4
 						)),
-						amount_tranche_tokens_payout: 3 * TRANCHE_AMOUNT / 4,
-						amount_remaining: TRANCHE_AMOUNT / 4,
+						amount_tranche_tokens_redeemed: 3 * TRANCHE_AMOUNT / 4,
 					}
 				);
 				Ok(())
@@ -1521,7 +1522,7 @@ mod redemption {
 			);
 
 			assert_eq!(
-				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				MockInvestment::redemption(&USER, INVESTMENT_ID),
 				Ok(TRANCHE_AMOUNT / 4)
 			);
 		});
@@ -1541,22 +1542,15 @@ mod redemption {
 
 			util::process_redemption(TRANCHE_AMOUNT);
 
-			assert_ok!(ForeignInvestment::collect_foreign_redemption(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_CURR
-			));
+			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
-			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
-				assert_eq!(who, USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
+			MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
-					ExecutedForeignCollect {
+					ExecutedForeignCollectRedeem {
 						currency: FOREIGN_CURR,
 						amount_currency_payout: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT)),
-						amount_tranche_tokens_payout: TRANCHE_AMOUNT,
-						amount_remaining: 0,
+						amount_tranche_tokens_redeemed: TRANCHE_AMOUNT,
 					}
 				);
 				Ok(())
@@ -1569,7 +1563,7 @@ mod redemption {
 				None,
 			);
 
-			assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(MockInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -1593,34 +1587,30 @@ mod redemption {
 				MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignCollect {
+						ExecutedForeignCollectRedeem {
 							currency: POOL_CURR,
 							amount_currency_payout: tranche_to_pool(TRANCHE_AMOUNT),
-							amount_tranche_tokens_payout: TRANCHE_AMOUNT,
-							amount_remaining: 0,
+							amount_tranche_tokens_redeemed: TRANCHE_AMOUNT,
 						}
 					);
 					Ok(())
 				});
 
 				// Automatically "fulfills" because there no need of swapping
-				assert_ok!(ForeignInvestment::collect_foreign_redemption(
-					&USER,
-					INVESTMENT_ID,
-					POOL_CURR
-				));
+				assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
 				assert_eq!(
 					ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 					None,
 				);
 
-				assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
+				assert_eq!(MockInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
 			});
 		}
 	}
 }
 
+/*
 mod notifications {
 	use super::*;
 

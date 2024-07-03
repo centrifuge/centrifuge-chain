@@ -195,7 +195,7 @@ impl<T: Config> InvestmentInfo<T> {
 			Swap {
 				currency_in: self.foreign_currency,
 				currency_out: pool_currency_of::<T>(investment_id)?,
-				amount_out: self.decrease_all_investment(who, investment_id)?.into(),
+				amount_out: self.cancel_investment(who, investment_id)?.into(),
 			},
 		))
 	}
@@ -259,7 +259,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
-	fn decrease_all_investment(
+	fn cancel_investment(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -338,7 +338,7 @@ impl<T: Config> RedemptionInfo<T> {
 		Ok(())
 	}
 
-	pub fn increase(
+	pub fn increase_redemption(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -351,12 +351,12 @@ impl<T: Config> RedemptionInfo<T> {
 		)
 	}
 
-	pub fn cancel(&mut self, who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
-		T::Investment::update_redemption(
-			who,
-			investment_id,
-			T::Investment::redemption(who, investment_id)?,
-		)
+	pub fn cancel_redeemption(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> DispatchResult {
+		T::Investment::update_redemption(who, investment_id, Zero::zero())
 	}
 
 	/// This method is performed after a collect and before applying the swap
