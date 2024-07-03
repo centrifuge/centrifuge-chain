@@ -334,6 +334,25 @@ mod investment {
 	}
 
 	#[test]
+	fn when_increase_with_zero() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				0,
+				FOREIGN_CURR
+			));
+
+			assert_err!(
+				Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)),
+				pallet_swaps::Error::<Runtime>::OrderNotFound
+			);
+		});
+	}
+
+	#[test]
 	fn increase_and_cancel() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
@@ -1292,6 +1311,62 @@ mod investment {
 				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
 			});
 		}
+
+		#[test]
+		fn increase_and_cancel_with_math_precission_issue_on_price() {
+			new_test_ext().execute_with(|| {
+				const FOREIGN_AMOUNT: Balance = 100;
+
+				util::base_configuration();
+
+				MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+					Ok(match (from, to) {
+						(POOL_CURR, FOREIGN_CURR) => amount_from / 3 + 1, // Emulates math err here
+						(FOREIGN_CURR, POOL_CURR) => amount_from * 3,
+						_ => unreachable!(),
+					})
+				});
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					FOREIGN_AMOUNT,
+					FOREIGN_CURR
+				));
+
+				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT);
+
+				// There is no swap.
+				assert!(Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)).is_err());
+
+				assert_ok!(ForeignInvestment::cancel_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					FOREIGN_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: FOREIGN_AMOUNT + 1,
+							foreign_currency: FOREIGN_CURR,
+							fulfilled: FOREIGN_AMOUNT,
+						}
+					);
+					Ok(())
+				});
+
+				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT * 3);
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+
+				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			});
+		}
 	}
 }
 
@@ -1610,7 +1685,6 @@ mod redemption {
 	}
 }
 
-/*
 mod notifications {
 	use super::*;
 
@@ -1640,127 +1714,3 @@ mod notifications {
 		});
 	}
 }
-
-mod zero_amount_order {
-	use super::*;
-
-	#[test]
-	fn when_increase_with_zero() {
-		new_test_ext().execute_with(|| {
-			util::base_configuration();
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				0,
-				FOREIGN_CURR
-			));
-
-			assert_err!(
-				Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)),
-				pallet_swaps::Error::<Runtime>::OrderNotFound
-			);
-		});
-	}
-
-	#[test]
-	fn when_increase_after_decrease_but_math_precission() {
-		new_test_ext().execute_with(|| {
-			const FOREIGN_AMOUNT: Balance = 100;
-
-			util::base_configuration();
-
-			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
-				Ok(match (from, to) {
-					(POOL_CURR, FOREIGN_CURR) => amount_from / 3 + 1,
-					(FOREIGN_CURR, POOL_CURR) => amount_from * 3,
-					_ => unreachable!(),
-				})
-			});
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_AMOUNT,
-				FOREIGN_CURR
-			));
-
-			util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT);
-
-			assert!(Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)).is_err());
-
-			assert_ok!(ForeignInvestment::decrease_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_AMOUNT,
-				FOREIGN_CURR
-			));
-
-			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: FOREIGN_AMOUNT + 1,
-						foreign_currency: FOREIGN_CURR,
-						amount_remaining: FOREIGN_AMOUNT,
-					}
-				);
-				Ok(())
-			});
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				FOREIGN_AMOUNT + 1,
-				FOREIGN_CURR
-			));
-
-			assert_err!(
-				Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)),
-				pallet_swaps::Error::<Runtime>::OrderNotFound
-			);
-		});
-	}
-
-	#[test]
-	fn when_increase_fulfill_is_notified() {
-		new_test_ext().execute_with(|| {
-			util::base_configuration();
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				AMOUNT,
-				FOREIGN_CURR
-			));
-
-			util::fulfill_last_swap(Action::Investment, 0);
-		});
-	}
-
-	#[test]
-	fn when_decrease_fulfill_is_notified() {
-		new_test_ext().execute_with(|| {
-			util::base_configuration();
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				AMOUNT,
-				FOREIGN_CURR
-			));
-
-			util::fulfill_last_swap(Action::Investment, AMOUNT);
-
-			assert_ok!(ForeignInvestment::decrease_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				AMOUNT,
-				FOREIGN_CURR
-			));
-
-			util::fulfill_last_swap(Action::Investment, 0);
-		});
-	}
-}
-*/
