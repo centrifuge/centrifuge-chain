@@ -258,24 +258,4 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
-
-	/// Returns, if possible, the currently unprocessed investment amount (in
-	/// pool currency) of who into the given investment class.
-	///
-	/// NOTE: If the investment was (partially) processed, the unprocessed
-	/// amount is only updated upon collecting.
-	fn investment(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
-
-	/// Returns, if possible, the currently unprocessed redemption amount (in
-	/// tranche tokens) of who into the given investment class.
-	///
-	/// NOTE: If the redemption was (partially) processed, the unprocessed
-	/// amount is only updated upon collecting.
-	fn redemption(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::TrancheAmount, Self::Error>;
 }

@@ -1,13 +1,13 @@
 //! Trait implementations. Higher level file.
 
 use cfg_traits::{
-	investments::{ForeignInvestment, Investment},
+	investments::ForeignInvestment,
 	swaps::{Swap, SwapInfo, SwapStatus, Swaps},
 	StatusNotificationHook,
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, Zero};
+use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -119,31 +119,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Ok(())
 		})
 	}
-
-	fn investment(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::ForeignBalance, DispatchError> {
-		Ok(match ForeignInvestmentInfo::<T>::get(who, investment_id) {
-			Some(info) => {
-				let pool_investment = T::Investment::investment(who, investment_id)?;
-				let foreing_investment = info
-					.correlation
-					.pool_to_foreign(pool_investment)
-					.unwrap_or_default();
-
-				foreing_investment.ensure_add(info.pending_increase_swap(who, investment_id)?)?
-			}
-			None => T::ForeignBalance::default(),
-		})
-	}
-
-	fn redemption(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::TrancheBalance, DispatchError> {
-		T::Investment::redemption(who, investment_id)
-	}
 }
 
 impl<T: Config> Pallet<T> {
@@ -242,6 +217,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			match entry.as_mut() {
 				Some(info) => {
+					info.ensure_no_pending_cancel(&who, investment_id)?;
 					let msg = info.post_collect(collected)?;
 
 					if info.is_completed(&who, investment_id)? {

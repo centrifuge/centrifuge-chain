@@ -25,8 +25,6 @@ use crate::{
 /// vice-verse without market ratios.
 /// Both amounts are increased and decreased using the same values in each
 /// currecies, maintaining always a correlation.
-/// Any amount in pool or foreign currency can use this correlation to get its
-/// representation in the opposite currency.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct Correlation<T: Config> {
@@ -55,13 +53,20 @@ impl<T: Config> Correlation<T> {
 		Ok(())
 	}
 
-	/// Decrease a correlation
-	/// The foreign amount amount is proportionally decreased
+	/// Decrease a correlation by a pool amount
+	/// The foreign amount returned is proportionally decreased
 	pub fn decrease(
 		&mut self,
 		pool_amount: T::PoolBalance,
 	) -> Result<T::ForeignBalance, DispatchError> {
-		let mut foreign_amount = self.pool_to_foreign(pool_amount)?;
+		if pool_amount.is_zero() {
+			return Ok(T::ForeignBalance::zero());
+		}
+
+		let mut foreign_amount = pool_amount
+			.ensure_mul(self.foreign_amount.into())?
+			.ensure_div(self.pool_amount)?
+			.into();
 
 		self.pool_amount.ensure_sub_assign(pool_amount)?;
 
@@ -75,25 +80,12 @@ impl<T: Config> Correlation<T> {
 		Ok(foreign_amount)
 	}
 
+	/// Reset the correlation returning all the foreign amount
 	pub fn decrease_all(&mut self) -> T::ForeignBalance {
 		let foreign_amount = self.foreign_amount;
 		self.pool_amount = Zero::zero();
 		self.foreign_amount = Zero::zero();
 		foreign_amount
-	}
-
-	pub fn pool_to_foreign(
-		&self,
-		pool_amount: T::PoolBalance,
-	) -> Result<T::ForeignBalance, DispatchError> {
-		if pool_amount.is_zero() {
-			return Ok(T::ForeignBalance::zero());
-		}
-
-		Ok(pool_amount
-			.ensure_mul(self.foreign_amount.into())?
-			.ensure_div(self.pool_amount)?
-			.into())
 	}
 }
 
@@ -189,8 +181,17 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<(T::ForeignBalance, SwapOf<T>), DispatchError> {
+		let pending_increase_foreign = self.pending_increase_swap(who, investment_id)?;
+
+		// When cancelling, we no longer need to correlate.
+		// The entire amount returned in the cancel msg will be the entire foreign in
+		// the system, so we add here the not yet tracked pending amount.
+		self.correlation
+			.foreign_amount
+			.ensure_add_assign(pending_increase_foreign)?;
+
 		Ok((
-			self.pending_increase_swap(who, investment_id)?,
+			pending_increase_foreign,
 			Swap {
 				currency_in: self.foreign_currency,
 				currency_out: pool_currency_of::<T>(investment_id)?,
@@ -264,7 +265,7 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 	) -> Result<T::PoolBalance, DispatchError> {
 		let pool_amount = T::Investment::investment(who, investment_id)?;
-		T::Investment::update_investment(who, investment_id, pool_amount)?;
+		T::Investment::update_investment(who, investment_id, Zero::zero())?;
 
 		Ok(pool_amount)
 	}

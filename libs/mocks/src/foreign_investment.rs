@@ -26,11 +26,10 @@ pub mod pallet {
 			register_call!(move |(a, b, c, d)| f(a, b, c, d));
 		}
 
-		pub fn mock_decrease_foreign_investment(
-			f: impl Fn(&T::AccountId, T::InvestmentId, T::Amount, T::CurrencyId) -> DispatchResult
-				+ 'static,
+		pub fn mock_cancel_foreign_investment(
+			f: impl Fn(&T::AccountId, T::InvestmentId, T::CurrencyId) -> DispatchResult + 'static,
 		) {
-			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		pub fn mock_increase_foreign_redemption(
@@ -45,41 +44,10 @@ pub mod pallet {
 			register_call!(move |(a, b, c, d)| f(a, b, c, d));
 		}
 
-		pub fn mock_decrease_foreign_redemption(
-			f: impl Fn(
-					&T::AccountId,
-					T::InvestmentId,
-					T::TrancheAmount,
-					T::CurrencyId,
-				) -> DispatchResult
-				+ 'static,
-		) {
-			register_call!(move |(a, b, c, d)| f(a, b, c, d));
-		}
-
-		pub fn mock_collect_foreign_investment(
+		pub fn mock_cancel_foreign_redemption(
 			f: impl Fn(&T::AccountId, T::InvestmentId, T::CurrencyId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
-		}
-
-		pub fn mock_collect_foreign_redemption(
-			f: impl Fn(&T::AccountId, T::InvestmentId, T::CurrencyId) -> DispatchResult + 'static,
-		) {
-			register_call!(move |(a, b, c)| f(a, b, c));
-		}
-
-		pub fn mock_investment(
-			f: impl Fn(&T::AccountId, T::InvestmentId) -> Result<T::Amount, DispatchError> + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
-		pub fn mock_redemption(
-			f: impl Fn(&T::AccountId, T::InvestmentId) -> Result<T::TrancheAmount, DispatchError>
-				+ 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
 		}
 	}
 
@@ -99,13 +67,12 @@ pub mod pallet {
 			execute_call!((a, b, c, d))
 		}
 
-		fn decrease_foreign_investment(
+		fn cancel_foreign_investment(
 			a: &T::AccountId,
 			b: Self::InvestmentId,
-			c: Self::Amount,
-			d: Self::CurrencyId,
+			c: Self::CurrencyId,
 		) -> DispatchResult {
-			execute_call!((a, b, c, d))
+			execute_call!((a, b, c))
 		}
 
 		fn increase_foreign_redemption(
@@ -117,43 +84,12 @@ pub mod pallet {
 			execute_call!((a, b, c, d))
 		}
 
-		fn decrease_foreign_redemption(
-			a: &T::AccountId,
-			b: Self::InvestmentId,
-			c: Self::TrancheAmount,
-			d: Self::CurrencyId,
-		) -> DispatchResult {
-			execute_call!((a, b, c, d))
-		}
-
-		fn collect_foreign_investment(
+		fn cancel_foreign_redemption(
 			a: &T::AccountId,
 			b: Self::InvestmentId,
 			c: Self::CurrencyId,
 		) -> DispatchResult {
 			execute_call!((a, b, c))
-		}
-
-		fn collect_foreign_redemption(
-			a: &T::AccountId,
-			b: Self::InvestmentId,
-			c: Self::CurrencyId,
-		) -> DispatchResult {
-			execute_call!((a, b, c))
-		}
-
-		fn investment(
-			a: &T::AccountId,
-			b: Self::InvestmentId,
-		) -> Result<Self::Amount, DispatchError> {
-			execute_call!((a, b))
-		}
-
-		fn redemption(
-			a: &T::AccountId,
-			b: Self::InvestmentId,
-		) -> Result<Self::TrancheAmount, DispatchError> {
-			execute_call!((a, b))
 		}
 	}
 }
