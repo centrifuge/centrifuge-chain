@@ -1908,6 +1908,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type MarketRatio = OrderBook;
 	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
