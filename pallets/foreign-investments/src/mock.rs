@@ -1,5 +1,7 @@
 use cfg_traits::investments::TrancheCurrency;
-use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
+use cfg_types::investments::{
+	ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+};
 use frame_support::derive_impl;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -77,13 +79,13 @@ impl cfg_mocks::status_notification::pallet::Config<Hook1> for Runtime {
 type Hook2 = cfg_mocks::status_notification::pallet::Instance2;
 impl cfg_mocks::status_notification::pallet::Config<Hook2> for Runtime {
 	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollect<Balance, Balance, Balance, CurrencyId>;
+	type Status = ExecutedForeignCollectInvest<Balance, Balance, CurrencyId>;
 }
 
 type Hook3 = cfg_mocks::status_notification::pallet::Instance3;
 impl cfg_mocks::status_notification::pallet::Config<Hook3> for Runtime {
 	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollect<Balance, Balance, Balance, CurrencyId>;
+	type Status = ExecutedForeignCollectRedeem<Balance, Balance, CurrencyId>;
 }
 
 impl cfg_mocks::pools::pallet::Config for Runtime {
