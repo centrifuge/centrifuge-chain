@@ -69,9 +69,10 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	}
 
 	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo {
+		let name: &str = &name.into();
 		self.deployed_contracts
-			.get(&name.into())
-			.expect("Not deployed")
+			.get(name)
+			.expect(&format!("\"{name}\" not deployed"))
 			.clone()
 	}
 
@@ -98,11 +99,14 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	}
 
 	fn contract(&self, name: impl Into<String>) -> ContractInfo {
+		let name: &str = &name.into();
 		self.sol_contracts
 			.as_ref()
 			.expect("Need to load_contracts first")
-			.get(&name.into())
-			.expect("Unknown contract")
+			.get(name)
+			.expect(&format!(
+				"Contract \"{name}\" missing in loaded sol_contracts"
+			))
 			.clone()
 	}
 
@@ -156,23 +160,21 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 		&self,
 		caller: Keyring,
 		value: U256,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError> {
-		let contract_info = self
-			.deployed_contracts
-			.get(&contract.into())
-			.expect("Contract not deployed")
-			.clone();
+		let contract_info = Self::deployed(&self, contract.clone());
+		let contract: &str = &contract.into();
+		let function: &str = &function.into();
 		let input = contract_info
 			.contract
-			.functions_by_name(function.into().as_ref())
+			.functions_by_name(function.as_ref())
 			.expect(ESSENTIAL)
 			.iter()
 			.filter_map(|f| f.encode_input(args.unwrap_or_default()).ok())
 			.last()
-			.expect("No matching function Signature found.");
+			.expect(&format!("No matching function Signature found for function \"{function}\" in contract \"{contract}\"."));
 
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
@@ -207,7 +209,7 @@ impl<T: Runtime> env::EvmEnv<T> for EvmEnv<T> {
 	fn view(
 		&self,
 		caller: Keyring,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError> {

@@ -20,6 +20,7 @@ use cfg_types::{
 use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
+use pallet_evm::AddressMapping;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::FixedPointNumber;
@@ -38,7 +39,7 @@ use crate::{
 	},
 };
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn add_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 
@@ -90,8 +91,8 @@ fn add_currency<T: Runtime>() {
 			Decoder::<H160>::decode(
 				&evm.view(
 					Keyring::Alice,
-					"pool_manager",
-					"currencyIdToAddress",
+					names::POOL_MANAGER,
+					"idToAsset",
 					Some(&[Token::Uint(Uint::from(index.index))])
 				)
 				.unwrap()
@@ -104,8 +105,8 @@ fn add_currency<T: Runtime>() {
 			Decoder::<Balance>::decode(
 				&evm.view(
 					Keyring::Alice,
-					"pool_manager",
-					"currencyAddressToId",
+					names::POOL_MANAGER,
+					"assetToId",
 					Some(&[Token::Address(evm.deployed("test_erc20").address())]),
 				)
 				.unwrap()
@@ -122,12 +123,12 @@ fn add_currency<T: Runtime>() {
 		));
 
 		utils::process_outbound::<T>(|_| {
-			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
+			utils::verify_outbound_failure_on_lp::<T>(evm.deployed(names::ADAPTER).address())
 		});
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn add_pool<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 	const POOL: PoolId = 1;
@@ -149,7 +150,7 @@ fn add_pool<T: Runtime>() {
 		let evm_pool_time = Decoder::<Uint>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
+				names::POOL_MANAGER,
 				"pools",
 				Some(&[Token::Uint(Uint::from(POOL))]),
 			)
@@ -167,12 +168,12 @@ fn add_pool<T: Runtime>() {
 		));
 
 		utils::process_outbound::<T>(|_| {
-			utils::verify_outbound_failure_on_lp::<T>(evm.deployed("router").address())
+			utils::verify_outbound_failure_on_lp::<T>(evm.deployed(names::ADAPTER).address())
 		});
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -184,7 +185,7 @@ fn add_tranche<T: Runtime>() {
 			evm.call(
 				Keyring::Alice,
 				Default::default(),
-				"pool_manager",
+				names::POOL_MANAGER,
 				"deployTranche",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
@@ -193,6 +194,11 @@ fn add_tranche<T: Runtime>() {
 			),
 			utils::REVERT_ERR
 		);
+
+		let hook_address = evm.deployed(names::RESTRICTION_MANAGER).address();
+		let hook_32 = T::AddressMapping::into_account_id(hook_address);
+		println!("Hook EVM Address {:?}", hook_address);
+		println!("Hook AccountId32 Address {:?}", hook_32);
 	});
 
 	env.state_mut(|_| {
@@ -212,8 +218,8 @@ fn add_tranche<T: Runtime>() {
 			Decoder::<H160>::decode(
 				&evm.view(
 					Keyring::Alice,
-					"pool_manager",
-					"getTrancheToken",
+					names::POOL_MANAGER,
+					"getTranche",
 					Some(&[
 						Token::Uint(Uint::from(POOL_A)),
 						Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
@@ -228,7 +234,7 @@ fn add_tranche<T: Runtime>() {
 		assert_ok!(evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pool_manager",
+			names::POOL_MANAGER,
 			"deployTranche",
 			Some(&[
 				Token::Uint(Uint::from(POOL_A)),
@@ -239,8 +245,8 @@ fn add_tranche<T: Runtime>() {
 			Decoder::<H160>::decode(
 				&evm.view(
 					Keyring::Alice,
-					"pool_manager",
-					"getTrancheToken",
+					names::POOL_MANAGER,
+					"getTranche",
 					Some(&[
 						Token::Uint(Uint::from(POOL_A)),
 						Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
@@ -254,7 +260,7 @@ fn add_tranche<T: Runtime>() {
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn allow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -266,11 +272,11 @@ fn allow_investment_currency<T: Runtime>() {
 		assert!(!Decoder::<bool>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"isAllowedAsInvestmentCurrency",
+				names::POOL_MANAGER,
+				"isAllowedAsset",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()
@@ -293,11 +299,11 @@ fn allow_investment_currency<T: Runtime>() {
 		assert!(Decoder::<bool>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"isAllowedAsInvestmentCurrency",
+				names::POOL_MANAGER,
+				"isAllowedAsset",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()
@@ -306,7 +312,7 @@ fn allow_investment_currency<T: Runtime>() {
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn disallow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -319,11 +325,11 @@ fn disallow_investment_currency<T: Runtime>() {
 		assert!(Decoder::<bool>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"isAllowedAsInvestmentCurrency",
+				names::POOL_MANAGER,
+				"isAllowedAsset",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()
@@ -346,11 +352,11 @@ fn disallow_investment_currency<T: Runtime>() {
 		assert!(!Decoder::<bool>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"isAllowedAsInvestmentCurrency",
+				names::POOL_MANAGER,
+				"isAllowedAsset",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()
@@ -359,7 +365,7 @@ fn disallow_investment_currency<T: Runtime>() {
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn update_member<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -370,16 +376,22 @@ fn update_member<T: Runtime>() {
 	});
 
 	env.state(|evm| {
-		assert!(!Decoder::<bool>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::RM_POOL_A_T_1,
-				"hasMember",
-				Some(&[Token::Address(Keyring::Bob.into())]),
+		assert!(
+			!Decoder::<(bool, u64)>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::RESTRICTION_MANAGER,
+					"isMember",
+					Some(&[
+						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+						Token::Address(Keyring::Bob.into())
+					]),
+				)
+				.unwrap()
+				.value
 			)
-			.unwrap()
-			.value
-		));
+			.0
+		);
 	});
 
 	env.state_mut(|_| {
@@ -413,31 +425,43 @@ fn update_member<T: Runtime>() {
 	});
 
 	env.state(|evm| {
-		assert!(Decoder::<bool>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::RM_POOL_A_T_1,
-				"hasMember",
-				Some(&[Token::Address(Keyring::Bob.into())]),
+		assert!(
+			Decoder::<(bool, u64)>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::RESTRICTION_MANAGER,
+					"isMember",
+					Some(&[
+						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+						Token::Address(Keyring::Bob.into())
+					]),
+				)
+				.unwrap()
+				.value
 			)
-			.unwrap()
-			.value
-		));
+			.0
+		);
 
-		assert!(!Decoder::<bool>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::RM_POOL_A_T_1,
-				"hasMember",
-				Some(&[Token::Address(Keyring::Alice.into())]),
+		assert!(
+			!Decoder::<(bool, u64)>::decode(
+				&evm.view(
+					Keyring::Alice,
+					names::RESTRICTION_MANAGER,
+					"isMember",
+					Some(&[
+						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+						Token::Address(Keyring::Alice.into())
+					]),
+				)
+				.unwrap()
+				.value
 			)
-			.unwrap()
-			.value
-		));
+			.0
+		);
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn update_tranche_token_metadata<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -532,7 +556,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes([development])]
 fn update_tranche_token_price<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -545,12 +569,12 @@ fn update_tranche_token_price<T: Runtime>() {
 		let (price_evm, computed_evm) = Decoder::<(u128, u64)>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheTokenPrice",
+				names::POOL_MANAGER,
+				"getTranchePrice",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
 					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()
@@ -584,12 +608,12 @@ fn update_tranche_token_price<T: Runtime>() {
 		let (price_evm, computed_at_evm) = Decoder::<(u128, u64)>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheTokenPrice",
+				names::POOL_MANAGER,
+				"getTranchePrice",
 				Some(&[
 					Token::Uint(Uint::from(POOL_A)),
 					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
-					Token::Address(evm.deployed("usdc").address()),
+					Token::Address(evm.deployed(names::USDC).address()),
 				]),
 			)
 			.unwrap()

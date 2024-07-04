@@ -525,7 +525,7 @@ mod add_tranche {
 						token_name: vec_to_fixed_array(NAME),
 						token_symbol: vec_to_fixed_array(SYMBOL),
 						decimals: DECIMALS,
-						hook: [0u8; 32]
+						hook: AddTrancheHookAddress::get(),
 					}
 				);
 				Ok(())

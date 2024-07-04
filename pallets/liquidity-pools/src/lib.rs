@@ -502,12 +502,14 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain_address.domain(),
-				Message::UpdateRestriction(UpdateRestrictionMessage::UpdateMember {
+				Message::UpdateRestriction {
 					pool_id,
 					tranche_id,
-					valid_until,
-					member: domain_address.address(),
-				}),
+					update: UpdateRestrictionMessage::UpdateMember {
+						valid_until,
+						member: domain_address.address(),
+					},
+				},
 			)?;
 
 			Ok(())
