@@ -30,13 +30,15 @@ pub struct InvestmentInfo<T: Config> {
 
 	/// Represents the foreign amount that has been converted into pool amount.
 	/// This allow us to correlate both amounts to be able to make
-	/// transformations. see `post_collect()`.
+	/// transformations in `post_collect()`.
 	/// This value change when:
 	/// - an increase swap is swapped (then, it increase).
 	/// - some amount is collected (then, it decrease).
 	/// - when cancel (then, it is reset).
-	/// Note that during the cancelation this variable "breaks" its meaning and
-	/// also increase with any pending increasing swap until be fully reset.
+	/// Note that during the cancelation, this variable "breaks" its meaning and
+	/// also increases with any pending increasing swap until be fully reset.
+	/// This does not break the `post_collect()` invariant because after
+	/// cancelling, `post_collect()` can not be called.
 	pub foreign_amount: T::ForeignBalance,
 
 	/// Total decrease swapped amount pending to execute.
