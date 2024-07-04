@@ -9,7 +9,7 @@ use liquidity_pools_gateway_routers::{
 	AxelarEVMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, EVMRouter, EthereumXCMRouter,
 	FeeValues, XCMRouter, XcmDomain,
 };
-use pallet_liquidity_pools::MessageOf;
+use pallet_liquidity_pools::Message;
 use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::gateway::get_gateway_h160_account;
 use sp_core::{Get, H160, U256};
@@ -108,7 +108,7 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 			)
 		);
 
-		let msg = MessageOf::<T>::Transfer {
+		let msg = Message::Transfer {
 			currency: 0,
 			sender: Keyring::Alice.into(),
 			receiver: Keyring::Bob.into(),

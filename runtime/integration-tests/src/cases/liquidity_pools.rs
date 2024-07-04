@@ -8,7 +8,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::{Quantity, Ratio},
+	fixed_point::Ratio,
 	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -74,7 +74,7 @@ pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
-pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+pub type LiquidityPoolMessage = Message;
 
 mod utils {
 	use cfg_types::oracles::OracleKey;
