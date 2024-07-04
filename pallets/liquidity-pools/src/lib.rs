@@ -267,6 +267,12 @@ pub mod pallet {
 			Result = DispatchResult,
 		>;
 
+		/// Temporary hardcoded address for `AddTranche.hook` field which
+		/// represents the address which is associated with the solidity
+		/// restriction manager interface.
+		#[pallet::constant]
+		type AddTrancheHookAddress: Get<[u8; 32]>;
+
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
@@ -401,7 +407,7 @@ pub mod pallet {
 					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
 					// only available option. We will design a dynamic approach going forward where
 					// this value can be set on a per-tranche-token basis on storage.
-					restriction_set: 1,
+					hook: T::AddTrancheHookAddress::get(),
 				},
 			)?;
 

@@ -134,7 +134,7 @@ where
 		decimals: u8,
 		/// The RestrictionManager implementation to be used for this tranche
 		/// token on the domain it will be added and subsequently deployed in.
-		restriction_set: u8,
+		hook: Address,
 	},
 	/// Allow a currency to be used as a pool currency and to invest in a pool.
 	///
@@ -487,7 +487,7 @@ impl<
 				token_name,
 				token_symbol,
 				decimals,
-				restriction_set,
+				hook,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -496,7 +496,7 @@ impl<
 					token_name.encode(),
 					token_symbol.encode(),
 					decimals.encode(),
-					restriction_set.encode(),
+					hook.encode(),
 				],
 			),
 			Message::AllowAsset { pool_id, currency } => encoded_message(
@@ -739,7 +739,7 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				decimals: decode::<1, _, _>(input)?,
-				restriction_set: decode::<1, _, _>(input)?,
+				hook: decode::<32, _, _>(input)?,
 			}),
 			12 => Ok(Self::AllowAsset {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -992,7 +992,7 @@ mod tests {
 				token_name: vec_to_fixed_array(b"Some Name"),
 				token_symbol: vec_to_fixed_array( b"SYMBOL"),
 				decimals: 15,
-				restriction_set: 1,
+				hook: default_address_32(),
 			},
 			"0b0000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f01",
 		)
