@@ -1,6 +1,6 @@
 use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
-	ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+	ExecutedForeignCancelInvest, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
 };
 use frame_support::derive_impl;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -73,7 +73,7 @@ impl cfg_mocks::token_swaps::pallet::Config for Runtime {
 type Hook1 = cfg_mocks::status_notification::pallet::Instance1;
 impl cfg_mocks::status_notification::pallet::Config<Hook1> for Runtime {
 	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignDecreaseInvest<Balance, CurrencyId>;
+	type Status = ExecutedForeignCancelInvest<Balance, CurrencyId>;
 }
 
 type Hook2 = cfg_mocks::status_notification::pallet::Instance2;

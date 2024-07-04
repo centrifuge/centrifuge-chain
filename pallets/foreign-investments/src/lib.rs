@@ -100,7 +100,7 @@ pub mod pallet {
 		PoolInspect, StatusNotificationHook,
 	};
 	use cfg_types::investments::{
-		ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+		ExecutedForeignCancelInvest, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
 	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
@@ -193,7 +193,7 @@ pub mod pallet {
 		/// The hook type which acts upon a finalized investment decrement.
 		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignDecreaseInvest<Self::ForeignBalance, Self::CurrencyId>,
+			Status = ExecutedForeignCancelInvest<Self::ForeignBalance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 

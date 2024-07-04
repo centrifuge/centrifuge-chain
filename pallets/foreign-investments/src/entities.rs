@@ -5,8 +5,8 @@ use cfg_traits::{
 	swaps::{Swap, Swaps},
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
-	ExecutedForeignDecreaseInvest,
+	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
+	ExecutedForeignCollectRedeem,
 };
 use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -206,17 +206,15 @@ impl<T: Config> InvestmentInfo<T> {
 		&mut self,
 		swapped_foreign_amount: T::ForeignBalance,
 		pending_pool_amount: T::PoolBalance,
-	) -> Result<
-		Option<ExecutedForeignDecreaseInvest<T::ForeignBalance, T::CurrencyId>>,
-		DispatchError,
-	> {
+	) -> Result<Option<ExecutedForeignCancelInvest<T::ForeignBalance, T::CurrencyId>>, DispatchError>
+	{
 		self.decrease_swapped_foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
 
 		if pending_pool_amount.is_zero() {
-			return Ok(Some(ExecutedForeignDecreaseInvest {
+			return Ok(Some(ExecutedForeignCancelInvest {
 				foreign_currency: self.foreign_currency,
-				amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
+				amount_cancelled: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
 				fulfilled: self.correlation.decrease_all(),
 			}));
 		}
