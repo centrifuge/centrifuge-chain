@@ -12,7 +12,7 @@ use sp_runtime::traits::One;
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
-	entities::{Correlation, InvestmentInfo, RedemptionInfo},
+	entities::{InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook},
 	mock::*,
 	pallet::ForeignInvestmentInfo,
@@ -265,7 +265,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(0, 0),
+					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -317,7 +317,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(0, 0),
+					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -424,7 +424,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(0, 0),
+					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -458,7 +458,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
+					foreign_amount: AMOUNT / 4,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -513,7 +513,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), AMOUNT),
+					foreign_amount: AMOUNT,
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
@@ -704,7 +704,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(foreign_to_pool(AMOUNT), AMOUNT),
+					foreign_amount: AMOUNT,
 					decrease_swapped_foreign_amount: AMOUNT / 2,
 				})
 			);
@@ -800,7 +800,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
+					foreign_amount: AMOUNT / 4,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -989,7 +989,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					foreign_currency: FOREIGN_CURR,
-					correlation: Correlation::new(REMAINDER, REMAINDER),
+					foreign_amount: REMAINDER,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -1034,10 +1034,7 @@ mod investment {
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 					Some(InvestmentInfo {
 						foreign_currency: POOL_CURR,
-						correlation: Correlation::new(
-							foreign_to_pool(AMOUNT),
-							foreign_to_pool(AMOUNT)
-						),
+						foreign_amount: foreign_to_pool(AMOUNT),
 						decrease_swapped_foreign_amount: 0,
 					})
 				);

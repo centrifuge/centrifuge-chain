@@ -218,7 +218,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 			match entry.as_mut() {
 				Some(info) => {
 					info.ensure_no_pending_cancel(&who, investment_id)?;
-					let msg = info.post_collect(collected)?;
+					let msg = info.post_collect(&who, investment_id, collected)?;
 
 					if info.is_completed(&who, investment_id)? {
 						*entry = None;
@@ -257,7 +257,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 				Some(info) => info
 					.post_collect_and_pre_swap(investment_id, collected)
 					.map(Some),
-				None => Ok(None), // Then notification is not for foreign investments
+				None => Ok(None), // Then the notification is not for foreign investments
 			}
 		})?;
 

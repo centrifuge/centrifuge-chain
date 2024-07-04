@@ -21,74 +21,6 @@ use crate::{
 	pool_currency_of, Action, SwapOf,
 };
 
-/// Type used to be able to generate conversions from pool to foreign and
-/// vice-verse without market ratios.
-/// Both amounts are increased and decreased using the same values in each
-/// currecies, maintaining always a correlation.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
-#[scale_info(skip_type_params(T))]
-pub struct Correlation<T: Config> {
-	pub pool_amount: T::PoolBalance,
-	pub foreign_amount: T::ForeignBalance,
-}
-
-impl<T: Config> Correlation<T> {
-	pub fn new(pool_amount: T::PoolBalance, foreign_amount: T::ForeignBalance) -> Self {
-		Self {
-			pool_amount,
-			foreign_amount,
-		}
-	}
-
-	/// Increase the correlate values.
-	/// The difference between both values will affect the correlation
-	pub fn increase(
-		&mut self,
-		pool_amount: T::PoolBalance,
-		foreign_amount: T::ForeignBalance,
-	) -> DispatchResult {
-		self.pool_amount.ensure_add_assign(pool_amount)?;
-		self.foreign_amount.ensure_add_assign(foreign_amount)?;
-
-		Ok(())
-	}
-
-	/// Decrease a correlation by a pool amount
-	/// The foreign amount returned is proportionally decreased
-	pub fn decrease(
-		&mut self,
-		pool_amount: T::PoolBalance,
-	) -> Result<T::ForeignBalance, DispatchError> {
-		if pool_amount.is_zero() {
-			return Ok(T::ForeignBalance::zero());
-		}
-
-		let mut foreign_amount = pool_amount
-			.ensure_mul(self.foreign_amount.into())?
-			.ensure_div(self.pool_amount)?
-			.into();
-
-		self.pool_amount.ensure_sub_assign(pool_amount)?;
-
-		// If the pool amount is zero we consider the foreign amount must also be zero
-		// even if maths don't give us a zero (due some precision-lost)
-		if self.pool_amount.is_zero() {
-			foreign_amount = self.foreign_amount;
-		}
-
-		self.foreign_amount.ensure_sub_assign(foreign_amount)?;
-		Ok(foreign_amount)
-	}
-
-	/// Reset the correlation returning all the foreign amount
-	pub fn decrease_all(&mut self) -> T::ForeignBalance {
-		let foreign_amount = self.foreign_amount;
-		self.pool_amount = Zero::zero();
-		self.foreign_amount = Zero::zero();
-		foreign_amount
-	}
-}
-
 /// Hold the information of a foreign investment
 #[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -96,18 +28,16 @@ pub struct InvestmentInfo<T: Config> {
 	/// Foreign currency of this investment
 	pub foreign_currency: T::CurrencyId,
 
-	/// Used to correlate the pool amount into foreign amount and vice-versa
-	/// when the market conversion is not known upfront.
-	///
-	/// The correlation
-	/// - is increased when an increase swap is paritally swapped
-	/// - is decreased when a decrease swap is fully swapped or an amount is
-	///   collected.
-	///
-	/// Which can also be seen an addition of the following values:
-	/// - The invested amount.
-	/// - The pending decrease amount not swapped yet.
-	pub correlation: Correlation<T>,
+	/// Represents the foreign amount that has been converted into pool amount.
+	/// This allow us to correlate both amounts to be able to make
+	/// transformations. see `post_collect()`.
+	/// This value change when:
+	/// - an increase swap is swapped (then, it increase).
+	/// - some amount is collected (then, it decrease).
+	/// - when cancel (then, it is reset).
+	/// Note that during the cancelation this variable "breaks" its meaning and
+	/// also increase with any pending increasing swap until be fully reset.
+	pub foreign_amount: T::ForeignBalance,
 
 	/// Total decrease swapped amount pending to execute.
 	/// It accumulates different partial swaps.
@@ -118,7 +48,7 @@ impl<T: Config> InvestmentInfo<T> {
 	pub fn new(foreign_currency: T::CurrencyId) -> Self {
 		Self {
 			foreign_currency,
-			correlation: Correlation::new(T::PoolBalance::zero(), T::ForeignBalance::zero()),
+			foreign_amount: T::ForeignBalance::zero(),
 			decrease_swapped_foreign_amount: T::ForeignBalance::zero(),
 		}
 	}
@@ -167,10 +97,18 @@ impl<T: Config> InvestmentInfo<T> {
 		swapped_pool_amount: T::PoolBalance,
 		swapped_foreign_amount: T::ForeignBalance,
 	) -> DispatchResult {
-		self.correlation
-			.increase(swapped_pool_amount, swapped_foreign_amount)?;
+		self.foreign_amount
+			.ensure_add_assign(swapped_foreign_amount)?;
 
-		self.increase_investment(who, investment_id, swapped_pool_amount)
+		if !swapped_pool_amount.is_zero() {
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
+			)?;
+		}
+
+		Ok(())
 	}
 
 	/// Decrease an investment taking into account that a previous increment
@@ -184,18 +122,20 @@ impl<T: Config> InvestmentInfo<T> {
 		let pending_increase_foreign = self.pending_increase_swap(who, investment_id)?;
 
 		// When cancelling, we no longer need to correlate.
-		// The entire amount returned in the cancel msg will be the entire foreign in
-		// the system, so we add here the not yet tracked pending amount.
-		self.correlation
-			.foreign_amount
+		// The entire amount returned in the cancel msg will be the entire foreign
+		// amount in the system, so we add here the not yet tracked pending amount.
+		self.foreign_amount
 			.ensure_add_assign(pending_increase_foreign)?;
+
+		let cancel_pool_amount = T::Investment::investment(who, investment_id)?;
+		T::Investment::update_investment(who, investment_id, Zero::zero())?;
 
 		Ok((
 			pending_increase_foreign,
 			Swap {
 				currency_in: self.foreign_currency,
 				currency_out: pool_currency_of::<T>(investment_id)?,
-				amount_out: self.cancel_investment(who, investment_id)?.into(),
+				amount_out: cancel_pool_amount.into(),
 			},
 		))
 	}
@@ -215,7 +155,7 @@ impl<T: Config> InvestmentInfo<T> {
 			return Ok(Some(ExecutedForeignCancelInvest {
 				foreign_currency: self.foreign_currency,
 				amount_cancelled: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
-				fulfilled: self.correlation.decrease_all(),
+				fulfilled: sp_std::mem::take(&mut self.foreign_amount),
 			}));
 		}
 
@@ -226,46 +166,36 @@ impl<T: Config> InvestmentInfo<T> {
 	#[allow(clippy::type_complexity)]
 	pub fn post_collect(
 		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::TrancheBalance, T::PoolBalance>,
 	) -> Result<
 		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
 		DispatchError,
 	> {
-		let collected_foreign_amount = self.correlation.decrease(collected.amount_payment)?;
+		// pool amount before collecting
+		let pool_amount_before_collecting =
+			T::Investment::investment(who, investment_id)? + collected.amount_payment;
+
+		// Transform the collected pool amount into foreing amount.
+		// This transformation is done by correlation, thanks that `foreing_amount`
+		// contains the "same" amount as the investment pool amount but with different
+		// denomination.
+		let collected_foreign_amount = collected
+			.amount_payment
+			.ensure_mul(self.foreign_amount.into())?
+			.ensure_div(pool_amount_before_collecting)
+			.unwrap_or(self.foreign_amount.into())
+			.into();
+
+		self.foreign_amount
+			.ensure_sub_assign(collected_foreign_amount)?;
 
 		Ok(ExecutedForeignCollectInvest {
 			currency: self.foreign_currency,
 			amount_currency_invested: collected_foreign_amount,
 			amount_tranche_tokens_payout: collected.amount_collected,
 		})
-	}
-
-	fn increase_investment(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		pool_amount: T::PoolBalance,
-	) -> DispatchResult {
-		if !pool_amount.is_zero() {
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_add(pool_amount)?,
-			)?;
-		}
-
-		Ok(())
-	}
-
-	fn cancel_investment(
-		&mut self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::PoolBalance, DispatchError> {
-		let pool_amount = T::Investment::investment(who, investment_id)?;
-		T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
-		Ok(pool_amount)
 	}
 
 	/// In foreign currency denomination
