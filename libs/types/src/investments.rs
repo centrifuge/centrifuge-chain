@@ -144,11 +144,11 @@ impl<Collected: EnsureAddAssign + Copy, Payment: EnsureAddAssign + Copy>
 
 /// A representation of an executed investment decrement.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignDecreaseInvest<ForeignAmount, Currency> {
+pub struct ExecutedForeignCancelInvest<ForeignAmount, Currency> {
 	/// The currency in which `DecreaseInvestOrder` was realised
 	pub foreign_currency: Currency,
 	/// The amount by which the investment order was really decreased by.
-	pub amount_decreased: ForeignAmount,
+	pub amount_cancelled: ForeignAmount,
 	/// The proportional amount to the total increased amount that has been
 	/// decreased denominated in `foreign` payment currency
 	pub fulfilled: ForeignAmount,

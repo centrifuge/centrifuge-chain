@@ -4,8 +4,8 @@ use cfg_traits::{
 	StatusNotificationHook,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
-	ExecutedForeignDecreaseInvest,
+	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
+	ExecutedForeignCollectRedeem,
 };
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::One;
@@ -369,8 +369,8 @@ mod investment {
 				assert_eq!(investment_id, INVESTMENT_ID);
 				assert_eq!(
 					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: AMOUNT,
+					ExecutedForeignCancelInvest {
+						amount_cancelled: AMOUNT,
 						foreign_currency: FOREIGN_CURR,
 						fulfilled: AMOUNT,
 					}
@@ -611,8 +611,8 @@ mod investment {
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: AMOUNT,
+					ExecutedForeignCancelInvest {
+						amount_cancelled: AMOUNT,
 						foreign_currency: FOREIGN_CURR,
 						fulfilled: AMOUNT,
 					}
@@ -654,8 +654,8 @@ mod investment {
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: AMOUNT,
+					ExecutedForeignCancelInvest {
+						amount_cancelled: AMOUNT,
 						foreign_currency: FOREIGN_CURR,
 						fulfilled: AMOUNT,
 					}
@@ -745,8 +745,8 @@ mod investment {
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: AMOUNT,
+					ExecutedForeignCancelInvest {
+						amount_cancelled: AMOUNT,
 						foreign_currency: FOREIGN_CURR,
 						fulfilled: AMOUNT,
 					}
@@ -838,8 +838,8 @@ mod investment {
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: 3 * AMOUNT / 4,
+					ExecutedForeignCancelInvest {
+						amount_cancelled: 3 * AMOUNT / 4,
 						foreign_currency: FOREIGN_CURR,
 						fulfilled: 3 * AMOUNT / 4,
 					}
@@ -1068,8 +1068,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: foreign_to_pool(AMOUNT),
+						ExecutedForeignCancelInvest {
+							amount_cancelled: foreign_to_pool(AMOUNT),
 							foreign_currency: POOL_CURR,
 							fulfilled: foreign_to_pool(AMOUNT),
 						}
@@ -1130,8 +1130,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: AMOUNT / RATIO_CHANGE, // Receive less
+						ExecutedForeignCancelInvest {
+							amount_cancelled: AMOUNT / RATIO_CHANGE, // Receive less
 							foreign_currency: FOREIGN_CURR,
 							fulfilled: AMOUNT, // The original increased amount
 						}
@@ -1181,8 +1181,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: AMOUNT * RATIO_CHANGE, // Receive more
+						ExecutedForeignCancelInvest {
+							amount_cancelled: AMOUNT * RATIO_CHANGE, // Receive more
 							foreign_currency: FOREIGN_CURR,
 							fulfilled: AMOUNT, // The original increased amount
 						}
@@ -1235,8 +1235,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+						ExecutedForeignCancelInvest {
+							amount_cancelled: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
 							foreign_currency: FOREIGN_CURR,
 							fulfilled: AMOUNT,
 						}
@@ -1289,8 +1289,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
+						ExecutedForeignCancelInvest {
+							amount_cancelled: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
 							foreign_currency: FOREIGN_CURR,
 							fulfilled: AMOUNT,
 						}
@@ -1348,8 +1348,8 @@ mod investment {
 				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: FOREIGN_AMOUNT + 1,
+						ExecutedForeignCancelInvest {
+							amount_cancelled: FOREIGN_AMOUNT + 1,
 							foreign_currency: FOREIGN_CURR,
 							fulfilled: FOREIGN_AMOUNT,
 						}
