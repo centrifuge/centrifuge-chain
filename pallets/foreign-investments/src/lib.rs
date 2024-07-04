@@ -95,7 +95,7 @@ pub fn pool_currency_of<T: pallet::Config>(
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment, InvestmentCollector, TrancheCurrency},
+		investments::{Investment, TrancheCurrency},
 		swaps::Swaps,
 		PoolInspect, StatusNotificationHook,
 	};
@@ -168,18 +168,13 @@ pub mod pallet {
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
 		type Investment: Investment<
-				Self::AccountId,
-				Amount = Self::PoolBalance,
-				TrancheAmount = Self::TrancheBalance,
-				CurrencyId = Self::CurrencyId,
-				Error = DispatchError,
-				InvestmentId = Self::InvestmentId,
-			> + InvestmentCollector<
-				Self::AccountId,
-				Error = DispatchError,
-				InvestmentId = Self::InvestmentId,
-				Result = (),
-			>;
+			Self::AccountId,
+			Amount = Self::PoolBalance,
+			TrancheAmount = Self::TrancheBalance,
+			CurrencyId = Self::CurrencyId,
+			Error = DispatchError,
+			InvestmentId = Self::InvestmentId,
+		>;
 
 		/// The type which exposes token swap order functionality such as
 		/// placing and cancelling orders
