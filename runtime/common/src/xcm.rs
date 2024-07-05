@@ -321,11 +321,11 @@ mod test {
 
 	impl pallet_liquidity_pools_gateway::Config for Runtime {
 		type AdminOrigin = EnsureRoot<AccountId>;
-		type InboundQueue = MockLP;
+		type InboundMessageHandler = MockLP;
+		type LPMessage = Message;
 		type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 		type MaxIncomingMessageSize = ConstU32<1024>;
 		type MaxRouterCount = ConstU32<5>;
-		type Message = Message;
 		type OriginRecovery = MockOriginRecovery;
 		type OutboundMessageNonce = OutboundMessageNonce;
 		type Router = RouterMock<Runtime>;

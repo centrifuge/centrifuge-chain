@@ -42,7 +42,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, OutboundQueue},
+	liquidity_pools::{InboundMessageHandler, OutboundQueue},
 	swaps::TokenSwaps,
 	PreConditions,
 };
@@ -105,9 +105,11 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_traits::{
 		investments::{ForeignInvestment, TrancheCurrency},
+		liquidity_pools::MessageQueue,
 		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
+		gateway::GatewayMessage,
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::CustomMetadata,
 		EVMChainId,
@@ -247,12 +249,8 @@ pub mod pallet {
 		/// The converter from a Domain and a 32 byte array to DomainAddress.
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
-		/// The type for processing outgoing messages.
-		type OutboundQueue: OutboundQueue<
-			Sender = Self::AccountId,
-			Message = Message,
-			Destination = Domain,
-		>;
+		/// Type used for queueing messages.
+		type MessageQueue: MessageQueue;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -369,7 +367,7 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				domain,
 				Message::AddPool {
@@ -407,7 +405,7 @@ pub mod pallet {
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			// Send the message to the domain
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				domain,
 				Message::AddTranche {
@@ -461,7 +459,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				destination,
 				Message::UpdateTrancheTokenPrice {
@@ -512,7 +510,7 @@ pub mod pallet {
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				domain_address.domain(),
 				Message::UpdateMember {
@@ -572,7 +570,7 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who.clone(),
 				domain_address.domain(),
 				Message::TransferTrancheTokens {
@@ -612,11 +610,14 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// Check that the registered asset location matches the destination
-			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
-			ensure!(
-				Domain::EVM(chain_id) == receiver.domain(),
-				Error::<T>::InvalidDomain
-			);
+			match Self::try_get_wrapped_token(&currency_id)? {
+				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
+					ensure!(
+						Domain::EVM(chain_id) == receiver.domain(),
+						Error::<T>::InvalidDomain
+					);
+				}
+			}
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
@@ -646,7 +647,7 @@ pub mod pallet {
 				Fortitude::Polite,
 			)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who.clone(),
 				receiver.domain(),
 				Message::Transfer {
@@ -671,7 +672,7 @@ pub mod pallet {
 
 			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				Domain::EVM(chain_id),
 				Message::AddCurrency {
@@ -708,7 +709,7 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				Domain::EVM(chain_id),
 				Message::AllowInvestmentCurrency {
@@ -730,7 +731,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				T::TreasuryAccount::get(),
 				Domain::EVM(evm_chain_id),
 				Message::ScheduleUpgrade { contract },
@@ -747,7 +748,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				T::TreasuryAccount::get(),
 				Domain::EVM(evm_chain_id),
 				Message::CancelUpgrade { contract },
@@ -775,7 +776,7 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				domain,
 				Message::UpdateTrancheTokenMetadata {
@@ -809,7 +810,7 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			Self::queue_outbound_message(
 				who,
 				Domain::EVM(chain_id),
 				Message::DisallowInvestmentCurrency {
@@ -859,12 +860,13 @@ pub mod pallet {
 		}
 
 		/// Checks whether the given currency is transferable via LiquidityPools
-		/// and whether its metadata contains an evm location.
+		/// and whether its metadata contains a location which can be
+		/// converted to [LiquidityPoolsWrappedToken].
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
 			currency_id: &T::CurrencyId,
-		) -> Result<(EVMChainId, [u8; 20]), DispatchError> {
+		) -> Result<LiquidityPoolsWrappedToken, DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_liquidity_pools(),
@@ -890,7 +892,9 @@ pub mod pallet {
 						network: None,
 						key: address,
 					}],
-				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address)),
+				) if Some(pallet_instance.into()) == pallet_index => {
+					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
+				}
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
 			}
 		}
@@ -937,9 +941,23 @@ pub mod pallet {
 			let domain_address = T::DomainAccountToDomainAddress::convert(domain_account);
 			T::DomainAddressToAccountId::convert(domain_address)
 		}
+
+		fn queue_outbound_message(
+			sender: T::AccountId,
+			destination: Domain,
+			message: Message,
+		) -> DispatchResult {
+			let gateway_message = GatewayMessage::<T::AccountId, Message>::Outbound {
+				sender,
+				destination,
+				message,
+			};
+
+			T::MessageQueue::submit(gateway_message)
+		}
 	}
 
-	impl<T: Config> InboundQueue for Pallet<T>
+	impl<T: Config> InboundMessageHandler for Pallet<T>
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
@@ -947,7 +965,7 @@ pub mod pallet {
 		type Sender = DomainAddress;
 
 		#[transactional]
-		fn submit(sender: DomainAddress, msg: Message) -> DispatchResult {
+		fn handle(sender: DomainAddress, msg: Message) -> DispatchResult {
 			Self::deposit_event(Event::<T>::IncomingMessage {
 				sender: sender.clone(),
 				message: msg.clone(),

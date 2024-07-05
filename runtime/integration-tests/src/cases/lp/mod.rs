@@ -155,7 +155,7 @@ pub mod utils {
 	}
 
 	pub fn verify_outbound_success<T: Runtime>(
-		message: <T as pallet_liquidity_pools_gateway::Config>::Message,
+		message: <T as pallet_liquidity_pools_gateway::Config>::LPMessage,
 	) {
 		assert!(matches!(
 			last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
@@ -167,7 +167,7 @@ pub mod utils {
 	}
 
 	pub fn process_outbound<T: Runtime>(
-		mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::Message),
+		mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::LPMessage),
 	) {
 		let msgs = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
 			.map(|(nonce, (_, _, msg))| (nonce, msg))

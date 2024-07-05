@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency},
-	liquidity_pools::InboundQueue,
+	liquidity_pools::InboundMessageHandler,
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{

@@ -8305,6 +8305,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-liquidity-pools-gateway-queue"
+version = "0.0.1"
+dependencies = [
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-liquidity-rewards"
 version = "0.1.0"
 dependencies = [

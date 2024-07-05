@@ -1929,11 +1929,11 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
+	type InboundMessageHandler = LiquidityPools;
+	type LPMessage = pallet_liquidity_pools::Message;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
-	type Message = pallet_liquidity_pools::Message;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;

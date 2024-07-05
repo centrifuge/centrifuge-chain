@@ -58,6 +58,23 @@ pub trait Router {
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
 }
 
+/// The trait required for queueing messages.
+pub trait MessageQueue {
+	/// The message type.
+	type Message;
+
+	/// Submit a message to the queue.
+	fn submit(msg: Self::Message) -> DispatchResult;
+}
+
+pub trait MessageProcessor {
+	/// The message type.
+	type Message;
+
+	/// Process a message.
+	fn process(msg: Self::Message) -> DispatchResultWithPostInfo;
+}
+
 /// The trait required for processing outbound messages.
 pub trait OutboundQueue {
 	/// The sender type of the outgoing message.
@@ -77,8 +94,8 @@ pub trait OutboundQueue {
 	) -> DispatchResult;
 }
 
-/// The trait required for processing incoming messages.
-pub trait InboundQueue {
+/// The trait required for handling incoming LP messages.
+pub trait InboundMessageHandler {
 	/// The sender type of the incoming message.
 	type Sender;
 
@@ -86,5 +103,5 @@ pub trait InboundQueue {
 	type Message;
 
 	/// Submit a message to the inbound queue.
-	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
+	fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }

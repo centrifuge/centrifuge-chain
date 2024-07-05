@@ -1,6 +1,6 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::liquidity_pools::InboundQueue;
+	use cfg_traits::liquidity_pools::InboundMessageHandler;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -22,11 +22,11 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> InboundQueue for Pallet<T> {
+	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = T::Message;
 		type Sender = T::DomainAddress;
 
-		fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
+		fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
 			execute_call!((sender, msg))
 		}
 	}

@@ -53,11 +53,11 @@ frame_support::parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
-	type InboundQueue = MockLiquidityPools;
+	type InboundMessageHandler = MockLiquidityPools;
+	type LPMessage = Message;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
-	type Message = Message;
 	type OriginRecovery = MockOriginRecovery;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
