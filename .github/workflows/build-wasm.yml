@@ -21,9 +21,8 @@ jobs:
     runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
-        target: [ build-runtime ]
-        package: [ altair-runtime, centrifuge-runtime, development-runtime ]
-    name: ${{ matrix.target }}-${{ matrix.package }}
+        chain: [ altair, centrifuge, development ]
+    name: build-runtime-${{ matrix.chain }}
     steps:
       # PREP
       - name: Check out code
@@ -43,12 +42,24 @@ jobs:
           cache-directories: ./runtime
 
       # BUILD
-      - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
-        run: >
-          docker run --rm  --user root --platform=linux/amd64
-          -e PACKAGE=${{ matrix.package }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
-          -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
-          /srtool/build --app
+      - name: Build ${{ matrix.chain }}
+        id: srtool_build
+        uses: chevdor/srtool-actions@v0.8.0
+        env:
+          BUILD_OPTS: "--features on-chain-release-build"
+        with:
+          chain: ${{ matrix.chain }}
+          # package: ${{ matrix.chain }}
+          # runtime_dir: ${{ matrix.runtime.path }}
+          profile: "release"          
+      
+      # USING DOCKER DIRECTLY
+      # - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
+      #   run: >
+      #     docker run --rm  --user root --platform=linux/amd64
+      #     -e PACKAGE=${{ matrix.chain }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
+      #     -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
+      #     /srtool/build --app
 
       # Alternative way of running SRTool that allows for "script-like" execution,
       # extremely useful to debug:
@@ -57,7 +68,7 @@ jobs:
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
       #   with:
       #     image: paritytech/srtool:${{ matrix.rust_version }}
-      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.package }}
+      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}
       #     run: |
       #       echo "---- Env VARS ----"
       #       echo "BUILD_OPT=${BUILD_OPT}"
@@ -72,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 #v4.3.0
         with:
           name: srtool-wasm-report.txt
-          path: ./${{ matrix.package }}-srtool-wasm-report.json
+          path: ./${{ matrix.chain }}-srtool-wasm-report.json
 
       - id: 'auth'
         if: github.event_name != 'pull_request'
@@ -89,8 +100,8 @@ jobs:
         if: ${{ steps.auth.outcome == 'success' }}
         shell: bash
         run: |
-          runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
-          filename=$(echo "${{ matrix.package }}" | sed -e 's/-/_/g' )
+          runtime_name=$(echo "${{ matrix.chain }}" | sed -e "s/-runtime$//" )
+          filename=$(echo "${{ matrix.chain }}" | sed -e 's/-/_/g' )
           gsutil cp \
-            ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
+            ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.chain }}/${filename}.compact.compressed.wasm \
             gs://centrifuge-wasm-repo/${runtime_name}/${runtime_name}-$(git rev-parse --short HEAD).wasm
