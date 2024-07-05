@@ -1,6 +1,9 @@
 use frame_support::pallet_prelude::{RuntimeDebug, TypeInfo};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureSub},
+	DispatchError, DispatchResult,
+};
 use sp_std::fmt::Debug;
 
 /// Determines an order price
@@ -72,6 +75,36 @@ pub trait TokenSwaps<Account> {
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
+	/// Increase the amount of an existing active order.
+	fn increase_order(order_id: Self::OrderId, amount_out: Self::BalanceOut) -> DispatchResult
+	where
+		Self::BalanceOut: EnsureAdd,
+	{
+		match Self::get_order_details(&order_id) {
+			Some(info) => Self::update_order(
+				order_id,
+				info.swap.amount_out.ensure_add(amount_out)?,
+				info.ratio,
+			),
+			None => Err(DispatchError::Other("Order not found")),
+		}
+	}
+
+	/// Decrease the amount of an existing active order.
+	fn decrease_order(order_id: Self::OrderId, amount_out: Self::BalanceOut) -> DispatchResult
+	where
+		Self::BalanceOut: EnsureSub,
+	{
+		match Self::get_order_details(&order_id) {
+			Some(info) => Self::update_order(
+				order_id,
+				info.swap.amount_out.ensure_sub(amount_out)?,
+				info.ratio,
+			),
+			None => Err(DispatchError::Other("Order not found")),
+		}
+	}
+
 	/// Fill an existing order up to the provided amount.
 	///  * If `amount` equals the `order.amount_out`, the order is completely
 	///    fulfilled.
@@ -84,11 +117,11 @@ pub trait TokenSwaps<Account> {
 	) -> DispatchResult;
 
 	/// Cancel an already active order.
-	fn cancel_order(order: Self::OrderId) -> DispatchResult;
+	fn cancel_order(order: Self::OrderId) -> Result<Self::BalanceOut, DispatchError>;
 
 	/// Retrieve the details of the order if it exists.
 	fn get_order_details(
-		order: Self::OrderId,
+		order: &Self::OrderId,
 	) -> Option<OrderInfo<Self::BalanceOut, Self::CurrencyId, Self::Ratio>>;
 
 	/// Makes a conversion between 2 currencies using the market ratio between

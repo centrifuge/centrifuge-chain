@@ -35,7 +35,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::swaps::Swap;
+use cfg_traits::swaps::{Swap, TokenSwaps};
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -185,6 +185,19 @@ pub mod pallet {
 			SwapId = SwapId<Self>,
 		>;
 
+		/// An identification for an order
+		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
+
+		/// The type which exposes token swap order functionality
+		type OrderBook: TokenSwaps<
+			Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			BalanceIn = Self::SwapBalance,
+			BalanceOut = Self::SwapBalance,
+			OrderId = Self::OrderId,
+			Ratio = Self::SwapRatio,
+		>;
+
 		/// The hook type which acts upon a finalized investment decrement.
 		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
@@ -245,6 +258,13 @@ pub mod pallet {
 		T::InvestmentId,
 		entities::RedemptionInfo<T>,
 	>;
+
+	/// Maps a `OrderId` to its corresponding `AccountId` and `SwapId`
+	///
+	/// NOTE: The storage is killed when the swap order no longer exists
+	#[pallet::storage]
+	pub type OrderIdToSwapId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::OrderId, (T::AccountId, SwapId<T>)>;
 
 	#[pallet::error]
 	pub enum Error<T> {
