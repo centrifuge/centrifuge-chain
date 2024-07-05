@@ -23,10 +23,9 @@ use cfg_primitives::{
 	constants::*,
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
-		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
-		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, ItemId,
-		LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
-		Signature, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
+		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
+		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 };
 use cfg_traits::{
@@ -61,7 +60,7 @@ use frame_support::{
 	traits::{
 		fungible::HoldConsideration,
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOfDiverse,
+		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Get, InstanceFilter, LinearStoragePrice, LockIdentifier, OnFinalize,
 		PalletInfoAccess, TransformOrigin, UnixTime, WithdrawReasons,
 	},
@@ -73,7 +72,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot, EnsureSigned,
+	EnsureRoot, EnsureSigned, EnsureWithSuccess,
 };
 use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
@@ -113,10 +112,18 @@ use runtime_common::{
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
-	liquidity_pools::LiquidityPoolsMessage,
+	instances::{CouncilCollective, TechnicalCollective, TechnicalMembership},
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	oracle::{
 		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
+	},
+	origins::gov::{
+		pallet_custom_origins,
+		types::{
+			AllOfCouncil, DispatchWhitelistedOrigin, EnsureRootOr, HalfOfCouncil, RefCancelOrigin,
+			RefKillerOrigin, TreasuryApproveOrigin, TwoThirdOfCouncil, WhitelistOrigin,
+		},
+		PoolAdmin, Treasurer,
 	},
 	permissions::PoolAdminCheck,
 	remarks::Remark,
@@ -144,9 +151,10 @@ use sp_version::RuntimeVersion;
 use staging_xcm::v4::{Asset, Location};
 use static_assertions::const_assert;
 
-use crate::xcm::*;
+use crate::{tracks::TracksInfo, xcm::*};
 
 mod migrations;
+mod tracks;
 mod weights;
 pub mod xcm;
 
@@ -167,7 +175,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1100,
+	spec_version: 1200,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -433,7 +441,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
+	pub Period: u32 = 2 * MINUTES;
 	pub const Offset: u32 = 0;
 }
 
@@ -553,6 +561,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Council(..) |
 					RuntimeCall::Elections(..) |
 					RuntimeCall::Democracy(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::TechnicalCommittee(..) |
+					RuntimeCall::TechnicalCommitteeMembership(..) |
+					RuntimeCall::Whitelist(..) |
 					RuntimeCall::Identity(..) |
 					RuntimeCall::Vesting(pallet_vesting::Call::vest {..}) |
 					RuntimeCall::Vesting(pallet_vesting::Call::vest_other {..}) |
@@ -600,6 +613,12 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Council(..)
 					| RuntimeCall::Elections(..)
 					| RuntimeCall::Utility(..)
+					// OpenGov calls
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::TechnicalCommittee(..)
+					| RuntimeCall::TechnicalCommitteeMembership(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
@@ -773,7 +792,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
+	type WeightInfo = weights::pallet_collective_council::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1013,9 +1032,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	type ApproveOrigin = EnsureRootOr<
-		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
-	>;
+	type ApproveOrigin = TreasuryApproveOrigin;
 	type AssetKind = ();
 	type BalanceConverter = UnityAssetBalanceConversion;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -1033,10 +1050,10 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBond = ProposalBond;
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type ProposalBondMinimum = ProposalBondMinimum;
-	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RejectOrigin = TreasuryApproveOrigin;
 	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
-	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
+	type SpendOrigin = TreasurySpender;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
@@ -1339,7 +1356,7 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
-	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+	pub FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 10;
@@ -1426,7 +1443,7 @@ parameter_types! {
 }
 
 impl pallet_permissions::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AdminOrigin = EnsureRootOr<EitherOf<HalfOfCouncil, PoolAdmin>>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
 	type Role = Role<TrancheId>;
@@ -1915,7 +1932,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = LiquidityPoolsMessage;
+	type Message = pallet_liquidity_pools::Message;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
@@ -2036,6 +2053,91 @@ impl axelar_gateway_precompile::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_conviction_voting::Config for Runtime {
+	type Currency = Balances;
+	type MaxTurnout =
+		frame_support::traits::tokens::currency::ActiveIssuanceOf<Balances, Self::AccountId>;
+	type MaxVotes = ConstU32<512>;
+	type Polls = Referenda;
+	type RuntimeEvent = RuntimeEvent;
+	type VoteLockingPeriod = EnactmentPeriod;
+	type WeightInfo = weights::pallet_conviction_voting::WeightInfo<Self>;
+}
+
+parameter_types! {
+	pub const AlarmInterval: BlockNumber = 1;
+	pub const SubmissionDeposit: Balance = 10 * CFG;
+	pub const UndecidingTimeout: BlockNumber = 14 * MINUTES;
+}
+
+parameter_types! {
+	pub const MaxBalance: Balance = Balance::max_value();
+}
+pub type TreasurySpender = EnsureWithSuccess<EnsureRootOr<Treasurer>, AccountId, MaxBalance>;
+
+impl pallet_custom_origins::Config for Runtime {}
+
+impl pallet_whitelist::Config for Runtime {
+	type DispatchWhitelistedOrigin = DispatchWhitelistedOrigin;
+	type Preimages = Preimage;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_whitelist::WeightInfo<Self>;
+	type WhitelistOrigin = WhitelistOrigin;
+}
+
+impl pallet_referenda::Config for Runtime {
+	type AlarmInterval = AlarmInterval;
+	type CancelOrigin = RefCancelOrigin;
+	type Currency = Balances;
+	type KillOrigin = RefKillerOrigin;
+	type MaxQueued = ConstU32<100>;
+	type Preimages = Preimage;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type Scheduler = Scheduler;
+	type Slash = Treasury;
+	type SubmissionDeposit = SubmissionDeposit;
+	type SubmitOrigin = frame_system::EnsureSigned<AccountId>;
+	type Tally = pallet_conviction_voting::TallyOf<Runtime>;
+	type Tracks = TracksInfo;
+	type UndecidingTimeout = UndecidingTimeout;
+	type Votes = pallet_conviction_voting::VotesOf<Runtime>;
+	type WeightInfo = weights::pallet_referenda::WeightInfo<Self>;
+}
+
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 3 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 20;
+	pub const TechnicalMaxMembers: u32 = 20;
+}
+
+impl pallet_collective::Config<TechnicalCollective> for Runtime {
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type MaxMembers = TechnicalMaxMembers;
+	type MaxProposalWeight = MaxProposalWeight;
+	type MaxProposals = TechnicalMaxProposals;
+	type MotionDuration = TechnicalMotionDuration;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_collective_technical_fellowship::WeightInfo<Runtime>;
+}
+
+impl pallet_membership::Config<TechnicalMembership> for Runtime {
+	type AddOrigin = EnsureRoot<AccountId>;
+	type MaxMembers = TechnicalMaxMembers;
+	type MembershipChanged = TechnicalCommittee;
+	type MembershipInitialized = TechnicalCommittee;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_membership::WeightInfo<Runtime>;
+}
+
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
@@ -2052,6 +2154,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -2068,7 +2171,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1100,
+	crate::migrations::UpgradeDevelopment1200,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2107,6 +2210,14 @@ construct_runtime!(
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason} = 72,
+
+		// OpenGov
+		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>} = 80,
+		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>} = 81,
+		Origins: pallet_custom_origins::{Origin} = 82,
+		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>} = 83,
+		TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 84,
+		TechnicalCommitteeMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 85,
 
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -2837,7 +2948,7 @@ mod benches {
 		[pallet_proxy, Proxy]
 		[pallet_utility, Utility]
 		[pallet_scheduler, Scheduler]
-		[pallet_collective, Council]
+		[pallet_collective_council, Council]
 		[pallet_democracy, Democracy]
 		[pallet_elections_phragmen, Elections]
 		[pallet_identity, Identity]
@@ -2869,6 +2980,11 @@ mod benches {
 		[pallet_remarks, Remarks]
 		[pallet_pool_fees, PoolFees]
 		[pallet_token_mux, TokenMux]
+		[pallet_collective_technical_fellowship, TechnicalCommittee]
+		[pallet_conviction_voting, ConvictionVoting]
+		[pallet_membership, TechnicalCommitteeMembership]
+		[pallet_referenda, Referenda]
+		[pallet_whitelist, Whitelist]
 	);
 }
 

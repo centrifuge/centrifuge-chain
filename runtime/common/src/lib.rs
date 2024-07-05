@@ -39,6 +39,7 @@ pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod origins;
 pub mod pool;
 pub mod remarks;
 pub mod transfer_filter;
@@ -47,6 +48,19 @@ pub mod xcm;
 pub mod instances {
 	/// The rewards associated to block rewards
 	pub type BlockRewards = pallet_rewards::Instance1;
+
+	/// The technical fellowship collective which can whitelist proposal for the
+	/// WhitelistedCaller track
+	pub type TechnicalCollective = pallet_collective::Instance2;
+
+	/// The technical membership which handles membership of the
+	/// TechnicalCollective. It is not linked to the WhitelistedCaller track.
+	pub type TechnicalMembership = pallet_membership::Instance1;
+
+	/// The council collective which is used in Gov1.
+	///
+	/// NOTE: Will be deprecated once we have fully transitioned to OpenGov.
+	pub type CouncilCollective = pallet_collective::Instance1;
 }
 
 parameter_types! {
@@ -515,14 +529,6 @@ pub mod foreign_investments {
 	}
 }
 
-pub mod liquidity_pools {
-	use cfg_primitives::{Balance, PoolId, TrancheId};
-	use cfg_types::{domain_address::Domain, fixed_point::Ratio};
-
-	pub type LiquidityPoolsMessage =
-		pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
-}
-
 pub mod origin {
 	use cfg_primitives::AccountId;
 	use frame_support::traits::{EitherOfDiverse, SortedMembers};
@@ -547,7 +553,6 @@ pub mod origin {
 
 	#[cfg(test)]
 	mod test {
-		use cfg_primitives::HalfOfCouncil;
 		use frame_support::traits::EnsureOrigin;
 		use sp_core::{crypto::AccountId32, parameter_types};
 
@@ -613,6 +618,7 @@ pub mod origin {
 
 		mod ensure_account_or_root_or {
 			use super::*;
+			use crate::origins::gov::types::HalfOfCouncil;
 
 			#[test]
 			fn works_with_account() {

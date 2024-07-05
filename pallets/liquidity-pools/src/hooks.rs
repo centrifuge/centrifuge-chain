@@ -29,7 +29,7 @@ use sp_core::Get;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::{pallet::Config, Message, MessageOf, Pallet};
+use crate::{pallet::Config, Message, Pallet};
 
 /// The hook struct which acts upon a finalized investment decrement.
 pub struct DecreasedForeignInvestOrderHook<T>(PhantomData<T>);
@@ -59,13 +59,13 @@ where
 			Fortitude::Polite,
 		)?;
 
-		let message: MessageOf<T> = Message::ExecutedDecreaseInvestOrder {
-			pool_id: investment_id.of_pool(),
-			tranche_id: investment_id.of_tranche(),
+		let message = Message::ExecutedDecreaseInvestOrder {
+			pool_id: investment_id.of_pool().into(),
+			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
-			currency_payout: status.amount_decreased,
-			remaining_invest_amount: status.amount_remaining,
+			currency_payout: status.amount_decreased.into(),
+			remaining_invest_amount: status.amount_remaining.into(),
 		};
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
 
@@ -102,14 +102,14 @@ where
 			Fortitude::Polite,
 		)?;
 
-		let message: MessageOf<T> = Message::ExecutedCollectRedeem {
-			pool_id: investment_id.of_pool(),
-			tranche_id: investment_id.of_tranche(),
+		let message = Message::ExecutedCollectRedeem {
+			pool_id: investment_id.of_pool().into(),
+			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
-			currency_payout: status.amount_currency_payout,
-			tranche_tokens_payout: status.amount_tranche_tokens_payout,
-			remaining_redeem_amount: status.amount_remaining,
+			currency_payout: status.amount_currency_payout.into(),
+			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
+			remaining_redeem_amount: status.amount_remaining.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
@@ -146,14 +146,14 @@ where
 			Preservation::Expendable,
 		)?;
 
-		let message: MessageOf<T> = Message::ExecutedCollectInvest {
-			pool_id: investment_id.of_pool(),
-			tranche_id: investment_id.of_tranche(),
+		let message = Message::ExecutedCollectInvest {
+			pool_id: investment_id.of_pool().into(),
+			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
-			currency_payout: status.amount_currency_payout,
-			tranche_tokens_payout: status.amount_tranche_tokens_payout,
-			remaining_invest_amount: status.amount_remaining,
+			currency_payout: status.amount_currency_payout.into(),
+			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
+			remaining_invest_amount: status.amount_remaining.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;

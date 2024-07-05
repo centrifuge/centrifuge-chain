@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
-use cfg_primitives::{OutboundMessageNonce, BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
-use cfg_traits::TryConvert;
+use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers};
+use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_types::domain_address::DomainAddress;
 use cumulus_primitives_core::{Instruction, PalletInstance, Parachain, SendError, Xcm, XcmHash};
 use frame_support::{
@@ -17,10 +16,9 @@ use pallet_evm::{
 	FixedGasWeightMapping, IsPrecompileResult, Precompile, PrecompileHandle, PrecompileResult,
 	PrecompileSet, SubstrateBlockHashMapping,
 };
-use pallet_liquidity_pools_gateway::EnsureLocal;
 use parity_scale_codec::{Decode, Encode};
-use sp_core::{crypto::AccountId32, ByteArray, ConstU32, H160, H256, U256};
-use sp_runtime::{traits::IdentityLookup, ConsensusEngineId, DispatchError};
+use sp_core::{crypto::AccountId32, ByteArray, ConstU32, H160, U256};
+use sp_runtime::{traits::IdentityLookup, ConsensusEngineId};
 use sp_std::{cell::RefCell, marker::PhantomData};
 use staging_xcm::latest::{
 	opaque, Asset, Assets, Error as XcmError, InteriorLocation, Junction, Location, NetworkId,
@@ -41,7 +39,6 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
-		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 		XcmTransactor: pallet_xcm_transactor,
 		EVM: pallet_evm,
 		Timestamp: pallet_timestamp,
@@ -79,40 +76,12 @@ impl pallet_balances::Config for Runtime {
 
 impl pallet_mock_liquidity_pools::Config for Runtime {
 	type DomainAddress = DomainAddress;
-	type Message = MessageMock;
+	type Message = ();
 }
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl pallet_mock_routers::Config for Runtime {}
-
-pub struct MockOriginRecovery;
-impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
-	type Error = DispatchError;
-
-	fn try_convert(_: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
-		Err(DispatchError::Other("Unimplemented"))
-	}
-}
-
-parameter_types! {
-	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
-}
-
-impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId32>;
-	type InboundQueue = MockLiquidityPools;
-	type LocalEVMOrigin = EnsureLocal;
-	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = MessageMock;
-	type OriginRecovery = MockOriginRecovery;
-	type OutboundMessageNonce = OutboundMessageNonce;
-	type Router = RouterMock<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type Sender = Sender;
-	type WeightInfo = ();
-}
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;

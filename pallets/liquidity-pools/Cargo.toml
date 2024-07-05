@@ -19,6 +19,8 @@ hex = { workspace = true }
 orml-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+serde = { workspace = true }
+serde-big-array = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -50,6 +52,7 @@ std = [
   "orml-traits/std",
   "staging-xcm/std",
   "scale-info/std",
+  "serde/std",
 ]
 runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
