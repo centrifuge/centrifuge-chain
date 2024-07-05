@@ -45,12 +45,9 @@ jobs:
       # BUILD
       - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
         run: >
-          docker run --rm --user root --platform=linux/amd64 \
-          -e PACKAGE=${{ matrix.package }} \
-          -e BUILD_OPTS="on-chain-release-build" \
-          -v /home/runner/.cargo:/cargo-home \
-          -v ${{ github.workspace }}:/build \
-          paritytech/srtool:1.77.0-0.15.0 \
+          docker run --rm  --user root --platform=linux/amd64
+          -e PACKAGE=${{ matrix.package }} -e BUILD_OPTS="on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
+          -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
           /srtool/build --app
 
       # Alternative way of running SRTool that allows for "script-like" execution,
