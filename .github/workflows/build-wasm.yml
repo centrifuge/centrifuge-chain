@@ -46,7 +46,7 @@ jobs:
       - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
         run: >
           docker run --rm  --user root --platform=linux/amd64
-          -e PACKAGE=${{ matrix.package }} -e BUILD_OPTS="--features on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
+          -e PACKAGE=${{ matrix.package }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
           -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
           /srtool/build --app
 
