@@ -255,8 +255,8 @@ pub mod utils {
 			frame_system::CheckNonce::<T>::from(nonce),
 			frame_system::CheckWeight::<T>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
-			frame_metadata_hash_extension::CheckMetadataHash::<T>::new(false),
 			runtime_common::transfer_filter::PreBalanceTransferExtension::<T>::new(),
+			frame_metadata_hash_extension::CheckMetadataHash::<T>::new(false),
 		);
 
 		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
