@@ -73,7 +73,7 @@ impl cfg_mocks::foreign_investment::pallet::Config for Runtime {
 
 impl cfg_mocks::outbound_queue::pallet::Config for Runtime {
 	type Destination = Domain;
-	type Message = crate::MessageOf<Runtime>;
+	type Message = crate::Message;
 	type Sender = AccountId;
 }
 
