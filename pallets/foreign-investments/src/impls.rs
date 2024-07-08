@@ -125,26 +125,54 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapHook<T> {
 		});
 
 		match action {
-			Action::Investment => match pool_currency == swap_info.remaining.currency_in {
-				true => SwapDone::<T>::for_increase_investment(
-					&who,
-					investment_id,
-					swapped_amount_in.into(),
-					swapped_amount_out.into(),
-				),
-				false => SwapDone::<T>::for_decrease_investment(
-					&who,
-					investment_id,
-					swapped_amount_in.into(),
-					pending_amount.into(),
-				),
-			},
-			Action::Redemption => SwapDone::<T>::for_redemption(
-				&who,
-				investment_id,
-				swapped_amount_in.into(),
-				pending_amount.into(),
-			),
+			Action::Investment => {
+				ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+					let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+					if pool_currency == swap_info.remaining.currency_in {
+						info.post_increase_swap(
+							&who,
+							investment_id,
+							swapped_amount_in.into(),
+							swapped_amount_out.into(),
+						)
+					} else {
+						let msg =
+							info.post_cancel_swap(swapped_amount_in.into(), pending_amount.into())?;
+
+						if info.is_completed(&who, investment_id)? {
+							*entry = None;
+						}
+
+						if let Some(msg) = msg {
+							T::DecreasedForeignInvestOrderHook::notify_status_change(
+								(who.clone(), investment_id),
+								msg,
+							)?;
+						}
+
+						Ok(())
+					}
+				})
+			}
+			Action::Redemption => {
+				ForeignRedemptionInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+					let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+					let msg = info.post_swap(swapped_amount_in.into(), pending_amount.into())?;
+
+					if info.is_completed(&who, investment_id)? {
+						*entry = None;
+					}
+
+					if let Some(msg) = msg {
+						T::CollectedForeignRedemptionHook::notify_status_change(
+							(who.clone(), investment_id),
+							msg,
+						)?;
+					}
+
+					Ok(())
+				})
+			}
 		}
 	}
 }
@@ -209,89 +237,6 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 			}
 
 			Ok(None) // Then the notification is not for foreign investments
-		})?;
-
-		// We send the event out of the Info mutation closure
-		if let Some(msg) = msg {
-			T::CollectedForeignRedemptionHook::notify_status_change(
-				(who.clone(), investment_id),
-				msg,
-			)?;
-		}
-
-		Ok(())
-	}
-}
-
-/// Internal methods used to execute swaps already done
-struct SwapDone<T>(PhantomData<T>);
-impl<T: Config> SwapDone<T> {
-	/// Notifies that a partial increse swap has been done and applies the
-	/// result to an `InvestmentInfo`
-	fn for_increase_investment(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		swapped_pool_amount: T::PoolBalance,
-		swapped_foreign_amount: T::ForeignBalance,
-	) -> DispatchResult {
-		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
-			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.post_increase_swap(
-				who,
-				investment_id,
-				swapped_pool_amount,
-				swapped_foreign_amount,
-			)
-		})
-	}
-
-	/// Notifies that a partial decrease swap has been done and applies the
-	/// result to an `InvestmentInfo`
-	fn for_decrease_investment(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		swapped_foreign_amount: T::ForeignBalance,
-		pending_pool_amount: T::PoolBalance,
-	) -> DispatchResult {
-		let msg = ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
-			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_cancel_swap(swapped_foreign_amount, pending_pool_amount)?;
-
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
-
-			Ok::<_, DispatchError>(msg)
-		})?;
-
-		// We send the event out of the Info mutation closure
-		if let Some(msg) = msg {
-			T::DecreasedForeignInvestOrderHook::notify_status_change(
-				(who.clone(), investment_id),
-				msg,
-			)?;
-		}
-
-		Ok(())
-	}
-
-	/// Notifies that a partial swap has been done and applies the result to
-	/// an `RedemptionInfo`
-	fn for_redemption(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		swapped_amount: T::ForeignBalance,
-		pending_amount: T::PoolBalance,
-	) -> DispatchResult {
-		let msg = ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
-			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_swap(swapped_amount, pending_amount)?;
-
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
-
-			Ok::<_, DispatchError>(msg)
 		})?;
 
 		// We send the event out of the Info mutation closure
