@@ -44,11 +44,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				)?;
 			}
 
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
-
-			Ok(())
+			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
 
@@ -64,10 +60,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 			let (cancelled, pending) = info.cancel_swap(who, investment_id)?;
 			let msg = info.post_cancel_swap(cancelled, pending)?;
-
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
+			remove_entry(info.is_completed(who, investment_id)?, entry)?;
 
 			Ok::<_, DispatchError>(msg)
 		})?;
@@ -95,12 +88,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.get_or_insert(RedemptionInfo::new(payout_foreign_currency));
 			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.increase_redemption(who, investment_id, tranche_tokens_amount)?;
-
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
-
-			Ok(())
+			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
 
@@ -113,12 +101,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.cancel_redeemption(who, investment_id)?;
-
-			if info.is_completed(who, investment_id)? {
-				*entry = None;
-			}
-
-			Ok(())
+			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
 }
@@ -162,11 +145,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 							)?;
 						}
 
-						if info.is_completed(&who, investment_id)? {
-							*entry = None;
-						}
-
-						Ok(())
+						remove_entry(info.is_completed(&who, investment_id)?, entry)
 					}
 				})
 			}
@@ -182,11 +161,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 						)?;
 					}
 
-					if info.is_completed(&who, investment_id)? {
-						*entry = None;
-					}
-
-					Ok(())
+					remove_entry(info.is_completed(&who, investment_id)?, entry)
 				})
 			}
 		}
@@ -213,9 +188,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 					msg,
 				)?;
 
-				if info.is_completed(&who, investment_id)? {
-					*entry = None;
-				}
+				remove_entry(info.is_completed(&who, investment_id)?, entry)?;
 			}
 
 			Ok(())
@@ -247,12 +220,19 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 					)?;
 				}
 
-				if info.is_completed(&who, investment_id)? {
-					*entry = None;
-				}
+				remove_entry(info.is_completed(&who, investment_id)?, entry)?;
 			}
 
 			Ok(())
 		})
 	}
+}
+
+/// Avoiding boilerplate each time the entry needs to be removed
+fn remove_entry<Entry>(condition: bool, entry: &mut Option<Entry>) -> DispatchResult {
+	if condition {
+		*entry = None;
+	}
+
+	Ok(())
 }
