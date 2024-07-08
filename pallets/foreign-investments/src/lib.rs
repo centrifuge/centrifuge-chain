@@ -35,12 +35,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::swaps::{Swap, SwapInfo, SwapStatus};
-pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
+use cfg_traits::swaps::{Swap, TokenSwaps};
+pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Zero, DispatchResult};
 
 #[cfg(test)]
 mod mock;
@@ -50,6 +49,7 @@ mod tests;
 
 mod entities;
 mod impls;
+mod swaps;
 
 #[derive(
 	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
@@ -88,7 +88,6 @@ pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 pub mod pallet {
 	use cfg_traits::{
 		investments::{Investment, TrancheCurrency},
-		swaps::Swaps,
 		PoolInspect, StatusNotificationHook,
 	};
 	use cfg_types::investments::{
@@ -168,13 +167,17 @@ pub mod pallet {
 			InvestmentId = Self::InvestmentId,
 		>;
 
-		/// The type which exposes token swap order functionality such as
-		/// placing and cancelling orders
-		type Swaps: Swaps<
+		/// An identification for a swap order
+		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
+
+		/// The type which exposes token swap order functionality
+		type OrderBook: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
-			Amount = Self::SwapBalance,
-			SwapId = SwapId<Self>,
+			BalanceIn = Self::SwapBalance,
+			BalanceOut = Self::SwapBalance,
+			Ratio = Self::SwapRatio,
+			OrderId = Self::OrderId,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -210,9 +213,8 @@ pub mod pallet {
 		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
 	}
 
-	/// Contains the information about the foreign investment process
-	///
-	/// NOTE: The storage is killed once the investment is fully collected, or
+	/// Contains the information about the foreign investment process.
+	/// The storage is killed once the investment is fully collected, or
 	/// decreased.
 	#[pallet::storage]
 	pub type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
@@ -224,9 +226,8 @@ pub mod pallet {
 		entities::InvestmentInfo<T>,
 	>;
 
-	/// Contains the information about the foreign redemption process
-	///
-	/// NOTE: The storage is killed once the redemption is fully collected and
+	/// Contains the information about the foreign redemption process.
+	/// The storage is killed once the redemption is fully collected and
 	/// fully swapped or decreased
 	#[pallet::storage]
 	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
@@ -237,6 +238,12 @@ pub mod pallet {
 		T::InvestmentId,
 		entities::RedemptionInfo<T>,
 	>;
+
+	/// Maps a `OrderId` to its corresponding `AccountId` and `SwapId`.
+	/// The storage is killed when the swap order no longer exists
+	#[pallet::storage]
+	pub type OrderIdToSwapId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::OrderId, (T::AccountId, SwapId<T>)>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -251,9 +258,6 @@ pub mod pallet {
 		/// The currenct foreign actions must be finished before starting with a
 		/// different foreign currency investment / redemption.
 		MismatchedForeignCurrency,
-
-		/// The decrease is greater than the current investment/redemption
-		TooMuchDecrease,
 
 		/// A cancel action is in progress and it needs to finish before
 		/// increasing again
@@ -292,55 +296,4 @@ pub fn pool_currency_of<T: pallet::Config>(
 ) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
 	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
 	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
-}
-
-pub fn deposit_apply_swap_event<T: Config>(
-	who: &T::AccountId,
-	swap_id: SwapId<T>,
-	swap: &SwapOf<T>,
-	status: &SwapStatus<T::SwapBalance>,
-) {
-	if !status.pending.is_zero() {
-		Pallet::<T>::deposit_event(Event::SwapCreatedOrUpdated {
-			who: who.clone(),
-			swap_id,
-			swap: Swap {
-				amount_out: status.pending,
-				..swap.clone()
-			},
-		})
-	}
-}
-
-pub fn deposit_fulfill_swap_event<T: Config>(
-	who: &T::AccountId,
-	swap_id: SwapId<T>,
-	swap_info: &SwapInfo<T::SwapBalance, T::SwapBalance, T::CurrencyId, T::SwapRatio>,
-) {
-	Pallet::<T>::deposit_event(Event::SwapFullfilled {
-		who: who.clone(),
-		swap_id,
-		remaining: swap_info.remaining.clone(),
-		swapped_in: swap_info.swapped_in,
-		swapped_out: swap_info.swapped_out,
-	});
-}
-
-pub fn deposit_cancel_swap_event<T: Config>(
-	who: &T::AccountId,
-	swap_id: SwapId<T>,
-	foreign_currency: T::CurrencyId,
-	cancelled: T::SwapBalance,
-) -> DispatchResult {
-	Pallet::<T>::deposit_event(Event::SwapCancelled {
-		who: who.clone(),
-		swap_id,
-		swap: Swap {
-			amount_out: cancelled,
-			currency_out: foreign_currency,
-			currency_in: pool_currency_of::<T>(swap_id.0)?,
-		},
-	});
-
-	Ok(())
 }

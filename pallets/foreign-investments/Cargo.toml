@@ -32,7 +32,6 @@ sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
 cfg-mocks = { workspace = true, default-features = true }
-pallet-swaps = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -55,7 +54,6 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
-  "pallet-swaps/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-traits/try-runtime",
@@ -64,5 +62,4 @@ try-runtime = [
   "frame-system/try-runtime",
   "sp-runtime/try-runtime",
   "cfg-mocks/try-runtime",
-  "pallet-swaps/try-runtime",
 ]

@@ -7,7 +7,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::FixedU128;
 
-use crate::{pallet as pallet_foreign_investments, FulfilledSwapHook, SwapId};
+use crate::pallet as pallet_foreign_investments;
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -45,7 +45,6 @@ frame_support::construct_runtime!(
 		MockCollectInvestHook: cfg_mocks::status_notification::pallet::<Instance2>,
 		MockCollectRedeemHook: cfg_mocks::status_notification::pallet::<Instance3>,
 		MockPools: cfg_mocks::pools::pallet,
-		Swaps: pallet_swaps::pallet,
 		ForeignInvestment: pallet_foreign_investments,
 	}
 );
@@ -97,15 +96,6 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 	type TrancheId = TrancheId;
 }
 
-impl pallet_swaps::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type FulfilledSwap = FulfilledSwapHook<Runtime>;
-	type OrderBook = MockTokenSwaps;
-	type OrderId = OrderId;
-	type SwapId = SwapId<Runtime>;
-}
-
 impl pallet_foreign_investments::Config for Runtime {
 	type CollectedForeignInvestmentHook = MockCollectInvestHook;
 	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
@@ -114,12 +104,13 @@ impl pallet_foreign_investments::Config for Runtime {
 	type ForeignBalance = Balance;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
+	type OrderBook = MockTokenSwaps;
+	type OrderId = OrderId;
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
 	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
 	type SwapRatio = Ratio;
-	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
 

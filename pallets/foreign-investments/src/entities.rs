@@ -1,11 +1,10 @@
-//! Types with Config access.
+//! Perform actions over ForeignInvestInfo and ForeignRedemptionInfo types
 //! - This module does not handle FI storages
 //! - This module does not call hooks
+//! - This module does not directly OrderBooks
+//! - This module does not directly OrderIdToSwapId storage
 
-use cfg_traits::{
-	investments::Investment,
-	swaps::{Swap, Swaps},
-};
+use cfg_traits::{investments::Investment, swaps::Swap};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
 	ExecutedForeignCollectRedeem,
@@ -19,9 +18,10 @@ use sp_runtime::{
 };
 
 use crate::{
-	deposit_apply_swap_event, deposit_cancel_swap_event,
 	pallet::{Config, Error},
-	pool_currency_of, Action,
+	pool_currency_of,
+	swaps::{add_to_swap, cancel_swap, create_swap, get_swap},
+	Action,
 };
 
 /// Hold the information of a foreign investment
@@ -47,6 +47,10 @@ pub struct InvestmentInfo<T: Config> {
 	/// Total decrease swapped amount pending to execute.
 	/// It accumulates different partial swaps.
 	pub decrease_swapped_foreign_amount: T::ForeignBalance,
+
+	/// A possible order id associated to this investment
+	/// Could be a pool to foreign order or foreign to pool order
+	pub order_id: Option<T::OrderId>,
 }
 
 impl<T: Config> InvestmentInfo<T> {
@@ -55,6 +59,7 @@ impl<T: Config> InvestmentInfo<T> {
 			foreign_currency,
 			foreign_amount: T::ForeignBalance::zero(),
 			decrease_swapped_foreign_amount: T::ForeignBalance::zero(),
+			order_id: None,
 		}
 	}
 
@@ -67,13 +72,13 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
-	pub fn ensure_no_pending_cancel(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> DispatchResult {
+	pub fn ensure_no_pending_cancel(&self, investment_id: T::InvestmentId) -> DispatchResult {
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
 		ensure!(
-			self.pending_decrease_swap(who, investment_id)?.is_zero(),
+			self.order_id
+				.and_then(|id| get_swap::<T>(&id))
+				.filter(|order_info| order_info.swap.currency_out == pool_currency)
+				.is_none(),
 			Error::<T>::CancellationInProgress
 		);
 
@@ -89,15 +94,25 @@ impl<T: Config> InvestmentInfo<T> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
 		if self.foreign_currency != pool_currency {
-			let swap_id = (investment_id, Action::Investment);
-			let swap = Swap {
-				currency_in: pool_currency,
-				currency_out: self.foreign_currency,
-				amount_out: foreign_amount.into(),
-			};
-
-			let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
-			deposit_apply_swap_event::<T>(who, swap_id, &swap, &status);
+			match self.order_id {
+				None => {
+					self.order_id = create_swap::<T>(
+						who,
+						(investment_id, Action::Investment),
+						Swap {
+							currency_in: pool_currency,
+							currency_out: self.foreign_currency,
+							amount_out: foreign_amount.into(),
+						},
+					)?;
+				}
+				Some(order_id) => add_to_swap::<T>(
+					who,
+					(investment_id, Action::Investment),
+					&order_id,
+					foreign_amount.into(),
+				)?,
+			}
 		}
 
 		Ok(())
@@ -110,6 +125,7 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::PoolBalance,
 		swapped_foreign_amount: T::ForeignBalance,
+		pending_foreign_amount: T::ForeignBalance,
 	) -> DispatchResult {
 		self.foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
@@ -122,6 +138,10 @@ impl<T: Config> InvestmentInfo<T> {
 			)?;
 		}
 
+		if pending_foreign_amount.is_zero() {
+			self.order_id = None;
+		}
+
 		Ok(())
 	}
 
@@ -132,43 +152,35 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<(T::ForeignBalance, T::PoolBalance), DispatchError> {
+		let swap_id = (investment_id, Action::Investment);
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+
 		let cancel_pool_amount = T::Investment::investment(who, investment_id)?;
 		T::Investment::update_investment(who, investment_id, Zero::zero())?;
 
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
 		if self.foreign_currency != pool_currency {
-			let swap_id = (investment_id, Action::Investment);
-			let increase_foreign = self.pending_increase_swap(who, investment_id)?;
+			let increase_foreign = match self.order_id {
+				Some(order_id) => {
+					let increase_foreign = cancel_swap::<T>(who, swap_id, &order_id)?.into();
 
-			if !increase_foreign.is_zero() {
-				T::Swaps::cancel_swap(
-					who,
-					swap_id,
-					increase_foreign.into(),
-					self.foreign_currency,
-				)?;
-
-				deposit_cancel_swap_event::<T>(
-					who,
-					swap_id,
-					self.foreign_currency,
-					increase_foreign.into(),
-				)?;
-
-				// When cancelling, we no longer need to correlate.
-				// The entire amount returned in the cancel msg will be the entire foreign
-				// amount in the system, so we add here the not yet tracked pending amount.
-				self.foreign_amount.ensure_add_assign(increase_foreign)?;
-			}
-
-			let swap = Swap {
-				currency_in: self.foreign_currency,
-				currency_out: pool_currency,
-				amount_out: cancel_pool_amount.into(),
+					// When cancelling, we no longer need to correlate.
+					// The entire amount returned in the cancel msg will be the entire foreign
+					// amount in the system, so we add here the not yet tracked pending amount.
+					self.foreign_amount.ensure_add_assign(increase_foreign)?;
+					increase_foreign
+				}
+				None => T::ForeignBalance::zero(),
 			};
 
-			let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
-			deposit_apply_swap_event::<T>(who, swap_id, &swap, &status);
+			self.order_id = create_swap::<T>(
+				who,
+				swap_id,
+				Swap {
+					currency_in: self.foreign_currency,
+					currency_out: pool_currency,
+					amount_out: cancel_pool_amount.into(),
+				},
+			)?;
 
 			Ok((increase_foreign, cancel_pool_amount))
 		} else {
@@ -196,6 +208,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 			self.decrease_swapped_foreign_amount = T::ForeignBalance::zero();
 			self.foreign_amount = T::ForeignBalance::zero();
+			self.order_id = None;
 
 			Ok(Some(msg))
 		} else {
@@ -214,7 +227,6 @@ impl<T: Config> InvestmentInfo<T> {
 		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
 		DispatchError,
 	> {
-		// pool amount before collecting
 		let pool_amount_before_collecting =
 			T::Investment::investment(who, investment_id)? + collected.amount_payment;
 
@@ -239,37 +251,12 @@ impl<T: Config> InvestmentInfo<T> {
 		})
 	}
 
-	pub fn pending_increase_swap(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::ForeignBalance, DispatchError> {
-		let swap_id = (investment_id, Action::Investment);
-		Ok(T::Swaps::pending_amount(who, swap_id, self.foreign_currency)?.into())
-	}
-
-	pub fn pending_decrease_swap(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<T::PoolBalance, DispatchError> {
-		let swap_id = (investment_id, Action::Investment);
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
-		Ok(T::Swaps::pending_amount(who, swap_id, pool_currency)?.into())
-	}
-
 	pub fn is_completed(
 		&self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<bool, DispatchError> {
-		let pool_amount = self
-			.pending_decrease_swap(who, investment_id)?
-			.ensure_add(T::Investment::investment(who, investment_id)?)?;
-
-		let foreign_amount = self.pending_increase_swap(who, investment_id)?;
-
-		Ok(pool_amount.is_zero() && foreign_amount.is_zero())
+		Ok(T::Investment::investment(who, investment_id)?.is_zero() && self.order_id.is_none())
 	}
 }
 
@@ -285,6 +272,10 @@ pub struct RedemptionInfo<T: Config> {
 
 	/// Total collected tranche tokens pending to be sent.
 	pub collected_tranche_tokens: T::TrancheBalance,
+
+	/// A possible order id associated to this investment
+	/// Could be a pool to foreign
+	pub order_id: Option<T::OrderId>,
 }
 
 impl<T: Config> RedemptionInfo<T> {
@@ -293,6 +284,7 @@ impl<T: Config> RedemptionInfo<T> {
 			foreign_currency,
 			swapped_amount: T::ForeignBalance::default(),
 			collected_tranche_tokens: T::TrancheBalance::default(),
+			order_id: None,
 		}
 	}
 
@@ -340,14 +332,25 @@ impl<T: Config> RedemptionInfo<T> {
 		let collected_pool_amount = collected.amount_collected;
 
 		if self.foreign_currency != pool_currency {
-			let swap_id = (investment_id, Action::Redemption);
-			let swap = Swap {
-				currency_in: self.foreign_currency,
-				currency_out: pool_currency,
-				amount_out: collected_pool_amount.into(),
-			};
-			let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
-			deposit_apply_swap_event::<T>(who, swap_id, &swap, &status);
+			match self.order_id {
+				None => {
+					self.order_id = create_swap::<T>(
+						who,
+						(investment_id, Action::Redemption),
+						Swap {
+							currency_in: self.foreign_currency,
+							currency_out: pool_currency,
+							amount_out: collected_pool_amount.into(),
+						},
+					)?;
+				}
+				Some(order_id) => add_to_swap::<T>(
+					who,
+					(investment_id, Action::Redemption),
+					&order_id,
+					collected_pool_amount.into(),
+				)?,
+			}
 
 			Ok((Zero::zero(), collected_pool_amount))
 		} else {
@@ -376,6 +379,7 @@ impl<T: Config> RedemptionInfo<T> {
 
 			self.swapped_amount = T::ForeignBalance::zero();
 			self.collected_tranche_tokens = T::TrancheBalance::zero();
+			self.order_id = None;
 
 			return Ok(Some(msg));
 		}

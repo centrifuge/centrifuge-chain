@@ -8107,7 +8107,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-swaps",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

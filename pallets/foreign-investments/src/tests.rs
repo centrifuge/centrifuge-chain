@@ -1,6 +1,6 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, InvestmentCollector, TrancheCurrency},
-	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, Swaps as _, TokenSwaps},
+	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
 	StatusNotificationHook,
 };
 use cfg_types::investments::{
@@ -26,6 +26,7 @@ const STABLE_RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
 const TRANCHE_RATIO: Balance = 5; // Means: 1 pool curr is 5 tranche curr
 const AMOUNT: Balance = pool_to_foreign(200);
 const TRANCHE_AMOUNT: Balance = 1000;
+const ORDER_ID: OrderId = 23;
 
 /// foreign amount to pool amount
 pub const fn foreign_to_pool(foreign_amount: Balance) -> Balance {
@@ -88,11 +89,11 @@ mod util {
 					ratio: OrderRatio::Market,
 				})
 			});
-			Ok(0)
+			Ok(23)
 		});
 
-		MockTokenSwaps::mock_update_order(|swap_id, amount_out, _| {
-			let order = MockTokenSwaps::get_order_details(swap_id).unwrap();
+		MockTokenSwaps::mock_update_order(|order_id, amount_out, _| {
+			let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 			MockTokenSwaps::mock_get_order_details(move |_| {
 				Some(OrderInfo {
 					swap: Swap {
@@ -141,9 +142,20 @@ mod util {
 		util::config_investments();
 	}
 
+	pub fn current_order_id(action: Action) -> Option<OrderId> {
+		match action {
+			Action::Investment => {
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID)?.order_id
+			}
+			Action::Redemption => {
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID)?.order_id
+			}
+		}
+	}
+
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
-		let order_id = Swaps::order_id(&USER, (INVESTMENT_ID, action)).unwrap();
+		let order_id = current_order_id(action).unwrap();
 		let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
 			Some(OrderInfo {
@@ -155,7 +167,7 @@ mod util {
 			})
 		});
 
-		Swaps::notify_status_change(
+		ForeignInvestment::notify_status_change(
 			order_id,
 			SwapInfo {
 				remaining: Swap {
@@ -214,20 +226,18 @@ mod util {
 		pub invested: Balance,
 	}
 
+	pub fn pending_amount(action: Action, currency_id: CurrencyId) -> Balance {
+		current_order_id(action)
+			.and_then(MockTokenSwaps::get_order_details)
+			.filter(|info| info.swap.currency_out == currency_id)
+			.map(|info| info.swap.amount_out)
+			.unwrap_or(0)
+	}
+
 	pub fn check_amounts() -> CheckAmounts {
 		CheckAmounts {
-			pending_increase: Swaps::pending_amount(
-				&USER,
-				(INVESTMENT_ID, Action::Investment),
-				FOREIGN_CURR,
-			)
-			.unwrap(),
-			pending_decrease: Swaps::pending_amount(
-				&USER,
-				(INVESTMENT_ID, Action::Investment),
-				POOL_CURR,
-			)
-			.unwrap(),
+			pending_increase: pending_amount(Action::Investment, FOREIGN_CURR),
+			pending_decrease: pending_amount(Action::Investment, POOL_CURR),
 			invested: MockInvestment::investment(&USER, INVESTMENT_ID).unwrap(),
 		}
 	}
@@ -266,6 +276,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -331,6 +342,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -357,9 +369,9 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			assert_err!(
-				Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)),
-				pallet_swaps::Error::<Runtime>::OrderNotFound
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				None,
 			);
 		});
 	}
@@ -438,6 +450,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
+					order_id: Some(ORDER_ID)
 				})
 			);
 
@@ -472,6 +485,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: AMOUNT / 4,
 					decrease_swapped_foreign_amount: 0,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -496,6 +510,41 @@ mod investment {
 					pending_increase: 3 * AMOUNT / 4,
 					pending_decrease: foreign_to_pool(0),
 					invested: foreign_to_pool(AMOUNT / 4),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT);
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					foreign_currency: FOREIGN_CURR,
+					foreign_amount: AMOUNT,
+					decrease_swapped_foreign_amount: 0,
+					order_id: None,
+				})
+			);
+
+			assert_eq!(
+				util::check_amounts(),
+				util::CheckAmounts {
+					pending_increase: 0,
+					pending_decrease: foreign_to_pool(0),
+					invested: foreign_to_pool(AMOUNT),
 				}
 			);
 		});
@@ -553,6 +602,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: AMOUNT,
 					decrease_swapped_foreign_amount: AMOUNT / 4,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -744,6 +794,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: AMOUNT,
 					decrease_swapped_foreign_amount: AMOUNT / 2,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -840,6 +891,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: AMOUNT / 4,
 					decrease_swapped_foreign_amount: 0,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -1029,6 +1081,7 @@ mod investment {
 					foreign_currency: FOREIGN_CURR,
 					foreign_amount: REMAINDER,
 					decrease_swapped_foreign_amount: 0,
+					order_id: None,
 				})
 			);
 
@@ -1074,6 +1127,7 @@ mod investment {
 						foreign_currency: POOL_CURR,
 						foreign_amount: foreign_to_pool(AMOUNT),
 						decrease_swapped_foreign_amount: 0,
+						order_id: None,
 					})
 				);
 
@@ -1372,7 +1426,7 @@ mod investment {
 				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT);
 
 				// There is no swap.
-				assert!(Swaps::order_id(&USER, (INVESTMENT_ID, Action::Investment)).is_err());
+				assert!(util::current_order_id(Action::Investment).is_none());
 
 				assert_ok!(ForeignInvestment::cancel_foreign_investment(
 					&USER,
@@ -1438,6 +1492,7 @@ mod redemption {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
 					collected_tranche_tokens: 0,
+					order_id: None,
 				})
 			);
 
@@ -1473,6 +1528,7 @@ mod redemption {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
 					collected_tranche_tokens: 0,
+					order_id: None,
 				})
 			);
 
@@ -1532,6 +1588,7 @@ mod redemption {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
 					collected_tranche_tokens: 3 * TRANCHE_AMOUNT / 4,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -1569,7 +1626,8 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
-					collected_tranche_tokens: 3 * TRANCHE_AMOUNT / 4
+					collected_tranche_tokens: 3 * TRANCHE_AMOUNT / 4,
+					order_id: Some(ORDER_ID),
 				})
 			);
 
@@ -1622,6 +1680,7 @@ mod redemption {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
 					collected_tranche_tokens: 0,
+					order_id: None,
 				})
 			);
 
