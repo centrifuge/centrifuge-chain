@@ -470,13 +470,8 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					currency,
-<<<<<<< HEAD
-					price: foreign_price,
+					price: foreign_price.into_inner(),
 					computed_at,
-=======
-					price: price_value.price.into_inner(),
-					computed_at: price_value.last_updated,
->>>>>>> origin/main
 				},
 			)?;
 
