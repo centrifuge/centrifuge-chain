@@ -41,21 +41,36 @@ jobs:
             ./target/srtool
           cache-directories: ./runtime
 
-      # BUILD         
+      # Use this to debug what's going on inside the srtool container
+      # - name: Run Docker SRTool
+      #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
+      #   with:
+      #     image: paritytech/srtool:${{ matrix.rust_version }}
+      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}-runtime
+      #     run: |
+      #       echo "---- Env VARS ----"
+      #       echo "BUILD_OPT=${BUILD_OPT}"
+      #       echo "PACKAGE=${PACKAGE}"
+      #       echo "---- List Cache Folder ----"
+      #       ls -la /cargo-home/
+      #       du -sh /cargo-home/*
+      #       echo "---- RUNNING BUILD ----"
+      #       /srtool/build --app --json -cM   
       
-      # USING DOCKER DIRECTLY
+      
+      # Build and setup env vars:
       - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
         id: srtool_build
         shell: bash
         run: |
 
-          echo ::group::Srtool build of chain ${{ inputs.chain }}
+          echo ::group::Docker run srtool build ${{ inputs.chain }}
           CMD="docker run --rm  --user root --platform=linux/amd64
-          -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
-          -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
-          /srtool/build --app --json -cM"
-  
+          -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
+          -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build 
+          paritytech/srtool:1.77.0-0.15.0 /srtool/build --app --json -cM"
           echo ::debug::build::docker_run $CMD
+          echo ::endgroup
           # here we keep streaming the progress and fetch the last line for the json result
           stdbuf -oL $CMD | {
             while IFS= read -r line
@@ -63,10 +78,8 @@ jobs:
               echo ║ $line
               JSON="$line"
             done
-  
             echo "json=$JSON" >> $GITHUB_OUTPUT
-            echo $JSON | jq .
-  
+
             PROP=`echo $JSON | jq -r .runtimes.compact.prop`
             echo "proposal_hash=$PROP" >> $GITHUB_OUTPUT
   
@@ -79,25 +92,24 @@ jobs:
             IPFS=`echo $JSON | jq -r .runtimes.compact.ipfs`
             echo "ipfs=$IPFS" >> $GITHUB_OUTPUT
           }
-          echo ::endgroup          
+             
+      - name: Summary
+        run: |
+          echo:group::Summary
+          echo Summary:
+          echo - version: ${{ steps.srtool_build.outputs.version }}
+          echo - info: ${{ steps.srtool_build.outputs.info }}
+          echo - prop: ${{ steps.srtool_build.outputs.proposal_hash }}
+          echo - runtime location: ${{ steps.srtool_build.outputs.wasm }}"
+          echo ::endgroup
 
-      # Alternative way of running SRTool that allows for "script-like" execution,
-      # extremely useful to debug:
+          echo:group::JSON output
+          PRETTY_JSON=`echo ${{ steps.srtool_build.outputs.json }} | jq .`
+          echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.chain }}-srtool-digest.json
+          echo JSON Output:
+          cat ${{ matrix.chain }}-srtool-digest.json    
+          echo ::endgroup      
 
-      # - name: Run Docker SRTool
-      #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
-      #   with:
-      #     image: paritytech/srtool:${{ matrix.rust_version }}
-      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}
-      #     run: |
-      #       echo "---- Env VARS ----"
-      #       echo "BUILD_OPT=${BUILD_OPT}"
-      #       echo "PACKAGE=${PACKAGE}"
-      #       echo "---- List Cache Folder ----"
-      #       ls -la /cargo-home/
-      #       du -sh /cargo-home/*
-      #       echo "---- RUNNING BUILD ----"
-      #       /srtool/build --save
       - id: 'auth'
         if: github.event_name != 'pull_request'
         uses: 'google-github-actions/auth@5a50e581162a13f4baa8916d01180d2acbc04363' # v2.1.0
@@ -109,24 +121,15 @@ jobs:
         if: ${{ steps.auth.outcome == 'success' }}
         uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
 
-      - name: Summary
-        run: |
-          echo Summary:
-          echo - version: ${{ steps.srtool_build.outputs.version }}
-          echo - info: ${{ steps.srtool_build.outputs.info }}
-          echo - prop: ${{ steps.srtool_build.outputs.proposal_hash }}
-          echo - json: ${{ steps.srtool_build.outputs.json }}
-          echo - runtime location: ${{ steps.srtool_build.outputs.wasm }}"
-
       - name: Publish artifacts to GCS
         if: ${{ steps.auth.outcome == 'success' }}
         shell: bash
         run: |
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.chain }}-srtool-digest.json
-          cat ${{ matrix.chain }}-srtool-digest.json
           gsutil cp \
             ${{ steps.srtool_build.outputs.wasm }} \
-            gs://centrifuge-wasm-repo/${runtime_name}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm
+            gs://centrifuge-wasm-repo/${{matrix.chain}}-/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm
           gsutil cp \
           ${{ matrix.chain }}-srtool-digest.json \
-          gs://centrifuge-wasm-repo/${runtime_name}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json         
+          gs://centrifuge-wasm-repo/${{matrix.chain}}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json         
+
