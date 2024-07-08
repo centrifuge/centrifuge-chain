@@ -51,6 +51,7 @@ jobs:
         uses: chevdor/srtool-actions@v0.8.0
         env:
           BUILD_OPTS: "--features on-chain-release-build"
+          RUST_BACKTRACE: 1
         with:
           chain: ${{ matrix.chain }}
           # package: ${{ matrix.chain }}
