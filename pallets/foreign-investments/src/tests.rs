@@ -270,7 +270,7 @@ mod investment {
 			);
 
 			System::assert_has_event(
-				Event::SwapCreated {
+				Event::SwapCreatedOrUpdated {
 					who: USER,
 					swap_id: (INVESTMENT_ID, Action::Investment),
 					swap: Swap {
@@ -311,6 +311,19 @@ mod investment {
 				AMOUNT,
 				FOREIGN_CURR
 			));
+
+			System::assert_has_event(
+				Event::SwapCreatedOrUpdated {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					swap: Swap {
+						amount_out: AMOUNT + AMOUNT,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+				}
+				.into(),
+			);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -507,6 +520,32 @@ mod investment {
 				INVESTMENT_ID,
 				FOREIGN_CURR
 			));
+
+			System::assert_has_event(
+				Event::SwapCancelled {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					swap: Swap {
+						amount_out: AMOUNT / 4,
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+					},
+				}
+				.into(),
+			);
+
+			System::assert_has_event(
+				Event::SwapCreatedOrUpdated {
+					who: USER,
+					swap_id: (INVESTMENT_ID, Action::Investment),
+					swap: Swap {
+						amount_out: foreign_to_pool(3 * AMOUNT / 4),
+						currency_out: POOL_CURR,
+						currency_in: FOREIGN_CURR,
+					},
+				}
+				.into(),
+			);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1398,7 +1437,7 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
-					collected: CollectedAmount::default(),
+					collected_tranche_tokens: 0,
 				})
 			);
 
@@ -1433,7 +1472,7 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
-					collected: CollectedAmount::default(),
+					collected_tranche_tokens: 0,
 				})
 			);
 
@@ -1492,10 +1531,7 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
-					collected: CollectedAmount {
-						amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
-						amount_payment: 3 * TRANCHE_AMOUNT / 4
-					}
+					collected_tranche_tokens: 3 * TRANCHE_AMOUNT / 4,
 				})
 			);
 
@@ -1533,10 +1569,7 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
-					collected: CollectedAmount {
-						amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
-						amount_payment: 3 * TRANCHE_AMOUNT / 4
-					}
+					collected_tranche_tokens: 3 * TRANCHE_AMOUNT / 4
 				})
 			);
 
@@ -1588,7 +1621,7 @@ mod redemption {
 				Some(RedemptionInfo {
 					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
-					collected: CollectedAmount::default(),
+					collected_tranche_tokens: 0,
 				})
 			);
 

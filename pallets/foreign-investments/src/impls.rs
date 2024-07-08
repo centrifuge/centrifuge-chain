@@ -6,8 +6,9 @@ use frame_support::pallet_prelude::*;
 use sp_std::marker::PhantomData;
 
 use crate::{
+	deposit_fulfill_swap_event,
 	entities::{InvestmentInfo, RedemptionInfo},
-	pallet::{Config, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
+	pallet::{Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
 	pool_currency_of, Action, SwapId,
 };
 
@@ -59,6 +60,9 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Ok::<_, DispatchError>(msg)
 		})?;
 
+		// We send the event out of the Info mutation closure
+		// to avoid the implementor of the hook to call again to this pallet having the
+		// above mutation closure not closed.
 		if let Some(msg) = msg {
 			T::DecreasedForeignInvestOrderHook::notify_status_change(
 				(who.clone(), investment_id),
@@ -116,13 +120,7 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapHook<T> {
 		let swapped_amount_out = swap_info.swapped_out;
 		let pending_amount = swap_info.remaining.amount_out;
 
-		Pallet::<T>::deposit_event(Event::SwapFullfilled {
-			who: who.clone(),
-			swap_id: (investment_id, action),
-			remaining: swap_info.remaining.clone(),
-			swapped_in: swap_info.swapped_in,
-			swapped_out: swap_info.swapped_out,
-		});
+		deposit_fulfill_swap_event::<T>(&who, (investment_id, action), &swap_info);
 
 		match action {
 			Action::Investment => {
@@ -187,7 +185,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		(who, investment_id): (T::AccountId, T::InvestmentId),
 		collected: CollectedAmount<T::TrancheBalance, T::PoolBalance>,
 	) -> DispatchResult {
-		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+		ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			if let Some(info) = entry.as_mut() {
 				info.ensure_no_pending_cancel(&who, investment_id)?;
 				let msg = info.post_collect(&who, investment_id, collected)?;
@@ -196,20 +194,14 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 					*entry = None;
 				}
 
-				return Ok::<_, DispatchError>(Some(msg));
+				T::CollectedForeignInvestmentHook::notify_status_change(
+					(who.clone(), investment_id),
+					msg,
+				)?;
 			}
-			Ok(None) // Then notification is not for foreign investments
-		})?;
 
-		// We send the event out of the Info mutation closure
-		if let Some(msg) = msg {
-			T::CollectedForeignInvestmentHook::notify_status_change(
-				(who.clone(), investment_id),
-				msg,
-			)?;
-		}
-
-		Ok(())
+			Ok(())
+		})
 	}
 }
 
@@ -223,7 +215,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 		(who, investment_id): (T::AccountId, T::InvestmentId),
 		collected: CollectedAmount<T::PoolBalance, T::TrancheBalance>,
 	) -> DispatchResult {
-		let msg = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |entry| {
+		ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |entry| {
 			if let Some(info) = entry.as_mut() {
 				let (amount, pending) =
 					info.post_collect_and_swap(&who, investment_id, collected)?;
@@ -233,20 +225,15 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 					*entry = None;
 				}
 
-				return Ok::<_, DispatchError>(msg);
+				if let Some(msg) = msg {
+					T::CollectedForeignRedemptionHook::notify_status_change(
+						(who.clone(), investment_id),
+						msg,
+					)?;
+				}
 			}
 
-			Ok(None) // Then the notification is not for foreign investments
-		})?;
-
-		// We send the event out of the Info mutation closure
-		if let Some(msg) = msg {
-			T::CollectedForeignRedemptionHook::notify_status_change(
-				(who.clone(), investment_id),
-				msg,
-			)?;
-		}
-
-		Ok(())
+			Ok(())
+		})
 	}
 }

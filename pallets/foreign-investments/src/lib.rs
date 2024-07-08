@@ -35,7 +35,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::swaps::{Swap, SwapStatus, Swaps};
+use cfg_traits::swaps::{Swap, SwapInfo, SwapStatus};
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -264,7 +264,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		// The swap is created and now is wating to be fulfilled
-		SwapCreated {
+		SwapCreatedOrUpdated {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
 			swap: SwapOf<T>,
@@ -281,9 +281,7 @@ pub mod pallet {
 		SwapCancelled {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
-			remaining: SwapOf<T>,
-			cancelled_in: T::SwapBalance,
-			opposite_in: T::SwapBalance,
+			swap: SwapOf<T>,
 		},
 	}
 }
@@ -296,27 +294,14 @@ pub fn pool_currency_of<T: pallet::Config>(
 	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
 }
 
-pub fn deposit_apply_swap_events<T: Config>(
+pub fn deposit_apply_swap_event<T: Config>(
 	who: &T::AccountId,
 	swap_id: SwapId<T>,
 	swap: &SwapOf<T>,
 	status: &SwapStatus<T::SwapBalance>,
-) -> DispatchResult {
-	if !status.swapped.is_zero() {
-		Pallet::<T>::deposit_event(Event::SwapCancelled {
-			who: who.clone(),
-			swap_id,
-			remaining: Swap {
-				amount_out: status.pending,
-				..swap.clone()
-			},
-			cancelled_in: status.swapped,
-			opposite_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
-		});
-	}
-
+) {
 	if !status.pending.is_zero() {
-		Pallet::<T>::deposit_event(Event::SwapCreated {
+		Pallet::<T>::deposit_event(Event::SwapCreatedOrUpdated {
 			who: who.clone(),
 			swap_id,
 			swap: Swap {
@@ -325,6 +310,37 @@ pub fn deposit_apply_swap_events<T: Config>(
 			},
 		})
 	}
+}
+
+pub fn deposit_fulfill_swap_event<T: Config>(
+	who: &T::AccountId,
+	swap_id: SwapId<T>,
+	swap_info: &SwapInfo<T::SwapBalance, T::SwapBalance, T::CurrencyId, T::SwapRatio>,
+) {
+	Pallet::<T>::deposit_event(Event::SwapFullfilled {
+		who: who.clone(),
+		swap_id,
+		remaining: swap_info.remaining.clone(),
+		swapped_in: swap_info.swapped_in,
+		swapped_out: swap_info.swapped_out,
+	});
+}
+
+pub fn deposit_cancel_swap_event<T: Config>(
+	who: &T::AccountId,
+	swap_id: SwapId<T>,
+	foreign_currency: T::CurrencyId,
+	cancelled: T::SwapBalance,
+) -> DispatchResult {
+	Pallet::<T>::deposit_event(Event::SwapCancelled {
+		who: who.clone(),
+		swap_id,
+		swap: Swap {
+			amount_out: cancelled,
+			currency_out: foreign_currency,
+			currency_in: pool_currency_of::<T>(swap_id.0)?,
+		},
+	});
 
 	Ok(())
 }
