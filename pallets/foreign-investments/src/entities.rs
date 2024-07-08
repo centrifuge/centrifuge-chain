@@ -218,19 +218,27 @@ impl<T: Config> InvestmentInfo<T> {
 		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
 		DispatchError,
 	> {
-		let pool_amount_before_collecting =
-			T::Investment::investment(who, investment_id)? + collected.amount_payment;
+		let invested = T::Investment::investment(who, investment_id)?;
 
-		// Transform the collected pool amount into foreing amount.
-		// This transformation is done by correlation, thanks that `foreing_amount`
-		// contains the "same" amount as the investment pool amount but with different
-		// denomination.
-		let collected_foreign_amount = collected
-			.amount_payment
-			.ensure_mul(self.foreign_amount.into())?
-			.ensure_div(pool_amount_before_collecting)
-			.unwrap_or(self.foreign_amount.into())
-			.into();
+		let collected_foreign_amount = if invested.is_zero() {
+			// Last partial collect, we just return the tracked foreign amount
+			// to ensure the sum of all partial collects matches the amount that was
+			// incremented
+			self.foreign_amount
+		} else {
+			let pool_amount_before_collecting = invested.ensure_add(collected.amount_payment)?;
+
+			// Transform the collected pool amount into foreing amount.
+			// This transformation is done by correlation, thanks that `foreing_amount`
+			// contains the "same" amount as the investment pool amount but with different
+			// denomination.
+			collected
+				.amount_payment
+				.ensure_mul(self.foreign_amount.into())?
+				.ensure_div(pool_amount_before_collecting)
+				.unwrap_or(self.foreign_amount.into())
+				.into()
+		};
 
 		self.foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
