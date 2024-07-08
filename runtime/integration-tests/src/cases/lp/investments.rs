@@ -16,13 +16,10 @@ use pallet_investments::OrderOf;
 use sp_core::U256;
 use sp_runtime::traits::Zero;
 
-use crate::cases::lp::{
-	setup, setup_currencies, setup_deploy_lps, setup_investment_currencies, setup_pools,
-	setup_tranches,
-};
 use crate::{
 	cases::lp::{
-		self, names, setup_full,
+		self, names, setup, setup_currencies, setup_deploy_lps, setup_full,
+		setup_investment_currencies, setup_pools, setup_tranches,
 		utils::{pool_c_tranche_1_id, Decoder},
 		DECIMALS_6, POOL_C,
 	},

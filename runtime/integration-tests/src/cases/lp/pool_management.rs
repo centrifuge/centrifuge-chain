@@ -17,8 +17,10 @@ use cfg_types::{
 	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
-use ethabi::ethereum_types::U256;
-use ethabi::{ethereum_types::H160, Token, Uint};
+use ethabi::{
+	ethereum_types::{H160, U256},
+	Token, Uint,
+};
 use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::AddressMapping;
@@ -26,7 +28,6 @@ use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::FixedPointNumber;
 
-use crate::cases::lp::{DECIMALS_6, DEFAULT_BALANCE};
 use crate::{
 	cases::lp::{
 		names, utils,
