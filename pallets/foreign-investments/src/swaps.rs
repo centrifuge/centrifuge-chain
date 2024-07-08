@@ -90,7 +90,7 @@ pub fn cancel_swap<T: Config>(
 			Ok(info.swap.amount_out)
 		}
 		None => Err(DispatchError::Other(
-			"increase_swap() is always called over an existent order, qed",
+			"cancel_swap() is always called over an existent order, qed",
 		)),
 	}
 }
