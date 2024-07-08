@@ -41,31 +41,45 @@ jobs:
             ./target/srtool
           cache-directories: ./runtime
 
-      - name: Fix permissions for Docker
-        run: |
-          chmod -R 777 ${{ github.workspace }}
-
-      # BUILD
-      - name: Build ${{ matrix.chain }}
-        id: srtool_build
-        uses: chevdor/srtool-actions@v0.8.0
-        env:
-          BUILD_OPTS: "--features on-chain-release-build"
-          RUST_BACKTRACE: 1
-        with:
-          chain: ${{ matrix.chain }}
-          # package: ${{ matrix.chain }}
-          # runtime_dir: ${{ matrix.runtime.path }}
-          workdir: ${{ github.workspace }}
-          profile: "release"          
+      # BUILD         
       
       # USING DOCKER DIRECTLY
-      # - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
-      #   run: >
-      #     docker run --rm  --user root --platform=linux/amd64
-      #     -e PACKAGE=${{ matrix.chain }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
-      #     -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
-      #     /srtool/build --app
+      - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
+        id: srtool_build
+        shell: bash
+        run: |
+
+          echo ::group::Srtool build of chain ${{ inputs.chain }}
+          CMD="docker run --rm  --user root --platform=linux/amd64
+          -e PACKAGE=${{ matrix.chain }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
+          -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
+          /srtool/build --app --json -cM"
+  
+          echo ::debug::build::docker_run $CMD
+          # here we keep streaming the progress and fetch the last line for the json result
+          stdbuf -oL $CMD | {
+            while IFS= read -r line
+            do
+              echo ║ $line
+              JSON="$line"
+            done
+  
+            echo "json=$JSON" >> $GITHUB_OUTPUT
+            echo $JSON | jq .
+  
+            PROP=`echo $JSON | jq -r .runtimes.compact.prop`
+            echo "proposal_hash=$PROP" >> $GITHUB_OUTPUT
+  
+            WASM=`echo $JSON | jq -r .runtimes.compact.wasm`
+            echo "wasm=$WASM" >> $GITHUB_OUTPUT
+  
+            Z_WASM=`echo $JSON | jq -r .runtimes.compressed.wasm`
+            echo "wasm_compressed=$Z_WASM" >> $GITHUB_OUTPUT
+  
+            IPFS=`echo $JSON | jq -r .runtimes.compact.ipfs`
+            echo "ipfs=$IPFS" >> $GITHUB_OUTPUT
+          }
+          echo ::endgroup          
 
       # Alternative way of running SRTool that allows for "script-like" execution,
       # extremely useful to debug:
