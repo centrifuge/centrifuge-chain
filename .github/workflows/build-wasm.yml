@@ -51,7 +51,7 @@ jobs:
 
           echo ::group::Srtool build of chain ${{ inputs.chain }}
           CMD="docker run --rm  --user root --platform=linux/amd64
-          -e PACKAGE=${{ matrix.chain }} -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
+          -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" -v /home/runner/.cargo:/cargo-home  
           -v ${{ github.workspace }}:/build paritytech/srtool:1.77.0-0.15.0
           /srtool/build --app --json -cM"
   
