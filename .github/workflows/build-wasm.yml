@@ -51,6 +51,7 @@ jobs:
           chain: ${{ matrix.chain }}
           # package: ${{ matrix.chain }}
           # runtime_dir: ${{ matrix.runtime.path }}
+          workdir: ${{ github.workspace }}
           profile: "release"          
       
       # USING DOCKER DIRECTLY
