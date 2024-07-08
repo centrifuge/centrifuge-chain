@@ -645,7 +645,9 @@ mod update_token_price {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
 						currency: util::currency_index(CURRENCY_ID),
-						price: TRANCHE_TOKEN_PRICE.saturating_mul(MARKET_RATIO),
+						price: TRANCHE_TOKEN_PRICE
+							.saturating_mul(MARKET_RATIO)
+							.into_inner(),
 						computed_at: 1234
 					}
 				);
