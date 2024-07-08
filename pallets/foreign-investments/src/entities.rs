@@ -20,7 +20,7 @@ use sp_runtime::{
 use crate::{
 	pallet::{Config, Error},
 	pool_currency_of,
-	swaps::{add_to_swap, cancel_swap, create_swap, get_swap},
+	swaps::{cancel_swap, create_or_increase_swap, create_swap, get_swap},
 	Action,
 };
 
@@ -85,7 +85,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
-	pub fn increase_swap(
+	pub fn increase(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -94,25 +94,16 @@ impl<T: Config> InvestmentInfo<T> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
 		if self.foreign_currency != pool_currency {
-			match self.order_id {
-				None => {
-					self.order_id = create_swap::<T>(
-						who,
-						(investment_id, Action::Investment),
-						Swap {
-							currency_in: pool_currency,
-							currency_out: self.foreign_currency,
-							amount_out: foreign_amount.into(),
-						},
-					)?;
-				}
-				Some(order_id) => add_to_swap::<T>(
-					who,
-					(investment_id, Action::Investment),
-					&order_id,
-					foreign_amount.into(),
-				)?,
-			}
+			self.order_id = create_or_increase_swap::<T>(
+				who,
+				(investment_id, Action::Investment),
+				&self.order_id,
+				Swap {
+					currency_in: pool_currency,
+					currency_out: self.foreign_currency,
+					amount_out: foreign_amount.into(),
+				},
+			)?;
 		}
 
 		Ok(())
@@ -147,7 +138,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 	/// Decrease an investment taking into account that a previous increment
 	/// could be pending.
-	pub fn cancel_swap(
+	pub fn cancel(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -332,25 +323,16 @@ impl<T: Config> RedemptionInfo<T> {
 		let collected_pool_amount = collected.amount_collected;
 
 		if self.foreign_currency != pool_currency {
-			match self.order_id {
-				None => {
-					self.order_id = create_swap::<T>(
-						who,
-						(investment_id, Action::Redemption),
-						Swap {
-							currency_in: self.foreign_currency,
-							currency_out: pool_currency,
-							amount_out: collected_pool_amount.into(),
-						},
-					)?;
-				}
-				Some(order_id) => add_to_swap::<T>(
-					who,
-					(investment_id, Action::Redemption),
-					&order_id,
-					collected_pool_amount.into(),
-				)?,
-			}
+			self.order_id = create_or_increase_swap::<T>(
+				who,
+				(investment_id, Action::Redemption),
+				&self.order_id,
+				Swap {
+					currency_in: self.foreign_currency,
+					currency_out: pool_currency,
+					amount_out: collected_pool_amount.into(),
+				},
+			)?;
 
 			Ok((Zero::zero(), collected_pool_amount))
 		} else {

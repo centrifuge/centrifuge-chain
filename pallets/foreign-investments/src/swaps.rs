@@ -39,7 +39,7 @@ pub fn create_swap<T: Config>(
 	Ok(Some(order_id))
 }
 
-pub fn add_to_swap<T: Config>(
+pub fn increase_swap<T: Config>(
 	who: &T::AccountId,
 	swap_id: SwapId<T>,
 	order_id: &T::OrderId,
@@ -67,6 +67,21 @@ pub fn add_to_swap<T: Config>(
 		None => Err(DispatchError::Other(
 			"increase_swap() is always called over an existent order, qed",
 		)),
+	}
+}
+
+pub fn create_or_increase_swap<T: Config>(
+	who: &T::AccountId,
+	swap_id: SwapId<T>,
+	order_id: &Option<T::OrderId>,
+	swap: SwapOf<T>,
+) -> Result<Option<T::OrderId>, DispatchError> {
+	match order_id {
+		None => create_swap::<T>(who, swap_id, swap),
+		Some(order_id) => {
+			increase_swap::<T>(who, swap_id, &order_id, swap.amount_out.into())?;
+			Ok(Some(*order_id))
+		}
 	}
 }
 

@@ -32,7 +32,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(investment_id)?;
 
-			info.increase_swap(who, investment_id, foreign_amount)?;
+			info.increase(who, investment_id, foreign_amount)?;
 
 			if info.foreign_currency == pool_currency_of::<T>(investment_id)? {
 				info.post_increase_swap(
@@ -58,7 +58,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(investment_id)?;
 
-			let (cancelled, pending) = info.cancel_swap(who, investment_id)?;
+			let (cancelled, pending) = info.cancel(who, investment_id)?;
+
 			let msg = info.post_cancel_swap(cancelled, pending)?;
 			remove_entry(info.is_completed(who, investment_id)?, entry)?;
 
