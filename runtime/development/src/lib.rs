@@ -114,9 +114,7 @@ use runtime_common::{
 	gateway, instances,
 	instances::{CouncilCollective, TechnicalCollective, TechnicalMembership},
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
-	oracle::{
-		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
-	},
+	oracle::{DigestedOracleRatioProvider, Feeder, OracleConverterBridge, OracleRatioProvider},
 	origins::gov::{
 		pallet_custom_origins,
 		types::{
@@ -1858,7 +1856,7 @@ impl pallet_order_book::Config for Runtime {
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+	type RatioProvider = DigestedOracleRatioProvider<
 		RuntimeOrigin,
 		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
 		OrmlAssetRegistry,
