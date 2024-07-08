@@ -15,8 +15,7 @@ use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook},
 	mock::*,
-	pallet::ForeignInvestmentInfo,
-	*,
+	Action, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo,
 };
 
 const USER: AccountId = 1;

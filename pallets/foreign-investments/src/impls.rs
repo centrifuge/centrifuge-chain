@@ -1,19 +1,14 @@
 //! Trait implementations. Higher level file.
 
-use cfg_traits::{
-	investments::ForeignInvestment,
-	swaps::{Swap, SwapInfo, SwapStatus, Swaps},
-	StatusNotificationHook,
-};
+use cfg_traits::{investments::ForeignInvestment, swaps::SwapInfo, StatusNotificationHook};
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
 
 use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
 	pallet::{Config, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
-	pool_currency_of, Action, SwapId, SwapOf,
+	pool_currency_of, Action, SwapId,
 };
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
@@ -34,15 +29,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(who, investment_id)?;
 
-			let swap_id = (investment_id, Action::Investment);
-			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
+			info.increase_swap(who, investment_id, foreign_amount)?;
 
-			if !swap.has_same_currencies() {
-				let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
-				Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status)
-			} else {
-				info.post_increase_swap(who, investment_id, foreign_amount.into(), foreign_amount)
+			if info.foreign_currency == pool_currency_of::<T>(investment_id)? {
+				info.post_increase_swap(who, investment_id, foreign_amount.into(), foreign_amount)?;
 			}
+
+			Ok(())
 		})
 	}
 
@@ -56,21 +49,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(who, investment_id)?;
 
-			let mut msg = None;
-			let swap_id = (investment_id, Action::Investment);
-			let (inverse, swap) = info.pre_cancel_swap(who, investment_id)?;
-
-			if !swap.has_same_currencies() {
-				if !inverse.is_zero() {
-					T::Swaps::cancel_swap(who, swap_id, inverse.into(), foreign_currency)?;
-					msg = info.post_cancel_swap(inverse, swap.amount_out.into())?;
-				}
-
-				let status = T::Swaps::apply_swap(who, swap_id, swap.clone())?;
-				Pallet::<T>::deposit_apply_swap_events(who, swap_id, &swap, &status)?;
-			} else {
-				msg = info.post_cancel_swap(swap.amount_out.into(), Zero::zero())?;
-			}
+			let (cancelled, pending) = info.cancel_swap(who, investment_id)?;
+			let msg = info.post_cancel_swap(cancelled, pending)?;
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;
@@ -118,41 +98,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 			Ok(())
 		})
-	}
-}
-
-impl<T: Config> Pallet<T> {
-	fn deposit_apply_swap_events(
-		who: &T::AccountId,
-		swap_id: SwapId<T>,
-		swap: &SwapOf<T>,
-		status: &SwapStatus<T::SwapBalance>,
-	) -> DispatchResult {
-		if !status.swapped.is_zero() {
-			Pallet::<T>::deposit_event(Event::SwapCancelled {
-				who: who.clone(),
-				swap_id,
-				remaining: Swap {
-					amount_out: status.pending,
-					..swap.clone()
-				},
-				cancelled_in: status.swapped,
-				opposite_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
-			});
-		}
-
-		if !status.pending.is_zero() {
-			Pallet::<T>::deposit_event(Event::SwapCreated {
-				who: who.clone(),
-				swap_id,
-				swap: Swap {
-					amount_out: status.pending,
-					..swap.clone()
-				},
-			})
-		}
-
-		Ok(())
 	}
 }
 
@@ -215,19 +160,17 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		collected: CollectedAmount<T::TrancheBalance, T::PoolBalance>,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
-			match entry.as_mut() {
-				Some(info) => {
-					info.ensure_no_pending_cancel(&who, investment_id)?;
-					let msg = info.post_collect(&who, investment_id, collected)?;
+			if let Some(info) = entry.as_mut() {
+				info.ensure_no_pending_cancel(&who, investment_id)?;
+				let msg = info.post_collect(&who, investment_id, collected)?;
 
-					if info.is_completed(&who, investment_id)? {
-						*entry = None;
-					}
-
-					Ok::<_, DispatchError>(Some(msg))
+				if info.is_completed(&who, investment_id)? {
+					*entry = None;
 				}
-				None => Ok(None), // Then notification is not for foreign investments
+
+				return Ok::<_, DispatchError>(Some(msg));
 			}
+			Ok(None) // Then notification is not for foreign investments
 		})?;
 
 		// We send the event out of the Info mutation closure
@@ -252,29 +195,28 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 		(who, investment_id): (T::AccountId, T::InvestmentId),
 		collected: CollectedAmount<T::PoolBalance, T::TrancheBalance>,
 	) -> DispatchResult {
-		let swap = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |entry| {
-			match entry.as_mut() {
-				Some(info) => info
-					.post_collect_and_pre_swap(investment_id, collected)
-					.map(Some),
-				None => Ok(None), // Then the notification is not for foreign investments
+		let msg = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |entry| {
+			if let Some(info) = entry.as_mut() {
+				let (amount, pending) =
+					info.post_collect_and_swap(&who, investment_id, collected)?;
+				let msg = info.post_swap(amount, pending)?;
+
+				if info.is_completed(&who, investment_id)? {
+					*entry = None;
+				}
+
+				return Ok::<_, DispatchError>(msg);
 			}
+
+			Ok(None) // Then the notification is not for foreign investments
 		})?;
 
-		if let Some(swap) = swap {
-			let swap_id = (investment_id, Action::Redemption);
-			let status = T::Swaps::apply_swap(&who, swap_id, swap.clone())?;
-
-			Pallet::<T>::deposit_apply_swap_events(&who, swap_id, &swap, &status)?;
-
-			if !status.swapped.is_zero() {
-				SwapDone::<T>::for_redemption(
-					&who,
-					investment_id,
-					status.swapped.into(),
-					status.pending.into(),
-				)?;
-			}
+		// We send the event out of the Info mutation closure
+		if let Some(msg) = msg {
+			T::CollectedForeignRedemptionHook::notify_status_change(
+				(who.clone(), investment_id),
+				msg,
+			)?;
 		}
 
 		Ok(())

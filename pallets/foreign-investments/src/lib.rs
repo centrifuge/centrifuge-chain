@@ -35,11 +35,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::swaps::Swap;
+use cfg_traits::swaps::{Swap, SwapStatus, Swaps};
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_runtime::{traits::Zero, DispatchResult};
 
 #[cfg(test)]
 mod mock;
@@ -82,15 +83,6 @@ pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::PoolId;
-
-/// Get the pool currency associated to a investment_id
-pub fn pool_currency_of<T: pallet::Config>(
-	investment_id: T::InvestmentId,
-) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
-	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
-
-	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -294,4 +286,45 @@ pub mod pallet {
 			opposite_in: T::SwapBalance,
 		},
 	}
+}
+
+/// Get the pool currency associated to a investment_id
+pub fn pool_currency_of<T: pallet::Config>(
+	investment_id: T::InvestmentId,
+) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
+	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
+	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
+}
+
+pub fn deposit_apply_swap_events<T: Config>(
+	who: &T::AccountId,
+	swap_id: SwapId<T>,
+	swap: &SwapOf<T>,
+	status: &SwapStatus<T::SwapBalance>,
+) -> DispatchResult {
+	if !status.swapped.is_zero() {
+		Pallet::<T>::deposit_event(Event::SwapCancelled {
+			who: who.clone(),
+			swap_id,
+			remaining: Swap {
+				amount_out: status.pending,
+				..swap.clone()
+			},
+			cancelled_in: status.swapped,
+			opposite_in: T::Swaps::pending_amount(who, swap_id, swap.currency_in)?,
+		});
+	}
+
+	if !status.pending.is_zero() {
+		Pallet::<T>::deposit_event(Event::SwapCreated {
+			who: who.clone(),
+			swap_id,
+			swap: Swap {
+				amount_out: status.pending,
+				..swap.clone()
+			},
+		})
+	}
+
+	Ok(())
 }
