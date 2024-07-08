@@ -244,7 +244,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 			Keyring::TrancheInvestor(1),
 			sp_core::U256::zero(),
 			names::POOL_MANAGER,
-			"transferTrancheTokensToEVM",
+			"transferTranchesToEVM",
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
@@ -317,7 +317,7 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 			Keyring::TrancheInvestor(1),
 			sp_core::U256::zero(),
 			names::POOL_MANAGER,
-			"transferTrancheTokensToCentrifuge",
+			"transferTranchesToCentrifuge",
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),

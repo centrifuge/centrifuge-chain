@@ -506,8 +506,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					update: UpdateRestrictionMessage::UpdateMember {
-						valid_until,
 						member: domain_address.address(),
+						valid_until,
 					},
 				},
 			)?;

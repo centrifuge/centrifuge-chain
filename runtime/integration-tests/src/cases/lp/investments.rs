@@ -16,6 +16,10 @@ use pallet_investments::OrderOf;
 use sp_core::U256;
 use sp_runtime::traits::Zero;
 
+use crate::cases::lp::{
+	setup, setup_currencies, setup_deploy_lps, setup_investment_currencies, setup_pools,
+	setup_tranches,
+};
 use crate::{
 	cases::lp::{
 		self, names, setup_full,
@@ -30,7 +34,7 @@ use crate::{
 const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
-	use cfg_primitives::AccountId;
+	use cfg_primitives::{AccountId, Balance};
 	use cfg_traits::{investments::TrancheCurrency, HasLocalAssetRepresentation};
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
@@ -80,15 +84,20 @@ mod utils {
 				Token::Uint(DEFAULT_INVESTMENT_AMOUNT.into()),
 				Token::Address(who.into()),
 				Token::Address(who.into()),
-				Token::Bytes(Default::default()),
 			]),
 		)
 		.unwrap();
 	}
 
 	pub fn cancel<T: Runtime>(evm: &mut impl EvmEnv<T>, who: Keyring, lp_pool: &str) {
-		evm.call(who, U256::zero(), lp_pool, "cancelDepositRequest", None)
-			.unwrap();
+		evm.call(
+			who,
+			U256::zero(),
+			lp_pool,
+			"cancelDepositRequest",
+			Some(&[Token::Uint(U256::from(0)), Token::Address(who.into())]),
+		)
+		.unwrap();
 	}
 
 	pub fn close_and_collect<T: Runtime>(
@@ -222,6 +231,7 @@ mod with_pool_currency {
 						"maxDeposit",
 						Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
 					))),
+					Token::Address(Keyring::TrancheInvestor(1).into()),
 					Token::Address(Keyring::TrancheInvestor(1).into()),
 				]),
 			)

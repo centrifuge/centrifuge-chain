@@ -381,6 +381,7 @@ pub mod contracts {
 	pub const ESCROW: &str = "Escrow";
 	pub const POOL_MANAGER: &str = "PoolManager";
 	pub const LP_FACTORY: &str = "ERC7540VaultFactory";
+	pub const LP: &str = "ERC7540Vault";
 	pub const RESTRICTION_MANAGER: &str = "RestrictionManager";
 	pub const TRANCHE_FACTORY: &str = "TrancheFactory";
 	pub const TRANCHE_TOKEN: &str = "TrancheToken";
@@ -1303,7 +1304,7 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 
 			evm.register(
 				lp_name(pool, tranche_id, currency),
-				"LiquidityPool",
+				contracts::LP,
 				Decoder::<H160>::decode(
 					&evm.view(
 						Keyring::Alice,
@@ -1543,21 +1544,6 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	// FIXME: Fails
-	// evm.register(
-	// 	names::RM_POOL_C_T_1,
-	// 	contracts::RESTRICTION_MANAGER,
-	// 	Decoder::<H160>::decode(
-	// 		&evm.view(
-	// 			Keyring::Alice,
-	// 			names::POOL_C_T_1,
-	// 			"restrictionManager",
-	// 			None,
-	// 		)
-	// 		.unwrap()
-	// 		.value,
-	// 	),
-	// );
 }
 
 /// Create two pools A, B and send `add_pool` message to EVM
@@ -1900,40 +1886,33 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
-		// Fund investor on EVM side
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			names::USDC,
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			names::FRAX,
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			names::DAI,
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
+		for currency in [names::USDC, names::FRAX, names::DAI] {
+			// Fund investor on EVM side
+			evm.call(
+				Keyring::Admin,
+				Default::default(),
+				currency,
+				"mint",
+				Some(&[
+					Token::Address(investor.into()),
+					Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				]),
+			)
+			.unwrap();
+			assert_eq!(
+				DEFAULT_BALANCE * DECIMALS_6,
+				Decoder::<Balance>::decode(
+					&evm.view(
+						investor,
+						currency,
+						"balanceOf",
+						Some(&[Token::Address(investor.into())])
+					)
+					.unwrap()
+					.value
+				)
+			)
+		}
 
 		// Approve stable transfers on EVM side
 
