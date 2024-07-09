@@ -774,38 +774,6 @@ mod add_allow_upgrade {
 	}
 
 	#[test_runtimes([development])]
-	fn update_token_price<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let currency_id = AUSD_CURRENCY_ID;
-			let pool_id = POOL_ID;
-
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			create_ausd_pool::<T>(pool_id);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
-				RawOrigin::Signed(Keyring::Bob.into()).into(),
-				pool_id,
-				default_tranche_id::<T>(pool_id),
-				currency_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
 	fn add_currency<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
@@ -1938,13 +1906,6 @@ mod foreign_investments {
 				enable_liquidity_pool_transferability::<T>(currency_id);
 				let investment_currency_id: CurrencyId = default_investment_id::<T>().into();
 
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
-
 				// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
 				// tokens
 				assert_ok!(pallet_investments::Pallet::<T>::process_invest_orders(
@@ -1958,14 +1919,6 @@ mod foreign_investments {
 					}
 				));
 
-				// Pre collect assertions
-				assert!(
-					pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
-
 				// Collecting through Investments should denote amounts and transition
 				// state
 				assert_ok!(pallet_investments::Pallet::<T>::collect_investments_for(
@@ -1973,12 +1926,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Tranche Tokens should still be transferred to collected to
 				// domain locator account already
@@ -2058,12 +2005,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Tranche Tokens should be transferred to collected to
 				// domain locator account already
@@ -2597,12 +2538,6 @@ mod foreign_investments {
 					&pool_account,
 					redeem_amount
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
 				// tokens
@@ -2616,14 +2551,6 @@ mod foreign_investments {
 						price: Ratio::checked_from_rational(1, 4).unwrap(),
 					}
 				));
-
-				// Pre collect assertions
-				assert!(
-					pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Collecting through investments should denote amounts and transition
 				// state
@@ -2666,12 +2593,6 @@ mod foreign_investments {
 						}
 						.into()
 				}));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 				// Since foreign currency is pool currency, the swap is immediately fulfilled
 				// and ExecutedCollectRedeem dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
@@ -2708,12 +2629,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 				assert!(!frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_investments::Event::<T>::RedeemCollectedForNonClearedOrderId {

@@ -55,18 +55,6 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
-
-		pub fn mock_investment_requires_collect(
-			f: impl Fn(&T::AccountId, T::InvestmentId) -> bool + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
-		pub fn mock_redemption_requires_collect(
-			f: impl Fn(&T::AccountId, T::InvestmentId) -> bool + 'static,
-		) {
-			register_call!(move |(a, b)| f(a, b));
-		}
 	}
 
 	impl<T: Config> Investment<T::AccountId> for Pallet<T> {
@@ -103,14 +91,6 @@ pub mod pallet {
 			a: &T::AccountId,
 			b: Self::InvestmentId,
 		) -> Result<Self::TrancheAmount, Self::Error> {
-			execute_call!((a, b))
-		}
-
-		fn investment_requires_collect(a: &T::AccountId, b: T::InvestmentId) -> bool {
-			execute_call!((a, b))
-		}
-
-		fn redemption_requires_collect(a: &T::AccountId, b: T::InvestmentId) -> bool {
 			execute_call!((a, b))
 		}
 	}

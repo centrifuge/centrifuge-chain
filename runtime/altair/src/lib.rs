@@ -110,9 +110,7 @@ use runtime_common::{
 	gateway, instances,
 	instances::{CouncilCollective, TechnicalCollective, TechnicalMembership},
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
-	oracle::{
-		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
-	},
+	oracle::{DigestedOracleRatioProvider, Feeder, OracleConverterBridge, OracleRatioProvider},
 	origins::gov::{
 		types::{
 			AllOfCouncil, DispatchWhitelistedOrigin, EnsureRootOr, HalfOfCouncil, PoolCreateOrigin,
@@ -1759,7 +1757,7 @@ impl pallet_order_book::Config for Runtime {
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+	type RatioProvider = DigestedOracleRatioProvider<
 		RuntimeOrigin,
 		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
 		OrmlAssetRegistry,
@@ -1807,6 +1805,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type MarketRatio = OrderBook;
 	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
