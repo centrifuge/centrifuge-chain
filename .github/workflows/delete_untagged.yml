@@ -1,6 +1,6 @@
 name: Delete untagged
 on:
-  pull_request:
+  workflow_dispatch:
 jobs:
   delete_untagged:
     runs-on: ubuntu-latest
