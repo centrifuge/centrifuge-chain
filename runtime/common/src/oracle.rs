@@ -168,11 +168,11 @@ where
 
 /// An extension of the [OracleRatioProvider] which performs a pre-check when
 /// querying a feeder key value pair.
-pub struct OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>(
+pub struct DigestedOracleRatioProvider<Origin, Provider, AssetInspect>(
 	PhantomData<(Origin, Provider, AssetInspect)>,
 );
 impl<Origin, Provider, AssetInspect> ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId)>
-	for OracleRatioProviderLocalAssetExtension<Origin, Provider, AssetInspect>
+	for DigestedOracleRatioProvider<Origin, Provider, AssetInspect>
 where
 	Origin: OriginTrait,
 	Provider: ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId), Value = Ratio>,
@@ -195,7 +195,7 @@ where
 			_ => Ok(false),
 		}?;
 
-		if locally_coupled_assets {
+		if locally_coupled_assets || from == to {
 			Ok(Some(Ratio::one()))
 		} else {
 			Provider::get(feeder, &(*from, *to))
@@ -203,7 +203,7 @@ where
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn set(feeder: &Feeder<Origin>, (from, to): &(CurrencyId, CurrencyId), ratio: Ratio) {
-		Provider::set(&feeder, &(*from, *to), ratio);
+	fn set(feeder: &Feeder<Origin>, currencies: &(CurrencyId, CurrencyId), ratio: Ratio) {
+		Provider::set(feeder, currencies, ratio);
 	}
 }

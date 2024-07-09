@@ -43,6 +43,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::{
 	liquidity_pools::{InboundQueue, OutboundQueue},
+	swaps::TokenSwaps,
 	PreConditions,
 };
 use cfg_types::{
@@ -60,7 +61,7 @@ use frame_support::{
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Convert},
+	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
@@ -271,6 +272,13 @@ pub mod pallet {
 			Result = DispatchResult,
 		>;
 
+		/// Type used to retrive market ratio information about currencies
+		type MarketRatio: TokenSwaps<
+			Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Ratio = Self::BalanceRatio,
+		>;
+
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
@@ -435,11 +443,14 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
-			// currencies, this price must be first converted into the currency_id and then
-			// re-denominated to 18 decimals (i.e. `Ratio` precision)
-			let price_value = T::TrancheTokenPrice::get(pool_id, tranche_id)
+			let (price, computed_at) = T::TrancheTokenPrice::get_price(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?;
+
+			let foreign_price = T::MarketRatio::market_ratio(
+				currency_id,
+				T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?,
+			)?
+			.ensure_mul(price)?;
 
 			// Check that the registered asset location matches the destination
 			match Self::try_get_wrapped_token(&currency_id)? {
@@ -459,8 +470,8 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					currency,
-					price: price_value.price.into_inner(),
-					computed_at: price_value.last_updated,
+					price: foreign_price.into_inner(),
+					computed_at,
 				},
 			)?;
 

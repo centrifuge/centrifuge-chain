@@ -27,6 +27,7 @@ frame_support::construct_runtime!(
 		DomainAddressToAccountId: cfg_mocks::converter::pallet::<Instance1>,
 		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance2>,
 		TransferFilter: cfg_mocks::pre_conditions::pallet,
+		MarketRatio: cfg_mocks::token_swaps::pallet,
 		Tokens: orml_tokens,
 		LiquidityPools: pallet_liquidity_pools,
 	}
@@ -91,6 +92,14 @@ impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 	type Result = DispatchResult;
 }
 
+impl cfg_mocks::token_swaps::pallet::Config for Runtime {
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type CurrencyId = CurrencyId;
+	type OrderId = ();
+	type Ratio = Ratio;
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
@@ -125,6 +134,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type DomainAddressToAccountId = DomainAddressToAccountId;
 	type ForeignInvestment = ForeignInvestment;
 	type GeneralCurrencyPrefix = CurrencyPrefix;
+	type MarketRatio = MarketRatio;
 	type OutboundQueue = Gateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
