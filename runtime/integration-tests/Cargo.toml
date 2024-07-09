@@ -138,7 +138,6 @@ pallet-rewards = { workspace = true, features = ["std"] }
 pallet-scheduler = { workspace = true, features = ["std"] }
 pallet-session = { workspace = true, features = ["std"] }
 pallet-sudo = { workspace = true, features = ["std"] }
-pallet-swaps = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-token-mux = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }

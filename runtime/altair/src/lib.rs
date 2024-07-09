@@ -1752,7 +1752,7 @@ impl pallet_order_book::Config for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = Swaps;
+	type FulfilledOrderHook = ForeignInvestments;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
@@ -1766,29 +1766,18 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
-impl pallet_swaps::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
-	type OrderBook = OrderBook;
-	type OrderId = OrderId;
-	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
-}
-
 impl pallet_foreign_investments::Config for Runtime {
-	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
-	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
 	type ForeignBalance = Balance;
+	type Hooks = LiquidityPools;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
+	type OrderBook = OrderBook;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
 	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
 	type SwapRatio = Ratio;
-	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
 
@@ -2176,7 +2165,7 @@ construct_runtime!(
 
 		// Our pallets (part 2)
 		// Removed: Migration = 199
-		Swaps: pallet_swaps::{Pallet, Storage} = 200,
+		// Removed: Swaps = 200
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
 	}
 );
