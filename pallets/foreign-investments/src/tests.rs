@@ -15,7 +15,7 @@ use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook},
 	mock::*,
-	Action, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo,
+	Action, Error, Event, ForeignInvestmentInfo, ForeignRedemptionInfo, OrderIdToSwapId,
 };
 
 const USER: AccountId = 1;
@@ -220,10 +220,11 @@ mod util {
 	}
 
 	#[derive(Debug, PartialEq, Eq, Default)]
-	pub struct CheckAmounts {
+	pub struct PostCheck {
 		pub pending_increase: Balance,
 		pub pending_decrease: Balance,
 		pub invested: Balance,
+		pub order_id_to_swap_id: bool,
 	}
 
 	pub fn pending_amount(action: Action, currency_id: CurrencyId) -> Balance {
@@ -234,11 +235,12 @@ mod util {
 			.unwrap_or(0)
 	}
 
-	pub fn check_amounts() -> CheckAmounts {
-		CheckAmounts {
+	pub fn post_check() -> PostCheck {
+		PostCheck {
 			pending_increase: pending_amount(Action::Investment, FOREIGN_CURR),
 			pending_decrease: pending_amount(Action::Investment, POOL_CURR),
 			invested: MockInvestment::investment(&USER, INVESTMENT_ID).unwrap(),
+			order_id_to_swap_id: OrderIdToSwapId::<Runtime>::get(ORDER_ID).is_some(),
 		}
 	}
 }
@@ -294,11 +296,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: AMOUNT,
 					pending_decrease: foreign_to_pool(0),
-					invested: foreign_to_pool(0)
+					invested: foreign_to_pool(0),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -347,11 +350,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: AMOUNT + AMOUNT,
 					pending_decrease: foreign_to_pool(0),
-					invested: foreign_to_pool(0)
+					invested: foreign_to_pool(0),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -413,7 +417,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -455,11 +459,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: AMOUNT,
 					pending_decrease: foreign_to_pool(0),
-					invested: foreign_to_pool(0)
+					invested: foreign_to_pool(0),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -505,11 +510,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: 3 * AMOUNT / 4,
 					pending_decrease: foreign_to_pool(0),
 					invested: foreign_to_pool(AMOUNT / 4),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -540,11 +546,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: 0,
 					pending_decrease: foreign_to_pool(0),
 					invested: foreign_to_pool(AMOUNT),
+					order_id_to_swap_id: false,
 				}
 			);
 		});
@@ -607,11 +614,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: 0,
 					pending_decrease: foreign_to_pool(3 * AMOUNT / 4),
-					invested: foreign_to_pool(0)
+					invested: foreign_to_pool(0),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -715,7 +723,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -758,7 +766,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -799,11 +807,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: 0,
 					pending_decrease: foreign_to_pool(AMOUNT / 2),
-					invested: foreign_to_pool(0)
+					invested: foreign_to_pool(0),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -850,7 +859,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -896,11 +905,12 @@ mod investment {
 			);
 
 			assert_eq!(
-				util::check_amounts(),
-				util::CheckAmounts {
+				util::post_check(),
+				util::PostCheck {
 					pending_increase: AMOUNT / 2,
 					pending_decrease: foreign_to_pool(0),
-					invested: foreign_to_pool(AMOUNT / 4)
+					invested: foreign_to_pool(AMOUNT / 4),
+					order_id_to_swap_id: true,
 				}
 			);
 		});
@@ -950,7 +960,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -988,7 +998,7 @@ mod investment {
 				None,
 			);
 
-			assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+			assert_eq!(util::post_check(), util::PostCheck::default());
 		});
 	}
 
@@ -1132,11 +1142,12 @@ mod investment {
 				);
 
 				assert_eq!(
-					util::check_amounts(),
-					util::CheckAmounts {
+					util::post_check(),
+					util::PostCheck {
 						pending_increase: 0,
 						pending_decrease: foreign_to_pool(0),
-						invested: foreign_to_pool(AMOUNT)
+						invested: foreign_to_pool(AMOUNT),
+						order_id_to_swap_id: false,
 					}
 				);
 			});
@@ -1178,7 +1189,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 	}
@@ -1235,7 +1246,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 
@@ -1286,7 +1297,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 
@@ -1340,7 +1351,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 
@@ -1397,7 +1408,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 
@@ -1453,7 +1464,7 @@ mod investment {
 					None,
 				);
 
-				assert_eq!(util::check_amounts(), util::CheckAmounts::default());
+				assert_eq!(util::post_check(), util::PostCheck::default());
 			});
 		}
 	}
