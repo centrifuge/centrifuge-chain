@@ -1,0 +1,46 @@
+name: Docker Build
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/delete_untagged.yml"
+jobs:
+  delete_untagged:
+    permissions:
+      contents: read
+      packages: write
+      # id-token: write
+    steps:
+      - name: Delete untagged ghcr
+        uses: Chizkiyahu/delete-untagged-ghcr-action@v3
+        with:
+          # Personal access token (PAT) used to fetch the repository. The PAT is configured
+          # with the local git config, which enables your scripts to run authenticated git
+          # commands. The post-job step removes the PAT.
+          # needs delete:packages permissions
+          # required: true
+          # [Learn more about creating and using encrypted secrets](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets)
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Repository name or  name with owner
+          # Delete only from repository name
+          # Default: ${{ github.repository }}
+          repository: 'centrifuge-chain'
+          # 'The repository owner name'
+          # Default: ${{ github.repository_owner }}
+          # repository_owner: ''
+          # 'The package names'
+          # Delete only from comma separated package names
+          # required: false
+          package_name: 'centrifuge-chain'
+          # Delete only package versions without tag
+          # required: false
+          # Default: true
+          # choices: true, false
+          untagged_only: true
+          # Except untagged multiplatform packages from deletion
+          # only for untagged_only=true
+          # needs docker installed
+          except_untagged_multiplatform: false
+          # the owner type
+          # required: true
+          # choices: org, user
+          owner_type: 'org'
