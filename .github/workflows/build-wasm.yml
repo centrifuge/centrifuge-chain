@@ -36,6 +36,10 @@ jobs:
         with:
           prefix-key: build
           shared-key: wasm
+          workspaces: |
+            .
+            ./target/srtool
+          cache-directories: ./runtime
 
       # Use this to debug what's going on inside the srtool container
       # - name: Run Docker SRTool
@@ -137,7 +141,7 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.outputs.wasm }}"
+          artifacts: "${{ steps.srtool_build.outputs.wasm }}, ${{ matrix.chain }}-srtool-digest.json"
           replacesArtifacts: true
           allowUpdates: true
           artifactErrorsFailBuild: true
