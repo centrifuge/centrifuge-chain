@@ -3,7 +3,7 @@ use cfg_traits::{liquidity_pools::InboundQueue, Millis};
 use cfg_types::{
 	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
@@ -13,7 +13,7 @@ use frame_support::{
 		PalletInfo as _,
 	},
 };
-use sp_runtime::{DispatchError, TokenError};
+use sp_runtime::{traits::Saturating, DispatchError, TokenError};
 use staging_xcm::{
 	v4::{Junction::*, Location, NetworkId},
 	VersionedLocation,
@@ -28,6 +28,7 @@ const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
 const EVM_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
 const AMOUNT: Balance = 100;
 const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
 const POOL_ID: PoolId = 1;
 const TRANCHE_ID: TrancheId = [1; 16];
 const NOW: Millis = 0;
@@ -35,6 +36,8 @@ const NAME: &[u8] = b"Token name";
 const SYMBOL: &[u8] = b"Token symbol";
 const DECIMALS: u8 = 6;
 const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
+const TRANCHE_TOKEN_PRICE: Ratio = Ratio::from_rational(10, 1);
+const MARKET_RATIO: Ratio = Ratio::from_rational(2, 1);
 
 mod util {
 	use super::*;
@@ -118,7 +121,7 @@ mod transfer {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -326,7 +329,7 @@ mod transfer_tranche_tokens {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -461,7 +464,7 @@ mod add_pool {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -540,7 +543,7 @@ mod add_tranche {
 		})
 	}
 
-	mod erroring_out_when {
+	mod erroring_out {
 		use super::*;
 
 		#[test]
@@ -613,6 +616,131 @@ mod add_tranche {
 						EVM_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheMetadataNotFound,
+				);
+			})
+		}
+	}
+}
+
+mod update_token_price {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Pools::mock_get_price(|_, _| Some((TRANCHE_TOKEN_PRICE, 1234)));
+			Pools::mock_currency_for(|_| Some(POOL_CURRENCY_ID));
+			MarketRatio::mock_market_ratio(|target, origin| {
+				assert_eq!(target, CURRENCY_ID);
+				assert_eq!(origin, POOL_CURRENCY_ID);
+				Ok(MARKET_RATIO)
+			});
+			AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::UpdateTrancheTokenPrice {
+						pool_id: POOL_ID,
+						tranche_id: TRANCHE_ID,
+						currency: util::currency_index(CURRENCY_ID),
+						price: TRANCHE_TOKEN_PRICE
+							.saturating_mul(MARKET_RATIO)
+							.into_inner(),
+						computed_at: 1234
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::update_token_price(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				CURRENCY_ID,
+				EVM_ADDRESS.domain(),
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_missing_tranche_price() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| None);
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::MissingTranchePrice,
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_pool() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| Some((TRANCHE_TOKEN_PRICE, 1234)));
+				Pools::mock_currency_for(|_| None);
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::PoolNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_market_ratio() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| Some((TRANCHE_TOKEN_PRICE, 1234)));
+				Pools::mock_currency_for(|_| Some(POOL_CURRENCY_ID));
+				MarketRatio::mock_market_ratio(|_, _| Err(DispatchError::Other("")));
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					DispatchError::Other("")
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_transferible_asset() {
+			System::externalities().execute_with(|| {
+				Pools::mock_get_price(|_, _| Some((TRANCHE_TOKEN_PRICE, 1234)));
+				Pools::mock_currency_for(|_| Some(POOL_CURRENCY_ID));
+				MarketRatio::mock_market_ratio(|_, _| Ok(MARKET_RATIO));
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::update_token_price(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CURRENCY_ID,
+						EVM_ADDRESS.domain(),
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
 				);
 			})
 		}

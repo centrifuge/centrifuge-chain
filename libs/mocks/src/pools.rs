@@ -1,8 +1,7 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::{
-		investments::InvestmentAccountant, PoolInspect, PoolReserve, PriceValue, Seconds,
-		TrancheTokenPrice,
+		investments::InvestmentAccountant, PoolInspect, PoolReserve, Seconds, TrancheTokenPrice,
 	};
 	use cfg_types::investments::InvestmentInfo;
 	use frame_support::pallet_prelude::*;
@@ -84,6 +83,12 @@ pub mod pallet {
 				+ 'static,
 		) {
 			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+		}
+
+		pub fn mock_get_price(
+			f: impl Fn(T::PoolId, T::TrancheId) -> Option<(T::BalanceRatio, Seconds)> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
 		}
 
 		#[allow(non_snake_case)]
@@ -168,10 +173,7 @@ pub mod pallet {
 		type PoolId = T::PoolId;
 		type TrancheId = T::TrancheId;
 
-		fn get(
-			a: T::PoolId,
-			b: T::TrancheId,
-		) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Seconds>> {
+		fn get_price(a: T::PoolId, b: T::TrancheId) -> Option<(T::BalanceRatio, Seconds)> {
 			execute_call!((a, b))
 		}
 	}
