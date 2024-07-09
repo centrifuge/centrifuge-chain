@@ -92,14 +92,14 @@ jobs:
       - name: Summary
         run: |
           ## Summary and JSON output
-          echo::group::Summary
+          echo ::group::Summary
           echo - version: ${{ steps.srtool_build.outputs.version }}
           echo - info: ${{ steps.srtool_build.outputs.info }}
           echo - prop: ${{ steps.srtool_build.outputs.proposal_hash }}
           echo - runtime location: ${{ steps.srtool_build.outputs.wasm }}"
           echo ::endgroup
 
-          echo:group::JSON output
+          echo ::group::JSON output
           PRETTY_JSON=`echo ${{ steps.srtool_build.outputs.json }} | jq .`
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.chain }}-srtool-digest.json
           echo JSON Output:
