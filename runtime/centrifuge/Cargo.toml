@@ -140,7 +140,7 @@ pallet-xcm-transactor = { workspace = true }
 staging-parachain-info = { workspace = true }
 
 [build-dependencies]
-substrate-wasm-builder = { workspace = true, optional = true }
+substrate-wasm-builder = { workspace = true }
 
 [features]
 default = ["std"]
@@ -166,7 +166,6 @@ std = [
   "sp-transaction-pool/std",
   "sp-version/std",
   "sp-staking/std",
-  "substrate-wasm-builder",
   "frame-support/std",
   "frame-system/std",
   "frame-system-rpc-runtime-api/std",
@@ -442,7 +441,7 @@ try-runtime = [
 # generate the metadata hash and then a second time with the
 # `RUNTIME_METADATA_HASH` environment variable set for the `CheckMetadataHash`
 # extension.
-metadata-hash = ["substrate-wasm-builder?/metadata-hash"]
+metadata-hash = ["substrate-wasm-builder/metadata-hash"]
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
