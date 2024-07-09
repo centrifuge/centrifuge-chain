@@ -92,7 +92,7 @@ jobs:
       - name: Summary
         run: |
           ## Summary and JSON output
-          echo:group::Summary
+          echo::group::Summary
           echo - version: ${{ steps.srtool_build.outputs.version }}
           echo - info: ${{ steps.srtool_build.outputs.info }}
           echo - prop: ${{ steps.srtool_build.outputs.proposal_hash }}

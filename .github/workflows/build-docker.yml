@@ -111,14 +111,14 @@ jobs:
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
 
-      - name: Update GitHub release
-        if: github.event_name == 'release' && github.event.action == 'released' && matrix.target == 'release'
-        uses: softprops/action-gh-release@v1
-        with:
-          append_body: true
-          body: |
-            **Docker tags (${{ env.NOW }}):**
-               ${{ steps.meta.outputs.tags }}
+      # - name: Update GitHub release
+      #   if: github.event_name == 'release' && github.event.action == 'released' && matrix.target == 'release'
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     append_body: true
+      #     body: |
+      #       **Docker tags (${{ env.NOW }}):**
+      #          ${{ steps.meta.outputs.tags }}
 
       - if: failure()
         name: Check available space after build failed
