@@ -5,3 +5,7 @@ coverage:
     project:
       default:
         informational: true
+    patch:
+      default:
+        informational: true
+        if_ci_failed: success

@@ -1,12 +1,11 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, CollectionId, CouncilCollective, Header, IBalance, ItemId,
-	LoanId, Nonce, OrderId, PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, ItemId, LoanId, Nonce,
+	OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
-	domain_address::Domain,
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
@@ -30,6 +29,7 @@ use runtime_common::{
 	evm::precompile::H160Addresses,
 	fees::{DealWithFees, WeightToFee},
 	instances,
+	instances::CouncilCollective,
 	oracle::Feeder,
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
@@ -138,10 +138,8 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		TrancheCurrency = TrancheCurrency,
 		BalanceRatio = Ratio,
-	> + pallet_liquidity_pools_gateway::Config<
-		Router = DomainRouter<Self>,
-		Message = Message<Domain, PoolId, TrancheId, Balance, Quantity>,
-	> + pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
+	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
+	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
 	+ pallet_order_book::Config<
@@ -298,6 +296,7 @@ pub trait Runtime:
 				frame_system::CheckNonce<Self>,
 				frame_system::CheckWeight<Self>,
 				pallet_transaction_payment::ChargeTransactionPayment<Self>,
+				frame_metadata_hash_extension::CheckMetadataHash<Self>,
 				runtime_common::transfer_filter::PreBalanceTransferExtension<Self>,
 			),
 		>,

@@ -29,6 +29,7 @@ sp-std = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-collective = { workspace = true }
+pallet-membership = { workspace = true }
 
 # cumulus primitives dependencies
 cumulus-primitives-core = { workspace = true }
@@ -45,6 +46,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "pallet-collective/std",
+  "pallet-membership/std",
   "scale-info/std",
   "serde/std",
   "sp-arithmetic/std",
@@ -60,6 +62,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
+  "pallet-membership/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "staging-xcm-executor/runtime-benchmarks",
 ]
@@ -67,5 +70,6 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-collective/try-runtime",
+  "pallet-membership/try-runtime",
   "sp-runtime/try-runtime",
 ]

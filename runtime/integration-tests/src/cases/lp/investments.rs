@@ -323,7 +323,7 @@ mod with_foreign_currency {
 	use cfg_types::fixed_point::Quantity;
 	use cfg_utils::vec_to_fixed_array;
 	use pallet_foreign_investments::Action;
-	use pallet_liquidity_pools::MessageOf;
+	use pallet_liquidity_pools::Message;
 	use sp_runtime::{
 		traits::{EnsureFixedPointNumber, EnsureSub, One},
 		FixedPointNumber,
@@ -652,7 +652,7 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					MessageOf::<T>::FulfilledDepositRequest {
+					Message::FulfilledDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(

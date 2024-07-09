@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, PoolId, SECONDS_PER_YEAR};
+use cfg_primitives::{AccountId, Balance, PoolId, SECONDS_PER_YEAR};
 use cfg_traits::{PoolMetadata, TimeAsSecs, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -588,12 +588,13 @@ fn update_tranche_token_price<T: Runtime>() {
 		assert_eq!(computed_evm, 0);
 	});
 
-	let pre_price_cfg = env.state_mut(|_evm| {
-		let price = <pallet_pool_system::Pallet<T> as TrancheTokenPrice<
-			<T as frame_system::Config>::AccountId,
-			CurrencyId,
-		>>::get(POOL_A, pool_a_tranche_1_id::<T>())
-		.unwrap();
+	let (price, last_updated) = env.state_mut(|_evm| {
+		let price =
+			<pallet_pool_system::Pallet<T> as TrancheTokenPrice<AccountId, CurrencyId>>::get_price(
+				POOL_A,
+				pool_a_tranche_1_id::<T>(),
+			)
+			.unwrap();
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
@@ -623,7 +624,7 @@ fn update_tranche_token_price<T: Runtime>() {
 			.value,
 		);
 
-		assert_eq!(pre_price_cfg.last_updated, computed_at_evm);
-		assert_eq!(price_evm, pre_price_cfg.price.into_inner());
+		assert_eq!(last_updated, computed_at_evm);
+		assert_eq!(price.into_inner(), price_evm);
 	});
 }

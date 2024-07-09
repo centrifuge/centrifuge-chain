@@ -624,9 +624,9 @@ fn epoch() {
 			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get(0, SeniorTrancheId::get())
+			>>::get_price(0, SeniorTrancheId::get())
 			.unwrap()
-			.price,
+			.0,
 			Quantity::one()
 		);
 
@@ -762,9 +762,9 @@ fn epoch() {
 		let senior_price = <PoolSystem as TrancheTokenPrice<
 			<Runtime as frame_system::Config>::AccountId,
 			<Runtime as Config>::CurrencyId,
-		>>::get(0, SeniorTrancheId::get())
+		>>::get_price(0, SeniorTrancheId::get())
 		.unwrap()
-		.price;
+		.0;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert_eq!(
 			pool.tranches.residual_tranche().unwrap().reserve,
@@ -789,9 +789,9 @@ fn epoch() {
 			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get(0, SeniorTrancheId::get())
+			>>::get_price(0, SeniorTrancheId::get())
 			.unwrap()
-			.price,
+			.0,
 			Quantity::from_inner(1004126524122317386)
 		);
 	});
