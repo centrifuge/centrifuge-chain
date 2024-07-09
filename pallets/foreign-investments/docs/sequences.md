@@ -1,8 +1,60 @@
+# Foreign Investments (diagrams)
+
+## Architecture
+`pallet-foreign-investment` is a pallet without extrinsics that acts as a glue connecting investments and orders to liquidity pools though a bunch of traits:
+
+```plantuml
+@startuml
+skinparam roundcorner 10
+
+note "NOTE: orange boxes are traits" as N1
+
+skinparam component {
+  BackgroundColor<<utility>> #Business
+  BackgroundColor #Motivation
+}
+
+skinparam rectangle {
+  BackgroundColor #Strategy
+}
+
+[pallet-foreign-investments] <<utility>> as fi
+[pallet-liquidity-pools] as lp
+[pallet-investments] as investments
+[pallet-order-book] as orders
+
+rectangle Investments
+rectangle ForeignInvestments
+rectangle ForeignInvestmentsHooks
+rectangle TokenSwaps
+rectangle "NotificationStatusHook (collected)" as collected_hook
+rectangle "NotificationStatusHook (fulfilled)" as fulfilled_hook
+
+lp .down.|> ForeignInvestmentsHooks : implements
+lp -down-> ForeignInvestments : uses
+fi .up.|> ForeignInvestments : implements
+fi -up-> ForeignInvestmentsHooks : uses
+fi .down.|> fulfilled_hook : implements
+fi .down.|> collected_hook : implements
+fi -down-> Investments : uses
+fi -down-> TokenSwaps : uses
+
+orders .up.|> TokenSwaps : implements
+orders -up-> fulfilled_hook : uses
+investments .up.|> Investments : implements
+investments -up-> collected_hook : uses
+
+@enduml
+```
+
+## Actions
 The following diagrams shows the sequence from the `pallet-foreign-investments` point of view.
 
 ### Investments
 ```plantuml
 @startuml
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
 
 actor LiquidityPools as LP
 participant ForeignInvestments as FI
@@ -80,6 +132,8 @@ FI --> Investments --
 ### Redemptions
 ```plantuml
 @startuml
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
 
 actor LiquidityPools as LP
 participant ForeignInvestments as FI
@@ -134,6 +188,8 @@ LP --> FI --
 deactivate FI
 FI --> OrderBook --
 
-
 @enduml
 ```
+
+### Miscelaneous
+- Pallet color used: [here]( https://www.plantuml.com/plantuml/uml/LP312i8m38RlUuf2Ny09tgUUF0Y2WkUmXQsiJKkJ2Njx9rirvlRz-KX26XR8CWLVyUWeGOPWWgEp1-QdwsGmzVwWUXGxP4octgam0urRM6Li1QZtQ8ufUTU2k4XcAQjOMQU97I6pMSiMLieb98y1ITPPzf-LU8tYNj-5nlvOIRTXvkKCNnOMLifTCWZsSr4AA-M1xK3HnqsoFwuQfExpq3S0)
