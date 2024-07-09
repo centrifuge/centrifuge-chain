@@ -53,7 +53,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let msg = ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
+		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(investment_id)?;
@@ -61,22 +61,15 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let (cancelled, pending) = info.cancel(who, investment_id)?;
 
 			let msg = info.post_cancel_swap(cancelled, pending)?;
-			remove_entry(info.is_completed(who, investment_id)?, entry)?;
+			if let Some(msg) = msg {
+				T::DecreasedForeignInvestOrderHook::notify_status_change(
+					(who.clone(), investment_id),
+					msg,
+				)?;
+			}
 
-			Ok::<_, DispatchError>(msg)
-		})?;
-
-		// We send the event out of the Info mutation closure
-		// to avoid the implementor of the hook to call again to this pallet having the
-		// above mutation closure not closed.
-		if let Some(msg) = msg {
-			T::DecreasedForeignInvestOrderHook::notify_status_change(
-				(who.clone(), investment_id),
-				msg,
-			)?;
-		}
-
-		Ok(())
+			remove_entry(info.is_completed(who, investment_id)?, entry)
+		})
 	}
 
 	fn increase_foreign_redemption(
