@@ -4,7 +4,7 @@
 //! - This module does not directly OrderBooks
 //! - This module does not directly OrderIdToSwapId storage
 
-use cfg_traits::{investments::Investment, swaps::Swap};
+use cfg_traits::{investments::Investment, swaps::Swap, StatusNotificationHook};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
 	ExecutedForeignCollectRedeem,
@@ -183,28 +183,29 @@ impl<T: Config> InvestmentInfo<T> {
 	#[allow(clippy::type_complexity)]
 	pub fn post_cancel_swap(
 		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
 		swapped_foreign_amount: T::ForeignBalance,
 		pending_pool_amount: T::PoolBalance,
-	) -> Result<Option<ExecutedForeignCancelInvest<T::ForeignBalance, T::CurrencyId>>, DispatchError>
-	{
+	) -> DispatchResult {
 		self.decrease_swapped_foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
 
 		if pending_pool_amount.is_zero() {
-			let msg = ExecutedForeignCancelInvest {
-				foreign_currency: self.foreign_currency,
-				amount_cancelled: self.decrease_swapped_foreign_amount,
-				fulfilled: self.foreign_amount,
-			};
+			T::DecreasedForeignInvestOrderHook::notify_status_change(
+				(who.clone(), investment_id),
+				ExecutedForeignCancelInvest {
+					foreign_currency: self.foreign_currency,
+					amount_cancelled: self.decrease_swapped_foreign_amount,
+					fulfilled: self.foreign_amount,
+				},
+			)?;
 
 			self.decrease_swapped_foreign_amount = T::ForeignBalance::zero();
 			self.foreign_amount = T::ForeignBalance::zero();
 			self.order_id = None;
-
-			Ok(Some(msg))
-		} else {
-			Ok(None)
 		}
+		Ok(())
 	}
 
 	/// This method is performed after a collect
@@ -214,10 +215,7 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::TrancheBalance, T::PoolBalance>,
-	) -> Result<
-		ExecutedForeignCollectInvest<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>,
-		DispatchError,
-	> {
+	) -> DispatchResult {
 		let invested = T::Investment::investment(who, investment_id)?;
 
 		let collected_foreign_amount = if invested.is_zero() {
@@ -243,11 +241,14 @@ impl<T: Config> InvestmentInfo<T> {
 		self.foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
 
-		Ok(ExecutedForeignCollectInvest {
-			currency: self.foreign_currency,
-			amount_currency_invested: collected_foreign_amount,
-			amount_tranche_tokens_payout: collected.amount_collected,
-		})
+		T::CollectedForeignInvestmentHook::notify_status_change(
+			(who.clone(), investment_id),
+			ExecutedForeignCollectInvest {
+				currency: self.foreign_currency,
+				amount_currency_invested: collected_foreign_amount,
+				amount_tranche_tokens_payout: collected.amount_collected,
+			},
+		)
 	}
 
 	pub fn is_completed(
@@ -352,29 +353,29 @@ impl<T: Config> RedemptionInfo<T> {
 	#[allow(clippy::type_complexity)]
 	pub fn post_swap(
 		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
 		swapped_amount: T::ForeignBalance,
 		pending_amount: T::PoolBalance,
-	) -> Result<
-		Option<ExecutedForeignCollectRedeem<T::ForeignBalance, T::TrancheBalance, T::CurrencyId>>,
-		DispatchError,
-	> {
+	) -> DispatchResult {
 		self.swapped_amount.ensure_add_assign(swapped_amount)?;
 
 		if pending_amount.is_zero() {
-			let msg = ExecutedForeignCollectRedeem {
-				currency: self.foreign_currency,
-				amount_tranche_tokens_redeemed: self.collected_tranche_tokens,
-				amount_currency_payout: self.swapped_amount,
-			};
+			T::CollectedForeignRedemptionHook::notify_status_change(
+				(who.clone(), investment_id),
+				ExecutedForeignCollectRedeem {
+					currency: self.foreign_currency,
+					amount_tranche_tokens_redeemed: self.collected_tranche_tokens,
+					amount_currency_payout: self.swapped_amount,
+				},
+			)?;
 
 			self.swapped_amount = T::ForeignBalance::zero();
 			self.collected_tranche_tokens = T::TrancheBalance::zero();
 			self.order_id = None;
-
-			return Ok(Some(msg));
 		}
 
-		Ok(None)
+		Ok(())
 	}
 
 	pub fn is_completed(

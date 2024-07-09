@@ -60,14 +60,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 			let (cancelled, pending) = info.cancel(who, investment_id)?;
 
-			let msg = info.post_cancel_swap(cancelled, pending)?;
-			if let Some(msg) = msg {
-				T::DecreasedForeignInvestOrderHook::notify_status_change(
-					(who.clone(), investment_id),
-					msg,
-				)?;
-			}
-
+			info.post_cancel_swap(who, investment_id, cancelled, pending)?;
 			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
@@ -129,15 +122,12 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 							pending_amount.into(),
 						)
 					} else {
-						let msg =
-							info.post_cancel_swap(swapped_amount_in.into(), pending_amount.into())?;
-
-						if let Some(msg) = msg {
-							T::DecreasedForeignInvestOrderHook::notify_status_change(
-								(who.clone(), investment_id),
-								msg,
-							)?;
-						}
+						info.post_cancel_swap(
+							&who,
+							investment_id,
+							swapped_amount_in.into(),
+							pending_amount.into(),
+						)?;
 
 						remove_entry(info.is_completed(&who, investment_id)?, entry)
 					}
@@ -146,14 +136,12 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 			Action::Redemption => {
 				ForeignRedemptionInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 					let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-					let msg = info.post_swap(swapped_amount_in.into(), pending_amount.into())?;
-
-					if let Some(msg) = msg {
-						T::CollectedForeignRedemptionHook::notify_status_change(
-							(who.clone(), investment_id),
-							msg,
-						)?;
-					}
+					info.post_swap(
+						&who,
+						investment_id,
+						swapped_amount_in.into(),
+						pending_amount.into(),
+					)?;
 
 					remove_entry(info.is_completed(&who, investment_id)?, entry)
 				})
@@ -175,12 +163,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			if let Some(info) = entry.as_mut() {
 				info.ensure_no_pending_cancel(investment_id)?;
-				let msg = info.post_collect(&who, investment_id, collected)?;
-
-				T::CollectedForeignInvestmentHook::notify_status_change(
-					(who.clone(), investment_id),
-					msg,
-				)?;
+				info.post_collect(&who, investment_id, collected)?;
 
 				remove_entry(info.is_completed(&who, investment_id)?, entry)?;
 			}
@@ -205,14 +188,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 				let (amount, pending) =
 					info.post_collect_and_swap(&who, investment_id, collected)?;
 
-				let msg = info.post_swap(amount, pending)?;
-
-				if let Some(msg) = msg {
-					T::CollectedForeignRedemptionHook::notify_status_change(
-						(who.clone(), investment_id),
-						msg,
-					)?;
-				}
+				info.post_swap(&who, investment_id, amount, pending)?;
 
 				remove_entry(info.is_completed(&who, investment_id)?, entry)?;
 			}
