@@ -389,11 +389,6 @@ pub enum Message {
 		/// The amount of tranche tokens by which the redeem order was actually
 		/// decreased by.
 		tranche_tokens_payout: u128,
-		/// The fulfilled redemption amount. It reflects the amount of tranche
-		/// tokens which were redeemed and processed during epoch execution
-		/// independent of whether they were collected.
-		// TODO(@Luis): Apply delta instead of remaining to foreign investments
-		fulfilled_redeem_amount: u128,
 	},
 	// TODO(@william): Add fields + docs
 	TriggerRedeemRequest,
@@ -727,7 +722,6 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20()),
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
-				fulfilled_redeem_amount: AMOUNT / 4,
 			},
 			"1c0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)

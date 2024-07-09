@@ -239,12 +239,6 @@ where
 			investor: investor.clone().into(),
 			currency: currency_u128,
 			tranche_tokens_payout: amount.into(),
-			// TODO(@Luis): Apply deltas
-			fulfilled_redeem_amount: T::ForeignInvestment::redemption(
-				&investor,
-				invest_id.clone(),
-			)?
-			.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

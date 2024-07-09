@@ -1884,7 +1884,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: amount,
 								tranche_tokens_payout: amount,
-								// TODO(@luis): Apply delta
 								fulfilled_invest_amount: 0,
 							},
 						}
@@ -1985,7 +1984,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount * 2,
-								// TODO(@luis): Apply delta
 								fulfilled_invest_amount: invest_amount / 2,
 							},
 						}
@@ -2075,7 +2073,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount,
-								// TODO(@luis): Apply delta
 								fulfilled_invest_amount: 0,
 							},
 						}
@@ -2785,7 +2782,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
 								tranche_tokens_payout: 2 * invest_amount_pool_denominated,
-								// TODO(@luis): Apply delta
 								fulfilled_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
