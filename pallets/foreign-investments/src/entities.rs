@@ -90,7 +90,7 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		foreign_amount: T::ForeignBalance,
-	) -> DispatchResult {
+	) -> Result<(T::PoolBalance, T::ForeignBalance), DispatchError> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
 		if self.foreign_currency != pool_currency {
@@ -104,9 +104,11 @@ impl<T: Config> InvestmentInfo<T> {
 					amount_out: foreign_amount.into(),
 				},
 			)?;
-		}
 
-		Ok(())
+			Ok((Zero::zero(), foreign_amount))
+		} else {
+			Ok((foreign_amount.into(), Zero::zero()))
+		}
 	}
 
 	/// This method is performed after resolve the swap

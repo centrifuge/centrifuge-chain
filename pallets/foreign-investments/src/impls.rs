@@ -3,7 +3,6 @@
 use cfg_traits::{investments::ForeignInvestment, swaps::SwapInfo, StatusNotificationHook};
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -32,17 +31,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_same_foreign(foreign_currency)?;
 			info.ensure_no_pending_cancel(investment_id)?;
 
-			info.increase(who, investment_id, foreign_amount)?;
-
-			if info.foreign_currency == pool_currency_of::<T>(investment_id)? {
-				info.post_increase_swap(
-					who,
-					investment_id,
-					foreign_amount.into(),
-					foreign_amount,
-					Zero::zero(),
-				)?;
-			}
+			let (increased, pending) = info.increase(who, investment_id, foreign_amount)?;
+			info.post_increase_swap(who, investment_id, increased, increased.into(), pending)?;
 
 			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
@@ -59,8 +49,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.ensure_no_pending_cancel(investment_id)?;
 
 			let (cancelled, pending) = info.cancel(who, investment_id)?;
-
 			info.post_cancel_swap(who, investment_id, cancelled, pending)?;
+
 			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
