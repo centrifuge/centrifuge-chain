@@ -1,10 +1,9 @@
 name: Delete untagged
 on:
   pull_request:
-    paths:
-      - ".github/workflows/delete_untagged.yml"
 jobs:
   delete_untagged:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
