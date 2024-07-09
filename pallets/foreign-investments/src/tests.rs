@@ -3,10 +3,7 @@ use cfg_traits::{
 	swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps},
 	StatusNotificationHook,
 };
-use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
-	ExecutedForeignCollectRedeem,
-};
+use cfg_types::investments::CollectedAmount;
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::One;
 use sp_std::sync::{Arc, Mutex};
@@ -392,19 +389,16 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
-				assert_eq!(who, USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(
-					msg,
-					ExecutedForeignCancelInvest {
-						amount_cancelled: AMOUNT,
-						foreign_currency: FOREIGN_CURR,
-						fulfilled: AMOUNT,
-					}
-				);
-				Ok(())
-			});
+			MockHooks::mock_fulfill_cancel_investment(
+				|who, investment_id, curr, amount_cancelled, fulfilled| {
+					assert_eq!(*who, USER);
+					assert_eq!(investment_id, INVESTMENT_ID);
+					assert_eq!(curr, FOREIGN_CURR);
+					assert_eq!(amount_cancelled, AMOUNT);
+					assert_eq!(fulfilled, AMOUNT);
+					Ok(())
+				},
+			);
 
 			assert_ok!(ForeignInvestment::cancel_foreign_investment(
 				&USER,
@@ -433,7 +427,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, _| Ok(()));
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, _, _| Ok(()));
 
 			assert_ok!(ForeignInvestment::cancel_foreign_investment(
 				&USER,
@@ -704,15 +698,9 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCancelInvest {
-						amount_cancelled: AMOUNT,
-						foreign_currency: FOREIGN_CURR,
-						fulfilled: AMOUNT,
-					}
-				);
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
+				assert_eq!(amount_cancelled, AMOUNT);
+				assert_eq!(fulfilled, AMOUNT);
 				Ok(())
 			});
 
@@ -747,15 +735,9 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCancelInvest {
-						amount_cancelled: AMOUNT,
-						foreign_currency: FOREIGN_CURR,
-						fulfilled: AMOUNT,
-					}
-				);
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
+				assert_eq!(amount_cancelled, AMOUNT);
+				assert_eq!(fulfilled, AMOUNT);
 				Ok(())
 			});
 
@@ -790,7 +772,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, _| {
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, _, _| {
 				unreachable!("The msg must be sent only for fully fulfills")
 			});
 
@@ -840,15 +822,9 @@ mod investment {
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 2));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCancelInvest {
-						amount_cancelled: AMOUNT,
-						foreign_currency: FOREIGN_CURR,
-						fulfilled: AMOUNT,
-					}
-				);
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
+				assert_eq!(amount_cancelled, AMOUNT);
+				assert_eq!(fulfilled, AMOUNT);
 				Ok(())
 			});
 
@@ -878,19 +854,19 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
 			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
-			MockCollectInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
-				assert_eq!(who, USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(
-					msg,
-					ExecutedForeignCollectInvest {
-						currency: FOREIGN_CURR,
-						amount_currency_invested: AMOUNT / 4,
-						amount_tranche_tokens_payout: pool_to_tranche(foreign_to_pool(AMOUNT / 4)),
-					}
-				);
-				Ok(())
-			});
+			MockHooks::mock_fulfill_collect_investment(
+				|who, investment_id, currency, amount_collected, tranche_tokens_payout| {
+					assert_eq!(*who, USER);
+					assert_eq!(investment_id, INVESTMENT_ID);
+					assert_eq!(currency, FOREIGN_CURR);
+					assert_eq!(amount_collected, AMOUNT / 4);
+					assert_eq!(
+						tranche_tokens_payout,
+						pool_to_tranche(foreign_to_pool(AMOUNT / 4))
+					);
+					Ok(())
+				},
+			);
 
 			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
 
@@ -931,19 +907,13 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
 			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
-			MockCollectInvestHook::mock_notify_status_change(|_, _| Ok(()));
+			MockHooks::mock_fulfill_collect_investment(|_, _, _, _, _| Ok(()));
 
 			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCancelInvest {
-						amount_cancelled: 3 * AMOUNT / 4,
-						foreign_currency: FOREIGN_CURR,
-						fulfilled: 3 * AMOUNT / 4,
-					}
-				);
+			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
+				assert_eq!(amount_cancelled, 3 * AMOUNT / 4);
+				assert_eq!(fulfilled, 3 * AMOUNT / 4);
 				Ok(())
 			});
 
@@ -979,17 +949,16 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT);
 			util::process_investment(foreign_to_pool(AMOUNT));
 
-			MockCollectInvestHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCollectInvest {
-						currency: FOREIGN_CURR,
-						amount_currency_invested: AMOUNT,
-						amount_tranche_tokens_payout: pool_to_tranche(foreign_to_pool(AMOUNT)),
-					}
-				);
-				Ok(())
-			});
+			MockHooks::mock_fulfill_collect_investment(
+				|_, _, _, amount_collected, tranche_tokens_payout| {
+					assert_eq!(amount_collected, AMOUNT);
+					assert_eq!(
+						tranche_tokens_payout,
+						pool_to_tranche(foreign_to_pool(AMOUNT))
+					);
+					Ok(())
+				},
+			);
 
 			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID,));
 
@@ -1027,13 +996,13 @@ mod investment {
 			for _ in 0..foreign_to_pool(AMOUNT) {
 				util::process_investment(1 /* pool_amount */);
 
-				MockCollectInvestHook::mock_notify_status_change({
+				MockHooks::mock_fulfill_collect_investment({
 					let total_foreign_collected = total_foreign_collected.clone();
-					move |_, msg| {
+					move |_, _, _, amount_collected, _| {
 						// First messages returns nothing, until last messages fix the expected
 						// returned value.
 
-						*total_foreign_collected.lock().unwrap() += msg.amount_currency_invested;
+						*total_foreign_collected.lock().unwrap() += amount_collected;
 						Ok(())
 					}
 				});
@@ -1072,10 +1041,10 @@ mod investment {
 			for _ in 0..foreign_to_pool(AMOUNT) - REMAINDER {
 				util::process_investment(1 /* pool_amount */);
 
-				MockCollectInvestHook::mock_notify_status_change({
+				MockHooks::mock_fulfill_collect_investment({
 					let foreign_fulfilled = foreign_fulfilled.clone();
-					move |_, msg| {
-						*foreign_fulfilled.lock().unwrap() += msg.amount_currency_invested;
+					move |_, _, _, amount_collected, _| {
+						*foreign_fulfilled.lock().unwrap() += amount_collected;
 						Ok(())
 					}
 				});
@@ -1101,10 +1070,10 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change({
+			MockHooks::mock_fulfill_cancel_investment({
 				let foreign_fulfilled = foreign_fulfilled.clone();
-				move |_, msg| {
-					*foreign_fulfilled.lock().unwrap() += msg.fulfilled;
+				move |_, _, _, _, fulfilled| {
+					*foreign_fulfilled.lock().unwrap() += fulfilled;
 					Ok(())
 				}
 			});
@@ -1165,17 +1134,13 @@ mod investment {
 					POOL_CURR
 				));
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: foreign_to_pool(AMOUNT),
-							foreign_currency: POOL_CURR,
-							fulfilled: foreign_to_pool(AMOUNT),
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, foreign_to_pool(AMOUNT));
+						assert_eq!(fulfilled, foreign_to_pool(AMOUNT));
+						Ok(())
+					},
+				);
 
 				// Automatically "fulfills" because there no need of swapping
 				assert_ok!(ForeignInvestment::cancel_foreign_investment(
@@ -1227,17 +1192,13 @@ mod investment {
 					})
 				});
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: AMOUNT / RATIO_CHANGE, // Receive less
-							foreign_currency: FOREIGN_CURR,
-							fulfilled: AMOUNT, // The original increased amount
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, AMOUNT / RATIO_CHANGE); // Receive less
+						assert_eq!(fulfilled, AMOUNT); // The original increased amount
+						Ok(())
+					},
+				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
 
@@ -1278,17 +1239,13 @@ mod investment {
 					})
 				});
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: AMOUNT * RATIO_CHANGE, // Receive more
-							foreign_currency: FOREIGN_CURR,
-							fulfilled: AMOUNT, // The original increased amount
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, AMOUNT * RATIO_CHANGE); // Receive more
+						assert_eq!(fulfilled, AMOUNT); // The original increased amount
+						Ok(())
+					},
+				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
 
@@ -1332,17 +1289,13 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
-							foreign_currency: FOREIGN_CURR,
-							fulfilled: AMOUNT,
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4);
+						assert_eq!(fulfilled, AMOUNT);
+						Ok(())
+					},
+				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
 
@@ -1386,17 +1339,13 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4,
-							foreign_currency: FOREIGN_CURR,
-							fulfilled: AMOUNT,
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4);
+						assert_eq!(fulfilled, AMOUNT);
+						Ok(())
+					},
+				);
 
 				util::fulfill_last_swap(
 					Action::Investment,
@@ -1445,17 +1394,13 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCancelInvest {
-							amount_cancelled: FOREIGN_AMOUNT + 1,
-							foreign_currency: FOREIGN_CURR,
-							fulfilled: FOREIGN_AMOUNT,
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_cancel_investment(
+					|_, _, _, amount_cancelled, fulfilled| {
+						assert_eq!(amount_cancelled, FOREIGN_AMOUNT + 1);
+						assert_eq!(fulfilled, FOREIGN_AMOUNT);
+						Ok(())
+					},
+				);
 
 				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT * 3);
 
@@ -1626,7 +1571,7 @@ mod redemption {
 
 			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
-			MockCollectRedeemHook::mock_notify_status_change(|_, _| {
+			MockHooks::mock_fulfill_collect_redemption(|_, _, _, _, _| {
 				unreachable!("msg is only sent with fully fulfills")
 			});
 
@@ -1667,21 +1612,19 @@ mod redemption {
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
-			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
-				assert_eq!(who, USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(
-					msg,
-					ExecutedForeignCollectRedeem {
-						currency: FOREIGN_CURR,
-						amount_currency_payout: pool_to_foreign(tranche_to_pool(
-							3 * TRANCHE_AMOUNT / 4
-						)),
-						amount_tranche_tokens_redeemed: 3 * TRANCHE_AMOUNT / 4,
-					}
-				);
-				Ok(())
-			});
+			MockHooks::mock_fulfill_collect_redemption(
+				|who, investment_id, currency, tranche_tokens_collected, amount_payout| {
+					assert_eq!(*who, USER);
+					assert_eq!(investment_id, INVESTMENT_ID);
+					assert_eq!(currency, FOREIGN_CURR);
+					assert_eq!(
+						amount_payout,
+						pool_to_foreign(tranche_to_pool(3 * TRANCHE_AMOUNT / 4))
+					);
+					assert_eq!(tranche_tokens_collected, 3 * TRANCHE_AMOUNT / 4);
+					Ok(())
+				},
+			);
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 4));
 
@@ -1718,17 +1661,16 @@ mod redemption {
 
 			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
-			MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
-				assert_eq!(
-					msg,
-					ExecutedForeignCollectRedeem {
-						currency: FOREIGN_CURR,
-						amount_currency_payout: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT)),
-						amount_tranche_tokens_redeemed: TRANCHE_AMOUNT,
-					}
-				);
-				Ok(())
-			});
+			MockHooks::mock_fulfill_collect_redemption(
+				|_, _, _, tranche_tokens_collected, amount_payout| {
+					assert_eq!(
+						amount_payout,
+						pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT))
+					);
+					assert_eq!(tranche_tokens_collected, TRANCHE_AMOUNT);
+					Ok(())
+				},
+			);
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT));
 
@@ -1758,17 +1700,13 @@ mod redemption {
 
 				util::process_redemption(TRANCHE_AMOUNT);
 
-				MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
-					assert_eq!(
-						msg,
-						ExecutedForeignCollectRedeem {
-							currency: POOL_CURR,
-							amount_currency_payout: tranche_to_pool(TRANCHE_AMOUNT),
-							amount_tranche_tokens_redeemed: TRANCHE_AMOUNT,
-						}
-					);
-					Ok(())
-				});
+				MockHooks::mock_fulfill_collect_redemption(
+					|_, _, _, tranche_tokens_collected, amount_payout| {
+						assert_eq!(amount_payout, tranche_to_pool(TRANCHE_AMOUNT));
+						assert_eq!(tranche_tokens_collected, TRANCHE_AMOUNT);
+						Ok(())
+					},
+				);
 
 				// Automatically "fulfills" because there no need of swapping
 				assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));

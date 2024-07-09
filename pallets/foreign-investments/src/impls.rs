@@ -16,7 +16,6 @@ use crate::{
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type Amount = T::ForeignBalance;
 	type CurrencyId = T::CurrencyId;
-	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 	type TrancheAmount = T::TrancheBalance;
 

@@ -142,44 +142,6 @@ impl<Collected: EnsureAddAssign + Copy, Payment: EnsureAddAssign + Copy>
 	}
 }
 
-/// A representation of an executed investment decrement.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignCancelInvest<ForeignAmount, Currency> {
-	/// The currency in which `DecreaseInvestOrder` was realised
-	pub foreign_currency: Currency,
-	/// The amount by which the investment order was really decreased by.
-	pub amount_cancelled: ForeignAmount,
-	/// The proportional amount to the total increased amount that has been
-	/// decreased denominated in `foreign` payment currency
-	pub fulfilled: ForeignAmount,
-}
-
-/// A representation of an executed collected foreign investment or redemption.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignCollectInvest<ForeignAmount, TrancheAmount, Currency> {
-	/// The foreign currency in which the payment took place
-	pub currency: Currency,
-
-	/// The amount of `currency` that was collected.
-	pub amount_currency_invested: ForeignAmount,
-
-	/// The amount of tranche tokens received for the investment made
-	pub amount_tranche_tokens_payout: TrancheAmount,
-}
-
-/// A representation of an executed collected foreign investment or redemption.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignCollectRedeem<ForeignAmount, TrancheAmount, Currency> {
-	/// The foreign currency in which the payout takes place
-	pub currency: Currency,
-
-	/// The amount of tranche tokens which were actually redeemed
-	pub amount_tranche_tokens_redeemed: TrancheAmount,
-
-	/// The amount of `currency` paid out to the investor
-	pub amount_currency_payout: ForeignAmount,
-}
-
 /// A representation of an investment portfolio consisting of free, pending and
 /// claimable pool currency as well as tranche tokens.
 #[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

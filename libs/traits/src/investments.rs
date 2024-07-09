@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_runtime::DispatchResult;
 use sp_std::fmt::Debug;
 
 /// A trait for converting from a PoolId and a TranchId
@@ -201,7 +202,6 @@ pub trait ForeignInvestment<AccountId> {
 	type Amount;
 	type TrancheAmount;
 	type CurrencyId;
-	type Error: Debug;
 	type InvestmentId;
 
 	/// Initiates the increment of a foreign investment amount in
@@ -217,9 +217,9 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
-	/// Initiates the decrement of a foreign investment amount in
+	/// Initiates a cancellation of a foreign investment in
 	/// `foreign_payment_currency` of who into the investment class
 	/// `pool_currency` to amount.
 	///
@@ -231,7 +231,7 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payment_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
 	/// Initiates the increment of a foreign redemption amount for the given
 	/// investment id.
@@ -244,9 +244,9 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::TrancheAmount,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
-	/// Initiates the decrement of a foreign redemption amount.
+	/// Initiates the cancellation of a foreign redemption.
 	///
 	/// NOTES:
 	/// * The decrementing redemption amount is bound by the previously
@@ -257,5 +257,41 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
+}
+
+/// Trait used to receive information asynchronously from a ForeignInvestment
+/// implementation
+pub trait ForeignInvestmentHooks<AccountId> {
+	type Amount;
+	type TrancheAmount;
+	type CurrencyId;
+	type InvestmentId;
+
+	/// An async cancellation has been done
+	fn fulfill_cancel_investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		amount_cancelled: Self::Amount,
+		fulfilled: Self::Amount,
+	) -> DispatchResult;
+
+	/// An async investment collection has been done
+	fn fulfill_collect_investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		amount_collected: Self::Amount,
+		tranche_tokens_payout: Self::TrancheAmount,
+	) -> DispatchResult;
+
+	/// An async redemption collection has been done
+	fn fulfill_collect_redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		tranche_tokens_collected: Self::TrancheAmount,
+		amount_payout: Self::Amount,
+	) -> DispatchResult;
 }

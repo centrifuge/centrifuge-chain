@@ -1,7 +1,4 @@
 use cfg_traits::investments::TrancheCurrency;
-use cfg_types::investments::{
-	ExecutedForeignCancelInvest, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
-};
 use frame_support::derive_impl;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -41,9 +38,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		MockInvestment: cfg_mocks::investment::pallet,
 		MockTokenSwaps: cfg_mocks::token_swaps::pallet,
-		MockDecreaseInvestHook: cfg_mocks::status_notification::pallet::<Instance1>,
-		MockCollectInvestHook: cfg_mocks::status_notification::pallet::<Instance2>,
-		MockCollectRedeemHook: cfg_mocks::status_notification::pallet::<Instance3>,
+		MockHooks: cfg_mocks::foreign_investment_hooks::pallet,
 		MockPools: cfg_mocks::pools::pallet,
 		ForeignInvestment: pallet_foreign_investments,
 	}
@@ -69,22 +64,11 @@ impl cfg_mocks::token_swaps::pallet::Config for Runtime {
 	type Ratio = FixedU128;
 }
 
-type Hook1 = cfg_mocks::status_notification::pallet::Instance1;
-impl cfg_mocks::status_notification::pallet::Config<Hook1> for Runtime {
-	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCancelInvest<Balance, CurrencyId>;
-}
-
-type Hook2 = cfg_mocks::status_notification::pallet::Instance2;
-impl cfg_mocks::status_notification::pallet::Config<Hook2> for Runtime {
-	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollectInvest<Balance, Balance, CurrencyId>;
-}
-
-type Hook3 = cfg_mocks::status_notification::pallet::Instance3;
-impl cfg_mocks::status_notification::pallet::Config<Hook3> for Runtime {
-	type Id = (AccountId, InvestmentId);
-	type Status = ExecutedForeignCollectRedeem<Balance, Balance, CurrencyId>;
+impl cfg_mocks::foreign_investment_hooks::pallet::Config for Runtime {
+	type Amount = Balance;
+	type CurrencyId = CurrencyId;
+	type InvestmentId = InvestmentId;
+	type TrancheAmount = Balance;
 }
 
 impl cfg_mocks::pools::pallet::Config for Runtime {
@@ -97,11 +81,9 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 }
 
 impl pallet_foreign_investments::Config for Runtime {
-	type CollectedForeignInvestmentHook = MockCollectInvestHook;
-	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
 	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
 	type ForeignBalance = Balance;
+	type Hooks = MockHooks;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
 	type OrderBook = MockTokenSwaps;

@@ -4,11 +4,11 @@
 //! - This module does not directly OrderBooks
 //! - This module does not directly OrderIdToSwapId storage
 
-use cfg_traits::{investments::Investment, swaps::Swap, StatusNotificationHook};
-use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCancelInvest, ExecutedForeignCollectInvest,
-	ExecutedForeignCollectRedeem,
+use cfg_traits::{
+	investments::{ForeignInvestmentHooks, Investment},
+	swaps::Swap,
 };
+use cfg_types::investments::CollectedAmount;
 use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -194,19 +194,19 @@ impl<T: Config> InvestmentInfo<T> {
 			.ensure_add_assign(swapped_foreign_amount)?;
 
 		if pending_pool_amount.is_zero() {
-			T::DecreasedForeignInvestOrderHook::notify_status_change(
-				(who.clone(), investment_id),
-				ExecutedForeignCancelInvest {
-					foreign_currency: self.foreign_currency,
-					amount_cancelled: self.decrease_swapped_foreign_amount,
-					fulfilled: self.foreign_amount,
-				},
+			T::Hooks::fulfill_cancel_investment(
+				&who,
+				investment_id,
+				self.foreign_currency,
+				self.decrease_swapped_foreign_amount,
+				self.foreign_amount,
 			)?;
 
 			self.decrease_swapped_foreign_amount = T::ForeignBalance::zero();
 			self.foreign_amount = T::ForeignBalance::zero();
 			self.order_id = None;
 		}
+
 		Ok(())
 	}
 
@@ -243,13 +243,12 @@ impl<T: Config> InvestmentInfo<T> {
 		self.foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
 
-		T::CollectedForeignInvestmentHook::notify_status_change(
-			(who.clone(), investment_id),
-			ExecutedForeignCollectInvest {
-				currency: self.foreign_currency,
-				amount_currency_invested: collected_foreign_amount,
-				amount_tranche_tokens_payout: collected.amount_collected,
-			},
+		T::Hooks::fulfill_collect_investment(
+			&who,
+			investment_id,
+			self.foreign_currency,
+			collected_foreign_amount,
+			collected.amount_collected,
 		)
 	}
 
@@ -363,13 +362,12 @@ impl<T: Config> RedemptionInfo<T> {
 		self.swapped_amount.ensure_add_assign(swapped_amount)?;
 
 		if pending_amount.is_zero() {
-			T::CollectedForeignRedemptionHook::notify_status_change(
-				(who.clone(), investment_id),
-				ExecutedForeignCollectRedeem {
-					currency: self.foreign_currency,
-					amount_tranche_tokens_redeemed: self.collected_tranche_tokens,
-					amount_currency_payout: self.swapped_amount,
-				},
+			T::Hooks::fulfill_collect_redemption(
+				&who,
+				investment_id,
+				self.foreign_currency,
+				self.collected_tranche_tokens,
+				self.swapped_amount,
 			)?;
 
 			self.swapped_amount = T::ForeignBalance::zero();

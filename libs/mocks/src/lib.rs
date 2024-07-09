@@ -5,6 +5,7 @@ pub mod currency_conversion;
 pub mod data;
 pub mod fees;
 pub mod foreign_investment;
+pub mod foreign_investment_hooks;
 pub mod investment;
 pub mod liquidity_pools;
 pub mod liquidity_pools_gateway_routers;

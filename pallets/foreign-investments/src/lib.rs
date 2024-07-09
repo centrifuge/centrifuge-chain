@@ -87,11 +87,8 @@ pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment, TrancheCurrency},
-		PoolInspect, StatusNotificationHook,
-	};
-	use cfg_types::investments::{
-		ExecutedForeignCancelInvest, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
+		investments::{ForeignInvestmentHooks, Investment, TrancheCurrency},
+		PoolInspect,
 	};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
@@ -181,32 +178,12 @@ pub mod pallet {
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
-		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCancelInvest<Self::ForeignBalance, Self::CurrencyId>,
-			Error = DispatchError,
-		>;
-
-		/// The hook type which acts upon a finalized redemption collection.
-		type CollectedForeignRedemptionHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollectRedeem<
-				Self::ForeignBalance,
-				Self::TrancheBalance,
-				Self::CurrencyId,
-			>,
-			Error = DispatchError,
-		>;
-
-		/// The hook type which acts upon a finalized redemption collection.
-		type CollectedForeignInvestmentHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollectInvest<
-				Self::ForeignBalance,
-				Self::TrancheBalance,
-				Self::CurrencyId,
-			>,
-			Error = DispatchError,
+		type Hooks: ForeignInvestmentHooks<
+			Self::AccountId,
+			Amount = Self::ForeignBalance,
+			TrancheAmount = Self::TrancheBalance,
+			CurrencyId = Self::CurrencyId,
+			InvestmentId = Self::InvestmentId,
 		>;
 
 		/// The source of truth for pool currencies.
