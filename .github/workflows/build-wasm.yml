@@ -36,10 +36,6 @@ jobs:
         with:
           prefix-key: build
           shared-key: wasm
-          workspaces: |
-            .
-            ./target/srtool
-          cache-directories: ./runtime
 
       # Use this to debug what's going on inside the srtool container
       # - name: Run Docker SRTool
@@ -63,7 +59,7 @@ jobs:
         id: srtool_build
         shell: bash
         run: |
-
+          ##"RUNNING SRTOOL"
           echo ::group::Docker run srtool build ${{ inputs.chain }}
           CMD="docker run --rm  --user root --platform=linux/amd64
           -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
@@ -95,8 +91,8 @@ jobs:
              
       - name: Summary
         run: |
+          ## Summary and JSON output
           echo:group::Summary
-          echo Summary:
           echo - version: ${{ steps.srtool_build.outputs.version }}
           echo - info: ${{ steps.srtool_build.outputs.info }}
           echo - prop: ${{ steps.srtool_build.outputs.proposal_hash }}
@@ -125,6 +121,7 @@ jobs:
         if: ${{ steps.auth.outcome == 'success' }}
         shell: bash
         run: |
+          ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.chain }}-srtool-digest.json
           gsutil cp \
             ${{ steps.srtool_build.outputs.wasm }} \
