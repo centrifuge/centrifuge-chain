@@ -64,6 +64,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.get_or_insert(RedemptionInfo::new(payout_foreign_currency));
 			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.increase_redemption(who, investment_id, tranche_tokens_amount)?;
+
 			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
@@ -77,6 +78,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.cancel_redeemption(who, investment_id)?;
+
 			remove_entry(info.is_completed(who, investment_id)?, entry)
 		})
 	}
