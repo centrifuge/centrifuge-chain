@@ -384,7 +384,7 @@ pub mod contracts {
 	pub const LP: &str = "ERC7540Vault";
 	pub const RESTRICTION_MANAGER: &str = "RestrictionManager";
 	pub const TRANCHE_FACTORY: &str = "TrancheFactory";
-	pub const TRANCHE_TOKEN: &str = "TrancheToken";
+	pub const TRANCHE_TOKEN: &str = "Tranche";
 	pub const INVESTMENT_MANAGER: &str = "InvestmentManager";
 	pub const GAS_SERVICE: &str = "GasService";
 	pub const ADAPTER: &str = "LocalAdapter";
