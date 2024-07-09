@@ -130,3 +130,20 @@ jobs:
           ${{ matrix.chain }}-srtool-digest.json \
           gs://centrifuge-wasm-repo/${{matrix.chain}}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json         
 
+      - name: Upload WASM to release tag ${{ github.ref_name }}
+        uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # @v1
+        if: github.event_name == 'release'
+        # https://github.com/ncipollo/release-action
+        with:
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          artifacts: "${{ steps.srtool_build.outputs.wasm }}"
+          replacesArtifacts: true
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          omitBodyDuringUpdate: true
+          omitDraftDuringUpdate: true
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          # updateOnlyUnreleased: true # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
+          
