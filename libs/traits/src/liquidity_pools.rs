@@ -22,6 +22,11 @@ pub trait LPEncoding: Sized {
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 }
 
+pub trait LPMessage: LPEncoding {
+	fn get_message_proof(&self) -> Option<[u8; 32]>;
+	fn to_message_proof(&self) -> Self;
+}
+
 #[cfg(any(test, feature = "std"))]
 pub mod test_util {
 	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};

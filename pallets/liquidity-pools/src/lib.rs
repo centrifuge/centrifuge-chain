@@ -250,7 +250,7 @@ pub mod pallet {
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
 		/// Type used for queueing messages.
-		type MessageQueue: MessageQueue;
+		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::AccountId, Message>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]

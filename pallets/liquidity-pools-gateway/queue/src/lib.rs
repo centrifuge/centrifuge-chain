@@ -14,7 +14,7 @@
 
 use std::fmt::Debug;
 
-use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue};
+use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -235,7 +235,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> MessageQueue for Pallet<T> {
+	impl<T: Config> MessageQueueT for Pallet<T> {
 		type Message = T::Message;
 
 		fn submit(message: Self::Message) -> DispatchResult {

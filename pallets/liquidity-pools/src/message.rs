@@ -5,12 +5,16 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
+use cfg_traits::{
+	liquidity_pools::{LPEncoding, LPMessage},
+	Seconds,
+};
 use cfg_types::domain_address::Domain;
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
+use sp_core::keccak_256;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -415,6 +419,22 @@ pub enum Message {
 		pool_id: u64,
 		currency: u128,
 	},
+	//TODO(cdamian) - do we need to add the deprecated fields?
+	//
+	//
+	// 25 - Freeze tranche tokens
+	// DEPRECATED_Freeze,
+	// 26 - Unfreeze tranche tokens
+	// DEPRECATED_Unfreeze,
+	/// Trigger a redeem request.
+	///
+	/// Note - placeholder that should be updated.
+	TriggerRedeemRequest,
+	/// A multi-directional message used for verifying
+	/// both inbound and outbound messages.
+	MessageProof {
+		proof: [u8; 32],
+	},
 }
 
 impl LPEncoding for Message {
@@ -424,6 +444,21 @@ impl LPEncoding for Message {
 
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
+	}
+}
+
+impl LPMessage for Message {
+	fn get_message_proof(&self) -> Option<[u8; 32]> {
+		match self {
+			Message::MessageProof { proof } => Some(proof.clone()),
+			_ => None,
+		}
+	}
+
+	fn to_message_proof(&self) -> Self {
+		let proof = keccak_256(&LPEncoding::serialize(self));
+
+		Message::MessageProof { proof }
 	}
 }
 
