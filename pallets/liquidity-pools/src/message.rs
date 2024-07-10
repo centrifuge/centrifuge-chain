@@ -215,6 +215,7 @@ pub enum Message {
 	UpdateTrancheTokenMetadata {
 		pool_id: u64,
 		tranche_id: TrancheId,
+		#[serde(with = "serde_big_array::BigArray")]
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
@@ -293,11 +294,6 @@ pub enum Message {
 		currency_payout: u128,
 		/// The amount of tranche tokens received for the investment made
 		tranche_tokens_payout: u128,
-		/// The fulfilled investment amount denominated in the `foreign` payment
-		/// currency. It reflects the amount of investments which were processed
-		/// independent of whether they were collected.
-		// TODO(@Luis): Apply delta instead of remaining to foreign investments
-		fulfilled_invest_amount: u128,
 	},
 	/// The message sent back to the domain from which a `RedeemRequest`
 	/// originated from after the redemption was fully processed during epoch
@@ -369,7 +365,6 @@ pub enum Message {
 		/// The fulfilled investment amount of `currency`. It reflects the
 		/// amount of investments which were processed independent of whether
 		/// they were collected.
-		// TODO(@Luis): Apply delta instead of remaining to foreign investments
 		fulfilled_invest_amount: u128,
 	},
 	/// The message sent back to the domain from which a `CancelRedeemRequest`
@@ -737,7 +732,6 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
-				fulfilled_invest_amount: AMOUNT / 4,
 			},
 			"170000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)

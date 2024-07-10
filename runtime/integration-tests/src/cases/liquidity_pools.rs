@@ -1884,7 +1884,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: amount,
 								tranche_tokens_payout: amount,
-								fulfilled_invest_amount: 0,
 							},
 						}
 						.into()
@@ -1984,7 +1983,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount * 2,
-								fulfilled_invest_amount: invest_amount / 2,
 							},
 						}
 						.into()
@@ -2073,7 +2071,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount,
-								fulfilled_invest_amount: 0,
 							},
 						}
 						.into()
@@ -2782,7 +2779,6 @@ mod foreign_investments {
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
 								tranche_tokens_payout: 2 * invest_amount_pool_denominated,
-								fulfilled_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
 						.into()

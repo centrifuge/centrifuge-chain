@@ -661,7 +661,6 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
-						fulfilled_invest_amount: remaining_amount,
 					}
 				)
 			});

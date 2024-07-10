@@ -152,7 +152,6 @@ where
 			currency,
 			currency_payout: status.amount_currency_payout.into(),
 			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
-			fulfilled_invest_amount: status.amount_remaining.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
