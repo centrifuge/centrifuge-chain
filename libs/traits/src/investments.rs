@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::fmt::Debug;
 
 /// A trait for converting from a PoolId and a TranchId
@@ -247,6 +247,7 @@ pub trait ForeignInvestment<AccountId> {
 	) -> DispatchResult;
 
 	/// Initiates the cancellation of a foreign redemption.
+	/// Returns the cancelled tranche tokens amount.
 	///
 	/// NOTES:
 	/// * The decrementing redemption amount is bound by the previously
@@ -257,7 +258,7 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> DispatchResult;
+	) -> Result<Self::TrancheAmount, DispatchError>;
 }
 
 /// Trait used to receive information asynchronously from a ForeignInvestment

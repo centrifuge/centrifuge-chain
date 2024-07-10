@@ -304,19 +304,25 @@ impl<T: Config> RedemptionInfo<T> {
 		investment_id: T::InvestmentId,
 		tranche_tokens_amount: T::TrancheBalance,
 	) -> DispatchResult {
-		T::Investment::update_redemption(
-			who,
-			investment_id,
-			T::Investment::redemption(who, investment_id)?.ensure_add(tranche_tokens_amount)?,
-		)
+		if !tranche_tokens_amount.is_zero() {
+			T::Investment::update_redemption(
+				who,
+				investment_id,
+				T::Investment::redemption(who, investment_id)?.ensure_add(tranche_tokens_amount)?,
+			)?;
+		}
+
+		Ok(())
 	}
 
 	pub fn cancel_redeemption(
 		&mut self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> DispatchResult {
-		T::Investment::update_redemption(who, investment_id, Zero::zero())
+	) -> Result<T::TrancheBalance, DispatchError> {
+		let cancelled = T::Investment::redemption(who, investment_id)?;
+		T::Investment::update_redemption(who, investment_id, Zero::zero())?;
+		Ok(cancelled)
 	}
 
 	/// This method is performed after a collect and before applying the swap

@@ -73,13 +73,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		payout_foreign_currency: T::CurrencyId,
-	) -> DispatchResult {
+	) -> Result<T::TrancheBalance, DispatchError> {
 		ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.ensure_same_foreign(payout_foreign_currency)?;
-			info.cancel_redeemption(who, investment_id)?;
+			let cancelled = info.cancel_redeemption(who, investment_id)?;
 
-			remove_entry(info.is_completed(who, investment_id)?, entry)
+			remove_entry(info.is_completed(who, investment_id)?, entry)?;
+			Ok(cancelled)
 		})
 	}
 }

@@ -45,7 +45,12 @@ pub mod pallet {
 		}
 
 		pub fn mock_cancel_foreign_redemption(
-			f: impl Fn(&T::AccountId, T::InvestmentId, T::CurrencyId) -> DispatchResult + 'static,
+			f: impl Fn(
+					&T::AccountId,
+					T::InvestmentId,
+					T::CurrencyId,
+				) -> Result<T::TrancheAmount, DispatchError>
+				+ 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
@@ -87,7 +92,7 @@ pub mod pallet {
 			a: &T::AccountId,
 			b: Self::InvestmentId,
 			c: Self::CurrencyId,
-		) -> DispatchResult {
+		) -> Result<T::TrancheAmount, DispatchError> {
 			execute_call!((a, b, c))
 		}
 	}
