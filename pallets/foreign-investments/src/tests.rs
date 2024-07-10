@@ -139,20 +139,9 @@ mod util {
 		util::config_investments();
 	}
 
-	pub fn current_order_id(action: Action) -> Option<OrderId> {
-		match action {
-			Action::Investment => {
-				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID)?.order_id
-			}
-			Action::Redemption => {
-				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID)?.order_id
-			}
-		}
-	}
-
 	/// Emulates a swap partial fulfill
 	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
-		let order_id = current_order_id(action).unwrap();
+		let order_id = ForeignInvestment::order_id(&USER, INVESTMENT_ID, action).unwrap();
 		let order = MockTokenSwaps::get_order_details(order_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
 			Some(OrderInfo {
@@ -225,7 +214,7 @@ mod util {
 	}
 
 	pub fn pending_amount(action: Action, currency_id: CurrencyId) -> Balance {
-		current_order_id(action)
+		ForeignInvestment::order_id(&USER, INVESTMENT_ID, action)
 			.and_then(MockTokenSwaps::get_order_details)
 			.filter(|info| info.swap.currency_out == currency_id)
 			.map(|info| info.swap.amount_out)
@@ -1385,8 +1374,11 @@ mod investment {
 
 				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT);
 
-				// There is no swap.
-				assert!(util::current_order_id(Action::Investment).is_none());
+				// There is no pending swap.
+				assert_eq!(
+					ForeignInvestment::order_id(&USER, INVESTMENT_ID, Action::Investment),
+					None
+				);
 
 				assert_ok!(ForeignInvestment::cancel_foreign_investment(
 					&USER,

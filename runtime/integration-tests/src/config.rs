@@ -149,13 +149,13 @@ pub trait Runtime:
 		OrderIdNonce = u64,
 		Ratio = Ratio,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
-	> + pallet_swaps::Config<OrderId = OrderId, SwapId = pallet_foreign_investments::SwapId<Self>>
-	+ pallet_foreign_investments::Config<
+	> + pallet_foreign_investments::Config<
 		ForeignBalance = Balance,
 		PoolBalance = Balance,
 		TrancheBalance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
+		OrderId = OrderId,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>

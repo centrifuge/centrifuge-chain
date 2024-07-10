@@ -265,6 +265,23 @@ pub mod pallet {
 			swap: SwapOf<T>,
 		},
 	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn order_id(
+			account_id: &T::AccountId,
+			investment_id: T::InvestmentId,
+			action: Action,
+		) -> Option<T::OrderId> {
+			match action {
+				Action::Investment => {
+					ForeignInvestmentInfo::<T>::get(account_id, investment_id)?.order_id
+				}
+				Action::Redemption => {
+					ForeignRedemptionInfo::<T>::get(account_id, investment_id)?.order_id
+				}
+			}
+		}
+	}
 }
 
 /// Get the pool currency associated to a investment_id

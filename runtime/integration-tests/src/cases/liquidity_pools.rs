@@ -371,12 +371,12 @@ mod utils {
 	}
 
 	pub fn default_order_id<T: Runtime + FudgeSupport>(investor: &AccountId) -> OrderId {
-		let default_swap_id = (
+		pallet_foreign_investments::Pallet::<T>::order_id(
+			&investor,
 			default_investment_id::<T>(),
 			pallet_foreign_investments::Action::Investment,
-		);
-		pallet_swaps::Pallet::<T>::order_id(&investor, default_swap_id)
-			.expect("Swap order exists; qed")
+		)
+		.expect("Swap order exists; qed")
 	}
 
 	/// Returns the default investment account derived from the
