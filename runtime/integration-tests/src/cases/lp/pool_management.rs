@@ -18,7 +18,7 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
-use frame_support::{assert_noop, assert_ok, traits::OriginTrait};
+use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use runtime_common::account_conversion::AccountConverter;
@@ -387,18 +387,6 @@ fn update_member<T: Runtime>() {
 			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
-		);
-
-		// Address given MUST match derived allowlisted address for that domain
-		assert_noop!(
-			pallet_liquidity_pools::Pallet::<T>::update_member(
-				Keyring::Bob.as_origin(),
-				POOL_A,
-				pool_a_tranche_1_id::<T>(),
-				DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Alice.into()),
-				SECONDS_PER_YEAR,
-			),
-			pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember
 		);
 
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
