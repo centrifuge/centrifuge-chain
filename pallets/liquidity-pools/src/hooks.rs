@@ -12,12 +12,10 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
+	investments::{ForeignInvestmentHooks, TrancheCurrency},
+	liquidity_pools::OutboundQueue,
 };
-use cfg_types::{
-	domain_address::DomainAddress,
-	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
-};
+use cfg_types::domain_address::DomainAddress;
 use frame_support::{
 	traits::{
 		fungibles::Mutate,
@@ -31,6 +29,50 @@ use sp_std::marker::PhantomData;
 
 use crate::{pallet::Config, Message, Pallet};
 
+impl<T: Config> ForeignInvestmentHooks<T::AccountId> for Pallet<T>
+where
+	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
+{
+	type Amount = T::Balance;
+	type CurrencyId = T::CurrencyId;
+	type InvestmentId = T::TrancheCurrency;
+	type TrancheAmount = T::Balance;
+
+	/// An async cancellation has been done
+	fn fulfill_cancel_investment(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		amount_cancelled: Self::Amount,
+		fulfilled: Self::Amount,
+	) -> DispatchResult {
+		todo!()
+	}
+
+	/// An async investment collection has been done
+	fn fulfill_collect_investment(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		amount_collected: Self::Amount,
+		tranche_tokens_payout: Self::TrancheAmount,
+	) -> DispatchResult {
+		todo!()
+	}
+
+	/// An async redemption collection has been done
+	fn fulfill_collect_redemption(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		tranche_tokens_collected: Self::TrancheAmount,
+		amount_payout: Self::Amount,
+	) -> DispatchResult {
+		todo!()
+	}
+}
+
+/*
 /// The hook struct which acts upon a finalized investment decrement.
 pub struct DecreasedForeignInvestOrderHook<T>(PhantomData<T>);
 
@@ -159,3 +201,4 @@ where
 		Ok(())
 	}
 }
+*/

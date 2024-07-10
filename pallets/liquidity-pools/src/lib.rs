@@ -218,8 +218,7 @@ pub mod pallet {
 			Amount = Self::Balance,
 			TrancheAmount = Self::Balance,
 			CurrencyId = Self::CurrencyId,
-			Error = DispatchError,
-			InvestmentId = <Self as Config>::TrancheCurrency,
+			InvestmentId = Self::TrancheCurrency,
 		>;
 
 		/// The source of truth for the transferability of assets via the
