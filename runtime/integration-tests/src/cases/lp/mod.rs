@@ -405,10 +405,9 @@ pub mod names {
 	pub const GAS_SERVICE: &str = "gas_service";
 	pub const ADAPTER: &str = "adapter";
 	pub const ADAPTERS: &str = "adapters";
-	pub const AXELAR_ADAPTER: &str = "axelar-adapter";
 	pub const GATEWAY: &str = "gateway";
 	pub const ROUTER_ESCROW: &str = "router_escrow";
-	pub const ROUTER: &str = "centrifuge_router";
+	pub const ROUTER: &str = "router";
 	pub const GUARDIAN: &str = "guardian";
 	pub const TRANSFER_PROXY_FACTORY: &str = "transfer_proxy_factory";
 
@@ -721,8 +720,8 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			Keyring::Alice,
 			Some(&[
 				Token::Address(evm.deployed(names::ROOT).address()),
-				Token::Address(evm.deployed(names::INVESTMENT_MANAGER).address()),
 				Token::Address(evm.deployed(names::POOL_MANAGER).address()),
+				Token::Address(evm.deployed(names::INVESTMENT_MANAGER).address()),
 				Token::Address(evm.deployed(names::GAS_SERVICE).address()),
 			]),
 		);
@@ -827,7 +826,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			]),
 		);
 
-		// PART: Deploy router (using the testing LocalRouter here)
+		// PART: Deploy router (using the testing LocalAdapter here)
 		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L24
 		//  * NEW: https://github.com/centrifuge/liquidity-pools/blob/b19bf62a3a49b8452999b9250dbd3229f60ee757/script/Axelar.s.sol#L19-L21
 		evm.deploy(contracts::ADAPTER, names::ADAPTER, Keyring::Alice, None);
@@ -920,7 +919,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			names::INVESTMENT_MANAGER,
 			"file",
 			Some(&[
-				Token::FixedBytes(names::GATEWAY.as_bytes().to_vec()),
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
 				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
@@ -931,7 +930,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			names::POOL_MANAGER,
 			"file",
 			Some(&[
-				Token::FixedBytes(names::GATEWAY.as_bytes().to_vec()),
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
 				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
@@ -1026,7 +1025,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			names::ADAPTER,
 			"file",
 			Some(&[
-				Token::FixedBytes(names::GATEWAY.as_bytes().to_vec()),
+				Token::FixedBytes("gateway".as_bytes().to_vec()),
 				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
