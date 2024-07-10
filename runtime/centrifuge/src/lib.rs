@@ -82,9 +82,6 @@ use pallet_evm::{
 	Runner,
 };
 use pallet_investments::OrderType;
-use pallet_liquidity_pools::hooks::{
-	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
-};
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
@@ -1852,6 +1849,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type OrderBook = OrderBook;
+	type OrderId = OrderId;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
 	type RuntimeEvent = RuntimeEvent;
