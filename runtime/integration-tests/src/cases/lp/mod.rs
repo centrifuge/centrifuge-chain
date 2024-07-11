@@ -657,7 +657,10 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			contracts::RESTRICTION_MANAGER,
 			names::RESTRICTION_MANAGER,
 			Keyring::Alice,
-			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+			Some(&[
+				Token::Address(evm.deployed(names::ROOT).address()),
+				Token::Address(Keyring::Alice.into()),
+			]),
 		);
 		evm.deploy(
 			contracts::TRANCHE_FACTORY,
@@ -1050,6 +1053,25 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 				Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
 				Token::String("0x1111111111111111111111111111111111111111".into()),
 			]),
+		)
+		.unwrap();
+
+		// Required by gateway for dispatching messages to Centrifuge Chain
+		// FIXME(@william): Does not seem to have an effect
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::ROOT,
+			"endorse",
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Uint::from(1000 * DECIMALS_18),
+			names::GATEWAY,
+			"topUp",
+			None,
 		)
 		.unwrap();
 
