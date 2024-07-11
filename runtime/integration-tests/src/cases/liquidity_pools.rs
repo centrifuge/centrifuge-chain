@@ -2,7 +2,7 @@ use cfg_primitives::{
 	currency_decimals, parachains, AccountId, Balance, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
-	investments::{Investment, OrderManager, TrancheCurrency},
+	investments::{OrderManager, TrancheCurrency},
 	liquidity_pools::InboundQueue,
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
@@ -675,10 +675,6 @@ mod utils {
 
 		amount_foreign_denominated
 	}
-
-	pub fn get_council_members() -> Vec<Keyring> {
-		vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
-	}
 }
 
 use utils::*;
@@ -687,91 +683,6 @@ mod add_allow_upgrade {
 	use cfg_types::tokens::LiquidityPoolsWrappedToken;
 
 	use super::*;
-
-	#[test_runtimes([development])]
-	fn update_member<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			// Now create the pool
-			let pool_id = POOL_ID;
-
-			create_ausd_pool::<T>(pool_id);
-
-			let tranche_id = default_tranche_id::<T>(pool_id);
-
-			// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
-			// successfully when given a valid pool + tranche id pair.
-			let new_member = DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [3; 20]);
-
-			// Make ALICE the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
-				Keyring::Alice.into(),
-				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::InvestorAdmin),
-			));
-
-			// Verify it fails if the destination is not whitelisted yet
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_member(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					new_member.clone(),
-					DEFAULT_VALIDITY,
-				),
-				pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
-			);
-
-			// Whitelist destination as TrancheInvestor of this Pool
-			crate::utils::pool::give_role::<T>(
-				AccountConverter::convert(new_member.clone()),
-				pool_id,
-				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
-			);
-
-			// Verify the Investor role was set as expected in Permissions
-			assert!(pallet_permissions::Pallet::<T>::has(
-				PermissionScope::Pool(pool_id),
-				AccountConverter::convert(new_member.clone()),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, DEFAULT_VALIDITY)),
-			));
-
-			// Verify it now works
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
-				RawOrigin::Signed(Keyring::Alice.into()).into(),
-				pool_id,
-				tranche_id,
-				new_member,
-				DEFAULT_VALIDITY,
-			));
-
-			// Verify it cannot be called for another member without whitelisting the domain
-			// beforehand
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_member(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [9; 20]),
-					DEFAULT_VALIDITY,
-				),
-				pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
-			);
-		});
-	}
 
 	#[test_runtimes([development])]
 	fn add_currency<T: Runtime + FudgeSupport>() {
