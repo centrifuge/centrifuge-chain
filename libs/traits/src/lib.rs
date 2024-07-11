@@ -55,6 +55,8 @@ pub mod swaps;
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
 
+pub use cfg_utils::time::{IntoMillis, IntoSeconds};
+
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
@@ -380,34 +382,14 @@ pub trait TryConvert<A, B> {
 	fn try_convert(a: A) -> Result<B, Self::Error>;
 }
 
-// TODO: Probably these should be in a future cfg-utils.
-// Issue: https://github.com/centrifuge/centrifuge-chain/issues/1380
-
-/// Type to represent milliseconds
-pub type Millis = u64;
-
-/// Type to represent seconds
-pub type Seconds = u64;
-
 /// Trait to obtain the time as seconds
 pub trait TimeAsSecs: UnixTime {
-	fn now() -> Seconds {
-		<Self as UnixTime>::now().as_secs()
+	fn now() -> cfg_primitives::Seconds {
+		<Self as UnixTime>::now().as_secs().into()
 	}
 }
 
 impl<T: UnixTime> TimeAsSecs for T {}
-
-/// Trait to convert into seconds
-pub trait IntoSeconds {
-	fn into_seconds(self) -> Seconds;
-}
-
-impl IntoSeconds for Millis {
-	fn into_seconds(self) -> Seconds {
-		self / 1000
-	}
-}
 
 pub trait ValueProvider<Source, Key> {
 	type Value;

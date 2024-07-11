@@ -24,6 +24,7 @@ sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+cfg-utils = { workspace = true }
 
 # substrate frame dependencies
 frame-support = { workspace = true }
@@ -57,6 +58,7 @@ std = [
   "sp-std/std",
   "staging-xcm-executor/std",
   "staging-xcm/std",
+  "cfg-utils/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -65,6 +67,7 @@ runtime-benchmarks = [
   "pallet-membership/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "staging-xcm-executor/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -72,4 +75,5 @@ try-runtime = [
   "pallet-collective/try-runtime",
   "pallet-membership/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-utils/try-runtime",
 ]

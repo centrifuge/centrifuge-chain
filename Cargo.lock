@@ -1640,6 +1640,7 @@ dependencies = [
 name = "cfg-primitives"
 version = "2.0.0"
 dependencies = [
+ "cfg-utils",
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
@@ -1682,6 +1683,7 @@ version = "0.1.0"
 dependencies = [
  "cfg-mocks",
  "cfg-primitives",
+ "cfg-utils",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -1728,6 +1730,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-arithmetic",
  "sp-consensus-aura",
  "sp-runtime",
