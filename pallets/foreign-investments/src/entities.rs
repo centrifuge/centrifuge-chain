@@ -1,8 +1,7 @@
 //! Perform actions over ForeignInvestInfo and ForeignRedemptionInfo types
-//! - This module does not handle FI storages
-//! - This module does not call hooks
-//! - This module does not directly OrderBooks
-//! - This module does not directly OrderIdToSwapId storage
+//! - This module does not handle FI storages, just manipulate their entities
+//! - This module does not directly handle `OrderBooks`
+//! - This module does not directly handle `OrderIdToSwapId` storage
 
 use cfg_traits::{
 	investments::{ForeignInvestmentHooks, Investment},
@@ -228,9 +227,9 @@ impl<T: Config> InvestmentInfo<T> {
 		} else {
 			let pool_amount_before_collecting = invested.ensure_add(collected.amount_payment)?;
 
-			// Transform the collected pool amount into foreing amount.
-			// This transformation is done by correlation, thanks that `foreing_amount`
-			// contains the "same" amount as the investment pool amount but with different
+			// Transform the collected pool amount into foreign amount.
+			// This transformation is done by correlation, thanks to `foreing_amount`
+			// containing the "same" amount as the investment pool amount but with different
 			// denomination.
 			collected
 				.amount_payment
