@@ -41,7 +41,7 @@ stop-parachain-docker)
 
 start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
-  cargo build -p centrifuge-chain --release --features=fast-runtime
+  cargo build -p centrifuge-chain --release --features=on-chain-release-build
 
   parachain_dir=$base_dir/parachain/${para_id}
   mkdir -p $parachain_dir;
@@ -74,10 +74,10 @@ onboard-parachain)
 
    wasm_location="$onboard_dir/${parachain}-${para_id}.wasm"
     if [ "$docker_onboard" == "true" ]; then
-      genesis=$(docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-state --chain="${parachain}")
+      genesis=$(docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-head --chain="${parachain}")
       docker run centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-wasm --chain="${parachain}" > $wasm_location
     else
-      genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}")
+      genesis=$(./target/release/centrifuge-chain export-genesis-head --chain="${parachain}")
       ./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}" > $wasm_location
     fi
 
