@@ -9,6 +9,7 @@ permissions:
   contents: read
 jobs:
   test-n-lint:
+    timeout-minutes: 90
     name: ${{ matrix.target }}
     runs-on: ubuntu-latest-8-cores
     strategy:
@@ -40,6 +41,7 @@ jobs:
           RUSTC_WRAPPER: "sccache"
 
   benchmark-check:
+    # timeout-minutes: 90 # <- Not needed as ubunt-latest is free of charge
     name: bench-check-${{ matrix.runtime }}
     runs-on: ubuntu-latest #-4-cores
     strategy:
