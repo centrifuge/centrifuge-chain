@@ -47,7 +47,7 @@ where
 
 		T::Tokens::burn_from(
 			currency_id,
-			&who,
+			who,
 			amount_cancelled,
 			Precision::Exact,
 			Fortitude::Polite,
@@ -78,7 +78,7 @@ where
 
 		T::Tokens::transfer(
 			investment_id.clone().into(),
-			&who,
+			who,
 			&domain_address.domain().into_account(),
 			tranche_tokens_payout,
 			Preservation::Expendable,
@@ -109,7 +109,7 @@ where
 
 		T::Tokens::burn_from(
 			currency_id,
-			&who,
+			who,
 			amount_payout,
 			Precision::Exact,
 			Fortitude::Polite,
