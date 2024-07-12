@@ -167,7 +167,9 @@ mod utils {
 							token_name: BoundedVec::<
 								u8,
 								<T as pallet_pool_system::Config>::StringLimit,
-							>::try_from("A highly advanced tranche".as_bytes().to_vec())
+							>::try_from(
+								"A highly advanced tranche".as_bytes().to_vec()
+							)
 							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
