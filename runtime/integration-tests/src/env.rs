@@ -221,7 +221,7 @@ pub trait EvmEnv<T: Runtime> {
 		&self,
 		caller: Keyring,
 		value: U256,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError>;
@@ -229,7 +229,7 @@ pub trait EvmEnv<T: Runtime> {
 	fn view(
 		&self,
 		caller: Keyring,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError>;

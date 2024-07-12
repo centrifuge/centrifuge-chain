@@ -33,9 +33,9 @@
 //!   completion.
 //! - The pallet's associated `TreasuryAccount` holds sufficient balance for the
 //!   corresponding fee currencies of all possible recipient domains for the
-//!   following outgoing messages: [`Message::ExecutedDecreaseInvestOrder`],
-//!   [`Message::ExecutedDecreaseRedeemOrder`],
-//!   [`Message::ExecutedCollectInvest`], [`Message::ExecutedCollectRedeem`],
+//!   following outgoing messages: [`Message::FulfilledCancelDepositRequest`],
+//!   [`Message::FulfilledCancelRedeemRequest`],
+//!   [`Message::FulfilledDepositRequest`], [`Message::FulfilledRedeemRequest`],
 //!   [`Message::ScheduleUpgrade`].
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -69,6 +69,8 @@ use staging_xcm::{
 	v4::{Junction::*, NetworkId},
 	VersionedLocation,
 };
+
+use crate::message::UpdateRestrictionMessage;
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
@@ -259,7 +261,7 @@ pub mod pallet {
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
 		/// The type for paying the transaction fees for the dispatch of
-		/// `Executed*` and `ScheduleUpgrade` messages.
+		/// `Fulfilled*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
@@ -278,6 +280,12 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Ratio = Self::BalanceRatio,
 		>;
+
+		/// Temporary hardcoded address for `AddTranche.hook` field which
+		/// represents the address which is associated with the solidity
+		/// restriction manager interface.
+		#[pallet::constant]
+		type AddTrancheHookAddress: Get<[u8; 32]>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
@@ -419,7 +427,7 @@ pub mod pallet {
 					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
 					// only available option. We will design a dynamic approach going forward where
 					// this value can be set on a per-tranche-token basis on storage.
-					restriction_set: 1,
+					hook: T::AddTrancheHookAddress::get(),
 				},
 			)?;
 
@@ -517,11 +525,13 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain_address.domain(),
-				Message::UpdateMember {
+				Message::UpdateRestriction {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
-					valid_until,
-					member: domain_address.address(),
+					update: UpdateRestrictionMessage::UpdateMember {
+						member: domain_address.address(),
+						valid_until,
+					},
 				},
 			)?;
 
@@ -682,7 +692,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AddCurrency {
+				Message::AddAsset {
 					currency,
 					evm_address,
 				},
@@ -719,7 +729,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AllowInvestmentCurrency {
+				Message::AllowAsset {
 					pool_id: pool_id.into(),
 					currency,
 				},
@@ -825,7 +835,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::DisallowInvestmentCurrency {
+				Message::DisallowAsset {
 					pool_id: pool_id.into(),
 					currency,
 				},
@@ -991,39 +1001,26 @@ pub mod pallet {
 					T::DomainAccountToDomainAddress::convert((domain.try_into()?, receiver)),
 					amount.into(),
 				),
-				Message::IncreaseInvestOrder {
+				Message::DepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
 					amount,
-				} => Self::handle_increase_invest_order(
+				} => Self::handle_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					amount.into(),
 				),
-				Message::DecreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::handle_decrease_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-					amount.into(),
-				),
-				Message::IncreaseRedeemOrder {
+				Message::RedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					amount,
 					currency,
-				} => Self::handle_increase_redeem_order(
+				} => Self::handle_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
@@ -1031,59 +1028,23 @@ pub mod pallet {
 					currency.into(),
 					sender,
 				),
-				Message::DecreaseRedeemOrder {
+				Message::CancelDepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
-					amount,
-				} => Self::handle_decrease_redeem_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount.into(),
-					currency.into(),
-					sender,
-				),
-				Message::CollectInvest {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_investment(
+				} => Self::handle_cancel_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
-				Message::CollectRedeem {
+				Message::CancelRedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
-				} => Self::handle_collect_redemption(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_redeem_order(
+				} => Self::handle_cancel_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),

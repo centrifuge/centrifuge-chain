@@ -27,6 +27,7 @@ use liquidity_pools_gateway_routers::{
 	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
 use orml_traits::MultiCurrency;
+use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
@@ -410,7 +411,7 @@ mod utils {
 
 	/// Sets up required permissions for the investor and executes an
 	/// initial investment via LiquidityPools by executing
-	/// `IncreaseInvestOrder`.
+	/// `DepositRequest`.
 	///
 	/// Assumes `setup_pre_requirements` and
 	/// `investments::create_currency_pool` to have been called
@@ -425,7 +426,7 @@ mod utils {
 			.expect("Pool existence checked already");
 
 		// Mock incoming increase invest message
-		let msg = LiquidityPoolMessage::IncreaseInvestOrder {
+		let msg = LiquidityPoolMessage::DepositRequest {
 			pool_id,
 			tranche_id: default_tranche_id::<T>(pool_id),
 			investor: investor.clone().into(),
@@ -495,7 +496,7 @@ mod utils {
 
 	/// Sets up required permissions for the investor and executes an
 	/// initial redemption via LiquidityPools by executing
-	/// `IncreaseRedeemOrder`.
+	/// `RedeemRequest`.
 	///
 	/// Assumes `setup_pre_requirements` and
 	/// `investments::create_currency_pool` to have been called
@@ -530,7 +531,7 @@ mod utils {
 		);
 
 		// Mock incoming increase invest message
-		let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+		let msg = LiquidityPoolMessage::RedeemRequest {
 			pool_id,
 			tranche_id: default_tranche_id::<T>(pool_id),
 			investor: investor.clone().into(),
@@ -679,6 +680,30 @@ mod utils {
 	pub fn get_council_members() -> Vec<Keyring> {
 		vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
 	}
+
+	pub fn outbound_message_dispatched<T: Runtime + FudgeSupport>(f: impl Fn() -> ()) -> bool {
+		let events_before = frame_system::Pallet::<T>::events();
+
+		f();
+
+		frame_system::Pallet::<T>::events()
+			.into_iter()
+			.filter(|e1| !events_before.iter().any(|e2| e1 == e2))
+			.any(|e| {
+				if let Ok(event) = e.event.clone().try_into()
+					as Result<pallet_liquidity_pools_gateway::Event<T>, _>
+				{
+					match event {
+						pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+							..
+						} => true,
+						_ => false,
+					}
+				} else {
+					false
+				}
+			})
+	}
 }
 
 use utils::*;
@@ -821,7 +846,7 @@ mod add_allow_upgrade {
 
 			assert_eq!(
 				outbound_message.2,
-				Message::AddCurrency {
+				Message::AddAsset {
 					currency: currency_index,
 					evm_address,
 				},
@@ -1486,7 +1511,7 @@ mod foreign_investments {
 		use super::*;
 
 		#[test_runtimes([development])]
-		fn increase_invest_order<T: Runtime + FudgeSupport>() {
+		fn increase_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1523,7 +1548,7 @@ mod foreign_investments {
 				);
 
 				// Increasing again should just bump invest_amount
-				let msg = LiquidityPoolMessage::IncreaseInvestOrder {
+				let msg = LiquidityPoolMessage::DepositRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
@@ -1538,7 +1563,7 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn decrease_invest_order<T: Runtime + FudgeSupport>() {
+		fn decrease_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1550,8 +1575,6 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount: u128 = 10 * decimals(12);
-				let decrease_amount = invest_amount / 3;
-				let final_amount = invest_amount - decrease_amount;
 				let investor =
 					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
 				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
@@ -1569,16 +1592,15 @@ mod foreign_investments {
 				);
 
 				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::DecreaseInvestOrder {
+				let msg = LiquidityPoolMessage::CancelDepositRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
 					currency: general_currency_index::<T>(currency_id),
-					amount: decrease_amount,
 				};
 
 				// Expect failure if transferability is disabled since this is required for
-				// preparing the `ExecutedDecreaseInvest` message.
+				// preparing the `FulfilledCancelDepositRequest` message.
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::submit(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
@@ -1600,7 +1622,7 @@ mod foreign_investments {
 						currency_id,
 						&default_investment_account::<T>()
 					),
-					final_amount
+					0
 				);
 				// Since the investment was done in the pool currency, the decrement happens
 				// synchronously and thus it must be burned from investor's holdings
@@ -1610,14 +1632,14 @@ mod foreign_investments {
 						investment_id: default_investment_id::<T>(),
 						submitted_at: 0,
 						who: investor.clone(),
-						amount: final_amount
+						amount: 0
 					}
 					.into()));
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
 					== orml_tokens::Event::<T>::Withdrawn {
 						currency_id,
 						who: investor.clone(),
-						amount: decrease_amount
+						amount: invest_amount
 					}
 					.into()));
 				assert_eq!(
@@ -1625,13 +1647,13 @@ mod foreign_investments {
 						default_investment_id::<T>(),
 					)
 					.amount,
-					final_amount
+					0
 				);
 			});
 		}
 
 		#[test_runtimes([development])]
-		fn cancel_invest_order<T: Runtime + FudgeSupport>() {
+		fn cancel_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1669,7 +1691,7 @@ mod foreign_investments {
 				);
 
 				// Mock incoming cancel message
-				let msg = LiquidityPoolMessage::CancelInvestOrder {
+				let msg = LiquidityPoolMessage::CancelDepositRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
@@ -1677,7 +1699,7 @@ mod foreign_investments {
 				};
 
 				// Expect failure if transferability is disabled since this is required for
-				// preparing the `ExecutedDecreaseInvest` message.
+				// preparing the `FulfilledCancelDepositRequest` message.
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::submit(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
@@ -1731,7 +1753,7 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn collect_invest_order<T: Runtime + FudgeSupport>() {
+		fn collect_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1782,16 +1804,11 @@ mod foreign_investments {
 					amount
 				);
 
-				// Mock collection message msg
-				let msg = LiquidityPoolMessage::CollectInvest {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(currency_id),
-				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg
+				// Collect investment
+				assert_ok!(pallet_investments::Pallet::<T>::collect_investments_for(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					investor.clone(),
+					default_investment_id::<T>()
 				));
 
 				// Remove events before collect execution
@@ -1862,14 +1879,13 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectInvest {
+							message: LiquidityPoolMessage::FulfilledDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: amount,
 								tranche_tokens_payout: amount,
-								remaining_invest_amount: 0,
 							},
 						}
 						.into()
@@ -1878,7 +1894,7 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn partially_collect_investment_for_through_investments<T: Runtime + FudgeSupport>() {
+		fn collect_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1962,14 +1978,13 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: pallet_liquidity_pools::Message::ExecutedCollectInvest {
+							message: pallet_liquidity_pools::Message::FulfilledDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount * 2,
-								remaining_invest_amount: invest_amount / 2,
 							},
 						}
 						.into()
@@ -2051,39 +2066,58 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectInvest {
+							message: LiquidityPoolMessage::FulfilledDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: invest_amount / 2,
 								tranche_tokens_payout: invest_amount,
-								remaining_invest_amount: 0,
 							},
 						}
 						.into()
 				}));
 
-				// Should fail to collect if `InvestmentState` does not
-				// exist
-				let msg = LiquidityPoolMessage::CollectInvest {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(currency_id),
-				};
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg
-					),
-					pallet_foreign_investments::Error::<T>::InfoNotFound
+				// Collecting through investments should not mutate any state
+				let events_before = frame_system::Pallet::<T>::events();
+				let info_before =
+					ForeignInvestmentInfo::<T>::get(&investor, default_investment_id::<T>());
+				assert_ok!(pallet_investments::Pallet::<T>::collect_investments_for(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					investor.clone(),
+					default_investment_id::<T>()
+				));
+				assert!(!frame_system::Pallet::<T>::events()
+					.into_iter()
+					.filter(|e1| !events_before.iter().any(|e2| e1 == e2))
+					.any(|e| {
+						if let Ok(event) = e.event.clone().try_into()
+							as Result<pallet_liquidity_pools_gateway::Event<T>, _>
+						{
+							match event {
+							pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+								sender: event_sender,
+								domain: event_domain,
+								message: Message::FulfilledDepositRequest { .. },
+							} => {
+								event_sender == sender
+									&& event_domain == DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()
+							}
+							_ => false,
+						}
+						} else {
+							false
+						}
+					}));
+				assert_eq!(
+					ForeignInvestmentInfo::<T>::get(investor, default_investment_id::<T>()),
+					info_before
 				);
 			});
 		}
 
 		#[test_runtimes([development])]
-		fn increase_redeem_order<T: Runtime + FudgeSupport>() {
+		fn increase_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -2121,7 +2155,7 @@ mod foreign_investments {
 					&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
 					amount
 				));
-				let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+				let msg = LiquidityPoolMessage::RedeemRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
@@ -2136,127 +2170,7 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn decrease_redeem_order<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let pool_id = POOL_ID;
-				let redeem_amount = 10 * decimals(12);
-				let decrease_amount = redeem_amount / 3;
-				let final_amount = redeem_amount - decrease_amount;
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
-				let currency_id = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				let sending_domain_locator =
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
-
-				// Create new pool
-				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
-
-				// Set permissions and execute initial redemption
-				do_initial_increase_redemption::<T>(
-					pool_id,
-					redeem_amount,
-					investor.clone(),
-					currency_id,
-				);
-
-				// Verify the corresponding redemption order id is 0
-				assert_eq!(
-					pallet_investments::Pallet::<T>::invest_order_id(investment_id::<T>(
-						pool_id,
-						default_tranche_id::<T>(pool_id)
-					)),
-					0
-				);
-
-				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(currency_id),
-					amount: decrease_amount,
-				};
-
-				// Execute byte message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg
-				));
-
-				// Verify investment was decreased into investment account
-				assert_eq!(
-					orml_tokens::Pallet::<T>::balance(
-						default_investment_id::<T>().into(),
-						&default_investment_account::<T>(),
-					),
-					final_amount
-				);
-				// Tokens should have been transferred from investor's wallet to domain's
-				// sovereign account
-				assert_eq!(
-					orml_tokens::Pallet::<T>::balance(
-						default_investment_id::<T>().into(),
-						&investor
-					),
-					0
-				);
-				assert_eq!(
-					orml_tokens::Pallet::<T>::balance(
-						default_investment_id::<T>().into(),
-						&sending_domain_locator
-					),
-					decrease_amount
-				);
-
-				// Order should have been updated
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
-					== pallet_investments::Event::<T>::RedeemOrderUpdated {
-						investment_id: default_investment_id::<T>(),
-						submitted_at: 0,
-						who: investor.clone(),
-						amount: final_amount
-					}
-					.into()));
-				assert_eq!(
-					pallet_investments::Pallet::<T>::acc_active_redeem_order(
-						default_investment_id::<T>(),
-					)
-					.amount,
-					final_amount
-				);
-
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedDecreaseRedeemOrder {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								tranche_tokens_payout: decrease_amount,
-								remaining_redeem_amount: final_amount,
-							},
-						}
-						.into()
-				}));
-			});
-		}
-
-		#[test_runtimes([development])]
-		fn cancel_redeem_order<T: Runtime + FudgeSupport>() {
+		fn cancel_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -2288,15 +2202,12 @@ mod foreign_investments {
 
 				// Verify the corresponding redemption order id is 0
 				assert_eq!(
-					pallet_investments::Pallet::<T>::invest_order_id(investment_id::<T>(
-						pool_id,
-						default_tranche_id::<T>(pool_id)
-					)),
+					pallet_investments::Pallet::<T>::redeem_order_id(default_investment_id::<T>()),
 					0
 				);
 
 				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::CancelRedeemOrder {
+				let msg = LiquidityPoolMessage::CancelRedeemRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
@@ -2354,157 +2265,7 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn fully_collect_redeem_order<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let pool_id = POOL_ID;
-				let amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
-				let currency_id = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-					.into_account_truncating();
-
-				// Create new pool
-				create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
-
-				// Set permissions and execute initial investment
-				do_initial_increase_redemption::<T>(pool_id, amount, investor.clone(), currency_id);
-				let events_before_collect = frame_system::Pallet::<T>::events();
-
-				// Fund the pool account with sufficient pool currency, else redemption cannot
-				// swap tranche tokens against pool currency
-				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-					currency_id,
-					&pool_account,
-					amount
-				));
-
-				// Process and fulfill order
-				// NOTE: Without this step, the order id is not cleared and
-				// `Event::RedeemCollectedForNonClearedOrderId` be dispatched
-				assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-					default_investment_id::<T>()
-				));
-				assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-					default_investment_id::<T>(),
-					FulfillmentWithPrice {
-						of_amount: Perquintill::one(),
-						price: Ratio::one(),
-					}
-				));
-
-				// Enable liquidity pool transferability
-				enable_liquidity_pool_transferability::<T>(currency_id);
-
-				// Mock collection message msg
-				let msg = LiquidityPoolMessage::CollectRedeem {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(currency_id),
-				};
-
-				// Execute byte message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg
-				));
-
-				// Remove events before collect execution
-				let events_since_collect: Vec<_> = frame_system::Pallet::<T>::events()
-					.into_iter()
-					.filter(|e| !events_before_collect.contains(e))
-					.collect();
-
-				// Verify collected redemption was burned from investor
-				assert_eq!(orml_tokens::Pallet::<T>::balance(currency_id, &investor), 0);
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
-					== orml_tokens::Event::<T>::Withdrawn {
-						currency_id,
-						who: investor.clone(),
-						amount
-					}
-					.into()));
-
-				// Order should have been cleared by fulfilling redemption
-				assert_eq!(
-					pallet_investments::Pallet::<T>::acc_active_redeem_order(
-						default_investment_id::<T>(),
-					)
-					.amount,
-					0
-				);
-				assert!(!events_since_collect.iter().any(|e| {
-					e.event
-						== pallet_investments::Event::<T>::RedeemCollectedForNonClearedOrderId {
-							investment_id: default_investment_id::<T>(),
-							who: investor.clone(),
-						}
-						.into()
-				}));
-
-				// Order should not have been updated since everything is collected
-				assert!(!events_since_collect.iter().any(|e| {
-					e.event
-						== pallet_investments::Event::<T>::RedeemOrderUpdated {
-							investment_id: default_investment_id::<T>(),
-							submitted_at: 0,
-							who: investor.clone(),
-							amount: 0,
-						}
-						.into()
-				}));
-
-				// Order should have been fully collected
-				assert!(events_since_collect.iter().any(|e| {
-					e.event
-						== pallet_investments::Event::<T>::RedeemOrdersCollected {
-							investment_id: default_investment_id::<T>(),
-							processed_orders: vec![0],
-							who: investor.clone(),
-							collection: RedeemCollection::<Balance> {
-								payout_investment_redeem: amount,
-								remaining_investment_redeem: 0,
-							},
-							outcome: CollectOutcome::FullyCollected,
-						}
-						.into()
-				}));
-
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
-				// Clearing of foreign RedeemState should be dispatched
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectRedeem {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: amount,
-								tranche_tokens_payout: amount,
-								remaining_redeem_amount: 0,
-							},
-						}
-						.into()
-				}));
-			});
-		}
-
-		#[test_runtimes([development])]
-		fn partially_collect_redemption_for_through_investments<T: Runtime + FudgeSupport>() {
+		fn collect_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -2581,20 +2342,19 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectRedeem {
+							message: LiquidityPoolMessage::FulfilledRedeemRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: redeem_amount / 8,
 								tranche_tokens_payout: redeem_amount / 2,
-								remaining_redeem_amount: redeem_amount / 2,
 							},
 						}
 						.into()
 				}));
 				// Since foreign currency is pool currency, the swap is immediately fulfilled
-				// and ExecutedCollectRedeem dispatched
+				// and FulfilledRedeemRequest dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
 					== orml_tokens::Event::<T>::Withdrawn {
 						currency_id,
@@ -2666,14 +2426,13 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectRedeem {
+							message: LiquidityPoolMessage::FulfilledRedeemRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(currency_id),
 								currency_payout: redeem_amount / 4,
 								tranche_tokens_payout: redeem_amount / 2,
-								remaining_redeem_amount: 0,
 							},
 						}
 						.into()
@@ -2683,105 +2442,6 @@ mod foreign_investments {
 
 		mod should_fail {
 			use super::*;
-
-			mod decrease_should_underflow {
-				use super::*;
-
-				#[test_runtimes([development])]
-				fn invest_decrease_underflow<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
-						Genesis::default()
-							.add(genesis::balances::<T>(cfg(1_000)))
-							.storage(),
-					);
-
-					setup_test(&mut env);
-
-					env.parachain_state_mut(|| {
-						let pool_id = POOL_ID;
-						let invest_amount: u128 = 10 * decimals(12);
-						let decrease_amount = invest_amount + 1;
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
-						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-						let currency_decimals = currency_decimals::AUSD;
-						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
-						do_initial_increase_investment::<T>(
-							pool_id,
-							invest_amount,
-							investor.clone(),
-							currency_id,
-						);
-						enable_liquidity_pool_transferability::<T>(currency_id);
-
-						// Mock incoming decrease message
-						let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(currency_id),
-							amount: decrease_amount,
-						};
-
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								msg
-							),
-							pallet_foreign_investments::Error::<T>::TooMuchDecrease
-						);
-					});
-				}
-
-				#[test_runtimes([development])]
-				fn redeem_decrease_underflow<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
-						Genesis::default()
-							.add(genesis::balances::<T>(cfg(1_000)))
-							.storage(),
-					);
-
-					setup_test(&mut env);
-
-					env.parachain_state_mut(|| {
-						let pool_id = POOL_ID;
-						let redeem_amount: u128 = 10 * decimals(12);
-						let decrease_amount = redeem_amount + 1;
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
-						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-						let currency_decimals = currency_decimals::AUSD;
-						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
-						do_initial_increase_redemption::<T>(
-							pool_id,
-							redeem_amount,
-							investor.clone(),
-							currency_id,
-						);
-
-						// Mock incoming decrease message
-						let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(currency_id),
-							amount: decrease_amount,
-						};
-
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								msg
-							),
-							DispatchError::Arithmetic(sp_runtime::ArithmeticError::Underflow)
-						);
-					});
-				}
-			}
 
 			mod should_throw_requires_collect {
 				use super::*;
@@ -2834,7 +2494,7 @@ mod foreign_investments {
 						));
 
 						// Should fail to increase
-						let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
+						let increase_msg = LiquidityPoolMessage::DepositRequest {
 							pool_id,
 							tranche_id: default_tranche_id::<T>(pool_id),
 							investor: investor.clone().into(),
@@ -2850,12 +2510,11 @@ mod foreign_investments {
 						);
 
 						// Should fail to decrease
-						let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
+						let decrease_msg = LiquidityPoolMessage::CancelDepositRequest {
 							pool_id,
 							tranche_id: default_tranche_id::<T>(pool_id),
 							investor: investor.clone().into(),
 							currency: general_currency_index::<T>(currency_id),
-							amount: 1,
 						};
 						assert_noop!(
 							pallet_liquidity_pools::Pallet::<T>::submit(
@@ -2922,7 +2581,7 @@ mod foreign_investments {
 						));
 
 						// Should fail to increase
-						let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+						let increase_msg = LiquidityPoolMessage::RedeemRequest {
 							pool_id,
 							tranche_id: default_tranche_id::<T>(pool_id),
 							investor: investor.clone().into(),
@@ -2938,12 +2597,11 @@ mod foreign_investments {
 						);
 
 						// Should fail to decrease
-						let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						let decrease_msg = LiquidityPoolMessage::CancelRedeemRequest {
 							pool_id,
 							tranche_id: default_tranche_id::<T>(pool_id),
 							investor: investor.clone().into(),
 							currency: general_currency_index::<T>(currency_id),
-							amount: 1,
 						};
 						assert_noop!(
 							pallet_liquidity_pools::Pallet::<T>::submit(
@@ -2958,166 +2616,6 @@ mod foreign_investments {
 
 			mod payment_payout_currency {
 				use super::*;
-
-				#[test_runtimes([development])]
-				fn invalid_invest_payment_currency<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
-						Genesis::default()
-							.add(genesis::balances::<T>(cfg(1_000)))
-							.storage(),
-					);
-
-					setup_test(&mut env);
-
-					env.parachain_state_mut(|| {
-						let pool_id = POOL_ID;
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
-						let pool_currency = AUSD_CURRENCY_ID;
-						let currency_decimals = currency_decimals::AUSD;
-						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-						let amount = 6 * decimals(18);
-
-						create_currency_pool::<T>(pool_id, pool_currency, currency_decimals.into());
-						do_initial_increase_investment::<T>(
-							pool_id,
-							amount,
-							investor.clone(),
-							pool_currency,
-						);
-
-						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
-
-						// Should fail to increase, decrease or collect for
-						// another foreign currency as long as
-						// `InvestmentState` exists
-						let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-							amount: AUSD_ED,
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								increase_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-						let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-							amount: 1,
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								decrease_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-						let collect_msg = LiquidityPoolMessage::CollectInvest {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								collect_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-					});
-				}
-
-				#[test_runtimes([development])]
-				fn invalid_redeem_payout_currency<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
-						Genesis::default()
-							.add(genesis::balances::<T>(cfg(1_000)))
-							.storage(),
-					);
-
-					setup_test(&mut env);
-
-					env.parachain_state_mut(|| {
-						let pool_id = POOL_ID;
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
-						let pool_currency = AUSD_CURRENCY_ID;
-						let currency_decimals = currency_decimals::AUSD;
-						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-						let amount = 6 * decimals(18);
-
-						create_currency_pool::<T>(pool_id, pool_currency, currency_decimals.into());
-						do_initial_increase_redemption::<T>(
-							pool_id,
-							amount,
-							investor.clone(),
-							pool_currency,
-						);
-						enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
-						assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-							default_investment_id::<T>().into(),
-							&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
-							amount,
-						));
-
-						// Should fail to increase, decrease or collect for
-						// another foreign currency as long as
-						// `RedemptionState` exists
-						let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-							amount: 1,
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								increase_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-						let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-							amount: 1,
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								decrease_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-						let collect_msg = LiquidityPoolMessage::CollectRedeem {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								collect_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-					});
-				}
 
 				#[test_runtimes([development])]
 				fn redeem_payout_currency_not_found<T: Runtime + FudgeSupport>() {
@@ -3157,31 +2655,16 @@ mod foreign_investments {
 						// Should fail to decrease or collect for another
 						// foreign currency as long as `RedemptionState`
 						// exists
-						let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						let decrease_msg = LiquidityPoolMessage::CancelRedeemRequest {
 							pool_id,
 							tranche_id: default_tranche_id::<T>(pool_id),
 							investor: investor.clone().into(),
 							currency: general_currency_index::<T>(foreign_currency),
-							amount: 1,
 						};
 						assert_noop!(
 							pallet_liquidity_pools::Pallet::<T>::submit(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								decrease_msg
-							),
-							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
-						);
-
-						let collect_msg = LiquidityPoolMessage::CollectRedeem {
-							pool_id,
-							tranche_id: default_tranche_id::<T>(pool_id),
-							investor: investor.clone().into(),
-							currency: general_currency_index::<T>(foreign_currency),
-						};
-						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
-								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-								collect_msg
 							),
 							pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 						);
@@ -3243,7 +2726,7 @@ mod foreign_investments {
 				);
 
 				// Increase invest order to initialize ForeignInvestmentInfo
-				let msg = LiquidityPoolMessage::IncreaseInvestOrder {
+				let msg = LiquidityPoolMessage::DepositRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
@@ -3291,14 +2774,13 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedCollectInvest {
+							message: LiquidityPoolMessage::FulfilledDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
 								tranche_tokens_payout: 2 * invest_amount_pool_denominated,
-								remaining_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
 						.into()
@@ -3306,145 +2788,10 @@ mod foreign_investments {
 			});
 		}
 
-		/// Invest in pool currency, then increase in allowed foreign
-		/// currency, then decrease in same foreign currency multiple times.
+		/// Invest, fulfill swap foreign->pool, cancel, fulfill swap
+		/// pool->foreign
 		#[test_runtimes([development])]
-		fn increase_fulfill_increase_decrease_decrease_partial<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
-				Genesis::default()
-					.add(genesis::balances::<T>(cfg(1_000)))
-					.storage(),
-			);
-
-			setup_test(&mut env);
-
-			env.parachain_state_mut(|| {
-				let pool_id = POOL_ID;
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
-				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-				let pool_currency_decimals = currency_decimals::AUSD;
-				let invest_amount_pool_denominated: u128 = 6 * decimals(18);
-				let trader: AccountId = Keyring::Alice.into();
-				create_currency_pool::<T>(pool_id, pool_currency, pool_currency_decimals.into());
-
-				// USDT investment preparations
-				let invest_amount_foreign_denominated = enable_usdt_trading::<T>(
-					pool_currency,
-					invest_amount_pool_denominated,
-					true,
-					true,
-					true,
-				);
-
-				// Do first investment and fulfill swap order
-				do_initial_increase_investment::<T>(
-					pool_id,
-					invest_amount_foreign_denominated,
-					investor.clone(),
-					foreign_currency,
-				);
-				fulfill_swap_into_pool::<T>(
-					pool_id,
-					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated,
-					invest_amount_foreign_denominated,
-					trader.clone(),
-				);
-
-				// Do second investment and not fulfill swap order
-				let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(foreign_currency),
-					amount: invest_amount_foreign_denominated,
-				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					increase_msg
-				));
-
-				// Decrease pending pool swap by same amount
-				let decrease_msg_pool_swap_amount = LiquidityPoolMessage::DecreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(foreign_currency),
-					amount: invest_amount_foreign_denominated,
-				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					decrease_msg_pool_swap_amount
-				));
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated,
-								remaining_invest_amount: invest_amount_foreign_denominated,
-							},
-						}
-						.into()
-				}));
-
-				// Decrease partially investing amount
-				let decrease_msg_partial_invest_amount =
-					LiquidityPoolMessage::DecreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated / 2,
-					};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					decrease_msg_partial_invest_amount.clone()
-				));
-
-				// Consume entire investing amount by sending same message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					decrease_msg_partial_invest_amount.clone()
-				));
-
-				// Swap decreased amount
-				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
-					RawOrigin::Signed(trader.clone()).into(),
-					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated
-				));
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated,
-								remaining_invest_amount: 0,
-							},
-						}
-						.into()
-				}));
-			});
-		}
-
-		/// Propagate swaps only via OrderBook fulfillments.
-		///
-		/// Flow: Increase, fulfill, decrease, fulfill
-		#[test_runtimes([development])]
-		fn invest_swaps_happy_path<T: Runtime + FudgeSupport>() {
+		fn cancel_unprocessed_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -3507,24 +2854,50 @@ mod foreign_investments {
 						.into()
 				}));
 
-				// Decrease by half the investment amount
-				let msg = LiquidityPoolMessage::DecreaseInvestOrder {
+				// Cancel investment
+				let msg = LiquidityPoolMessage::CancelDepositRequest {
 					pool_id,
 					tranche_id: default_tranche_id::<T>(pool_id),
 					investor: investor.clone().into(),
 					currency: general_currency_index::<T>(foreign_currency),
-					amount: invest_amount_foreign_denominated / 2,
 				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg.clone()
-				));
+
+				// FulfilledCancel message dispatch blocked until pool currency is swapped back
+				// to foreign
+				assert!(!outbound_message_dispatched::<T>(|| {
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						msg.clone()
+					));
+				}));
+
+				assert!(!outbound_message_dispatched::<T>(|| {
+					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
+						RawOrigin::Signed(trader.clone()).into(),
+						default_order_id::<T>(&investor),
+						invest_amount_pool_denominated / 4
+					));
+					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
+						e.event
+							== pallet_order_book::Event::<T>::OrderFulfillment {
+								order_id: default_order_id::<T>(&investor),
+								placing_account: investor.clone(),
+								fulfilling_account: trader.clone(),
+								partial_fulfillment: true,
+								fulfillment_amount: invest_amount_pool_denominated / 4,
+								currency_in: foreign_currency,
+								currency_out: pool_currency,
+								ratio: Ratio::one(),
+							}
+							.into()
+					}));
+				}));
 
 				let swap_order_id = default_order_id::<T>(&investor);
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					swap_order_id,
-					invest_amount_pool_denominated / 2
+					invest_amount_pool_denominated / 4 * 3
 				));
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -3533,14 +2906,13 @@ mod foreign_investments {
 							placing_account: investor.clone(),
 							fulfilling_account: trader.clone(),
 							partial_fulfillment: false,
-							fulfillment_amount: invest_amount_pool_denominated / 2,
+							fulfillment_amount: invest_amount_pool_denominated / 4 * 3,
 							currency_in: foreign_currency,
 							currency_out: pool_currency,
 							ratio: Ratio::one(),
 						}
 						.into()
 				}));
-
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -3548,13 +2920,13 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: sender.clone(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
+							message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated / 2,
-								remaining_invest_amount: invest_amount_foreign_denominated / 2,
+								currency_payout: invest_amount_foreign_denominated,
+								fulfilled_invest_amount: 0,
 							},
 						}
 						.into()
@@ -3562,8 +2934,10 @@ mod foreign_investments {
 			});
 		}
 
+		/// Invest, fulfill swap foreign->pool, process 50% of investment,
+		/// cancel, swap back pool->foreign of remaining unprocessed investment
 		#[test_runtimes([development])]
-		fn increase_fulfill_decrease_fulfill_partial_increase<T: Runtime + FudgeSupport>() {
+		fn cancel_partially_processed_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -3607,37 +2981,50 @@ mod foreign_investments {
 					trader.clone(),
 				);
 
-				// Decrease pending pool swap by same amount
-				let decrease_msg_pool_swap_amount = LiquidityPoolMessage::DecreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(foreign_currency),
-					amount: invest_amount_foreign_denominated,
-				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					decrease_msg_pool_swap_amount
+				// Process 50% of investment at 50% rate (1 pool currency = 2 tranche tokens)
+				assert_ok!(pallet_investments::Pallet::<T>::process_invest_orders(
+					default_investment_id::<T>()
+				));
+				assert_ok!(pallet_investments::Pallet::<T>::invest_fulfillment(
+					default_investment_id::<T>(),
+					FulfillmentWithPrice {
+						of_amount: Perquintill::from_percent(50),
+						price: Ratio::checked_from_rational(1, 2).unwrap(),
+					}
+				));
+				assert_ok!(pallet_investments::Pallet::<T>::collect_investments_for(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					investor.clone(),
+					default_investment_id::<T>()
 				));
 
-				// Fulfill decrease swap partially
+				// Cancel pending deposit request: FulfilledCancel message blocked until pool
+				// currency is fully swapped back to foreign one
+				assert!(!outbound_message_dispatched::<T>(|| {
+					let cancel_msg = LiquidityPoolMessage::CancelDepositRequest {
+						pool_id,
+						tranche_id: default_tranche_id::<T>(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index::<T>(foreign_currency),
+					};
+
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						cancel_msg
+					));
+
+					// Fulfill cancel swap partially
+					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
+						RawOrigin::Signed(trader.clone()).into(),
+						default_order_id::<T>(&investor),
+						invest_amount_pool_denominated / 4
+					));
+				}));
+
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					default_order_id::<T>(&investor),
-					3 * invest_amount_pool_denominated / 4
-				));
-
-				// Increase more than pending swap (pool -> foreign) amount from decrease
-				let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id::<T>(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index::<T>(foreign_currency),
-					amount: invest_amount_foreign_denominated / 2,
-				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					increase_msg
+					invest_amount_pool_denominated / 4
 				));
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -3645,13 +3032,16 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
 							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
+							message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated,
-								remaining_invest_amount: invest_amount_foreign_denominated / 2,
+								currency_payout: invest_amount_foreign_denominated / 2,
+								// TODO(@luis): Should be `invest_amount_pool_denominated / 4` with
+								// deltas because we have processed 50% of the investment with
+								// conversion rate 50%
+								fulfilled_invest_amount: 0,
 							},
 						}
 						.into()

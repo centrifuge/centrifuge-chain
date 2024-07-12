@@ -19,7 +19,7 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
 use ethabi::{
-	ethereum_types::{H160, U256},
+	ethereum_types::{H160, U128, U256},
 	FixedBytes, Token, Uint,
 };
 use frame_support::{
@@ -233,6 +233,30 @@ pub mod utils {
 		fn decode(&self) -> T;
 	}
 
+	impl<T: Input> Decoder<(bool, u64)> for T {
+		fn decode(&self) -> (bool, u64) {
+			assert!(self.input().len() > 32);
+
+			let left = &self.input()[..32];
+			let right = &self.input()[32..];
+
+			let unsigned64 = match right.len() {
+				1 => u64::from(u8::from_be_bytes(to_fixed_array(&right))),
+				2 => u64::from(u16::from_be_bytes(to_fixed_array(&right))),
+				4 => u64::from(u32::from_be_bytes(to_fixed_array(&right))),
+				8 => u64::from_be_bytes(to_fixed_array(&right)),
+				// EVM stores in 32 byte slots with left-padding
+				16 => u64::from_be_bytes(to_fixed_array::<8>(&right[28..])),
+				32 => u64::from_be_bytes(to_fixed_array::<8>(&right[24..])),
+				_ => {
+					panic!("Invalid slice length for u64 derivation");
+				}
+			};
+
+			(left[31] == 1u8, unsigned64)
+		}
+	}
+
 	impl<T: Input> Decoder<H160> for T {
 		fn decode(&self) -> H160 {
 			assert_eq!(self.input().len(), 32usize);
@@ -251,7 +275,7 @@ pub mod utils {
 
 	impl<T: Input> Decoder<bool> for T {
 		fn decode(&self) -> bool {
-			assert!(self.input().len() == 32);
+			assert_eq!(self.input().len(), 32usize);
 
 			// In EVM the last byte of the U256 is set to 1 if true else to false
 			self.input()[31] == 1u8
@@ -350,12 +374,43 @@ const DECIMALS_18: Balance = 1_000_000_000_000_000_000;
 const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1);
 const INVESTOR_VALIDIDITY: Seconds = Seconds::MAX;
 
+// TODO(@william): Write tests which ensures all contracts exists!
+
 pub mod contracts {
+	pub const ROOT: &str = "Root";
+	pub const ESCROW: &str = "Escrow";
 	pub const POOL_MANAGER: &str = "PoolManager";
+	pub const LP_FACTORY: &str = "ERC7540VaultFactory";
+	pub const LP: &str = "ERC7540Vault";
+	pub const RESTRICTION_MANAGER: &str = "RestrictionManager";
+	pub const TRANCHE_FACTORY: &str = "TrancheFactory";
+	pub const TRANCHE_TOKEN: &str = "Tranche";
+	pub const INVESTMENT_MANAGER: &str = "InvestmentManager";
+	pub const GAS_SERVICE: &str = "GasService";
+	pub const ADAPTER: &str = "LocalAdapter";
+	pub const GATEWAY: &str = "Gateway";
+	pub const ROUTER: &str = "CentrifugeRouter";
+	pub const GUARDIAN: &str = "Guardian";
+	pub const TRANSFER_PROXY_FACTORY: &str = "TransferProxyFactory";
 }
 
 pub mod names {
+	pub const ROOT: &str = "root";
+	pub const ESCROW: &str = "escrow";
 	pub const POOL_MANAGER: &str = "pool_manager";
+	pub const LP_FACTORY: &str = "vault_factory";
+	pub const RESTRICTION_MANAGER: &str = "restriction_manager";
+	pub const TRANCHE_FACTORY: &str = "tranche_factory";
+	pub const INVESTMENT_MANAGER: &str = "investment_manager";
+	pub const GAS_SERVICE: &str = "gas_service";
+	pub const ADAPTER: &str = "adapter";
+	pub const ADAPTERS: &str = "adapters";
+	pub const GATEWAY: &str = "gateway";
+	pub const ROUTER_ESCROW: &str = "router_escrow";
+	pub const ROUTER: &str = "router";
+	pub const GUARDIAN: &str = "guardian";
+	pub const TRANSFER_PROXY_FACTORY: &str = "transfer_proxy_factory";
+
 	pub const USDC: &str = "usdc";
 	pub const FRAX: &str = "frax";
 	pub const DAI: &str = "dai";
@@ -381,6 +436,14 @@ pub mod names {
 	pub const POOL_C_T_1_USDC: &str = "lp_pool_b_tranche_1_usdc";
 	pub const POOL_C_T_1_FRAX: &str = "lp_pool_b_tranche_1_frax";
 	pub const POOL_C_T_1_DAI: &str = "lp_pool_b_tranche_1_dai";
+}
+
+// Values based on deployer script: https://github.com/centrifuge/liquidity-pools/blob/b19bf62a3a49b8452999b9250dbd3229f60ee757/script/Deployer.sol#L53
+pub mod gas {
+	pub const PROOF_COST: u64 = 20000000000000000;
+	pub const MSG_COST: u64 = 20000000000000000;
+	pub const GAS_PRICE: u128 = 2500000000000000000;
+	pub const TOKEN_PRICE: u128 = 178947400000000;
 }
 
 #[allow(non_camel_case_types)]
@@ -564,54 +627,57 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		// The flow is based in the following code from the Solidity and needs to be
 		// adapted if this deployment script changes in the future
 		// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L17-L31
+		// * NEW: https://github.com/centrifuge/liquidity-pools/blob/b19bf62a3a49b8452999b9250dbd3229f60ee757/script/Axelar.s.sol#L10-L27
 		//
 		// PART: Deploy InvestmentManager
 		//   * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L45-L69
 		evm.deploy(
-			"Escrow",
-			"escrow",
+			contracts::ESCROW,
+			names::ESCROW,
 			Keyring::Alice,
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		);
-		evm.deploy("UserEscrow", "user_escrow", Keyring::Alice, None);
 		evm.deploy(
-			"Root",
-			"root",
+			contracts::ROOT,
+			names::ROOT,
 			Keyring::Alice,
 			Some(&[
-				Token::Address(evm.deployed("escrow").address()),
+				Token::Address(evm.deployed(names::ESCROW).address()),
 				Token::Uint(U256::from(48 * SECONDS_PER_HOUR)),
 				Token::Address(Keyring::Alice.into()),
 			]),
 		);
 		evm.deploy(
-			"LiquidityPoolFactory",
-			"lp_pool_factory",
+			contracts::LP_FACTORY,
+			names::LP_FACTORY,
 			Keyring::Alice,
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		);
 		evm.deploy(
-			"RestrictionManagerFactory",
-			"restriction_manager_factory",
-			Keyring::Alice,
-			Some(&[Token::Address(evm.deployed("root").address())]),
-		);
-		evm.deploy(
-			"TrancheTokenFactory",
-			"tranche_token_factory",
+			contracts::RESTRICTION_MANAGER,
+			names::RESTRICTION_MANAGER,
 			Keyring::Alice,
 			Some(&[
-				Token::Address(evm.deployed("root").address()),
+				Token::Address(evm.deployed(names::ROOT).address()),
 				Token::Address(Keyring::Alice.into()),
 			]),
 		);
 		evm.deploy(
-			"InvestmentManager",
-			"investment_manager",
+			contracts::TRANCHE_FACTORY,
+			names::TRANCHE_FACTORY,
 			Keyring::Alice,
 			Some(&[
-				Token::Address(evm.deployed("escrow").address()),
-				Token::Address(evm.deployed("user_escrow").address()),
+				Token::Address(evm.deployed(names::ROOT).address()),
+				Token::Address(Keyring::Alice.into()),
+			]),
+		);
+		evm.deploy(
+			contracts::INVESTMENT_MANAGER,
+			names::INVESTMENT_MANAGER,
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed(names::ROOT).address()),
+				Token::Address(evm.deployed(names::ESCROW).address()),
 			]),
 		);
 		evm.deploy(
@@ -619,252 +685,339 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			names::POOL_MANAGER,
 			Keyring::Alice,
 			Some(&[
-				Token::Address(evm.deployed("escrow").address()),
-				Token::Address(evm.deployed("lp_pool_factory").address()),
-				Token::Address(evm.deployed("restriction_manager_factory").address()),
-				Token::Address(evm.deployed("tranche_token_factory").address()),
+				Token::Address(evm.deployed(names::ESCROW).address()),
+				Token::Address(evm.deployed(names::LP_FACTORY).address()),
+				Token::Address(evm.deployed(names::TRANCHE_FACTORY).address()),
+			]),
+		);
+		evm.deploy(
+			contracts::TRANSFER_PROXY_FACTORY,
+			names::TRANSFER_PROXY_FACTORY,
+			Keyring::Alice,
+			Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
+		);
+		evm.deploy(
+			contracts::GAS_SERVICE,
+			names::GAS_SERVICE,
+			Keyring::Alice,
+			Some(&[
+				// NOTE: u64 in solidity
+				Token::Uint(Uint::from(gas::PROOF_COST).into()),
+				// NOTE: u64 in solidity
+				Token::Uint(Uint::from(gas::MSG_COST).into()),
+				Token::Uint(U128::from(gas::GAS_PRICE).into()),
+				Token::Uint(U256::from(gas::TOKEN_PRICE).into()),
 			]),
 		);
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"lp_pool_factory",
+			names::GAS_SERVICE,
 			"rely",
-			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.deploy(
+			contracts::GATEWAY,
+			names::GATEWAY,
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed(names::ROOT).address()),
+				Token::Address(evm.deployed(names::POOL_MANAGER).address()),
+				Token::Address(evm.deployed(names::INVESTMENT_MANAGER).address()),
+				Token::Address(evm.deployed(names::GAS_SERVICE).address()),
+			]),
+		);
+		evm.deploy(
+			contracts::ESCROW,
+			names::ROUTER_ESCROW,
+			Keyring::Alice,
+			Some(&[Token::Address(Keyring::Alice.into())]),
+		);
+		evm.deploy(
+			contracts::ROUTER,
+			names::ROUTER,
+			Keyring::Alice,
+			Some(&[
+				Token::Address(evm.deployed(names::ROUTER_ESCROW).address()),
+				Token::Address(evm.deployed(names::GATEWAY).address()),
+				Token::Address(evm.deployed(names::POOL_MANAGER).address()),
+			]),
+		);
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::ROUTER_ESCROW,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROUTER).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"tranche_token_factory",
-			"rely",
-			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+			names::ROOT,
+			"endorse",
+			Some(&[Token::Address(evm.deployed(names::ROUTER).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"restriction_manager_factory",
-			"rely",
-			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"lp_pool_factory",
-			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"tranche_token_factory",
-			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"restriction_manager_factory",
-			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			names::ROOT,
+			"endorse",
+			Some(&[Token::Address(evm.deployed(names::ESCROW).address())]),
 		)
 		.unwrap();
 
-		// PART: Deploy router (using the testing LocalRouter here)
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::LP_FACTORY,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::TRANCHE_FACTORY,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::RESTRICTION_MANAGER,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::LP_FACTORY,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::TRANCHE_FACTORY,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::RESTRICTION_MANAGER,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.deploy(
+			contracts::GUARDIAN,
+			names::GUARDIAN,
+			Keyring::Alice,
+			Some(&[
+				// Based on https://github.com/centrifuge/liquidity-pools/blob/da4e46577712c762d069670077280112ea1c8ce8/test/integration/LocalAdapter.s.sol#L12-L14
+				Token::Address(H160::from(Keyring::Admin)),
+				Token::Address(evm.deployed(names::ROOT).address()),
+				Token::Address(evm.deployed(names::GATEWAY).address()),
+			]),
+		);
+
+		// PART: Deploy router (using the testing LocalAdapter here)
 		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L24
-		evm.deploy("LocalRouter", "router", Keyring::Alice, None);
+		//  * NEW: https://github.com/centrifuge/liquidity-pools/blob/b19bf62a3a49b8452999b9250dbd3229f60ee757/script/Axelar.s.sol#L19-L21
+		evm.deploy(contracts::ADAPTER, names::ADAPTER, Keyring::Alice, None);
 
 		// PART: Wire router + file gateway
 		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L71-L98
-		evm.deploy(
-			"PauseAdmin",
-			"pause_admin",
-			Keyring::Alice,
-			Some(&[Token::Address(evm.deployed("root").address())]),
-		);
-		evm.deploy(
-			"DelayedAdmin",
-			"delay_admin",
-			Keyring::Alice,
-			Some(&[
-				Token::Address(evm.deployed("root").address()),
-				Token::Address(evm.deployed("pause_admin").address()),
-			]),
-		);
-		// Enable once https://github.com/foundry-rs/foundry/issues/7032 is resolved
-		evm.deploy(
-			"Gateway",
-			"gateway",
-			Keyring::Alice,
-			Some(&[
-				Token::Address(evm.deployed("root").address()),
-				Token::Address(evm.deployed("investment_manager").address()),
-				Token::Address(evm.deployed("pool_manager").address()),
-				Token::Address(evm.deployed("router").address()),
-			]),
-		);
-		// Wire admins
+		//  * NEW: https://github.com/centrifuge/liquidity-pools/blob/b19bf62a3a49b8452999b9250dbd3229f60ee757/script/Deployer.sol#L74-L101
+		// Wire guardian
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pause_admin",
+			names::ROOT,
 			"rely",
-			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
+			Some(&[Token::Address(evm.deployed(names::GUARDIAN).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"root",
+			names::GATEWAY,
 			"rely",
-			Some(&[Token::Address(evm.deployed("pause_admin").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"root",
-			"rely",
-			Some(&[Token::Address(evm.deployed("delay_admin").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"root",
-			"rely",
-			Some(&[Token::Address(evm.deployed("gateway").address())]),
+			Some(&[Token::Address(evm.deployed(names::GUARDIAN).address())]),
 		)
 		.unwrap();
 		// Wire gateway
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pool_manager",
+			names::GATEWAY,
 			"file",
 			Some(&[
-				Token::FixedBytes("investmentManager".as_bytes().to_vec()),
-				Token::Address(evm.deployed("investment_manager").address()),
+				Token::FixedBytes("adapters".as_bytes().to_vec()),
+				Token::Array(vec![Token::Address(evm.deployed(names::ADAPTER).address())]),
 			]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"investment_manager",
+			names::ROOT,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::GATEWAY).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::INVESTMENT_MANAGER,
 			"file",
 			Some(&[
 				Token::FixedBytes("poolManager".as_bytes().to_vec()),
-				Token::Address(evm.deployed("pool_manager").address()),
+				Token::Address(evm.deployed(names::POOL_MANAGER).address()),
 			]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"investment_manager",
+			names::POOL_MANAGER,
+			"file",
+			Some(&[
+				Token::FixedBytes("investmentManager".as_bytes().to_vec()),
+				Token::Address(evm.deployed(names::INVESTMENT_MANAGER).address()),
+			]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::POOL_MANAGER,
+			"file",
+			Some(&[
+				Token::FixedBytes("gasService".as_bytes().to_vec()),
+				Token::Address(evm.deployed(names::GAS_SERVICE).address()),
+			]),
+		)
+		.unwrap();
+
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::ROUTER,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::INVESTMENT_MANAGER,
 			"file",
 			Some(&[
 				Token::FixedBytes("gateway".as_bytes().to_vec()),
-				Token::Address(evm.deployed("gateway").address()),
+				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pool_manager",
+			names::POOL_MANAGER,
 			"file",
 			Some(&[
 				Token::FixedBytes("gateway".as_bytes().to_vec()),
-				Token::Address(evm.deployed("gateway").address()),
+				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"investment_manager",
+			names::INVESTMENT_MANAGER,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"investment_manager",
+			names::INVESTMENT_MANAGER,
 			"rely",
-			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+			Some(&[Token::Address(evm.deployed(names::GATEWAY).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pool_manager",
+			names::INVESTMENT_MANAGER,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::LP_FACTORY).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"gateway",
+			names::POOL_MANAGER,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::POOL_MANAGER,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::GATEWAY).address())]),
+		)
+		.unwrap();
+		evm.call(
+			Keyring::Alice,
+			Default::default(),
+			names::GATEWAY,
+			"rely",
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		)
 		.unwrap();
 		/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"router",
+			names::ADAPTER,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		)
 		.unwrap();
 		 */
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"escrow",
+			names::ESCROW,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"escrow",
+			names::ROUTER_ESCROW,
 			"rely",
-			Some(&[Token::Address(evm.deployed("investment_manager").address())]),
+			Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"user_escrow",
+			names::ESCROW,
 			"rely",
-			Some(&[Token::Address(evm.deployed("root").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"user_escrow",
-			"rely",
-			Some(&[Token::Address(evm.deployed("investment_manager").address())]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Alice,
-			Default::default(),
-			"escrow",
-			"rely",
-			Some(&[Token::Address(evm.deployed("pool_manager").address())]),
+			Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
 		)
 		.unwrap();
 
@@ -872,18 +1025,18 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"router",
+			names::ADAPTER,
 			"file",
 			Some(&[
 				Token::FixedBytes("gateway".as_bytes().to_vec()),
-				Token::Address(evm.deployed("gateway").address()),
+				Token::Address(evm.deployed(names::GATEWAY).address()),
 			]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"router",
+			names::ADAPTER,
 			"file",
 			Some(&[
 				Token::FixedBytes("sourceChain".as_bytes().to_vec()),
@@ -894,43 +1047,42 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"router",
+			names::ADAPTER,
 			"file",
 			Some(&[
 				Token::FixedBytes("sourceAddress".as_bytes().to_vec()),
-				// FIXME: Use EVM_LP_INSTANCE
 				Token::String("0x1111111111111111111111111111111111111111".into()),
-				// Token::String(evm.deployed("router").address().to_string()),
 			]),
 		)
 		.unwrap();
 
-		// PART: Give admin access - Keyring::Admin in our case
-		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L100-L106
+		// Required by gateway for dispatching messages to Centrifuge Chain
+		// FIXME(@william): Does not seem to have an effect
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"delay_admin",
-			"rely",
-			Some(&[Token::Address(Keyring::Admin.into())]),
+			names::ROOT,
+			"endorse",
+			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
 		.unwrap();
 		evm.call(
 			Keyring::Alice,
-			Default::default(),
-			"pause_admin",
-			"addPauser",
-			Some(&[Token::Address(Keyring::Admin.into())]),
+			Uint::from(1000 * DECIMALS_18),
+			names::GATEWAY,
+			"topUp",
+			None,
 		)
 		.unwrap();
 
 		// PART: Remove deployer access
 		//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L108-L121
+		//  * NEW: https://github.com/centrifuge/liquidity-pools/blob/da4e46577712c762d069670077280112ea1c8ce8/script/Deployer.sol#L106-L118
 		/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"router",
+			names::ADAPTER,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -939,7 +1091,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"lp_pool_factory",
+			names::LP_FACTORY,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -947,7 +1099,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"tranche_token_factory",
+			names::TRANCHE_FACTORY,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -955,7 +1107,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"restriction_manager_factory",
+			names::RESTRICTION_MANAGER,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -963,7 +1115,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"root",
+			names::ROOT,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -971,7 +1123,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"investment_manager",
+			names::INVESTMENT_MANAGER,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -979,7 +1131,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pool_manager",
+			names::POOL_MANAGER,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -987,7 +1139,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"escrow",
+			names::ESCROW,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -995,7 +1147,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"user_escrow",
+			names::ROUTER_ESCROW,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -1003,7 +1155,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"gateway",
+			names::GATEWAY,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -1011,7 +1163,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"pause_admin",
+			names::ROUTER,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -1019,7 +1171,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.call(
 			Keyring::Alice,
 			Default::default(),
-			"delay_admin",
+			names::GAS_SERVICE,
 			"deny",
 			Some(&[Token::Address(Keyring::Alice.into())]),
 		)
@@ -1030,8 +1182,10 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 		let evm_domain = EVMDomain {
-			target_contract_address: evm.deployed("router").address(),
-			target_contract_hash: BlakeTwo256::hash_of(&evm.deployed("router").deployed_bytecode),
+			target_contract_address: evm.deployed(names::ADAPTER).address(),
+			target_contract_hash: BlakeTwo256::hash_of(
+				&evm.deployed(names::ADAPTER).deployed_bytecode,
+			),
 			fee_values: FeeValues {
 				value: sp_core::U256::zero(),
 				// FIXME: Diverges from prod (500_000)
@@ -1046,7 +1200,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 				EVM_DOMAIN_STR.as_bytes().to_vec(),
 			)
 			.unwrap(),
-			evm.deployed("router").address(),
+			evm.deployed(names::ADAPTER).address(),
 		);
 
 		assert_ok!(
@@ -1064,7 +1218,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 
 		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_gateway(
 			RawOrigin::Root.into(),
-			evm.deployed("router").address()
+			evm.deployed(names::ADAPTER).address()
 		));
 
 		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_converter(
@@ -1104,42 +1258,42 @@ pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	let lp_name = |pool, tranche, currency| -> &str {
 		match (pool, tranche, currency) {
-			(POOL_A, tranche, "usdc") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+			(POOL_A, tranche, names::USDC) if tranche == utils::pool_a_tranche_1_id::<T>() => {
 				names::POOL_A_T_1_USDC
 			}
-			(POOL_B, tranche, "usdc") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+			(POOL_B, tranche, names::USDC) if tranche == utils::pool_b_tranche_1_id::<T>() => {
 				names::POOL_B_T_1_USDC
 			}
-			(POOL_B, tranche, "usdc") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+			(POOL_B, tranche, names::USDC) if tranche == utils::pool_b_tranche_2_id::<T>() => {
 				names::POOL_B_T_2_USDC
 			}
-			(POOL_C, tranche, "usdc") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+			(POOL_C, tranche, names::USDC) if tranche == utils::pool_c_tranche_1_id::<T>() => {
 				names::POOL_C_T_1_USDC
 			}
 
-			(POOL_A, tranche, "frax") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+			(POOL_A, tranche, names::FRAX) if tranche == utils::pool_a_tranche_1_id::<T>() => {
 				names::POOL_A_T_1_FRAX
 			}
-			(POOL_B, tranche, "frax") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+			(POOL_B, tranche, names::FRAX) if tranche == utils::pool_b_tranche_1_id::<T>() => {
 				names::POOL_B_T_1_FRAX
 			}
-			(POOL_B, tranche, "frax") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+			(POOL_B, tranche, names::FRAX) if tranche == utils::pool_b_tranche_2_id::<T>() => {
 				names::POOL_B_T_2_FRAX
 			}
-			(POOL_C, tranche, "frax") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+			(POOL_C, tranche, names::FRAX) if tranche == utils::pool_c_tranche_1_id::<T>() => {
 				names::POOL_C_T_1_FRAX
 			}
 
-			(POOL_A, tranche, "dai") if tranche == utils::pool_a_tranche_1_id::<T>() => {
+			(POOL_A, tranche, names::DAI) if tranche == utils::pool_a_tranche_1_id::<T>() => {
 				names::POOL_A_T_1_DAI
 			}
-			(POOL_B, tranche, "dai") if tranche == utils::pool_b_tranche_1_id::<T>() => {
+			(POOL_B, tranche, names::DAI) if tranche == utils::pool_b_tranche_1_id::<T>() => {
 				names::POOL_B_T_1_DAI
 			}
-			(POOL_B, tranche, "dai") if tranche == utils::pool_b_tranche_2_id::<T>() => {
+			(POOL_B, tranche, names::DAI) if tranche == utils::pool_b_tranche_2_id::<T>() => {
 				names::POOL_B_T_2_DAI
 			}
-			(POOL_C, tranche, "dai") if tranche == utils::pool_c_tranche_1_id::<T>() => {
+			(POOL_C, tranche, names::DAI) if tranche == utils::pool_c_tranche_1_id::<T>() => {
 				names::POOL_C_T_1_DAI
 			}
 
@@ -1155,12 +1309,12 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		(POOL_B, utils::pool_b_tranche_2_id::<T>()),
 		(POOL_C, utils::pool_c_tranche_1_id::<T>()),
 	] {
-		for currency in ["usdc", "frax", "dai"] {
+		for currency in [names::USDC, names::FRAX, names::DAI] {
 			evm.call(
 				Keyring::Alice,
 				Default::default(),
-				"pool_manager",
-				"deployLiquidityPool",
+				names::POOL_MANAGER,
+				"deployVault",
 				Some(&[
 					Token::Uint(Uint::from(pool)),
 					Token::FixedBytes(FixedBytes::from(tranche_id)),
@@ -1171,12 +1325,12 @@ pub fn setup_deploy_lps<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 
 			evm.register(
 				lp_name(pool, tranche_id, currency),
-				"LiquidityPool",
+				contracts::LP,
 				Decoder::<H160>::decode(
 					&evm.view(
 						Keyring::Alice,
-						"pool_manager",
-						"getLiquidityPool",
+						names::POOL_MANAGER,
+						"getVault",
 						Some(&[
 							Token::Uint(Uint::from(pool)),
 							Token::FixedBytes(FixedBytes::from(tranche_id)),
@@ -1212,7 +1366,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
-		"pool_manager",
+		names::POOL_MANAGER,
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_A)),
@@ -1222,12 +1376,12 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	.unwrap();
 	evm.register(
 		names::POOL_A_T_1,
-		"TrancheToken",
+		contracts::TRANCHE_TOKEN,
 		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheToken",
+				names::POOL_MANAGER,
+				"getTranche",
 				Some(&[
 					Token::Uint(POOL_A.into()),
 					Token::FixedBytes(tranche_id.to_vec()),
@@ -1237,20 +1391,21 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	evm.register(
-		names::RM_POOL_A_T_1,
-		"RestrictionManager",
-		Decoder::<H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::POOL_A_T_1,
-				"restrictionManager",
-				None,
-			)
-			.unwrap()
-			.value,
-		),
-	);
+	// FIXME: Fails
+	// evm.register(
+	// 	names::RM_POOL_A_T_1,
+	// 	contracts::RESTRICTION_MANAGER,
+	// 	Decoder::<H160>::decode(
+	// 		&evm.view(
+	// 			Keyring::Alice,
+	// 			names::POOL_A_T_1,
+	// 			"restrictionManager",
+	// 			None,
+	// 		)
+	// 		.unwrap()
+	// 		.value,
+	// 	),
+	// );
 
 	// AddTranche 1 of B
 	let tranche_id = {
@@ -1269,7 +1424,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
-		"pool_manager",
+		names::POOL_MANAGER,
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
@@ -1279,12 +1434,12 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	.unwrap();
 	evm.register(
 		names::POOL_B_T_1,
-		"TrancheToken",
+		contracts::TRANCHE_TOKEN,
 		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheToken",
+				names::POOL_MANAGER,
+				"getTranche",
 				Some(&[
 					Token::Uint(POOL_B.into()),
 					Token::FixedBytes(tranche_id.to_vec()),
@@ -1294,20 +1449,21 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	evm.register(
-		names::RM_POOL_B_T_1,
-		"RestrictionManager",
-		Decoder::<H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::POOL_B_T_1,
-				"restrictionManager",
-				None,
-			)
-			.unwrap()
-			.value,
-		),
-	);
+	// FIXME: Fails
+	// evm.register(
+	// 	names::RM_POOL_B_T_1,
+	// 	contracts::RESTRICTION_MANAGER,
+	// 	Decoder::<H160>::decode(
+	// 		&evm.view(
+	// 			Keyring::Alice,
+	// 			names::POOL_B_T_1,
+	// 			"restrictionManager",
+	// 			None,
+	// 		)
+	// 		.unwrap()
+	// 		.value,
+	// 	),
+	// );
 
 	// AddTranche 2 of B
 	let tranche_id = {
@@ -1326,7 +1482,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
-		"pool_manager",
+		names::POOL_MANAGER,
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_B)),
@@ -1336,12 +1492,12 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	.unwrap();
 	evm.register(
 		names::POOL_B_T_2,
-		"TrancheToken",
+		contracts::TRANCHE_TOKEN,
 		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheToken",
+				names::POOL_MANAGER,
+				"getTranche",
 				Some(&[
 					Token::Uint(POOL_B.into()),
 					Token::FixedBytes(tranche_id.to_vec()),
@@ -1351,20 +1507,21 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	evm.register(
-		names::RM_POOL_B_T_2,
-		"RestrictionManager",
-		Decoder::<H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::POOL_B_T_2,
-				"restrictionManager",
-				None,
-			)
-			.unwrap()
-			.value,
-		),
-	);
+	// FIXME: Fails
+	// evm.register(
+	// 	names::RM_POOL_B_T_2,
+	// 	contracts::RESTRICTION_MANAGER,
+	// 	Decoder::<H160>::decode(
+	// 		&evm.view(
+	// 			Keyring::Alice,
+	// 			names::POOL_B_T_2,
+	// 			"restrictionManager",
+	// 			None,
+	// 		)
+	// 		.unwrap()
+	// 		.value,
+	// 	),
+	// );
 
 	// AddTranche 1 of C
 	let tranche_id = {
@@ -1383,7 +1540,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
-		"pool_manager",
+		names::POOL_MANAGER,
 		"deployTranche",
 		Some(&[
 			Token::Uint(Uint::from(POOL_C)),
@@ -1393,30 +1550,16 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	.unwrap();
 	evm.register(
 		names::POOL_C_T_1,
-		"TrancheToken",
+		contracts::TRANCHE_TOKEN,
 		Decoder::<H160>::decode(
 			&evm.view(
 				Keyring::Alice,
-				"pool_manager",
-				"getTrancheToken",
+				names::POOL_MANAGER,
+				"getTranche",
 				Some(&[
 					Token::Uint(POOL_C.into()),
 					Token::FixedBytes(tranche_id.to_vec()),
 				]),
-			)
-			.unwrap()
-			.value,
-		),
-	);
-	evm.register(
-		names::RM_POOL_C_T_1,
-		"RestrictionManager",
-		Decoder::<H160>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::POOL_C_T_1,
-				"restrictionManager",
-				None,
 			)
 			.unwrap()
 			.value,
@@ -1458,7 +1601,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
-/// Centrifuge Chain and trigger `AddCurrency` from Centrifuge Chain to EVM
+/// Centrifuge Chain and trigger `AddAsset` from Centrifuge Chain to EVM
 pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	// EVM: Create currencies
 	// NOTE: Called by Keyring::Admin, as admin controls all in this setup
@@ -1526,14 +1669,14 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 
 	evm.deploy(
 		"ERC20",
-		"frax",
+		names::FRAX,
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(18))]),
 	);
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"frax",
+		names::FRAX,
 		"file",
 		Some(&[
 			Token::FixedBytes("name".as_bytes().to_vec()),
@@ -1544,7 +1687,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"frax",
+		names::FRAX,
 		"file",
 		Some(&[
 			Token::FixedBytes("symbol".as_bytes().to_vec()),
@@ -1555,7 +1698,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"frax",
+		names::FRAX,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Alice.into()),
@@ -1566,7 +1709,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"frax",
+		names::FRAX,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Bob.into()),
@@ -1577,7 +1720,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"frax",
+		names::FRAX,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Charlie.into()),
@@ -1588,14 +1731,14 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 
 	evm.deploy(
 		"ERC20",
-		"dai",
+		names::DAI,
 		Keyring::Admin,
 		Some(&[Token::Uint(Uint::from(18))]),
 	);
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"dai",
+		names::DAI,
 		"file",
 		Some(&[
 			Token::FixedBytes("name".as_bytes().to_vec()),
@@ -1606,7 +1749,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"dai",
+		names::DAI,
 		"file",
 		Some(&[
 			Token::FixedBytes("symbol".as_bytes().to_vec()),
@@ -1617,7 +1760,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"dai",
+		names::DAI,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Alice.into()),
@@ -1628,7 +1771,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"dai",
+		names::DAI,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Bob.into()),
@@ -1639,7 +1782,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	evm.call(
 		Keyring::Admin,
 		Default::default(),
-		"dai",
+		names::DAI,
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Charlie.into()),
@@ -1648,20 +1791,22 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	)
 	.unwrap();
 
-	// Centrifuge Chain: Register currencies and trigger `AddCurrency`
+	// Centrifuge Chain: Register currencies and trigger `AddAsset`
 	register_currency::<T>(USDC, |meta| {
 		meta.location = Some(utils::lp_asset_location::<T>(
-			evm.deployed("usdc").address(),
+			evm.deployed(names::USDC).address(),
 		));
 	});
 
 	register_currency::<T>(DAI, |meta| {
-		meta.location = Some(utils::lp_asset_location::<T>(evm.deployed("dai").address()));
+		meta.location = Some(utils::lp_asset_location::<T>(
+			evm.deployed(names::DAI).address(),
+		));
 	});
 
 	register_currency::<T>(FRAX, |meta| {
 		meta.location = Some(utils::lp_asset_location::<T>(
-			evm.deployed("frax").address(),
+			evm.deployed(names::FRAX).address(),
 		));
 	});
 
@@ -1762,40 +1907,33 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			SECONDS_PER_YEAR,
 		));
 
-		// Fund investor on EVM side
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			"usdc",
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			"frax",
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
-		evm.call(
-			Keyring::Admin,
-			Default::default(),
-			"dai",
-			"mint",
-			Some(&[
-				Token::Address(investor.into()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
-			]),
-		)
-		.unwrap();
+		for currency in [names::USDC, names::FRAX, names::DAI] {
+			// Fund investor on EVM side
+			evm.call(
+				Keyring::Admin,
+				Default::default(),
+				currency,
+				"mint",
+				Some(&[
+					Token::Address(investor.into()),
+					Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				]),
+			)
+			.unwrap();
+			assert_eq!(
+				DEFAULT_BALANCE * DECIMALS_6,
+				Decoder::<Balance>::decode(
+					&evm.view(
+						investor,
+						currency,
+						"balanceOf",
+						Some(&[Token::Address(investor.into())])
+					)
+					.unwrap()
+					.value
+				)
+			)
+		}
 
 		// Approve stable transfers on EVM side
 
@@ -1803,7 +1941,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"usdc",
+			names::USDC,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_A_T_1_USDC).address()),
@@ -1814,7 +1952,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"dai",
+			names::DAI,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_A_T_1_DAI).address()),
@@ -1825,7 +1963,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"frax",
+			names::FRAX,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_A_T_1_FRAX).address()),
@@ -1838,7 +1976,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"usdc",
+			names::USDC,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_1_USDC).address()),
@@ -1849,7 +1987,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"dai",
+			names::DAI,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_1_DAI).address()),
@@ -1860,7 +1998,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"frax",
+			names::FRAX,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_1_FRAX).address()),
@@ -1873,7 +2011,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"usdc",
+			names::USDC,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_2_USDC).address()),
@@ -1884,7 +2022,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"dai",
+			names::DAI,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_2_DAI).address()),
@@ -1895,7 +2033,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"frax",
+			names::FRAX,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_2_FRAX).address()),
@@ -1908,7 +2046,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"usdc",
+			names::USDC,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_C_T_1_USDC).address()),
@@ -1919,7 +2057,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"dai",
+			names::DAI,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_C_T_1_DAI).address()),
@@ -1930,7 +2068,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		evm.call(
 			investor,
 			Default::default(),
-			"frax",
+			names::FRAX,
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_C_T_1_FRAX).address()),
@@ -1942,3 +2080,5 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 
 	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
 }
+
+fn ensure_contracts_exist<T: Runtime>() {}

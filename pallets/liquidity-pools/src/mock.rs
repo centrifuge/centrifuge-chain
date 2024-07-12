@@ -123,9 +123,11 @@ impl orml_tokens::Config for Runtime {
 frame_support::parameter_types! {
 	pub CurrencyPrefix: [u8; 12] = [1; 12];
 	pub TreasuryAccount: AccountId = [2; 32].into();
+	pub AddTrancheHookAddress: [u8; 32] = [3; 32];
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
+	type AddTrancheHookAddress = AddTrancheHookAddress;
 	type AssetRegistry = AssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;

@@ -59,13 +59,13 @@ where
 			Fortitude::Polite,
 		)?;
 
-		let message = Message::ExecutedDecreaseInvestOrder {
+		let message = Message::FulfilledCancelDepositRequest {
 			pool_id: investment_id.of_pool().into(),
 			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_decreased.into(),
-			remaining_invest_amount: status.amount_remaining.into(),
+			fulfilled_invest_amount: status.amount_remaining.into(),
 		};
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
 
@@ -102,14 +102,13 @@ where
 			Fortitude::Polite,
 		)?;
 
-		let message = Message::ExecutedCollectRedeem {
+		let message = Message::FulfilledRedeemRequest {
 			pool_id: investment_id.of_pool().into(),
 			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout.into(),
 			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
-			remaining_redeem_amount: status.amount_remaining.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
@@ -146,14 +145,13 @@ where
 			Preservation::Expendable,
 		)?;
 
-		let message = Message::ExecutedCollectInvest {
+		let message = Message::FulfilledDepositRequest {
 			pool_id: investment_id.of_pool().into(),
 			tranche_id: investment_id.of_tranche().into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout.into(),
 			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
-			remaining_invest_amount: status.amount_remaining.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
