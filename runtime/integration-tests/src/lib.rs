@@ -37,7 +37,18 @@ mod impls;
 /// NOTE: Do not use it direclty, use `#[test_runtimes]` proc macro instead
 #[macro_export]
 macro_rules! __test_for_runtimes {
-	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+	( [ $($runtime_name:ident),* ], $test_name:ident $(, $ignore:meta)?) => {
+        // We need here an extra macro to unfold ignore as `?` inside a repetition of runtimes
+        macro_rules! __test_for_runtime {
+            ( $runtime_name_nested:ident) => {
+                #[tokio::test]
+                $(#[$ignore])?
+                async fn $runtime_name_nested() {
+                    $test_name::<$runtime_name_nested::Runtime>()
+                }
+            };
+        }
+
         #[cfg(test)]
 		mod $test_name {
 			use super::*;
@@ -52,14 +63,26 @@ macro_rules! __test_for_runtimes {
             use centrifuge_runtime as centrifuge;
 
             $(
-                #[tokio::test]
-                async fn $runtime_name() {
-                    $test_name::<$runtime_name::Runtime>()
-                }
+                __test_for_runtime!($runtime_name);
             )*
 		}
 	};
-	( all , $test_name:ident ) => {
-		$crate::__test_for_runtimes!([development, altair, centrifuge], $test_name);
+	( all, $test_name:ident $(, $ignore:meta)?) => {
+		$crate::__test_for_runtimes!([development, altair, centrifuge], $test_name $(, $ignore)?);
     };
+}
+
+#[cfg(test)]
+mod test_for_runtimes_macro_checks {
+	fn foo1<T: crate::config::Runtime>() {}
+	fn foo2<T: crate::config::Runtime>() {}
+	fn foo3<T: crate::config::Runtime>() {}
+	fn foo4<T: crate::config::Runtime>() {}
+	fn foo5<T: crate::config::Runtime>() {}
+
+	__test_for_runtimes!([development], foo1);
+	__test_for_runtimes!([development, altair, centrifuge], foo2);
+	__test_for_runtimes!(all, foo3);
+	__test_for_runtimes!([development], foo4, ignore = "ignored correctly");
+	__test_for_runtimes!(all, foo5, ignore = "ignored correctly");
 }
