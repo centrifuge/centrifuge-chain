@@ -69,7 +69,7 @@ pub fn test_runtimes(args: TokenStream, input: TokenStream) -> TokenStream {
 		.expect("expect 'all' or a list of runtimes")
 		.clone();
 
-	let ignore = args.get(1).clone();
+	let ignore = args.get(1);
 
 	let func = parse_macro_input!(input as ItemFn);
 	let func_name = &func.sig.ident;
