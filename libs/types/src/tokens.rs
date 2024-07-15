@@ -415,6 +415,7 @@ impl CrossChainTransferability {
 	Serialize,
 	Deserialize,
 )]
+// TODO: Am I neede it? if so, move me to pallet-liquidity-pools
 pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {
