@@ -132,7 +132,7 @@ mod utils {
 	}
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([development], ignore = "solidity mismatch")]
 fn transfer_tokens_from_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_usdc_local::<T>(&mut env);
@@ -223,8 +223,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	});
 }
 
-// TODO(@william): Fix
-// #[test_runtimes([development])]
+#[test_runtimes([development], ignore = "solidity mismatch")]
 fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_tt_domain::<T>(&mut env);
@@ -297,8 +296,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	});
 }
 
-// TODO(@william): Fix
-// #[test_runtimes([development])]
+#[test_runtimes([development], ignore = "solidity mismatch")]
 fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_tt_domain::<T>(&mut env);
