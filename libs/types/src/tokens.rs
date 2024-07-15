@@ -23,7 +23,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
 
-use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
+use crate::{xcm::XcmMetadata, EVMChainId};
 
 pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
 
