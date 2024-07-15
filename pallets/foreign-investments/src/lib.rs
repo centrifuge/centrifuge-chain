@@ -35,8 +35,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::swaps::Swap;
-pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapHook};
+use cfg_traits::swaps::{Swap, TokenSwaps};
+pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -49,6 +49,7 @@ mod tests;
 
 mod entities;
 mod impls;
+mod swaps;
 
 #[derive(
 	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
@@ -83,23 +84,12 @@ pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 	<T as Config>::CurrencyId,
 >>::PoolId;
 
-/// Get the pool currency associated to a investment_id
-pub fn pool_currency_of<T: pallet::Config>(
-	investment_id: T::InvestmentId,
-) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
-	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
-
-	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment, InvestmentCollector, TrancheCurrency},
-		swaps::Swaps,
-		PoolInspect, StatusNotificationHook,
+		investments::{ForeignInvestmentHooks, Investment, TrancheCurrency},
+		PoolInspect,
 	};
-	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, One};
 
@@ -166,66 +156,42 @@ pub mod pallet {
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
 		type Investment: Investment<
-				Self::AccountId,
-				Amount = Self::PoolBalance,
-				TrancheAmount = Self::TrancheBalance,
-				CurrencyId = Self::CurrencyId,
-				Error = DispatchError,
-				InvestmentId = Self::InvestmentId,
-			> + InvestmentCollector<
-				Self::AccountId,
-				Error = DispatchError,
-				InvestmentId = Self::InvestmentId,
-				Result = (),
-			>;
+			Self::AccountId,
+			Amount = Self::PoolBalance,
+			TrancheAmount = Self::TrancheBalance,
+			CurrencyId = Self::CurrencyId,
+			Error = DispatchError,
+			InvestmentId = Self::InvestmentId,
+		>;
 
-		/// The type which exposes token swap order functionality such as
-		/// placing and cancelling orders
-		type Swaps: Swaps<
+		/// An identification for a swap order
+		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
+
+		/// The type which exposes token swap order functionality
+		type OrderBook: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
-			Amount = Self::SwapBalance,
-			SwapId = SwapId<Self>,
+			BalanceIn = Self::SwapBalance,
+			BalanceOut = Self::SwapBalance,
+			Ratio = Self::SwapRatio,
+			OrderId = Self::OrderId,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
-		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignDecreaseInvest<Self::ForeignBalance, Self::CurrencyId>,
-			Error = DispatchError,
-		>;
-
-		/// The hook type which acts upon a finalized redemption collection.
-		type CollectedForeignRedemptionHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<
-				Self::ForeignBalance,
-				Self::TrancheBalance,
-				Self::TrancheBalance,
-				Self::CurrencyId,
-			>,
-			Error = DispatchError,
-		>;
-
-		/// The hook type which acts upon a finalized redemption collection.
-		type CollectedForeignInvestmentHook: StatusNotificationHook<
-			Id = (Self::AccountId, Self::InvestmentId),
-			Status = ExecutedForeignCollect<
-				Self::ForeignBalance,
-				Self::TrancheBalance,
-				Self::ForeignBalance,
-				Self::CurrencyId,
-			>,
-			Error = DispatchError,
+		type Hooks: ForeignInvestmentHooks<
+			Self::AccountId,
+			Amount = Self::ForeignBalance,
+			TrancheAmount = Self::TrancheBalance,
+			CurrencyId = Self::CurrencyId,
+			InvestmentId = Self::InvestmentId,
 		>;
 
 		/// The source of truth for pool currencies.
 		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
 	}
 
-	/// Contains the information about the foreign investment process
-	///
-	/// NOTE: The storage is killed once the investment is fully collected, or
+	/// Contains the information about the foreign investment process.
+	/// The storage is killed once the investment is fully collected, or
 	/// decreased.
 	#[pallet::storage]
 	pub type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
@@ -237,9 +203,8 @@ pub mod pallet {
 		entities::InvestmentInfo<T>,
 	>;
 
-	/// Contains the information about the foreign redemption process
-	///
-	/// NOTE: The storage is killed once the redemption is fully collected and
+	/// Contains the information about the foreign redemption process.
+	/// The storage is killed once the redemption is fully collected and
 	/// fully swapped or decreased
 	#[pallet::storage]
 	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
@@ -250,6 +215,12 @@ pub mod pallet {
 		T::InvestmentId,
 		entities::RedemptionInfo<T>,
 	>;
+
+	/// Maps a `OrderId` to its corresponding `AccountId` and `SwapId`.
+	/// The storage is killed when the swap order no longer exists
+	#[pallet::storage]
+	pub type OrderIdToSwapId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::OrderId, (T::AccountId, SwapId<T>)>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -265,15 +236,16 @@ pub mod pallet {
 		/// different foreign currency investment / redemption.
 		MismatchedForeignCurrency,
 
-		/// The decrease is greater than the current investment/redemption
-		TooMuchDecrease,
+		/// A cancel action is in progress and it needs to finish before
+		/// increasing again
+		CancellationInProgress,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		// The swap is created and now is wating to be fulfilled
-		SwapCreated {
+		SwapCreatedOrUpdated {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
 			swap: SwapOf<T>,
@@ -290,9 +262,32 @@ pub mod pallet {
 		SwapCancelled {
 			who: T::AccountId,
 			swap_id: SwapId<T>,
-			remaining: SwapOf<T>,
-			cancelled_in: T::SwapBalance,
-			opposite_in: T::SwapBalance,
+			swap: SwapOf<T>,
 		},
 	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn order_id(
+			account_id: &T::AccountId,
+			investment_id: T::InvestmentId,
+			action: Action,
+		) -> Option<T::OrderId> {
+			match action {
+				Action::Investment => {
+					ForeignInvestmentInfo::<T>::get(account_id, investment_id)?.order_id
+				}
+				Action::Redemption => {
+					ForeignRedemptionInfo::<T>::get(account_id, investment_id)?.order_id
+				}
+			}
+		}
+	}
+}
+
+/// Get the pool currency associated to a investment_id
+pub fn pool_currency_of<T: pallet::Config>(
+	investment_id: T::InvestmentId,
+) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
+	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
+	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
 }

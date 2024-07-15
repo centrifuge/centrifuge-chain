@@ -83,9 +83,6 @@ use pallet_evm::{
 	Runner,
 };
 use pallet_investments::OrderType;
-use pallet_liquidity_pools::hooks::{
-	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
-};
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
@@ -1851,7 +1848,7 @@ impl pallet_order_book::Config for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = Swaps;
+	type FulfilledOrderHook = ForeignInvestments;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
@@ -1865,29 +1862,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
-impl pallet_swaps::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
-	type OrderBook = OrderBook;
-	type OrderId = OrderId;
-	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
-}
-
 impl pallet_foreign_investments::Config for Runtime {
-	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
-	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
 	type ForeignBalance = Balance;
+	type Hooks = LiquidityPools;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
 	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
 	type SwapRatio = Ratio;
-	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
 
@@ -2285,7 +2272,7 @@ construct_runtime!(
 		// our pallets part 2
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
-		Swaps: pallet_swaps::{Pallet, Storage} = 252,
+		// Removed: Swaps = 252
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 253,
 	}
 );

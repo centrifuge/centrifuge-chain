@@ -133,33 +133,23 @@ where
 		Ok(())
 	}
 
-	/// Cancels an invest order by decreasing by the entire unprocessed
-	/// investment amount.
+	/// Cancels an investment order.
+	/// No more invested amount is in the system after calling this method.
 	///
-	/// On success, initiates a swap back into the provided foreign currency.
-	///
-	/// The finalization of this call (fulfillment of the swap) is assumed to be
-	/// asynchronous. In any case, it is handled by
-	/// `DecreasedForeignInvestOrderHook` which burns the corresponding amount
-	/// in foreign currency and dispatches `FulfilledCancelDepositRequest`.
+	/// Finalizing this action is asynchronous.
+	/// The cancellation can be considered fully finished
+	/// when `fulfilled_cancel_investment()` hook is called,
+	/// which will respond with the `FulfilledCancelDepositRequest`.
 	pub fn handle_cancel_deposit_request(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
-		T::ForeignInvestment::decrease_foreign_investment(
-			&investor,
-			invest_id,
-			amount,
-			payout_currency,
-		)?;
-
-		Ok(())
+		T::ForeignInvestment::cancel_foreign_investment(&investor, invest_id, payout_currency)
 	}
 
 	/// Increases an existing redemption order of the investor.
@@ -201,8 +191,8 @@ where
 		Ok(())
 	}
 
-	/// Cancels an existing redemption order of the investor by decreasing the
-	/// redemption by the entire unprocessed amount.
+	/// Cancels an redemption order.
+	/// No more redeemed amount is in the system after calling this method.
 	///
 	/// Initiates a return `FulfilledCancelRedeemRequest` message to refund the
 	/// decreased amount on the source domain.
@@ -214,14 +204,12 @@ where
 		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
-		T::ForeignInvestment::decrease_foreign_redemption(
+		let amount = T::ForeignInvestment::cancel_foreign_redemption(
 			&investor,
 			invest_id.clone(),
-			amount,
 			payout_currency,
 		)?;
 
@@ -242,58 +230,6 @@ where
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
-
-		Ok(())
-	}
-
-	/// Collect the results of a user's invest orders for the given investment
-	/// id. If any amounts are not fulfilled, they are directly appended to the
-	/// next active order for this investment.
-	///
-	/// Transfers collected amount from investor's sovereign account to the
-	/// sending domain locator.
-	///
-	/// NOTE: In contrast to collecting a redemption, investments can be
-	/// collected entirely synchronously as it does not involve swapping. It
-	/// simply transfers the tranche tokens from the pool to the sovereign
-	/// investor account on the local domain.
-	pub fn handle_collect_investment(
-		pool_id: T::PoolId,
-		tranche_id: T::TrancheId,
-		investor: T::AccountId,
-		currency_index: GeneralCurrencyIndexOf<T>,
-	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payment_currency = Self::try_get_currency_id(currency_index)?;
-
-		// NOTE: Dispatch of `FulfilledDepositRequest` is handled by
-		// `FulfilledDepositRequestHook`
-		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id, payment_currency)?;
-
-		Ok(())
-	}
-
-	/// Collect the results of a user's redeem orders for the given investment
-	/// id in the pool currency. If any amounts are not fulfilled, they are
-	/// directly appended to the next active order for this investment.
-	///
-	/// On success, a swap will be initiated to exchange the (partially)
-	/// collected amount in pool currency into the desired foreign currency.
-	///
-	/// The termination of this call (fulfillment of the swap) is assumed to be
-	/// asynchronous and handled by the `CollectedForeignRedemptionHook`. It
-	/// burns the return currency amount and dispatches
-	/// `Message::FulfilledRedeemRequest` to the destination domain.
-	pub fn handle_collect_redemption(
-		pool_id: T::PoolId,
-		tranche_id: T::TrancheId,
-		investor: T::AccountId,
-		currency_index: GeneralCurrencyIndexOf<T>,
-	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_currency_id(currency_index)?;
-
-		T::ForeignInvestment::collect_foreign_redemption(&investor, invest_id, payout_currency)?;
 
 		Ok(())
 	}

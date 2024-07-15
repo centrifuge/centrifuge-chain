@@ -115,10 +115,11 @@ mod utils {
 		amount: Option<<T as pallet_order_book::Config>::BalanceOut>,
 	) {
 		let order = pallet_order_book::Orders::<T>::get(
-			pallet_swaps::SwapIdToOrderId::<T>::get((
-				investor,
-				(investment_id::<T>(pool, tranche), action),
-			))
+			pallet_foreign_investments::Pallet::<T>::order_id(
+				&investor,
+				investment_id::<T>(pool, tranche),
+				action,
+			)
 			.expect("Nothing to match"),
 		)
 		.unwrap();
