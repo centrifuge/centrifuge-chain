@@ -26,10 +26,8 @@ use frame_support::{
 use liquidity_pools_gateway_routers::{
 	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
-use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
