@@ -453,14 +453,12 @@ pub mod pallet {
 			.ensure_mul(price)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				(chain_id, ..) => {
-					ensure!(
-						Domain::EVM(chain_id) == destination,
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == destination,
+				Error::<T>::InvalidDomain
+			);
+
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			T::OutboundQueue::submit(
@@ -614,14 +612,11 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				(chain_id, ..) => {
-					ensure!(
-						Domain::EVM(chain_id) == receiver.domain(),
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == receiver.domain(),
+				Error::<T>::InvalidDomain
+			);
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
