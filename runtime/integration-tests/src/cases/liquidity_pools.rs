@@ -126,21 +126,6 @@ mod utils {
 		10u128.saturating_pow(decimals)
 	}
 
-	pub fn set_domain_router_call<T: Runtime>(
-		domain: Domain,
-		router: DomainRouter<T>,
-	) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
-	}
-
-	pub fn add_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::add_instance { instance }.into()
-	}
-
-	pub fn remove_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
-	}
-
 	/// Creates a new pool for for the given id with the provided currency.
 	///  * BOB as admin and depositor
 	///  * Two tranches
