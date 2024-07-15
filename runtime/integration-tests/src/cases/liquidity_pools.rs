@@ -35,7 +35,7 @@ use runtime_common::{
 };
 use sp_core::{Get, H160};
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, Convert, EnsureAdd, One, Zero},
+	traits::{AccountIdConversion, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 };
 use staging_xcm::{
@@ -49,6 +49,13 @@ use crate::{
 	envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
 	utils::{accounts::Keyring, genesis, genesis::Genesis, orml_asset_registry},
 };
+
+// ------------------
+//       NOTE
+// This file only contains foreign investments tests, but the name must remain
+// as it is until feature lpv2 is merged to avoid conflicts:
+// (https://github.com/centrifuge/centrifuge-chain/pull/1909)
+// ------------------
 
 /// The AUSD asset id
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
@@ -661,139 +668,6 @@ mod utils {
 }
 
 use utils::*;
-
-mod add_allow_upgrade {
-	use super::*;
-
-	#[test_runtimes([development])]
-	fn schedule_upgrade<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			// Only Root can call `schedule_upgrade`
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					MOONBEAM_EVM_CHAIN_ID,
-					[7; 20]
-				),
-				BadOrigin
-			);
-
-			// Now it finally works
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				MOONBEAM_EVM_CHAIN_ID,
-				[7; 20]
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn cancel_upgrade<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			// Only Root can call `cancel_upgrade`
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::cancel_upgrade(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					MOONBEAM_EVM_CHAIN_ID,
-					[7; 20]
-				),
-				BadOrigin
-			);
-
-			// Now it finally works
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::cancel_upgrade(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				MOONBEAM_EVM_CHAIN_ID,
-				[7; 20]
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn update_tranche_token_metadata<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let pool_id = POOL_ID;
-			// NOTE: Default pool admin is BOB
-			create_ausd_pool::<T>(pool_id);
-
-			// Missing tranche token should throw
-			let nonexistent_tranche = [71u8; 16];
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					nonexistent_tranche,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::TrancheNotFound
-			);
-
-			let tranche_id = default_tranche_id::<T>(pool_id);
-
-			// Moving the update to another domain can be called by anyone
-			assert_ok!(
-				pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				)
-			);
-
-			// Edge case: Should throw if tranche exists but metadata does not exist
-			let tranche_currency_id = CurrencyId::Tranche(pool_id, tranche_id);
-
-			orml_asset_registry::Metadata::<T>::remove(tranche_currency_id);
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-					RawOrigin::Signed(POOL_ADMIN.into()).into(),
-					pool_id,
-					tranche_id,
-					Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-				),
-				pallet_liquidity_pools::Error::<T>::TrancheMetadataNotFound
-			);
-		});
-	}
-}
 
 mod foreign_investments {
 	use super::*;

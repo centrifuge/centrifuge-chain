@@ -633,6 +633,101 @@ mod add_tranche {
 	}
 }
 
+mod update_tranche_token_metadata {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Pools::mock_pool_exists(|_| true);
+			Pools::mock_tranche_exists(|_, _| true);
+			AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::UpdateTrancheTokenMetadata {
+						pool_id: POOL_ID,
+						tranche_id: TRANCHE_ID,
+						token_name: vec_to_fixed_array(NAME),
+						token_symbol: vec_to_fixed_array(SYMBOL),
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				EVM_DOMAIN_ADDRESS.domain(),
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_wrong_pool() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::PoolNotFound
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_tranche() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				Pools::mock_pool_exists(|_| true);
+				Pools::mock_tranche_exists(|_, _| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::TrancheNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_metadata() {
+			System::externalities().execute_with(|| {
+				Pools::mock_pool_exists(|_| true);
+				Pools::mock_tranche_exists(|_, _| true);
+				AssetRegistry::mock_metadata(|_| None);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::TrancheMetadataNotFound,
+				);
+			})
+		}
+	}
+}
+
 mod update_token_price {
 	use super::*;
 
@@ -1242,6 +1337,96 @@ mod disallow_investment_currency {
 						CURRENCY_ID
 					),
 					Error::<Runtime>::AssetMetadataNotPoolCurrency
+				);
+			})
+		}
+	}
+}
+
+mod schedule_upgrade {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, TreasuryAccount::get());
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::ScheduleUpgrade {
+						contract: CONTRACT_ACCOUNT
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::schedule_upgrade(
+				RuntimeOrigin::root(),
+				CHAIN_ID,
+				CONTRACT_ACCOUNT,
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_origin() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::schedule_upgrade(
+						RuntimeOrigin::signed(ALICE),
+						CHAIN_ID,
+						CONTRACT_ACCOUNT,
+					),
+					DispatchError::BadOrigin
+				);
+			})
+		}
+	}
+}
+
+mod cancel_upgrade {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, TreasuryAccount::get());
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::CancelUpgrade {
+						contract: CONTRACT_ACCOUNT
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::cancel_upgrade(
+				RuntimeOrigin::root(),
+				CHAIN_ID,
+				CONTRACT_ACCOUNT,
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_origin() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::cancel_upgrade(
+						RuntimeOrigin::signed(ALICE),
+						CHAIN_ID,
+						CONTRACT_ACCOUNT,
+					),
+					DispatchError::BadOrigin
 				);
 			})
 		}
