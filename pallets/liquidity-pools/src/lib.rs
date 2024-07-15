@@ -923,6 +923,10 @@ pub mod pallet {
 		pub fn validate_investment_currency(
 			currency_id: T::CurrencyId,
 		) -> Result<(u128, EVMChainId), DispatchError> {
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+
 			// Ensure the currency is enabled as pool_currency
 			let metadata =
 				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
@@ -930,10 +934,6 @@ pub mod pallet {
 				metadata.additional.pool_currency,
 				Error::<T>::AssetMetadataNotPoolCurrency
 			);
-
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
 
 			Ok((currency, chain_id))
 		}
