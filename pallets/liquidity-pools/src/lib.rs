@@ -473,7 +473,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				destination,
-				Message::UpdateTrancheTokenPrice {
+				Message::UpdateTranchePrice {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					currency,
@@ -663,7 +663,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who.clone(),
 				receiver.domain(),
-				Message::Transfer {
+				Message::TransferAssets {
 					amount: amount.into(),
 					currency,
 					sender: who.into(),
@@ -800,7 +800,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain,
-				Message::UpdateTrancheTokenMetadata {
+				Message::UpdateTrancheMetadata {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					token_name,
@@ -980,7 +980,7 @@ pub mod pallet {
 			});
 
 			match msg {
-				Message::Transfer {
+				Message::TransferAssets {
 					currency,
 					receiver,
 					amount,

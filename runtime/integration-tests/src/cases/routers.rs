@@ -108,7 +108,7 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 			)
 		);
 
-		let msg = Message::Transfer {
+		let msg = Message::TransferAssets {
 			currency: 0,
 			sender: Keyring::Alice.into(),
 			receiver: Keyring::Bob.into(),

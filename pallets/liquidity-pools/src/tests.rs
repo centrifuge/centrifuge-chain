@@ -101,7 +101,7 @@ mod transfer {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::Transfer {
+					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
 						sender: ALICE.into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
@@ -642,7 +642,7 @@ mod update_token_price {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::UpdateTrancheTokenPrice {
+					Message::UpdateTranchePrice {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
 						currency: util::currency_index(CURRENCY_ID),

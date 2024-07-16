@@ -84,29 +84,32 @@ pub enum Message {
 	// --- Gateway ---
 	/// Proof a message has been executed.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	MessageProof {
+		// Hash of the message for which the proof is provided
 		hash: [u8; 32],
 	},
 	/// Initiate the recovery of a message.
 	///
 	/// Must only be callable by root.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	InitiateMessageRecovery {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
+		/// The address of the router
+		address: Address,
 	},
 	/// Dispute the recovery of a message.
 	///
 	/// Must only be callable by root.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
 	},
-	// TODO(@william): Fields + docs
+	// TODO(@william): Add fields + docs
 	Batch,
 	// --- Root ---
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
@@ -198,7 +201,7 @@ pub enum Message {
 	/// Update the price of a tranche token on the target domain.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	UpdateTrancheTokenPrice {
+	UpdateTranchePrice {
 		pool_id: u64,
 		tranche_id: TrancheId,
 		currency: u128,
@@ -212,12 +215,18 @@ pub enum Message {
 	/// migrating all associated balances.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	UpdateTrancheTokenMetadata {
+	UpdateTrancheMetadata {
 		pool_id: u64,
 		tranche_id: TrancheId,
 		#[serde(with = "serde_big_array::BigArray")]
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+	},
+	UpdateTrancheHook {
+		tranche_id: TrancheId,
+		/// The address to be used for this tranche token on the domain it will
+		/// be added and subsequently deployed in.
+		hook: Address,
 	},
 	/// Transfer non-tranche tokens fungibles. For v2, it will only support
 	/// stable-coins.
@@ -228,7 +237,7 @@ pub enum Message {
 	/// For Centrifuge -> EVM Domain: `AddAsset` should have been called
 	/// beforehand. For Centrifuge <- EVM Domain: We can assume `AddAsset`
 	/// has been called for that domain already.
-	Transfer {
+	TransferAssets {
 		currency: u128,
 		sender: Address,
 		receiver: Address,
@@ -385,8 +394,18 @@ pub enum Message {
 		/// decreased by.
 		tranche_tokens_payout: u128,
 	},
-	// TODO(@william): Add fields + docs
-	TriggerRedeemRequest,
+	TriggerRedeemRequest {
+		/// The pool id
+		pool_id: u64,
+		/// The tranche id
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The currency in which the redeem request should be realised in.
+		currency: u128,
+		/// The amount of tranche tokens which should be redeemed.
+		amount: u128,
+	},
 }
 
 impl LPEncoding for Message {
@@ -555,7 +574,7 @@ mod tests {
 	#[test]
 	fn update_tranche_token_price() {
 		test_encode_decode_identity(
-			Message::UpdateTrancheTokenPrice {
+			Message::UpdateTranchePrice {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				currency: TOKEN_ID,
@@ -584,7 +603,7 @@ mod tests {
 	#[test]
 	fn transfer_to_evm_address() {
 		test_encode_decode_identity(
-			Message::Transfer {
+			Message::TransferAssets {
 					currency: TOKEN_ID,
 					sender: default_address_32(),
 					receiver: vec_to_fixed_array(default_address_20()),
@@ -597,7 +616,7 @@ mod tests {
 	#[test]
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
-			Message::Transfer {
+			Message::TransferAssets {
         			currency: TOKEN_ID,
 					sender: vec_to_fixed_array(default_address_20()),
 					receiver: default_address_32(),
@@ -775,7 +794,7 @@ mod tests {
 	#[test]
 	fn update_tranche_token_metadata() {
 		test_encode_decode_identity(
-			Message::UpdateTrancheTokenMetadata {
+			Message::UpdateTrancheMetadata {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				token_name: vec_to_fixed_array(b"Some Name"),

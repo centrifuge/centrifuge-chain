@@ -19,7 +19,7 @@ use ethabi::{ethereum_types::U256, Token};
 use frame_support::traits::OriginTrait;
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::Message;
-use sp_core::ByteArray;
+use sp_core::{ByteArray, Get};
 use sp_runtime::traits::Convert;
 
 use crate::{
@@ -115,7 +115,7 @@ mod utils {
 				Keyring::Alice,
 				Default::default(),
 				names::POOL_MANAGER,
-				"transfer",
+				"transferAssets",
 				Some(&[
 					Token::Address(evm.deployed(names::USDC).address()),
 					Token::FixedBytes(Keyring::Ferdie.id().to_raw_vec()),
@@ -244,10 +244,12 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 			Keyring::TrancheInvestor(1),
 			sp_core::U256::zero(),
 			names::POOL_MANAGER,
-			"transferTranchesToEVM",
+			"transferTrancheTokens",
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
+				// FIXME(@william): Does this represent Domain::EVM enum variant from Solidity?
+				Token::Uint(1.into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
 				Token::Address(Keyring::TrancheInvestor(2).into()),
 				Token::Uint(AMOUNT.into()),
@@ -321,6 +323,12 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
+				// FIXME(@william): Does this represent Domain::Centrifuge enum variant from Solidity?
+				Token::Uint(0.into()),
+				Token::Uint(
+					u32::from(<T as cumulus_pallet_parachain_system::Config>::SelfParaId::get())
+						.into(),
+				),
 				Token::FixedBytes(Keyring::TrancheInvestor(2).id().to_raw_vec()),
 				Token::Uint(AMOUNT.into()),
 			]),

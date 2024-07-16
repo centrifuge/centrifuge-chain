@@ -26,5 +26,5 @@ pub mod liquidity_pools {
 	///
 	/// NOTE: Temporarily hardcoded.
 	pub const SOLIDITY_RESTRICTION_MANAGER_ADDRESS: [u8; 32] =
-		hex_literal::hex!("96ffc875c1fb9d072c6357920b27e894d2bac2ac000000000000000045564d00");
+		hex_literal::hex!("193356f6df34af00288f98bbb34d6ec98512ed32000000000000000045564d00");
 }
