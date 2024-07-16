@@ -1,44 +1,41 @@
-use scale_info::prelude::string::ToString;
+use scale_info::prelude::string::{String, ToString};
 use serde::{de, ser};
-use sp_std::{
-	fmt::{self, Display},
-	vec::Vec,
-};
+use sp_std::fmt::{self, Display};
 
 pub type Result<T> = sp_std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-	Message(Vec<u8>),
+	Message(String),
 	EnumSize,
-	Unimplemented,
+	Unimplemented(String),
 	UnknownSize,
 	Eof,
 }
 
 impl ser::Error for Error {
 	fn custom<T: Display>(msg: T) -> Self {
-		Error::Message(msg.to_string().into_bytes())
+		Error::Message(msg.to_string())
 	}
 }
 
 impl de::Error for Error {
 	fn custom<T: Display>(msg: T) -> Self {
-		Error::Message(msg.to_string().into_bytes())
+		Error::Message(msg.to_string())
 	}
 }
 
 impl Display for Error {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 		let msg = match self {
-			Error::Message(msg) => sp_std::str::from_utf8(msg).unwrap_or(""),
-			Error::EnumSize => "enum variant size too large to serialize(> 255)",
-			Error::Unimplemented => "unimplemented serialization",
-			Error::UnknownSize => "sequence size is not known",
-			Error::Eof => "End of file",
+			Error::Message(string) => string.clone(),
+			Error::EnumSize => "enum variant size too large to serialize(> 255)".into(),
+			Error::Unimplemented(who) => format!("unimplemented '{who}'"),
+			Error::UnknownSize => "sequence size is not known".into(),
+			Error::Eof => "End of file".into(),
 		};
 
-		formatter.write_str(msg)
+		formatter.write_str(&msg)
 	}
 }
 

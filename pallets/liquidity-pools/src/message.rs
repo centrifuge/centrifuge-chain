@@ -7,12 +7,19 @@
 
 use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
 use cfg_types::domain_address::Domain;
-use frame_support::pallet_prelude::RuntimeDebug;
+use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
-use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
+use serde::{
+	de::{Deserializer, Error as _, SeqAccess, Visitor},
+	ser::{Error as _, SerializeTuple},
+	Deserialize, Serialize, Serializer,
+};
+use sp_runtime::{
+	traits::{ConstU32, Get},
+	DispatchError,
+};
+use sp_std::{marker::PhantomData, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -29,6 +36,8 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
+
+pub const MAX_BATCH_MESSAGES: u32 = 256;
 
 /// An isometric type to `Domain` that serializes as expected
 #[derive(
@@ -63,6 +72,71 @@ impl TryInto<Domain> for SerializableDomain {
 			1 => Ok(Domain::EVM(self.1)),
 			_ => Err(DispatchError::Other("Unknown domain")),
 		}
+	}
+}
+
+/// We need an spetial serialization/deserialization for batches
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct BatchMessage(BoundedVec<Box<Message>, ConstU32<MAX_BATCH_MESSAGES>>);
+
+impl Serialize for BatchMessage {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let mut tuple = serializer.serialize_tuple(self.0.len())?;
+
+		let sized_message: Vec<(u16, &Message)> = self
+			.0
+			.iter()
+			.map(|msg| {
+				Ok((
+					gmpf::to_vec(&msg)
+						.map_err(|e| S::Error::custom(e.to_string()))?
+						.len()
+						.try_into()
+						.map_err(|_| S::Error::custom("message size never exceeds u16, qed"))?,
+					&**msg,
+				))
+			})
+			.collect::<Result<Vec<_>, S::Error>>()?;
+
+		for (msg_size, msg) in sized_message {
+			serializer.serialize_u16(msg_size);
+			tuple.serialize_element(&msg)?;
+		}
+		tuple.end()
+	}
+}
+
+impl<'de> Deserialize<'de> for BatchMessage {
+	fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+		struct MsgVisitor;
+
+		impl<'de> Visitor<'de> for MsgVisitor {
+			type Value = Vec<Box<Message>>;
+
+			fn expecting(&self, formatter: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+				formatter.write_str("a sequence of pairs size-message")
+			}
+
+			fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+				let mut values = Vec::new();
+
+				while let Some(value) = seq.next_element()? {
+					if values.len() == MAX_BATCH_MESSAGES as usize {
+						return Err(A::Error::custom("out of bounds"));
+					}
+					values.push(Box::new(value));
+				}
+
+				Ok(values)
+			}
+		}
+
+		deserializer.deserialize_tuple(0, MsgVisitor).map(|v| {
+			Ok(Self(
+				BoundedVec::<_, ConstU32<MAX_BATCH_MESSAGES>>::try_from(v)
+					.map_err(|_| D::Error::custom("out of bounds"))?,
+			))
+		})?
 	}
 }
 
@@ -106,8 +180,9 @@ pub enum Message {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
 	},
-	// TODO(@william): Fields + docs
-	Batch,
+	/// A batch ordered messages.
+	/// Must not allow nested batch messages.
+	Batch(BatchMessage),
 	// --- Root ---
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
 	/// be used via governance to execute EVM spells.
@@ -513,6 +588,21 @@ mod tests {
 	#[test]
 	fn add_pool_long() {
 		test_encode_decode_identity(Message::AddPool { pool_id: POOL_ID }, "0a0000000000bce1a4")
+	}
+
+	#[test]
+	fn batch() {
+		test_encode_decode_identity(
+			Message::Batch {
+				messages: vec![
+					Box::new(Message::AddPool { pool_id: 0 }),
+					Box::new(Message::AddPool { pool_id: POOL_ID }),
+				]
+				.try_into()
+				.unwrap(),
+			},
+			concat!("0x", "04", "0000000000000000", "0000000000bce1a4"),
+		)
 	}
 
 	#[test]
