@@ -79,7 +79,7 @@ pub fn create_or_increase_swap<T: Config>(
 	match order_id {
 		None => create_swap::<T>(who, swap_id, swap),
 		Some(order_id) => {
-			increase_swap::<T>(who, swap_id, &order_id, swap.amount_out.into())?;
+			increase_swap::<T>(who, swap_id, order_id, swap.amount_out)?;
 			Ok(Some(*order_id))
 		}
 	}

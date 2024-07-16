@@ -194,7 +194,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 		if pending_pool_amount.is_zero() {
 			T::Hooks::fulfill_cancel_investment(
-				&who,
+				who,
 				investment_id,
 				self.foreign_currency,
 				self.decrease_swapped_foreign_amount,
@@ -243,7 +243,7 @@ impl<T: Config> InvestmentInfo<T> {
 			.ensure_sub_assign(collected_foreign_amount)?;
 
 		T::Hooks::fulfill_collect_investment(
-			&who,
+			who,
 			investment_id,
 			self.foreign_currency,
 			collected_foreign_amount,
@@ -368,7 +368,7 @@ impl<T: Config> RedemptionInfo<T> {
 
 		if pending_amount.is_zero() {
 			T::Hooks::fulfill_collect_redemption(
-				&who,
+				who,
 				investment_id,
 				self.foreign_currency,
 				self.collected_tranche_tokens,

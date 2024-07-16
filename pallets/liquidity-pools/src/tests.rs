@@ -19,7 +19,7 @@ use staging_xcm::{
 	VersionedLocation,
 };
 
-use crate::{mock::*, Error, GeneralCurrencyIndexOf, Message};
+use crate::{mock::*, Error, GeneralCurrencyIndexOf, Message, UpdateRestrictionMessage};
 
 const CHAIN_ID: u64 = 1;
 const ALICE: AccountId = AccountId::new([0; 32]);
@@ -774,11 +774,13 @@ mod update_member {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::UpdateMember {
+					Message::UpdateRestriction {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						valid_until: VALID_UNTIL_SECS,
-						member: EVM_DOMAIN_ADDRESS.address(),
+						update: UpdateRestrictionMessage::UpdateMember {
+							valid_until: VALID_UNTIL_SECS,
+							member: EVM_DOMAIN_ADDRESS.address(),
+						}
 					}
 				);
 				Ok(())
