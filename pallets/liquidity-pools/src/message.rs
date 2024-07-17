@@ -72,24 +72,51 @@ impl TryInto<Domain> for SerializableDomain {
 	}
 }
 
-/// We need an spetial serialization/deserialization for batches
+/// A message that can not be a Batch.
+/// A submessage is encoded with a u16 prefix containing its size
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct BatchMessages(BoundedVec<Box<Message>, ConstU32<MAX_BATCH_MESSAGES>>);
+pub struct SubMessage(Box<Message>);
+
+impl Serialize for SubMessage {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let msg_size: u16 = gmpf::to_vec(&self.0)
+			.map_err(|e| S::Error::custom(e.to_string()))?
+			.len()
+			.try_into()
+			.map_err(|_| S::Error::custom("Message size never exceeds u16, qed"))?;
+
+		(msg_size, &self.0).serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for SubMessage {
+	fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+		let (_, msg) = <(u16, Message)>::deserialize(deserializer)?;
+		Self::try_from(msg).map_err(|e| D::Error::custom::<&'static str>(e.into()))
+	}
+}
+
+impl TryFrom<Message> for SubMessage {
+	type Error = DispatchError;
+
+	fn try_from(message: Message) -> Result<Self, DispatchError> {
+		match message {
+			Message::Batch { .. } => Err(DispatchError::Other("Batch messages can not be nested")),
+			_ => Ok(Self(Box::new(message))),
+		}
+	}
+}
+
+/// We need an spetial serialization/deserialization for batches
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen, Default)]
+pub struct BatchMessages(BoundedVec<SubMessage, ConstU32<MAX_BATCH_MESSAGES>>);
 
 impl Serialize for BatchMessages {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		let mut tuple = serializer.serialize_tuple(self.0.len())?;
-
 		for msg in self.0.iter() {
-			let msg_size: u16 = gmpf::to_vec(&msg)
-				.map_err(|e| S::Error::custom(e.to_string()))?
-				.len()
-				.try_into()
-				.map_err(|_| S::Error::custom("message size never exceeds u16, qed"))?;
-
-			tuple.serialize_element(&(msg_size, msg))?;
+			tuple.serialize_element(msg)?;
 		}
-
 		tuple.end()
 	}
 }
@@ -99,38 +126,42 @@ impl<'de> Deserialize<'de> for BatchMessages {
 		struct MsgVisitor;
 
 		impl<'de> Visitor<'de> for MsgVisitor {
-			type Value = Vec<Box<Message>>;
+			type Value = BatchMessages;
 
 			fn expecting(&self, formatter: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-				formatter.write_str("a sequence of pairs size-message")
+				formatter.write_str("A sequence of pairs size-message")
 			}
 
 			fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-				let mut values = Vec::new();
+				let mut batch = BatchMessages::default();
 
-				while let Some(_) = seq.next_element::<u16>().unwrap_or(None) {
-					if values.len() == MAX_BATCH_MESSAGES as usize {
-						return Err(A::Error::custom("out of bounds"));
-					}
-					let msg = seq
-						.next_element::<Box<Message>>()?
-						.ok_or(A::Error::custom("expected message"))?;
-
-					values.push(msg);
+				while let Some(msg) = seq.next_element::<SubMessage>().unwrap_or(None) {
+					batch
+						.0
+						.try_push(msg)
+						.map_err(|_| A::Error::custom("Batch limit reached"))?;
 				}
 
-				Ok(values)
+				Ok(batch)
 			}
 		}
 
-		deserializer
-			.deserialize_tuple(MAX_BATCH_MESSAGES as usize * 2, MsgVisitor)
-			.map(|v| {
-				Ok(Self(
-					BoundedVec::<_, ConstU32<MAX_BATCH_MESSAGES>>::try_from(v)
-						.map_err(|_| D::Error::custom("out of bounds"))?,
-				))
-			})?
+		deserializer.deserialize_tuple(MAX_BATCH_MESSAGES as usize, MsgVisitor)
+	}
+}
+
+impl TryFrom<Vec<Message>> for BatchMessages {
+	type Error = DispatchError;
+
+	fn try_from(messages: Vec<Message>) -> Result<Self, DispatchError> {
+		Ok(Self(
+			messages
+				.into_iter()
+				.map(TryFrom::try_from)
+				.collect::<Result<Vec<_>, _>>()?
+				.try_into()
+				.map_err(|_| DispatchError::Other("Batch limit reached"))?,
+		))
 	}
 }
 
@@ -587,20 +618,17 @@ mod tests {
 	}
 
 	#[test]
-	fn batch() {
+	fn batch_messages() {
 		test_encode_decode_identity(
 			Message::Batch {
-				messages: BatchMessages(
-					vec![
-						Box::new(Message::AddPool { pool_id: 0 }),
-						Box::new(Message::AllowAsset {
-							currency: TOKEN_ID,
-							pool_id: POOL_ID,
-						}),
-					]
-					.try_into()
-					.unwrap(),
-				),
+				messages: BatchMessages::try_from(vec![
+					Message::AddPool { pool_id: 0 },
+					Message::AllowAsset {
+						currency: TOKEN_ID,
+						pool_id: POOL_ID,
+					},
+				])
+				.unwrap(),
 			},
 			concat!(
 				"04",                                                 // Batch index
@@ -616,7 +644,7 @@ mod tests {
 	fn batch_empty() {
 		test_encode_decode_identity(
 			Message::Batch {
-				messages: BatchMessages(BoundedVec::default()),
+				messages: BatchMessages::default(),
 			},
 			concat!("04"),
 		)
