@@ -83,25 +83,16 @@ impl Serialize for BatchMessage {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		let mut tuple = serializer.serialize_tuple(self.0.len())?;
 
-		let sized_message: Vec<(u16, &Message)> = self
-			.0
-			.iter()
-			.map(|msg| {
-				Ok((
-					gmpf::to_vec(&msg)
-						.map_err(|e| S::Error::custom(e.to_string()))?
-						.len()
-						.try_into()
-						.map_err(|_| S::Error::custom("message size never exceeds u16, qed"))?,
-					&**msg,
-				))
-			})
-			.collect::<Result<Vec<_>, S::Error>>()?;
+		for msg in self.0.iter() {
+			let msg_size: u16 = gmpf::to_vec(&msg)
+				.map_err(|e| S::Error::custom(e.to_string()))?
+				.len()
+				.try_into()
+				.map_err(|_| S::Error::custom("message size never exceeds u16, qed"))?;
 
-		for (msg_size, msg) in sized_message {
-			serializer.serialize_u16(msg_size);
-			tuple.serialize_element(&msg)?;
+			tuple.serialize_element(&(msg_size, msg))?;
 		}
+
 		tuple.end()
 	}
 }
@@ -120,11 +111,15 @@ impl<'de> Deserialize<'de> for BatchMessage {
 			fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
 				let mut values = Vec::new();
 
-				while let Some(value) = seq.next_element()? {
+				while let Some(_) = seq.next_element::<u16>()? {
 					if values.len() == MAX_BATCH_MESSAGES as usize {
 						return Err(A::Error::custom("out of bounds"));
 					}
-					values.push(Box::new(value));
+					let msg = seq
+						.next_element::<Box<Message>>()?
+						.ok_or(A::Error::custom("expected message"))?;
+
+					values.push(msg);
 				}
 
 				Ok(values)
