@@ -63,6 +63,12 @@ impl DomainAddress {
 	}
 }
 
+impl From<(EVMChainId, [u8; 20])> for DomainAddress {
+	fn from((chain_id, address): (EVMChainId, [u8; 20])) -> Self {
+		Self::evm(chain_id, address)
+	}
+}
+
 impl From<DomainAddress> for Domain {
 	fn from(x: DomainAddress) -> Self {
 		match x {
