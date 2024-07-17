@@ -151,8 +151,12 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 		value.serialize(self)
 	}
 
-	fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-		Err(Error::Unimplemented)
+	fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+		let len: u16 = len
+			.and_then(|len| len.try_into().ok())
+			.ok_or(Error::UnknownSize)?;
+		self.output.extend(&len.to_be_bytes());
+		Ok(self)
 	}
 
 	fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {

@@ -72,20 +72,17 @@ impl TryInto<Domain> for SerializableDomain {
 	}
 }
 
-/// A message that can not be a Batch.
+/// A message belonging to a batch that can not be a Batch.
 /// A submessage is encoded with a u16 prefix containing its size
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct SubMessage(Box<Message>);
 
 impl Serialize for SubMessage {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-		let msg_size: u16 = gmpf::to_vec(&self.0)
-			.map_err(|e| S::Error::custom(e.to_string()))?
-			.len()
-			.try_into()
-			.map_err(|_| S::Error::custom("Message size never exceeds u16, qed"))?;
+		let encoded = gmpf::to_vec(&self.0).map_err(|e| S::Error::custom(e.to_string()))?;
 
-		(msg_size, &self.0).serialize(serializer)
+		// Serializing as bytes automatically encodes the prefix size
+		encoded.serialize(serializer)
 	}
 }
 
