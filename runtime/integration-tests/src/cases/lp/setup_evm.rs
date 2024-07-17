@@ -12,7 +12,8 @@
 
 use super::*;
 
-// TODO(@william): Add solidity ref
+/// Replicating Deployer.sol function `_rely`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L75
 pub fn rely<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
 	/* NOTE: This rely is NOT needed as the LocalRouter is not permissioned
 	evm.call(
@@ -219,33 +220,9 @@ pub fn rely<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 	.unwrap();
 }
 
-// TODO(@william): Add solidity ref
+/// Replicating Deployer.sol function `_file`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L110
 pub fn file<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
-		names::GATEWAY,
-		"file",
-		Some(&[
-			Token::FixedBytes("adapters".as_bytes().to_vec()),
-			Token::Array(vec![Token::Address(evm.deployed(names::ADAPTER).address())]),
-		]),
-	)
-	.unwrap();
-	// FIXME(@william): Jeroen said this needs to be done but it causes a panic and
-	// is not part of the deploy script evm.call(
-	// 	Keyring::Alice,
-	// 	Default::default(),
-	// 	names::GATEWAY,
-	// 	"file",
-	// 	Some(&[
-	// 		Token::FixedBytes("gasService".as_bytes().to_vec()),
-	// 		Token::Array(vec![Token::Address(
-	// 			evm.deployed(names::GAS_SERVICE).address(),
-	// 		)]),
-	// 	]),
-	// )
-	// .unwrap();
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
@@ -303,6 +280,24 @@ pub fn file<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 	.unwrap();
 }
 
+/// Replicate Deployer.sol function `wire`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L119
+pub fn wire<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::GATEWAY,
+		"file",
+		Some(&[
+			Token::FixedBytes("adapters".as_bytes().to_vec()),
+			Token::Array(vec![Token::Address(evm.deployed(names::ADAPTER).address())]),
+		]),
+	)
+	.unwrap();
+}
+
+/// Replicating Deployer.sol function `_endorse`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L70
 pub fn endorse<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
 	evm.call(
 		Keyring::Alice,
@@ -322,6 +317,8 @@ pub fn endorse<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmE
 	.unwrap();
 }
 
+/// Replicating Deployer.sol function `removeDeployerAccess`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L125
 pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
 	/* NOTE: This deny is NOT needed as the LocalRouter is not permissioned
 	evm.call(
@@ -422,8 +419,10 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 	.unwrap();
 }
 
-// TODO(@william): Add solidity ref
+/// Replicating LocalAdapter.s.sol function `run`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/test/integration/LocalAdapter.s.sol#L19-L21
 pub fn local_router<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
+	wire::<T>(evm);
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
@@ -459,7 +458,8 @@ pub fn local_router<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>:
 	.unwrap();
 }
 
-// TODO(@william): Add solidity ref
+/// Replicating Deployer.sol function `deploy`
+/// Source: https://github.com/centrifuge/liquidity-pools/blob/4d1d6f7cc5bf5022a83333697ee5040b620c4bdc/script/Deployer.sol#L39
 pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv) {
 	evm.deploy(
 		contracts::ESCROW,
