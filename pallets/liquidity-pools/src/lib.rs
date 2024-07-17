@@ -591,7 +591,6 @@ pub mod pallet {
 					tranche_id: tranche_id.into(),
 					amount: amount.into(),
 					domain: domain_address.domain().into(),
-					sender: who.into(),
 					receiver: domain_address.address(),
 				},
 			)?;
@@ -666,7 +665,6 @@ pub mod pallet {
 				Message::TransferAssets {
 					amount: amount.into(),
 					currency,
-					sender: who.into(),
 					receiver: receiver.address(),
 				},
 			)?;

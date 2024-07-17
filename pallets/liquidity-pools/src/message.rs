@@ -239,7 +239,6 @@ pub enum Message {
 	/// has been called for that domain already.
 	TransferAssets {
 		currency: u128,
-		sender: Address,
 		receiver: Address,
 		amount: u128,
 	},
@@ -249,7 +248,6 @@ pub enum Message {
 	TransferTrancheTokens {
 		pool_id: u64,
 		tranche_id: TrancheId,
-		sender: Address,
 		domain: SerializableDomain,
 		receiver: Address,
 		amount: u128,
@@ -605,7 +603,6 @@ mod tests {
 		test_encode_decode_identity(
 			Message::TransferAssets {
 					currency: TOKEN_ID,
-					sender: default_address_32(),
 					receiver: vec_to_fixed_array(default_address_20()),
 					amount: AMOUNT,
 				},
@@ -618,7 +615,6 @@ mod tests {
 		test_encode_decode_identity(
 			Message::TransferAssets {
         			currency: TOKEN_ID,
-					sender: vec_to_fixed_array(default_address_20()),
 					receiver: default_address_32(),
 					amount: AMOUNT,
 				},
@@ -634,7 +630,6 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				sender: default_address_32(),
 				domain: domain_address.domain().into(),
 				receiver: domain_address.address(),
 				amount: AMOUNT,
@@ -649,7 +644,6 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				sender: vec_to_fixed_array(default_address_20()),
 				domain: Domain::Centrifuge.into(),
 				receiver: default_address_32(),
 				amount: AMOUNT,

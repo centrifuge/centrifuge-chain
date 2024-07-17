@@ -70,7 +70,6 @@ fn axelar_precompile_execute<T: Runtime>() {
 
 		let msg = Message::TransferAssets {
 			currency: general_currency_id,
-			sender: derived_sender_account.clone().into(),
 			receiver: derived_receiver_account.clone().into(),
 			amount: transfer_amount,
 		};

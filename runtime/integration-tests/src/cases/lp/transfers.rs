@@ -111,6 +111,18 @@ mod utils {
 				]),
 			)
 			.unwrap();
+
+			let balance = Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(Keyring::Alice.into())]),
+			));
+			assert!(
+				balance >= AMOUNT,
+				"Insufficient USDC funds by Alice. Required {AMOUNT} but only has {balance}"
+			);
+
 			evm.call(
 				Keyring::Alice,
 				Default::default(),
@@ -229,6 +241,15 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	utils::prepare_hold_tt_domain::<T>(&mut env);
 
 	env.state_mut(|evm| {
+		assert!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::TrancheInvestor(1),
+				names::POOL_A_T_1,
+				"balanceOf",
+				Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+			)) >= AMOUNT,
+			"Insufficient POOL_A_T_1 funds by TrancheInvestor(1)"
+		);
 		evm.call(
 			Keyring::TrancheInvestor(1),
 			Default::default(),
@@ -248,7 +269,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
-				// FIXME(@william): Does this represent Domain::EVM enum variant from Solidity?
+				// Represents Solidity enum Domain.EVM
 				Token::Uint(1.into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
 				Token::Address(Keyring::TrancheInvestor(2).into()),
@@ -265,14 +286,6 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 				Message::TransferTrancheTokens {
 					pool_id: POOL_A,
 					tranche_id: pool_a_tranche_1_id::<T>(),
-					sender:
-						<T as pallet_liquidity_pools::Config>::DomainAddressToAccountId::convert(
-							DomainAddress::evm(
-								EVM_DOMAIN_CHAIN_ID,
-								Keyring::TrancheInvestor(2).into()
-							)
-						)
-						.into(),
 					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
 					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
 					amount: AMOUNT,
@@ -304,6 +317,15 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 	utils::prepare_hold_tt_domain::<T>(&mut env);
 
 	env.state_mut(|evm| {
+		assert!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::TrancheInvestor(1),
+				names::POOL_A_T_1,
+				"balanceOf",
+				Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+			)) >= AMOUNT,
+			"Insufficient POOL_A_T_1 funds by TrancheInvestor(1)"
+		);
 		evm.call(
 			Keyring::TrancheInvestor(1),
 			Default::default(),
@@ -323,12 +345,10 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
-				// FIXME(@william): Does this represent Domain::Centrifuge enum variant from Solidity?
+				// Represents Solidity enum Domain.Centrifuge
 				Token::Uint(0.into()),
-				Token::Uint(
-					u32::from(<T as cumulus_pallet_parachain_system::Config>::SelfParaId::get())
-						.into(),
-				),
+				// Represents Centrifuge Chain id which is 0
+				Token::Uint(0.into()),
 				Token::FixedBytes(Keyring::TrancheInvestor(2).id().to_raw_vec()),
 				Token::Uint(AMOUNT.into()),
 			]),
