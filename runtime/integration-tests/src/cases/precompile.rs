@@ -42,7 +42,6 @@ fn axelar_precompile_execute<T: Runtime>() {
 		let command_id = H256::from_low_u64_be(5678);
 		let transfer_amount = usd18(100);
 
-		let derived_sender_account = T::AddressMapping::into_account_id(sender_address);
 		let derived_receiver_account = T::AddressMapping::into_account_id(receiver_address);
 
 		evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);

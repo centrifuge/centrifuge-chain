@@ -18,8 +18,7 @@ use sp_runtime::traits::Zero;
 
 use crate::{
 	cases::lp::{
-		self, names, setup, setup_currencies, setup_deploy_lps, setup_full,
-		setup_investment_currencies, setup_pools, setup_tranches,
+		self, names, setup_full,
 		utils::{pool_c_tranche_1_id, Decoder},
 		DECIMALS_6, POOL_C,
 	},
@@ -31,7 +30,7 @@ use crate::{
 const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
-	use cfg_primitives::{AccountId, Balance};
+	use cfg_primitives::AccountId;
 	use cfg_traits::{investments::TrancheCurrency, HasLocalAssetRepresentation};
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
@@ -397,6 +396,8 @@ mod with_foreign_currency {
 	#[test_runtimes([development])]
 	fn invest_cancel_full_after_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
+
+		// Invest and swap all foreign to pool currency
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 			utils::fulfill_swap::<T>(
@@ -404,6 +405,7 @@ mod with_foreign_currency {
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
+				// Fulfill entire order
 				None,
 			);
 		});
