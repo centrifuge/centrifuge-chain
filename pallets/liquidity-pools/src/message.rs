@@ -15,11 +15,8 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
-use sp_runtime::{
-	traits::{ConstU32, Get},
-	DispatchError,
-};
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_runtime::{traits::ConstU32, DispatchError};
+use sp_std::vec::Vec;
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -77,9 +74,9 @@ impl TryInto<Domain> for SerializableDomain {
 
 /// We need an spetial serialization/deserialization for batches
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct BatchMessage(BoundedVec<Box<Message>, ConstU32<MAX_BATCH_MESSAGES>>);
+pub struct BatchMessages(BoundedVec<Box<Message>, ConstU32<MAX_BATCH_MESSAGES>>);
 
-impl Serialize for BatchMessage {
+impl Serialize for BatchMessages {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		let mut tuple = serializer.serialize_tuple(self.0.len())?;
 
@@ -97,7 +94,7 @@ impl Serialize for BatchMessage {
 	}
 }
 
-impl<'de> Deserialize<'de> for BatchMessage {
+impl<'de> Deserialize<'de> for BatchMessages {
 	fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
 		struct MsgVisitor;
 
@@ -111,7 +108,7 @@ impl<'de> Deserialize<'de> for BatchMessage {
 			fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
 				let mut values = Vec::new();
 
-				while let Some(_) = seq.next_element::<u16>()? {
+				while let Some(_) = seq.next_element::<u16>().unwrap_or(None) {
 					if values.len() == MAX_BATCH_MESSAGES as usize {
 						return Err(A::Error::custom("out of bounds"));
 					}
@@ -126,12 +123,14 @@ impl<'de> Deserialize<'de> for BatchMessage {
 			}
 		}
 
-		deserializer.deserialize_tuple(0, MsgVisitor).map(|v| {
-			Ok(Self(
-				BoundedVec::<_, ConstU32<MAX_BATCH_MESSAGES>>::try_from(v)
-					.map_err(|_| D::Error::custom("out of bounds"))?,
-			))
-		})?
+		deserializer
+			.deserialize_tuple(MAX_BATCH_MESSAGES as usize * 2, MsgVisitor)
+			.map(|v| {
+				Ok(Self(
+					BoundedVec::<_, ConstU32<MAX_BATCH_MESSAGES>>::try_from(v)
+						.map_err(|_| D::Error::custom("out of bounds"))?,
+				))
+			})?
 	}
 }
 
@@ -177,7 +176,9 @@ pub enum Message {
 	},
 	/// A batch ordered messages.
 	/// Must not allow nested batch messages.
-	Batch(BatchMessage),
+	Batch {
+		messages: BatchMessages,
+	},
 	// --- Root ---
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
 	/// be used via governance to execute EVM spells.
@@ -589,14 +590,35 @@ mod tests {
 	fn batch() {
 		test_encode_decode_identity(
 			Message::Batch {
-				messages: vec![
-					Box::new(Message::AddPool { pool_id: 0 }),
-					Box::new(Message::AddPool { pool_id: POOL_ID }),
-				]
-				.try_into()
-				.unwrap(),
+				messages: BatchMessages(
+					vec![
+						Box::new(Message::AddPool { pool_id: 0 }),
+						Box::new(Message::AllowAsset {
+							currency: TOKEN_ID,
+							pool_id: POOL_ID,
+						}),
+					]
+					.try_into()
+					.unwrap(),
+				),
 			},
-			concat!("0x", "04", "0000000000000000", "0000000000bce1a4"),
+			concat!(
+				"04",                                                 // Batch index
+				"0009",                                               // AddPool length
+				"0a0000000000000000",                                 // AddPool content
+				"0019",                                               // AddAsset length
+				"0c0000000000bce1a40000000000000000000000000eb5ec7b", // AllowAsset content
+			),
+		)
+	}
+
+	#[test]
+	fn batch_empty() {
+		test_encode_decode_identity(
+			Message::Batch {
+				messages: BatchMessages(BoundedVec::default()),
+			},
+			concat!("04"),
 		)
 	}
 
@@ -898,13 +920,13 @@ mod tests {
 		let encoded = gmpf::to_vec(&msg).unwrap();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded = gmpf::from_slice(
+		let decoded: Message = gmpf::from_slice(
 			&mut hex::decode(expected_hex)
 				.expect("Decode should work")
 				.as_slice(),
 		)
 		.expect("Deserialization should work");
-		assert_eq!(msg, decoded);
+		assert_eq!(decoded, msg);
 	}
 
 	fn default_address_20() -> [u8; 20] {

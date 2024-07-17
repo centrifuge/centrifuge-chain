@@ -136,8 +136,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	}
 
 	fn deserialize_seq<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		//let len = u16::from_be_bytes(*self.consume::<2>()?);
-		//visitor.visit_seq(SeqDeserializer(self, len as usize))
 		Err(Error::Unimplemented("seq".into()))
 	}
 
