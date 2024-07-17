@@ -174,8 +174,8 @@ pub enum Message {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
 	},
-	/// A batch ordered messages.
-	/// Must not allow nested batch messages.
+	/// A batch of ordered messages.
+	/// Don't allow nested batch messages.
 	Batch {
 		messages: BatchMessages,
 	},

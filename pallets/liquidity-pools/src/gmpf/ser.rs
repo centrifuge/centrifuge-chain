@@ -82,19 +82,19 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 	}
 
 	fn serialize_f32(self, _v: f32) -> Result<()> {
-		Err(Error::Unimplemented("f32".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_f64(self, _v: f64) -> Result<()> {
-		Err(Error::Unimplemented("f64".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_char(self, _v: char) -> Result<()> {
-		Err(Error::Unimplemented("char".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_str(self, _v: &str) -> Result<()> {
-		Err(Error::Unimplemented("str".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_bytes(self, v: &[u8]) -> Result<()> {
@@ -103,11 +103,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 	}
 
 	fn serialize_none(self) -> Result<()> {
-		Err(Error::Unimplemented("none".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_some<T: ?Sized + Serialize>(self, _value: &T) -> Result<()> {
-		Err(Error::Unimplemented("some".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_unit(self) -> Result<()> {
@@ -152,7 +152,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 	}
 
 	fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-		Err(Error::Unimplemented("seq".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
@@ -180,7 +180,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 	}
 
 	fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-		Err(Error::Unimplemented("map".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
@@ -197,10 +197,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 		let index = u8::try_from(variant_index).map_err(|_| Error::EnumSize)?;
 		self.output.push(index);
 		Ok(self)
-	}
-
-	fn is_human_readable(&self) -> bool {
-		false
 	}
 }
 

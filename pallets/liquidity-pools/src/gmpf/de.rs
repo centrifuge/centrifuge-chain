@@ -36,7 +36,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	type Error = Error;
 
 	fn deserialize_any<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("any".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
@@ -84,35 +84,35 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	}
 
 	fn deserialize_f32<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("f32".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_f64<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("f64".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_char<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("char".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_str<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("str".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_string<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("string".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_bytes<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("bytes".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_byte_buf<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("byte_buf".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_option<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("option".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_unit<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
@@ -136,10 +136,33 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	}
 
 	fn deserialize_seq<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("seq".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value> {
+		struct SeqDeserializer<'a, 'de>(&'a mut Deserializer<'de>, usize);
+
+		impl<'de, 'a> SeqAccess<'de> for SeqDeserializer<'a, 'de> {
+			type Error = Error;
+
+			fn next_element_seed<T: DeserializeSeed<'de>>(
+				&mut self,
+				seed: T,
+			) -> Result<Option<T::Value>> {
+				if self.1 > 0 {
+					self.1 -= 1;
+					let value = de::DeserializeSeed::deserialize(seed, &mut *self.0)?;
+					Ok(Some(value))
+				} else {
+					Ok(None)
+				}
+			}
+
+			fn size_hint(&self) -> Option<usize> {
+				Some(self.1)
+			}
+		}
+
 		visitor.visit_seq(SeqDeserializer(self, len))
 	}
 
@@ -153,7 +176,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	}
 
 	fn deserialize_map<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("map".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_struct<V: Visitor<'de>>(
@@ -175,15 +198,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	}
 
 	fn deserialize_identifier<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("indentifier".into()))
+		Err(Error::Unimplemented)
 	}
 
 	fn deserialize_ignored_any<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value> {
-		Err(Error::Unimplemented("ignored_any".into()))
-	}
-
-	fn is_human_readable(&self) -> bool {
-		false
+		Err(Error::Unimplemented)
 	}
 }
 
@@ -218,25 +237,5 @@ impl<'de, 'a> VariantAccess<'de> for &'a mut Deserializer<'de> {
 		visitor: V,
 	) -> Result<V::Value> {
 		de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
-	}
-}
-
-struct SeqDeserializer<'a, 'de>(&'a mut Deserializer<'de>, usize);
-
-impl<'de, 'a> SeqAccess<'de> for SeqDeserializer<'a, 'de> {
-	type Error = Error;
-
-	fn next_element_seed<T: DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
-		if self.1 > 0 {
-			self.1 -= 1;
-			let value = de::DeserializeSeed::deserialize(seed, &mut *self.0)?;
-			Ok(Some(value))
-		} else {
-			Ok(None)
-		}
-	}
-
-	fn size_hint(&self) -> Option<usize> {
-		Some(self.1)
 	}
 }
