@@ -2837,7 +2837,7 @@ mod foreign_investments {
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
-								fulfilled_invest_amount: 0,
+								fulfilled_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
 						.into()
@@ -2923,19 +2923,12 @@ mod foreign_investments {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						cancel_msg
 					));
-
-					// Fulfill cancel swap partially
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
-						RawOrigin::Signed(trader.clone()).into(),
-						default_order_id::<T>(&investor),
-						invest_amount_pool_denominated / 4
-					));
 				}));
 
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated / 4
+					invest_amount_pool_denominated / 2
 				));
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -2949,10 +2942,7 @@ mod foreign_investments {
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated / 2,
-								// TODO(@luis): Should be `invest_amount_pool_denominated / 4` with
-								// deltas because we have processed 50% of the investment with
-								// conversion rate 50%
-								fulfilled_invest_amount: 0,
+								fulfilled_invest_amount: invest_amount_foreign_denominated / 2,
 							},
 						}
 						.into()
