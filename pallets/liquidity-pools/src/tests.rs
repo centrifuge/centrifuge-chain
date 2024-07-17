@@ -103,7 +103,6 @@ mod transfer {
 					msg,
 					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
-						sender: ALICE.into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
 						amount: AMOUNT
 					}
@@ -307,7 +306,6 @@ mod transfer_tranche_tokens {
 					Message::TransferTrancheTokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						sender: ALICE.into(),
 						domain: EVM_DOMAIN_ADDRESS.domain().into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
 						amount: AMOUNT

@@ -19,7 +19,7 @@ use ethabi::{ethereum_types::U256, Token};
 use frame_support::traits::OriginTrait;
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::Message;
-use sp_core::{ByteArray, Get};
+use sp_core::ByteArray;
 
 use crate::{
 	cases::lp::{
