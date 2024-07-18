@@ -112,17 +112,7 @@ pub type TrancheOf<T> = Tranche<
 >;
 
 /// Type alias to ease function signatures
-pub type PoolDetailsOf<T> = PoolDetails<
-	<T as Config>::CurrencyId,
-	<T as Config>::TrancheCurrency,
-	<T as Config>::EpochId,
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheId,
-	<T as Config>::PoolId,
-	<T as Config>::MaxTranches,
->;
+pub type PoolDetailsOf<T> = PoolDetails<T>;
 
 /// Type alias for `struct EpochExecutionInfo`
 type EpochExecutionInfoOf<T> = EpochExecutionInfo<
@@ -174,7 +164,7 @@ pub mod pallet {
 	use cfg_traits::{
 		fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-		EpochTransitionHook, PoolUpdateGuard,
+		EpochTransitionHook, PoolUpdateGuard, Reserve,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
@@ -643,7 +633,7 @@ pub mod pallet {
 				T::OnEpochTransition::on_closing_mutate_reserve(
 					pool_id,
 					nav_aum,
-					&mut pool.reserve.total,
+					&mut pool.reserve,
 				)?;
 				let (nav_fees, fees_last_updated) =
 					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
@@ -653,7 +643,7 @@ pub mod pallet {
 				);
 				let nav = Nav::new(nav_aum, nav_fees);
 				let nav_total = nav
-					.total(pool.reserve.total)
+					.total(pool.reserve.total())
 					// NOTE: From an accounting perspective, erroring out would be correct. However,
 					// since investments of this epoch are included in the reserve only in the next
 					// epoch, every new pool with a configured fee is likely to be blocked if we
@@ -663,7 +653,7 @@ pub mod pallet {
 							pool_id,
 							nav_aum,
 							nav_fees,
-							reserve: pool.reserve.total,
+							reserve: pool.reserve.total(),
 						});
 					})
 					.unwrap_or(T::Balance::default());

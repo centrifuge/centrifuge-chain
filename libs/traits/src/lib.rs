@@ -332,6 +332,14 @@ pub trait StatusNotificationHook {
 	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
 }
 
+pub trait Reserve<Balance> {
+	fn deposit(&mut self, amount: Balance) -> DispatchResult;
+
+	fn withdraw(&mut self, amount: Balance) -> DispatchResult;
+
+	fn total(&self) -> Balance;
+}
+
 /// Trait to signal an epoch transition.
 pub trait EpochTransitionHook {
 	type Balance;
@@ -343,7 +351,7 @@ pub trait EpochTransitionHook {
 	fn on_closing_mutate_reserve(
 		pool_id: Self::PoolId,
 		assets_under_management: Self::Balance,
-		reserve: &mut Self::Balance,
+		reserve: &mut impl Reserve<Self::Balance>,
 	) -> Result<(), Self::Error>;
 
 	/// Hook into the execution of an epoch before any investment and

@@ -29,8 +29,12 @@ use sp_runtime::{
 };
 use sp_std::{cmp::PartialEq, vec::Vec};
 
-use crate::tranches::{
-	EpochExecutionTranches, TrancheEssence, TrancheInput, TrancheSolution, TrancheUpdate, Tranches,
+use crate::{
+	tranches::{
+		EpochExecutionTranches, TrancheEssence, TrancheInput, TrancheSolution, TrancheUpdate,
+		Tranches,
+	},
+	Config, Error,
 };
 
 // The TypeId impl we derive pool-accounts from
@@ -39,31 +43,43 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct ReserveDetails<Balance> {
+pub struct ReserveDetails<T: Config> {
 	/// Investments will be allowed up to this amount.
-	pub max: Balance,
+	pub max: T::Balance,
 	/// Current total amount of currency in the pool reserve.
-	pub total: Balance,
+	pub total: T::Balance,
 	/// Current reserve that is available for originations.
-	pub available: Balance,
+	pub available: T::Balance,
+}
+
+impl<T: Config> cfg_traits::Reserve<T::Balance> for ReserveDetails<T> {
+	fn deposit(&mut self, amount: T::Balance) -> DispatchResult {
+		self.total = self.total.ensure_add(amount)?;
+		self.available = self.available.ensure_add(amount)?;
+		Ok(())
+	}
+
+	fn withdraw(&mut self, amount: T::Balance) -> DispatchResult {
+		self.total = self
+			.total
+			.ensure_sub(amount)
+			.map_err(Error::InsufficientCurrency)?;
+		self.available = self
+			.available
+			.ensure_sub(amount)
+			.map_err(Error::InsufficientCurrency)?;
+		Ok(())
+	}
+
+	fn total(&self) -> T::Balance {
+		self.total
+	}
 }
 
 impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
-	pub fn deposit(&mut self, amount: Balance) -> DispatchResult {
-		self.total = self.total.ensure_add(amount)?;
-		self.available = self.available.ensure_add(amount)?;
-		Ok(())
-	}
-
-	pub fn withdraw(&mut self, amount: Balance) -> DispatchResult {
-		self.total = self.total.ensure_sub(amount)?;
-		self.available = self.available.ensure_sub(amount)?;
-		Ok(())
-	}
-
 	/// Update the total balance of the reserve based on the provided solution
 	/// for in- and outflows of this epoc.
 	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
@@ -118,34 +134,27 @@ pub struct PoolLocator<PoolId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct PoolDetails<
-	CurrencyId,
-	TrancheCurrency,
-	EpochId,
-	Balance,
-	Rate,
-	Weight,
-	TrancheId,
-	PoolId,
-	MaxTranches,
-> where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
-	MaxTranches: Get<u32>,
-	TrancheCurrency: Into<CurrencyId>,
-{
+pub struct PoolDetails<T: Config> {
 	/// Currency that the pool is denominated in (immutable).
-	pub currency: CurrencyId,
+	pub currency: T::CurrencyId,
 	/// List of tranches, ordered junior to senior.
-	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>,
+	pub tranches: Tranches<
+		T::Balance,
+		T::Rate,
+		T::TrancheWeight,
+		T::TrancheCurrency,
+		T::TrancheId,
+		T::PoolId,
+		T::MaxTranches,
+	>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
 	/// The status the pool is currently in.
 	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
-	pub epoch: EpochState<EpochId>,
+	pub epoch: EpochState<T::EpochId>,
 	/// Details about the reserve (unused capital) in the pool.
-	pub reserve: ReserveDetails<Balance>,
+	pub reserve: ReserveDetails<T::Balance>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
