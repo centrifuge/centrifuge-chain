@@ -545,6 +545,7 @@ mod tests {
 	use cfg_primitives::{PoolId, TrancheId};
 	use cfg_types::fixed_point::Ratio;
 	use cfg_utils::vec_to_fixed_array;
+	use frame_support::assert_err;
 	use hex::FromHex;
 	use sp_runtime::{traits::One, FixedPointNumber};
 
@@ -586,17 +587,6 @@ mod tests {
 	}
 
 	#[test]
-	fn add_currency_zero() {
-		test_encode_decode_identity(
-			Message::AddAsset {
-				currency: 0,
-				evm_address: default_address_20(),
-			},
-			"09000000000000000000000000000000001231231231231231231231231231231231231231",
-		)
-	}
-
-	#[test]
 	fn add_currency() {
 		test_encode_decode_identity(
 			Message::AddAsset {
@@ -608,46 +598,8 @@ mod tests {
 	}
 
 	#[test]
-	fn add_pool_zero() {
-		test_encode_decode_identity(Message::AddPool { pool_id: 0 }, "0a0000000000000000")
-	}
-
-	#[test]
 	fn add_pool_long() {
 		test_encode_decode_identity(Message::AddPool { pool_id: POOL_ID }, "0a0000000000bce1a4")
-	}
-
-	#[test]
-	fn batch_messages() {
-		test_encode_decode_identity(
-			Message::Batch {
-				messages: BatchMessages::try_from(vec![
-					Message::AddPool { pool_id: 0 },
-					Message::AllowAsset {
-						currency: TOKEN_ID,
-						pool_id: POOL_ID,
-					},
-				])
-				.unwrap(),
-			},
-			concat!(
-				"04",                                                 // Batch index
-				"0009",                                               // AddPool length
-				"0a0000000000000000",                                 // AddPool content
-				"0019",                                               // AddAsset length
-				"0c0000000000bce1a40000000000000000000000000eb5ec7b", // AllowAsset content
-			),
-		)
-	}
-
-	#[test]
-	fn batch_empty() {
-		test_encode_decode_identity(
-			Message::Batch {
-				messages: BatchMessages::default(),
-			},
-			concat!("04"),
-		)
 	}
 
 	#[test]
@@ -658,17 +610,6 @@ mod tests {
 				pool_id: POOL_ID,
 			},
 			"0c0000000000bce1a40000000000000000000000000eb5ec7b",
-		)
-	}
-
-	#[test]
-	fn allow_asset_zero() {
-		test_encode_decode_identity(
-			Message::AllowAsset {
-				currency: 0,
-				pool_id: 0,
-			},
-			"0c000000000000000000000000000000000000000000000000",
 		)
 	}
 
@@ -942,18 +883,65 @@ mod tests {
 		)
 	}
 
+	#[test]
+	fn batch_empty() {
+		test_encode_decode_identity(
+			Message::Batch {
+				messages: BatchMessages::default(),
+			},
+			concat!("04"),
+		)
+	}
+
+	#[test]
+	fn batch_messages() {
+		test_encode_decode_identity(
+			Message::Batch {
+				messages: BatchMessages::try_from(vec![
+					Message::AddPool { pool_id: 0 },
+					Message::AllowAsset {
+						currency: TOKEN_ID,
+						pool_id: POOL_ID,
+					},
+				])
+				.unwrap(),
+			},
+			concat!(
+				"04",                                                 // Batch index
+				"0009",                                               // AddPool length
+				"0a0000000000000000",                                 // AddPool content
+				"0019",                                               // AddAsset length
+				"0c0000000000bce1a40000000000000000000000000eb5ec7b", // AllowAsset content
+			),
+		)
+	}
+
+	#[test]
+	fn batch_of_batches_deserialization() {
+		// The message can not be created directly
+		let encoded = concat!(
+			"04",                 // Batch index
+			"000c",               // Submessage length
+			"04",                 // Inner batch index
+			"0009",               // AddPool length
+			"0a0000000000000000", // AddPool content
+		);
+
+		assert_err!(
+			gmpf::from_slice::<Message>(&hex::decode(encoded).unwrap()),
+			gmpf::Error::Message("A submessage can not be a batch".into()),
+		);
+	}
+
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(msg: Message, expected_hex: &str) {
 		let encoded = gmpf::to_vec(&msg).unwrap();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded: Message = gmpf::from_slice(
-			&mut hex::decode(expected_hex)
-				.expect("Decode should work")
-				.as_slice(),
-		)
-		.expect("Deserialization should work");
+		let decoded: Message =
+			gmpf::from_slice(&hex::decode(expected_hex).expect("Decode should work"))
+				.expect("Deserialization should work");
 		assert_eq!(decoded, msg);
 	}
 
