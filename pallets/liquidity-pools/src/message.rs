@@ -74,7 +74,7 @@ impl TryInto<Domain> for SerializableDomain {
 
 /// A message type that can not be a batch.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct NoBatchMessage(Box<Message>);
+pub struct NoBatchMessage(Message);
 
 impl TryFrom<Message> for NoBatchMessage {
 	type Error = DispatchError;
@@ -82,7 +82,7 @@ impl TryFrom<Message> for NoBatchMessage {
 	fn try_from(message: Message) -> Result<Self, DispatchError> {
 		match message {
 			Message::Batch { .. } => Err(DispatchError::Other("A submessage can not be a batch")),
-			_ => Ok(Self(Box::new(message))),
+			_ => Ok(Self(message)),
 		}
 	}
 }
@@ -160,7 +160,7 @@ impl IntoIterator for BatchMessages {
 	type Item = Message;
 
 	fn into_iter(self) -> Self::IntoIter {
-		let messages: Vec<_> = self.0.into_iter().map(|msg| *msg.0.clone()).collect();
+		let messages: Vec<_> = self.0.into_iter().map(|msg| msg.0).collect();
 		messages.into_iter()
 	}
 }
@@ -172,6 +172,10 @@ impl BatchMessages {
 			.map_err(|_| DispatchError::Other("Batch limit reached"))?;
 
 		Ok(())
+	}
+
+	pub fn len(&self) -> usize {
+		self.0.len()
 	}
 }
 
@@ -499,6 +503,30 @@ pub enum Message {
 	},
 	// TODO(@william): Add fields + docs
 	TriggerRedeemRequest,
+}
+
+impl Message {
+	/// Compose this message with a new one
+	pub fn pack(&self, other: Self) -> Result<Self, DispatchError> {
+		Ok(match self.clone() {
+			Message::Batch { messages } => {
+				let mut messages = messages.clone();
+				messages.try_add(other)?;
+				Message::Batch { messages }
+			}
+			this => Message::Batch {
+				messages: BatchMessages::try_from(vec![this.clone(), other])?,
+			},
+		})
+	}
+
+	/// Decompose the message into a list of messages
+	pub fn unpack(&self) -> Vec<Self> {
+		match self {
+			Message::Batch { messages } => messages.clone().into_iter().collect(),
+			message => vec![message.clone()],
+		}
+	}
 }
 
 impl LPEncoding for Message {
