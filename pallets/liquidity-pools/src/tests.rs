@@ -890,7 +890,7 @@ mod add_currency {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::AddCurrency {
+					Message::AddAsset {
 						currency: util::currency_index(CURRENCY_ID),
 						evm_address: CONTRACT_ACCOUNT,
 					}
