@@ -18,8 +18,10 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
-use frame_support::traits::Get;
-use frame_support::{assert_ok, traits::OriginTrait};
+use frame_support::{
+	assert_ok,
+	traits::{Get, OriginTrait},
+};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::AddressMapping;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
@@ -176,12 +178,16 @@ fn add_pool<T: Runtime>() {
 
 #[test_runtimes([development])]
 fn hook_address<T: Runtime>() {
-	let mut env = super::setup::<T, _>(|_| {});
+	let env = super::setup::<T, _>(|_| {});
 	env.state(|evm| {
 		let solidity =
 			T::AddressMapping::into_account_id(evm.deployed(names::RESTRICTION_MANAGER).address());
-		let rust = <T as pallet_liquidity_pools::Config>::AddTrancheHookAddress::get();
-		assert_eq!(solidity, rust, "Hook address changed, please u");
+		let rust: AccountId =
+			<T as pallet_liquidity_pools::Config>::AddTrancheHookAddress::get().into();
+		assert_eq!(
+			solidity, rust,
+			"Hook address changed, please change our stored value (right) to the new address (left)"
+		);
 	})
 }
 
