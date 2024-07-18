@@ -26,7 +26,6 @@ use frame_support::{
 use liquidity_pools_gateway_routers::{
 	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
-use orml_traits::MultiCurrency;
 use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;

@@ -16,7 +16,7 @@ fi
 # && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc && source ~/.zshrc && nvm install node
 
 # Define the tag and calculate the short git hash
-TAG="v0.13.0"
+TAG="v0.13.1"
 GIT_HASH=$(git rev-parse --short=7 $TAG)
 
 # Download the WASM file from Google Cloud Storage
