@@ -121,7 +121,7 @@ impl<'de> Deserialize<'de> for BatchMessages {
 
 				// We only stop on error trying to deserialize the length of the submessage.
 				// The error will happen when we reach EOF
-				while let Some(_) = seq.next_element::<u16>().unwrap_or(None) {
+				while seq.next_element::<u16>().unwrap_or(None).is_some() {
 					let msg = seq
 						.next_element()?
 						.ok_or(A::Error::custom("expected submessage"))?;
@@ -152,6 +152,16 @@ impl TryFrom<Vec<Message>> for BatchMessages {
 				.try_into()
 				.map_err(|_| DispatchError::Other("Batch limit reached"))?,
 		))
+	}
+}
+
+impl IntoIterator for BatchMessages {
+	type IntoIter = sp_std::vec::IntoIter<Self::Item>;
+	type Item = Message;
+
+	fn into_iter(self) -> Self::IntoIter {
+		let messages: Vec<_> = self.0.into_iter().map(|msg| *msg.0.clone()).collect();
+		messages.into_iter()
 	}
 }
 
