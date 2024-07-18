@@ -52,6 +52,18 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
+	pub fn deposit(&mut self, amount: Balance) -> DispatchResult {
+		self.total = self.total.ensure_add(amount)?;
+		self.available = self.available.ensure_add(amount)?;
+		Ok(())
+	}
+
+	pub fn withdraw(&mut self, amount: Balance) -> DispatchResult {
+		self.total = self.total.ensure_sub(amount)?;
+		self.available = self.available.ensure_sub(amount)?;
+		Ok(())
+	}
+
 	/// Update the total balance of the reserve based on the provided solution
 	/// for in- and outflows of this epoc.
 	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
@@ -226,16 +238,11 @@ where
 	pub fn start_next_epoch(&mut self, now: Seconds) -> DispatchResult {
 		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
-		// TODO: Remove and set state rather to EpochClosing or similar
-		// Set available reserve to 0 to disable originations while the epoch is closed
-		// but not executed
-		self.reserve.available = Zero::zero();
 
 		Ok(())
 	}
 
 	pub fn execute_previous_epoch(&mut self) -> DispatchResult {
-		self.reserve.available = self.reserve.total;
 		self.epoch
 			.last_executed
 			.ensure_add_assign(One::one())

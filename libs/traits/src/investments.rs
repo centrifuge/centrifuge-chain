@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_runtime::DispatchResult;
 use sp_std::fmt::Debug;
 
 /// A trait for converting from a PoolId and a TranchId
@@ -177,6 +178,13 @@ pub trait InvestmentAccountant<AccountId> {
 		dest: &AccountId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
+
+	/// Debit a given amount from the account to the given accountant account
+	fn debit(id: Self::InvestmentId, from: &AccountId, amount: Self::Amount) -> DispatchResult;
+
+	/// Credit a given amount from the accountant account to the given to
+	/// account
+	fn credit(id: Self::InvestmentId, to: &AccountId, amount: Self::Amount) -> DispatchResult;
 
 	/// Increases the existence of
 	fn deposit(

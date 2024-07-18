@@ -149,6 +149,14 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
+		fn debit(a: Self::InvestmentId, b: &T::AccountId, c: Self::Amount) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		fn credit(a: Self::InvestmentId, b: &T::AccountId, c: Self::Amount) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
 		fn transfer(
 			a: Self::InvestmentId,
 			b: &T::AccountId,

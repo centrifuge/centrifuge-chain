@@ -50,7 +50,7 @@ use sp_runtime::{
 		EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, Get, One, Saturating,
 		Zero,
 	},
-	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 use tranches::{
@@ -689,7 +689,12 @@ pub mod pallet {
 					epoch_id: submission_period_epoch,
 				});
 
-				// Get the orders
+				// Get the orders.
+				//
+				// NOTE: This will move the total amounts of investments into the reserve,
+				//       making them available for originations. IF the pools does not
+				//       fulfill the order 100%, the reserve is expected to be able
+				//       to re-fund the investment side when executing the epoch.
 				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
 				if orders.all_are_zero() {
 					T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
@@ -1301,7 +1306,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = T::Time::now();
 
-				pool.reserve.total.ensure_add_assign(amount)?;
+				Self::do_debit(pool_id, &who, amount)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1328,13 +1333,6 @@ pub mod pallet {
 				// TODO: Add a debug log here and/or a debut_assert maybe even an error if
 				// remaining_amount != 0 at this point!
 
-				T::Tokens::transfer(
-					pool.currency,
-					&who,
-					&pool_account,
-					amount,
-					Preservation::Expendable,
-				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})
@@ -1350,16 +1348,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = T::Time::now();
 
-				pool.reserve.total = pool
-					.reserve
-					.total
-					.checked_sub(&amount)
-					.ok_or(TokenError::FundsUnavailable)?;
-				pool.reserve.available = pool
-					.reserve
-					.available
-					.checked_sub(&amount)
-					.ok_or(TokenError::FundsUnavailable)?;
+				Self::do_credit(pool_id, &who, amount)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1383,15 +1372,51 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
+				Self::deposit_event(Event::Rebalanced { pool_id });
+
+				Ok(())
+			})
+		}
+
+		pub(crate) fn do_credit(
+			pool_id: T::PoolId,
+			to: &T::AccountId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |details| {
+				let details = details.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
 				T::Tokens::transfer(
-					pool.currency,
-					&pool_account,
-					&who,
+					details.currency,
+					&PoolLocator { pool_id }.into_account_truncating(),
+					to,
 					amount,
 					Preservation::Expendable,
-				)?;
-				Self::deposit_event(Event::Rebalanced { pool_id });
-				Ok(())
+				)
+				.map(|_| ())?;
+
+				details.reserve.withdraw(amount)
+			})
+		}
+
+		pub(crate) fn do_debit(
+			pool_id: T::PoolId,
+			from: &T::AccountId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |details| {
+				let details = details.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				T::Tokens::transfer(
+					details.currency,
+					from,
+					&PoolLocator { pool_id }.into_account_truncating(),
+					amount,
+					Preservation::Expendable,
+				)
+				.map(|_| ())?;
+
+				details.reserve.deposit(amount)
 			})
 		}
 
