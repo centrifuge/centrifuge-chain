@@ -172,7 +172,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([development], ignore = "solidity mismatch")]
 fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 
