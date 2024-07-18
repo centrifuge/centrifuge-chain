@@ -18,7 +18,10 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
-use frame_support::{assert_ok, traits::OriginTrait};
+use frame_support::{
+	assert_ok,
+	traits::{Get, OriginTrait},
+};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::AddressMapping;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
@@ -174,6 +177,21 @@ fn add_pool<T: Runtime>() {
 }
 
 #[test_runtimes([development])]
+fn hook_address<T: Runtime>() {
+	let env = super::setup::<T, _>(|_| {});
+	env.state(|evm| {
+		let solidity =
+			T::AddressMapping::into_account_id(evm.deployed(names::RESTRICTION_MANAGER).address());
+		let rust: AccountId =
+			<T as pallet_liquidity_pools::Config>::AddTrancheHookAddress::get().into();
+		assert_eq!(
+			solidity, rust,
+			"Hook address changed, please change our stored value (right) to the new address (left)"
+		);
+	})
+}
+
+#[test_runtimes([development])]
 fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -194,11 +212,6 @@ fn add_tranche<T: Runtime>() {
 			),
 			utils::REVERT_ERR
 		);
-
-		let hook_address = evm.deployed(names::RESTRICTION_MANAGER).address();
-		let hook_32 = T::AddressMapping::into_account_id(hook_address);
-		println!("Hook EVM Address {:?}", hook_address);
-		println!("Hook AccountId32 Address {:?}", hook_32);
 	});
 
 	env.state_mut(|_| {
@@ -449,7 +462,7 @@ fn update_member<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([development], ignore = "solidity mismatch")]
 fn update_tranche_token_metadata<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);

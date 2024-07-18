@@ -26,11 +26,9 @@ use frame_support::{
 use liquidity_pools_gateway_routers::{
 	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
-use orml_traits::MultiCurrency;
 use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
@@ -125,21 +123,6 @@ mod utils {
 
 	pub fn decimals(decimals: u32) -> Balance {
 		10u128.saturating_pow(decimals)
-	}
-
-	pub fn set_domain_router_call<T: Runtime>(
-		domain: Domain,
-		router: DomainRouter<T>,
-	) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
-	}
-
-	pub fn add_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::add_instance { instance }.into()
-	}
-
-	pub fn remove_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
 	}
 
 	/// Creates a new pool for for the given id with the provided currency.
@@ -705,195 +688,7 @@ mod utils {
 use utils::*;
 
 mod add_allow_upgrade {
-	use cfg_types::tokens::LiquidityPoolsWrappedToken;
-
 	use super::*;
-
-	#[test_runtimes([development])]
-	fn add_currency<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let gateway_sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
-			let currency_id = AUSD_CURRENCY_ID;
-
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(GLMR_CURRENCY_ID, &gateway_sender),
-				DEFAULT_BALANCE_GLMR
-			);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-				RawOrigin::Signed(Keyring::Bob.into()).into(),
-				currency_id,
-			));
-
-			let currency_index =
-				pallet_liquidity_pools::Pallet::<T>::try_get_general_index(currency_id)
-					.expect("can get general index for currency");
-
-			let LiquidityPoolsWrappedToken::EVM {
-				address: evm_address,
-				..
-			} = pallet_liquidity_pools::Pallet::<T>::try_get_wrapped_token(&currency_id)
-				.expect("can get wrapped token");
-
-			let outbound_message = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::get(
-				T::OutboundMessageNonce::one(),
-			)
-			.expect("expected outbound queue message");
-
-			assert_eq!(
-				outbound_message.2,
-				Message::AddAsset {
-					currency: currency_index,
-					evm_address,
-				},
-			);
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn add_currency_should_fail<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::ForeignAsset(42)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Native
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-
-			// Should fail to add currency_id which is missing a registered
-			// Location
-			let currency_id = CurrencyId::ForeignAsset(100);
-
-			assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				AssetMetadata {
-					name: BoundedVec::default(),
-					symbol: BoundedVec::default(),
-					decimals: 12,
-					location: None,
-					existential_deposit: 1_000_000,
-					additional: CustomMetadata {
-						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: false,
-						permissioned: false,
-						pool_currency: false,
-						local_representation: None,
-					},
-				},
-				Some(currency_id)
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
-			);
-
-			// Add convertable Location to metadata but remove transferability
-			assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				currency_id,
-				None,
-				None,
-				None,
-				None,
-				// Changed: Add multilocation to metadata for some random EVM chain id for
-				// which no instance is registered
-				Some(Some(liquidity_pools_transferable_multilocation::<T>(
-					u64::MAX,
-					[1u8; 20],
-				))),
-				Some(CustomMetadata {
-					// Changed: Disallow liquidityPools transferability
-					transferability: CrossChainTransferability::Xcm(Default::default()),
-					..Default::default()
-				}),
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-
-			// Switch transferability from XCM to None
-			assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				currency_id,
-				None,
-				None,
-				None,
-				None,
-				None,
-				Some(CustomMetadata {
-					// Changed: Disallow cross chain transferability entirely
-					transferability: CrossChainTransferability::None,
-					..Default::default()
-				})
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-		});
-	}
 
 	#[test_runtimes([development])]
 	fn allow_investment_currency<T: Runtime + FudgeSupport>() {
@@ -2837,7 +2632,7 @@ mod foreign_investments {
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
-								fulfilled_invest_amount: 0,
+								fulfilled_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
 						.into()
@@ -2923,19 +2718,12 @@ mod foreign_investments {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						cancel_msg
 					));
-
-					// Fulfill cancel swap partially
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
-						RawOrigin::Signed(trader.clone()).into(),
-						default_order_id::<T>(&investor),
-						invest_amount_pool_denominated / 4
-					));
 				}));
 
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated / 4
+					invest_amount_pool_denominated / 2
 				));
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -2949,10 +2737,7 @@ mod foreign_investments {
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated / 2,
-								// TODO(@luis): Should be `invest_amount_pool_denominated / 4` with
-								// deltas because we have processed 50% of the investment with
-								// conversion rate 50%
-								fulfilled_invest_amount: 0,
+								fulfilled_invest_amount: invest_amount_foreign_denominated / 2,
 							},
 						}
 						.into()

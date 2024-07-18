@@ -121,7 +121,7 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "altair-runtime"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1376,7 +1376,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1469,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -3098,7 +3098,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",

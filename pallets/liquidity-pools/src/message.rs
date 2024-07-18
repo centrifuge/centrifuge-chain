@@ -197,24 +197,27 @@ pub enum Message {
 	// --- Gateway ---
 	/// Proof a message has been executed.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	MessageProof {
+		// Hash of the message for which the proof is provided
 		hash: [u8; 32],
 	},
 	/// Initiate the recovery of a message.
 	///
 	/// Must only be callable by root.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	InitiateMessageRecovery {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
+		/// The address of the router
+		address: Address,
 	},
 	/// Dispute the recovery of a message.
 	///
 	/// Must only be callable by root.
 	///
-	/// Directionality: Centrifuge -> EVM Domain. // TODO(@william): Check
+	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
@@ -314,7 +317,7 @@ pub enum Message {
 	/// Update the price of a tranche token on the target domain.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	UpdateTrancheTokenPrice {
+	UpdateTranchePrice {
 		pool_id: u64,
 		tranche_id: TrancheId,
 		currency: u128,
@@ -328,12 +331,18 @@ pub enum Message {
 	/// migrating all associated balances.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	UpdateTrancheTokenMetadata {
+	UpdateTrancheMetadata {
 		pool_id: u64,
 		tranche_id: TrancheId,
 		#[serde(with = "serde_big_array::BigArray")]
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+	},
+	UpdateTrancheHook {
+		tranche_id: TrancheId,
+		/// The address to be used for this tranche token on the domain it will
+		/// be added and subsequently deployed in.
+		hook: Address,
 	},
 	/// Transfer non-tranche tokens fungibles. For v2, it will only support
 	/// stable-coins.
@@ -344,9 +353,8 @@ pub enum Message {
 	/// For Centrifuge -> EVM Domain: `AddAsset` should have been called
 	/// beforehand. For Centrifuge <- EVM Domain: We can assume `AddAsset`
 	/// has been called for that domain already.
-	Transfer {
+	TransferAssets {
 		currency: u128,
-		sender: Address,
 		receiver: Address,
 		amount: u128,
 	},
@@ -356,7 +364,6 @@ pub enum Message {
 	TransferTrancheTokens {
 		pool_id: u64,
 		tranche_id: TrancheId,
-		sender: Address,
 		domain: SerializableDomain,
 		receiver: Address,
 		amount: u128,
@@ -501,8 +508,18 @@ pub enum Message {
 		/// decreased by.
 		tranche_tokens_payout: u128,
 	},
-	// TODO(@william): Add fields + docs
-	TriggerRedeemRequest,
+	TriggerRedeemRequest {
+		/// The pool id
+		pool_id: u64,
+		/// The tranche id
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The currency in which the redeem request should be realised in.
+		currency: u128,
+		/// The amount of tranche tokens which should be redeemed.
+		amount: u128,
+	},
 }
 
 impl Message {
@@ -669,7 +686,7 @@ mod tests {
 	#[test]
 	fn update_tranche_token_price() {
 		test_encode_decode_identity(
-			Message::UpdateTrancheTokenPrice {
+			Message::UpdateTranchePrice {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				currency: TOKEN_ID,
@@ -691,33 +708,31 @@ mod tests {
 					valid_until: 1706260138,
 				}
 			},
-			"120000000000000002811acd5b3f17c06841c7e41e9e04cb1b0145645645645645645645645645645645645645645645645645645645645645640000000065b376aa",
+			"130000000000000002811acd5b3f17c06841c7e41e9e04cb1b0145645645645645645645645645645645645645645645645645645645645645640000000065b376aa",
 		)
 	}
 
 	#[test]
 	fn transfer_to_evm_address() {
 		test_encode_decode_identity(
-			Message::Transfer {
+			Message::TransferAssets {
 					currency: TOKEN_ID,
-					sender: default_address_32(),
 					receiver: vec_to_fixed_array(default_address_20()),
 					amount: AMOUNT,
 				},
-			"100000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+			"110000000000000000000000000eb5ec7b1231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
 	#[test]
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
-			Message::Transfer {
+			Message::TransferAssets {
         			currency: TOKEN_ID,
-					sender: vec_to_fixed_array(default_address_20()),
 					receiver: default_address_32(),
 					amount: AMOUNT,
 				},
-			"100000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+			"110000000000000000000000000eb5ec7b4564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
@@ -729,12 +744,11 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				sender: default_address_32(),
 				domain: domain_address.domain().into(),
 				receiver: domain_address.address(),
 				amount: AMOUNT,
 			},
-			"110000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+			"120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 		);
 	}
 
@@ -744,12 +758,11 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				sender: vec_to_fixed_array(default_address_20()),
 				domain: Domain::Centrifuge.into(),
 				receiver: default_address_32(),
 				amount: AMOUNT,
 			},
-			"110000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+			"120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 		)
 	}
 
@@ -763,7 +776,7 @@ mod tests {
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"130000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"140000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -776,7 +789,7 @@ mod tests {
 				investor: default_address_32(),
 				currency: TOKEN_ID,
 			},
-			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
+			"180000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -790,7 +803,7 @@ mod tests {
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"140000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"150000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -803,7 +816,7 @@ mod tests {
 				investor: default_address_32(),
 				currency: TOKEN_ID,
 			},
-			"180000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
+			"190000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -818,7 +831,7 @@ mod tests {
 				currency_payout: AMOUNT / 2,
 				fulfilled_invest_amount: AMOUNT / 4,
 			},
-			"190000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000000000000014adf4b7320334b9000000",
+			"1a0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)
 	}
 
@@ -832,7 +845,7 @@ mod tests {
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
 			},
-			"1a0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
+			"1b0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
 		)
 	}
 
@@ -847,7 +860,7 @@ mod tests {
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
 			},
-			"150000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
+			"160000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)
 	}
 
@@ -862,7 +875,7 @@ mod tests {
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
 			},
-			"160000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
+			"170000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)
 	}
 
@@ -889,7 +902,7 @@ mod tests {
 	#[test]
 	fn update_tranche_token_metadata() {
 		test_encode_decode_identity(
-			Message::UpdateTrancheTokenMetadata {
+			Message::UpdateTrancheMetadata {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				token_name: vec_to_fixed_array(b"Some Name"),

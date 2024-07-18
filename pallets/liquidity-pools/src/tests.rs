@@ -62,7 +62,7 @@ mod util {
 		}
 	}
 
-	pub fn wrapped_transferable_metadata() -> AssetMetadata {
+	pub fn locatable_transferable_metadata() -> AssetMetadata {
 		let pallet_index = PalletInfo::index::<LiquidityPools>();
 		AssetMetadata {
 			location: Some(VersionedLocation::V4(Location::new(
@@ -93,7 +93,7 @@ mod transfer {
 	#[test]
 	fn success() {
 		System::externalities().execute_with(|| {
-			AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 			TransferFilter::mock_check(|_| Ok(()));
 			Tokens::mint_into(CURRENCY_ID, &ALICE, AMOUNT).unwrap();
 			Gateway::mock_submit(|sender, destination, msg| {
@@ -101,9 +101,8 @@ mod transfer {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::Transfer {
+					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
-						sender: ALICE.into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
 						amount: AMOUNT
 					}
@@ -226,7 +225,7 @@ mod transfer {
 		#[test]
 		fn with_wrong_domain() {
 			System::externalities().execute_with(|| {
-				AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+				AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 
 				assert_noop!(
 					LiquidityPools::transfer(
@@ -243,7 +242,7 @@ mod transfer {
 		#[test]
 		fn without_satisfy_filter() {
 			System::externalities().execute_with(|| {
-				AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+				AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 				TransferFilter::mock_check(|_| Err(DispatchError::Other("Err")));
 
 				assert_noop!(
@@ -261,7 +260,7 @@ mod transfer {
 		#[test]
 		fn without_sufficient_balance() {
 			System::externalities().execute_with(|| {
-				AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+				AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 				TransferFilter::mock_check(|_| Ok(()));
 
 				assert_noop!(
@@ -307,7 +306,6 @@ mod transfer_tranche_tokens {
 					Message::TransferTrancheTokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						sender: ALICE.into(),
 						domain: EVM_DOMAIN_ADDRESS.domain().into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
 						amount: AMOUNT
@@ -636,13 +634,13 @@ mod update_token_price {
 				assert_eq!(origin, POOL_CURRENCY_ID);
 				Ok(MARKET_RATIO)
 			});
-			AssetRegistry::mock_metadata(|_| Some(util::wrapped_transferable_metadata()));
+			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 			Gateway::mock_submit(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::UpdateTrancheTokenPrice {
+					Message::UpdateTranchePrice {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
 						currency: util::currency_index(CURRENCY_ID),
@@ -874,6 +872,86 @@ mod update_member {
 						VALID_UNTIL_SECS,
 					),
 					Error::<Runtime>::InvestorDomainAddressNotAMember,
+				);
+			})
+		}
+	}
+}
+
+mod add_currency {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::AddAsset {
+						currency: util::currency_index(CURRENCY_ID),
+						evm_address: CONTRACT_ACCOUNT,
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::add_currency(
+				RuntimeOrigin::signed(ALICE),
+				CURRENCY_ID
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_no_metadata() {
+			System::externalities().execute_with(|| {
+				AssetRegistry::mock_metadata(|_| None);
+
+				assert_noop!(
+					LiquidityPools::add_currency(RuntimeOrigin::signed(ALICE), CURRENCY_ID),
+					Error::<Runtime>::AssetNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_unsupported_token() {
+			System::externalities().execute_with(|| {
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::add_currency(RuntimeOrigin::signed(ALICE), CurrencyId::Native),
+					TokenError::Unsupported,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_transferible_asset() {
+			System::externalities().execute_with(|| {
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::add_currency(RuntimeOrigin::signed(ALICE), CURRENCY_ID),
+					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_location() {
+			System::externalities().execute_with(|| {
+				AssetRegistry::mock_metadata(|_| Some(util::transferable_metadata()));
+
+				assert_noop!(
+					LiquidityPools::add_currency(RuntimeOrigin::signed(ALICE), CURRENCY_ID),
+					Error::<Runtime>::AssetNotLiquidityPoolsWrappedToken
 				);
 			})
 		}
