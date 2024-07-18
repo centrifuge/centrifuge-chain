@@ -93,6 +93,14 @@ pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
 pub const EVM_DOMAIN: Domain = Domain::EVM(EVM_DOMAIN_CHAIN_ID);
 
+/// Represents Solidity enum Domain.Centrifuge
+pub const DOMAIN_CENTRIFUGE: u8 = 0;
+
+/// Represents Solidity enum Domain.Evm
+pub const DOMAIN_EVM: u8 = 1;
+/// Represents Centrifuge Chain id which is 0
+pub const CENTRIFUGE_CHAIN_ID: u8 = 0;
+
 pub mod contracts {
 	pub const ROOT: &str = "Root";
 	pub const ESCROW: &str = "Escrow";

@@ -25,7 +25,8 @@ use crate::{
 	cases::lp::{
 		self, names,
 		utils::{as_h160_32bytes, pool_a_tranche_1_id, Decoder},
-		LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
+		LocalUSDC, CENTRIFUGE_CHAIN_ID, DECIMALS_6, DEFAULT_BALANCE, DOMAIN_CENTRIFUGE, DOMAIN_EVM,
+		EVM_DOMAIN_CHAIN_ID, POOL_A, USDC,
 	},
 	config::Runtime,
 	env::{Blocks, Env, EnvEvmExtension, EvmEnv},
@@ -268,8 +269,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
-				// Represents Solidity enum Domain.EVM
-				Token::Uint(1.into()),
+				Token::Uint(DOMAIN_EVM.into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
 				Token::Address(Keyring::TrancheInvestor(2).into()),
 				Token::Uint(AMOUNT.into()),
@@ -344,10 +344,8 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 			Some(&[
 				Token::Uint(POOL_A.into()),
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
-				// Represents Solidity enum Domain.Centrifuge
-				Token::Uint(0.into()),
-				// Represents Centrifuge Chain id which is 0
-				Token::Uint(0.into()),
+				Token::Uint(DOMAIN_CENTRIFUGE.into()),
+				Token::Uint(CENTRIFUGE_CHAIN_ID.into()),
 				Token::FixedBytes(Keyring::TrancheInvestor(2).id().to_raw_vec()),
 				Token::Uint(AMOUNT.into()),
 			]),
