@@ -1052,6 +1052,9 @@ pub mod pallet {
 					currency.into(),
 					sender,
 				),
+				Message::Batch { .. } => Err(DispatchError::Other(
+					"A batch message is expected to be decomposed first by the gateway",
+				)),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

@@ -155,6 +155,12 @@ impl TryFrom<Vec<Message>> for BatchMessages {
 	}
 }
 
+impl Into<Vec<Message>> for BatchMessages {
+	fn into(self) -> Vec<Message> {
+		self.0.into_iter().map(|msg| *msg.0.clone()).collect()
+	}
+}
+
 impl BatchMessages {
 	pub fn try_add(&mut self, message: Message) -> DispatchResult {
 		self.0
@@ -498,6 +504,26 @@ impl LPEncoding for Message {
 
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
+	}
+
+	fn pack(&self, other: Self) -> Result<Self, DispatchError> {
+		Ok(match self.clone() {
+			Message::Batch { messages } => {
+				let mut messages = messages.clone();
+				messages.try_add(other)?;
+				Message::Batch { messages }
+			}
+			this => Message::Batch {
+				messages: BatchMessages::try_from(vec![this.clone(), other])?,
+			},
+		})
+	}
+
+	fn unpack(&self) -> Vec<Self> {
+		match self {
+			Message::Batch { messages } => messages.clone().into(),
+			message => vec![message.clone()],
+		}
 	}
 }
 

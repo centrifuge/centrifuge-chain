@@ -20,6 +20,12 @@ use sp_std::vec::Vec;
 pub trait LPEncoding: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
+
+	/// Compose this message with a new one
+	fn pack(&self, other: Self) -> Result<Self, DispatchError>;
+
+	/// Decompose the message into a list of messages
+	fn unpack(&self) -> Vec<Self>;
 }
 
 #[cfg(any(test, feature = "std"))]
@@ -42,6 +48,14 @@ pub mod test_util {
 				Some(_) => Err("unsupported message".into()),
 				None => Err("empty message".into()),
 			}
+		}
+
+		fn pack(&self, _: Self) -> Result<Self, DispatchError> {
+			unimplemented!("not supported")
+		}
+
+		fn unpack(&self) -> Vec<Self> {
+			unimplemented!("not supported")
 		}
 	}
 }
