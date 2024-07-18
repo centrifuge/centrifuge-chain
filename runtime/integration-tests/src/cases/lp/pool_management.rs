@@ -18,6 +18,7 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
+use frame_support::traits::Get;
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::AddressMapping;
@@ -39,7 +40,7 @@ use crate::{
 	},
 };
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn add_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 
@@ -128,7 +129,7 @@ fn add_currency<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn add_pool<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|_| {});
 	const POOL: PoolId = 1;
@@ -173,7 +174,18 @@ fn add_pool<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
+fn hook_address<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|_| {});
+	env.state(|evm| {
+		let solidity =
+			T::AddressMapping::into_account_id(evm.deployed(names::RESTRICTION_MANAGER).address());
+		let rust = <T as pallet_liquidity_pools::Config>::AddTrancheHookAddress::get();
+		assert_eq!(solidity, rust, "Hook address changed, please u");
+	})
+}
+
+#[test_runtimes([development])]
 fn add_tranche<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -194,11 +206,6 @@ fn add_tranche<T: Runtime>() {
 			),
 			utils::REVERT_ERR
 		);
-
-		let hook_address = evm.deployed(names::RESTRICTION_MANAGER).address();
-		let hook_32 = T::AddressMapping::into_account_id(hook_address);
-		println!("Hook EVM Address {:?}", hook_address);
-		println!("Hook AccountId32 Address {:?}", hook_32);
 	});
 
 	env.state_mut(|_| {
@@ -260,7 +267,7 @@ fn add_tranche<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn allow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -312,7 +319,7 @@ fn allow_investment_currency<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn disallow_investment_currency<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -365,7 +372,7 @@ fn disallow_investment_currency<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn update_member<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
@@ -544,7 +551,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn update_tranche_token_price<T: Runtime>() {
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
