@@ -16,7 +16,7 @@ use serde::{
 	Deserialize, Serialize, Serializer,
 };
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
