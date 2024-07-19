@@ -9,7 +9,7 @@ use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
 use cfg_types::domain_address::Domain;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
+use scale_info::{prelude::string::ToString, TypeInfo};
 use serde::{
 	de::{Deserializer, Error as _, SeqAccess, Visitor},
 	ser::{Error as _, SerializeTuple},
