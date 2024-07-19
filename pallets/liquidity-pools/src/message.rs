@@ -73,7 +73,7 @@ impl TryInto<Domain> for SerializableDomain {
 }
 
 /// A message type that can not be a batch.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct NoBatchMessage(Message);
 
 impl TryFrom<Message> for NoBatchMessage {
@@ -84,6 +84,14 @@ impl TryFrom<Message> for NoBatchMessage {
 			Message::Batch { .. } => Err(DispatchError::Other("A submessage can not be a batch")),
 			_ => Ok(Self(message)),
 		}
+	}
+}
+
+impl MaxEncodedLen for NoBatchMessage {
+	fn max_encoded_len() -> usize {
+		// This message use a non batch message version to obtain the encoded
+		// len to avoid an infite recursion: message -> batch -> message -> batch ...
+		Message::<()>::max_encoded_len()
 	}
 }
 
@@ -192,7 +200,7 @@ impl BatchMessages {
 	TypeInfo,
 	MaxEncodedLen,
 )]
-pub enum Message {
+pub enum Message<BatchContent = BatchMessages> {
 	Invalid,
 	// --- Gateway ---
 	/// Proof a message has been executed.
@@ -224,9 +232,7 @@ pub enum Message {
 	},
 	/// A batch of ordered messages.
 	/// Don't allow nested batch messages.
-	Batch {
-		messages: BatchMessages,
-	},
+	Batch(BatchContent),
 	// --- Root ---
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
 	/// be used via governance to execute EVM spells.
@@ -526,21 +532,19 @@ impl Message {
 	/// Compose this message with a new one
 	pub fn pack(&self, other: Self) -> Result<Self, DispatchError> {
 		Ok(match self.clone() {
-			Message::Batch { messages } => {
-				let mut messages = messages.clone();
-				messages.try_add(other)?;
-				Message::Batch { messages }
+			Message::Batch(content) => {
+				let mut content = content.clone();
+				content.try_add(other)?;
+				Message::Batch(content)
 			}
-			this => Message::Batch {
-				messages: BatchMessages::try_from(vec![this.clone(), other])?,
-			},
+			this => Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?),
 		})
 	}
 
 	/// Decompose the message into a list of messages
 	pub fn unpack(&self) -> Vec<Self> {
 		match self {
-			Message::Batch { messages } => messages.clone().into_iter().collect(),
+			Message::Batch(content) => content.clone().into_iter().collect(),
 			message => vec![message.clone()],
 		}
 	}
@@ -613,7 +617,7 @@ mod tests {
 
 	#[test]
 	fn invalid() {
-		let msg = Message::Invalid;
+		let msg: Message<BatchMessages> = Message::Invalid;
 		assert_eq!(gmpf::to_vec(&msg).unwrap(), vec![0]);
 	}
 
@@ -936,19 +940,14 @@ mod tests {
 
 	#[test]
 	fn batch_empty() {
-		test_encode_decode_identity(
-			Message::Batch {
-				messages: BatchMessages::default(),
-			},
-			concat!("04"),
-		)
+		test_encode_decode_identity(Message::Batch(BatchMessages::default()), concat!("04"))
 	}
 
 	#[test]
 	fn batch_messages() {
 		test_encode_decode_identity(
-			Message::Batch {
-				messages: BatchMessages::try_from(vec![
+			Message::Batch(
+				BatchMessages::try_from(vec![
 					Message::AddPool { pool_id: 0 },
 					Message::AllowAsset {
 						currency: TOKEN_ID,
@@ -956,7 +955,7 @@ mod tests {
 					},
 				])
 				.unwrap(),
-			},
+			),
 			concat!(
 				"04",                                                 // Batch index
 				"0009",                                               // AddPool length
