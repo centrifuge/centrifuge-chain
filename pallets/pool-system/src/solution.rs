@@ -147,6 +147,7 @@ where
 	pub orders: SummarizedOrders<Balance>,
 	pub best_submission: Option<EpochSolution<Balance, MaxTranches>>,
 	pub challenge_period_end: Option<BlockNumber>,
+	pub dirty: bool,
 }
 
 impl<Balance, MaxTranches> EpochSolution<Balance, MaxTranches>

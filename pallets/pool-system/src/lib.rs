@@ -666,6 +666,7 @@ pub mod pallet {
 					epoch: submission_period_epoch,
 					best_submission: None,
 					challenge_period_end: None,
+					dirty: false,
 				};
 
 				let no_execution_solution = pool.tranches.combine_residual_top(|_| {
@@ -722,6 +723,7 @@ pub mod pallet {
 				}
 
 				epoch.best_submission = Some(new_solution.clone());
+				epoch.dirty = false;
 
 				// TODO: We might wanna re-enable that at some point WHEN we enable epoch
 				//       closing and execution from all but the admin again
@@ -786,8 +788,7 @@ pub mod pallet {
 					);
 				}
 
-				// TODO: Ensure that no originations between solution and execution -> Hash of
-				//       reserve should suffice
+				ensure!(!epoch.dirty, Error::<T>::InvalidSolution);
 
 				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 					let pool = pool
@@ -1283,7 +1284,9 @@ pub mod pallet {
 
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
-			})
+			})?;
+
+			Self::mark_dirty(pool_id)
 		}
 
 		pub(crate) fn do_withdraw(
@@ -1323,7 +1326,9 @@ pub mod pallet {
 				Self::deposit_event(Event::Rebalanced { pool_id });
 
 				Ok(())
-			})
+			})?;
+
+			Self::mark_dirty(pool_id)
 		}
 
 		pub(crate) fn do_credit(
@@ -1344,7 +1349,9 @@ pub mod pallet {
 				.map(|_| ())?;
 
 				details.reserve.withdraw(amount)
-			})
+			})?;
+
+			Self::mark_dirty(pool_id)
 		}
 
 		pub(crate) fn do_debit(
@@ -1365,6 +1372,18 @@ pub mod pallet {
 				.map(|_| ())?;
 
 				details.reserve.deposit(amount)
+			})?;
+
+			Self::mark_dirty(pool_id)
+		}
+
+		fn mark_dirty(pool_id: T::PoolId) -> DispatchResult {
+			// Need to mark the solution as dirty, as the state has changed
+			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
+				if let Some(epoch) = epoch_info.as_mut() {
+					epoch.dirty = true;
+				}
+				Ok(())
 			})
 		}
 
