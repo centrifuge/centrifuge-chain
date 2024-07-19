@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Seconds;
+use cfg_traits::{Reserve, Seconds};
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 pub use changes::PoolChangeProposal;
 use frame_support::{
@@ -47,12 +47,12 @@ pub struct ReserveDetails<T: Config> {
 	/// Investments will be allowed up to this amount.
 	pub max: T::Balance,
 	/// Current total amount of currency in the pool reserve.
-	pub total: T::Balance,
+	total: T::Balance,
 	/// Current reserve that is available for originations.
-	pub available: T::Balance,
+	available: T::Balance,
 }
 
-impl<T: Config> cfg_traits::Reserve<T::Balance> for ReserveDetails<T> {
+impl<T: Config> Reserve<T::Balance> for ReserveDetails<T> {
 	fn deposit(&mut self, amount: T::Balance) -> DispatchResult {
 		self.total = self.total.ensure_add(amount)?;
 		self.available = self.available.ensure_add(amount)?;
@@ -73,46 +73,6 @@ impl<T: Config> cfg_traits::Reserve<T::Balance> for ReserveDetails<T> {
 
 	fn total(&self) -> T::Balance {
 		self.total
-	}
-}
-
-impl<Balance> ReserveDetails<Balance>
-where
-	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
-{
-	/// Update the total balance of the reserve based on the provided solution
-	/// for in- and outflows of this epoc.
-	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
-		&mut self,
-		epoch_tranches: &EpochExecutionTranches<
-			Balance,
-			BalanceRatio,
-			Weight,
-			TrancheCurrency,
-			MaxExecutionTranches,
-		>,
-		solution: &[TrancheSolution],
-	) -> DispatchResult
-	where
-		Weight: Copy + From<u128>,
-		BalanceRatio: Copy,
-		MaxExecutionTranches: Get<u32>,
-	{
-		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
-
-		// Update the total/available reserve for the new total value of the pool
-		let mut acc_investments = Balance::zero();
-		let mut acc_redemptions = Balance::zero();
-		for &(invest, redeem) in executed_amounts.iter() {
-			acc_investments.ensure_add_assign(invest)?;
-			acc_redemptions.ensure_add_assign(redeem)?;
-		}
-		self.total = self
-			.total
-			.ensure_add(acc_investments)?
-			.ensure_sub(acc_redemptions)?;
-
-		Ok(())
 	}
 }
 

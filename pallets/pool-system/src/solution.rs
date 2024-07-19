@@ -112,8 +112,8 @@ where
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Nav<Balance> {
-	pub nav_aum: Balance,
-	pub nav_fees: Balance,
+	nav_aum: Balance,
+	nav_fees: Balance,
 }
 
 impl<Balance: Copy + AtLeast32BitUnsigned> Nav<Balance> {
@@ -127,25 +127,24 @@ impl<Balance: Copy + AtLeast32BitUnsigned> Nav<Balance> {
 			.ensure_sub(self.nav_fees)
 			.map_err(Into::into)
 	}
+
+	pub fn aum(&self) -> Balance {
+		self.nav_aum
+	}
+
+	pub fn fees(&self) -> Balance {
+		self.nav_fees
+	}
 }
 
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct EpochExecutionInfo<
-	Balance,
-	BalanceRatio,
-	EpochId,
-	Weight,
-	BlockNumber,
-	TrancheCurrency,
-	MaxTranches,
-> where
+pub struct EpochExecutionInfo<Balance, EpochId, BlockNumber, MaxTranches>
+where
 	MaxTranches: Get<u32>,
 {
 	pub epoch: EpochId,
-	pub nav: Nav<Balance>,
-	pub tranches:
-		EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>,
+	pub orders: SummarizedOrders<Balance>,
 	pub best_submission: Option<EpochSolution<Balance, MaxTranches>>,
 	pub challenge_period_end: Option<BlockNumber>,
 }
