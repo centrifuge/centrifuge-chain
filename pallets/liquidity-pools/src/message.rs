@@ -34,7 +34,8 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
-pub const MAX_BATCH_MESSAGES: u32 = 256;
+// Max amount of messages a batch can have
+const MAX_BATCH_MESSAGES: u32 = 16;
 
 /// An isometric type to `Domain` that serializes as expected
 #[derive(
