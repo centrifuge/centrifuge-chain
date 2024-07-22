@@ -347,6 +347,9 @@ pub mod pallet {
 		InvestorDomainAddressNotAMember,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
+		/// This pallet does not expect to receive direclty a batch message,
+		/// instead it expects several calls to it with different messages.
+		UnsupportedBatchMessage,
 	}
 
 	#[pallet::call]
@@ -1038,6 +1041,7 @@ pub mod pallet {
 					currency.into(),
 					sender,
 				),
+				Message::Batch(_) => Err(Error::<T>::UnsupportedBatchMessage.into()),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

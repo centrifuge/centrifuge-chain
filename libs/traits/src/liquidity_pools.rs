@@ -25,9 +25,11 @@ pub trait LPEncoding: Sized {
 	fn pack(&self, other: Self) -> Result<Self, DispatchError>;
 
 	/// Decompose the message into a list of messages
+	/// If the message is not decomposable, it returns the own message.
 	fn unpack(&self) -> Vec<Self>;
 
-	/// Creates an empty message
+	/// Creates an empty message.
+	/// It's the identity message for composing messages
 	fn empty() -> Self;
 }
 
@@ -58,7 +60,7 @@ pub mod test_util {
 		}
 
 		fn unpack(&self) -> Vec<Self> {
-			unimplemented!()
+			vec![Self]
 		}
 
 		fn empty() -> Self {

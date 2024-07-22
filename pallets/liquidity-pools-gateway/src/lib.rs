@@ -611,7 +611,7 @@ pub mod pallet {
 
 		#[pallet::call_index(8)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn start_pack_batch(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+		pub fn start_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			if PackedMessage::<T>::get((&sender, &destination)).is_none() {
@@ -622,12 +622,12 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(9)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn end_pack_batch(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())] //TODO: benchmark me
+		pub fn end_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			if let Some(msg) = PackedMessage::<T>::take((&sender, &destination)) {
-				Self::submit_message(destination, msg)?;
+				Self::queue_message(destination, msg)?;
 			}
 
 			Ok(())
@@ -806,17 +806,7 @@ pub mod pallet {
 				.saturating_add(extra_weight)
 		}
 
-		fn submit_message(destination: Domain, message: T::Message) -> DispatchResult {
-			ensure!(
-				destination != Domain::Centrifuge,
-				Error::<T>::DomainNotSupported
-			);
-
-			ensure!(
-				DomainRouters::<T>::contains_key(destination.clone()),
-				Error::<T>::RouterNotFound
-			);
-
+		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
 			let nonce = <OutboundMessageNonceStore<T>>::try_mutate(|n| {
 				n.ensure_add_assign(T::OutboundMessageNonce::one())?;
 				Ok::<T::OutboundMessageNonce, DispatchError>(*n)
@@ -853,11 +843,21 @@ pub mod pallet {
 			destination: Self::Destination,
 			message: Self::Message,
 		) -> DispatchResult {
+			ensure!(
+				destination != Domain::Centrifuge,
+				Error::<T>::DomainNotSupported
+			);
+
+			ensure!(
+				DomainRouters::<T>::contains_key(destination.clone()),
+				Error::<T>::RouterNotFound
+			);
+
 			match PackedMessage::<T>::get((&sender, &destination)) {
 				Some(packed) => {
 					PackedMessage::<T>::insert((sender, destination), packed.pack(message)?)
 				}
-				None => Self::submit_message(destination, message)?,
+				None => Self::queue_message(destination, message)?,
 			}
 
 			Ok(())
