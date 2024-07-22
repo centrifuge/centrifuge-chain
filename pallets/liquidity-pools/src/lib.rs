@@ -83,6 +83,8 @@ mod gmpf {
 	mod ser;
 
 	pub use de::from_slice;
+	#[cfg(test)]
+	pub use error::Error;
 	pub use ser::to_vec;
 }
 

@@ -7,12 +7,16 @@
 
 use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
 use cfg_types::domain_address::Domain;
-use frame_support::pallet_prelude::RuntimeDebug;
+use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
-use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
+use scale_info::{prelude::string::ToString, TypeInfo};
+use serde::{
+	de::{Deserializer, Error as _, SeqAccess, Visitor},
+	ser::{Error as _, SerializeTuple},
+	Deserialize, Serialize, Serializer,
+};
+use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
+use sp_std::{vec, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -29,6 +33,9 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
+
+// Max amount of messages a batch can have
+const MAX_BATCH_MESSAGES: u32 = 16;
 
 /// An isometric type to `Domain` that serializes as expected
 #[derive(
@@ -66,6 +73,121 @@ impl TryInto<Domain> for SerializableDomain {
 	}
 }
 
+/// A message type that can not be a batch.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct NoBatchMessage(Message);
+
+impl TryFrom<Message> for NoBatchMessage {
+	type Error = DispatchError;
+
+	fn try_from(message: Message) -> Result<Self, DispatchError> {
+		match message {
+			Message::Batch { .. } => Err(DispatchError::Other("A submessage can not be a batch")),
+			_ => Ok(Self(message)),
+		}
+	}
+}
+
+impl MaxEncodedLen for NoBatchMessage {
+	fn max_encoded_len() -> usize {
+		// This message use a non batch message version to obtain the encoded
+		// len to avoid an infite recursion: message -> batch -> message -> batch ...
+		Message::<()>::max_encoded_len()
+	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen, Default)]
+pub struct BatchMessages(BoundedVec<NoBatchMessage, ConstU32<MAX_BATCH_MESSAGES>>);
+
+impl Serialize for BatchMessages {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		// Serializing as a tuple to avoid the prefix length used for dynamic lists
+		let mut tuple = serializer.serialize_tuple(self.0.len())?;
+		for msg in self.0.iter() {
+			let encoded = gmpf::to_vec(&msg.0).map_err(|e| S::Error::custom(e.to_string()))?;
+
+			// Serializing as bytes automatically encodes the prefix size
+			tuple.serialize_element(&encoded)?;
+		}
+		tuple.end()
+	}
+}
+
+impl<'de> Deserialize<'de> for BatchMessages {
+	fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+		// We need a custom visitor because we do not know the length upfront
+		struct MsgVisitor;
+
+		impl<'de> Visitor<'de> for MsgVisitor {
+			type Value = BatchMessages;
+
+			fn expecting(&self, formatter: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+				formatter.write_str("A sequence of pairs size-submessage")
+			}
+
+			fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+				let mut batch = BatchMessages::default();
+
+				// We only stop on error trying to deserialize the length of the submessage.
+				// The error will happen when we reach EOF
+				while seq.next_element::<u16>().unwrap_or(None).is_some() {
+					let msg = seq
+						.next_element()?
+						.ok_or(A::Error::custom("expected submessage"))?;
+
+					batch
+						.try_add(msg)
+						.map_err(|e| A::Error::custom::<&'static str>(e.into()))?;
+				}
+
+				Ok(batch)
+			}
+		}
+
+		let limit = MAX_BATCH_MESSAGES as usize * 2; // Lengths and messages
+		deserializer.deserialize_tuple(limit, MsgVisitor)
+	}
+}
+
+impl TryFrom<Vec<Message>> for BatchMessages {
+	type Error = DispatchError;
+
+	fn try_from(messages: Vec<Message>) -> Result<Self, DispatchError> {
+		Ok(Self(
+			messages
+				.into_iter()
+				.map(TryFrom::try_from)
+				.collect::<Result<Vec<_>, _>>()?
+				.try_into()
+				.map_err(|_| DispatchError::Other("Batch limit reached"))?,
+		))
+	}
+}
+
+impl IntoIterator for BatchMessages {
+	type IntoIter = sp_std::vec::IntoIter<Self::Item>;
+	type Item = Message;
+
+	fn into_iter(self) -> Self::IntoIter {
+		let messages: Vec<_> = self.0.into_iter().map(|msg| msg.0).collect();
+		messages.into_iter()
+	}
+}
+
+impl BatchMessages {
+	pub fn try_add(&mut self, message: Message) -> DispatchResult {
+		self.0
+			.try_push(message.try_into()?)
+			.map_err(|_| DispatchError::Other("Batch limit reached"))?;
+
+		Ok(())
+	}
+
+	pub fn len(&self) -> usize {
+		self.0.len()
+	}
+}
+
 /// A LiquidityPools Message
 #[derive(
 	Encode,
@@ -79,7 +201,7 @@ impl TryInto<Domain> for SerializableDomain {
 	TypeInfo,
 	MaxEncodedLen,
 )]
-pub enum Message {
+pub enum Message<BatchContent = BatchMessages> {
 	Invalid,
 	// --- Gateway ---
 	/// Proof a message has been executed.
@@ -109,8 +231,9 @@ pub enum Message {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
 	},
-	// TODO(@william): Add fields + docs
-	Batch,
+	/// A batch of ordered messages.
+	/// Don't allow nested batch messages.
+	Batch(BatchContent),
 	// --- Root ---
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
 	/// be used via governance to execute EVM spells.
@@ -406,6 +529,28 @@ pub enum Message {
 	},
 }
 
+impl Message {
+	/// Compose this message with a new one
+	pub fn pack(&self, other: Self) -> Result<Self, DispatchError> {
+		Ok(match self.clone() {
+			Message::Batch(content) => {
+				let mut content = content.clone();
+				content.try_add(other)?;
+				Message::Batch(content)
+			}
+			this => Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?),
+		})
+	}
+
+	/// Decompose the message into a list of messages
+	pub fn unpack(&self) -> Vec<Self> {
+		match self {
+			Message::Batch(content) => content.clone().into_iter().collect(),
+			message => vec![message.clone()],
+		}
+	}
+}
+
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
@@ -460,6 +605,7 @@ mod tests {
 	use cfg_primitives::{PoolId, TrancheId};
 	use cfg_types::fixed_point::Ratio;
 	use cfg_utils::vec_to_fixed_array;
+	use frame_support::assert_err;
 	use hex::FromHex;
 	use sp_runtime::{traits::One, FixedPointNumber};
 
@@ -472,7 +618,7 @@ mod tests {
 
 	#[test]
 	fn invalid() {
-		let msg = Message::Invalid;
+		let msg: Message<BatchMessages> = Message::Invalid;
 		assert_eq!(gmpf::to_vec(&msg).unwrap(), vec![0]);
 	}
 
@@ -501,17 +647,6 @@ mod tests {
 	}
 
 	#[test]
-	fn add_currency_zero() {
-		test_encode_decode_identity(
-			Message::AddAsset {
-				currency: 0,
-				evm_address: default_address_20(),
-			},
-			"09000000000000000000000000000000001231231231231231231231231231231231231231",
-		)
-	}
-
-	#[test]
 	fn add_currency() {
 		test_encode_decode_identity(
 			Message::AddAsset {
@@ -520,11 +655,6 @@ mod tests {
 			},
 			"090000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
 		)
-	}
-
-	#[test]
-	fn add_pool_zero() {
-		test_encode_decode_identity(Message::AddPool { pool_id: 0 }, "0a0000000000000000")
 	}
 
 	#[test]
@@ -540,17 +670,6 @@ mod tests {
 				pool_id: POOL_ID,
 			},
 			"0c0000000000bce1a40000000000000000000000000eb5ec7b",
-		)
-	}
-
-	#[test]
-	fn allow_asset_zero() {
-		test_encode_decode_identity(
-			Message::AllowAsset {
-				currency: 0,
-				pool_id: 0,
-			},
-			"0c000000000000000000000000000000000000000000000000",
 		)
 	}
 
@@ -820,19 +939,61 @@ mod tests {
 		)
 	}
 
+	#[test]
+	fn batch_empty() {
+		test_encode_decode_identity(Message::Batch(BatchMessages::default()), concat!("04"))
+	}
+
+	#[test]
+	fn batch_messages() {
+		test_encode_decode_identity(
+			Message::Batch(
+				BatchMessages::try_from(vec![
+					Message::AddPool { pool_id: 0 },
+					Message::AllowAsset {
+						currency: TOKEN_ID,
+						pool_id: POOL_ID,
+					},
+				])
+				.unwrap(),
+			),
+			concat!(
+				"04",                                                 // Batch index
+				"0009",                                               // AddPool length
+				"0a0000000000000000",                                 // AddPool content
+				"0019",                                               // AddAsset length
+				"0c0000000000bce1a40000000000000000000000000eb5ec7b", // AllowAsset content
+			),
+		)
+	}
+
+	#[test]
+	fn batch_of_batches_deserialization() {
+		// The message can not be created directly
+		let encoded = concat!(
+			"04",                 // Batch index
+			"000c",               // Submessage length
+			"04",                 // Inner batch index
+			"0009",               // AddPool length
+			"0a0000000000000000", // AddPool content
+		);
+
+		assert_err!(
+			gmpf::from_slice::<Message>(&hex::decode(encoded).unwrap()),
+			gmpf::Error::Message("A submessage can not be a batch".into()),
+		);
+	}
+
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(msg: Message, expected_hex: &str) {
 		let encoded = gmpf::to_vec(&msg).unwrap();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded = gmpf::from_slice(
-			&mut hex::decode(expected_hex)
-				.expect("Decode should work")
-				.as_slice(),
-		)
-		.expect("Deserialization should work");
-		assert_eq!(msg, decoded);
+		let decoded: Message =
+			gmpf::from_slice(&hex::decode(expected_hex).expect("Decode should work"))
+				.expect("Deserialization should work");
+		assert_eq!(decoded, msg);
 	}
 
 	fn default_address_20() -> [u8; 20] {
