@@ -244,6 +244,9 @@ pub mod pallet {
 		/// The domain is not supported.
 		DomainNotSupported,
 
+		/// Invalid multi router.
+		InvalidMultiRouter,
+
 		/// Message decoding error.
 		MessageDecodingFailed,
 
@@ -508,6 +511,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			ensure!(routers.len() > 0, Error::<T>::InvalidMultiRouter);
 
 			for router in &routers {
 				router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
@@ -563,16 +567,14 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::LPMessage,
 		) -> DispatchResultWithPostInfo {
-			let mut weight = T::DbWeight::get().reads(1);
-
-			let mut post_dispatch_info = PostDispatchInfo {
-				actual_weight: Some(weight),
+			let mut post_info = PostDispatchInfo {
+				actual_weight: Some(T::DbWeight::get().reads(1)),
 				pays_fee: Pays::Yes,
 			};
 
 			let routers_count = DomainMultiRouters::<T>::get(domain_address.domain())
 				.ok_or(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info,
+					post_info,
 					error: Error::<T>::MultiRouterNotFound.into(),
 				})?
 				.len();
@@ -602,11 +604,11 @@ pub mod pallet {
 				}
 			};
 
-			post_dispatch_info.actual_weight = Some(
-				post_dispatch_info
+			post_info.actual_weight = Some(
+				post_info
 					.actual_weight
 					.unwrap()
-					.saturating_add(weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))),
+					.saturating_add(T::DbWeight::get().reads_writes(1, 1)),
 			);
 
 			// IMPORTANT - the number of routers on Centrifuge Chain and other domains are
@@ -614,7 +616,7 @@ pub mod pallet {
 			// others are sending the proofs, i.e. if we have 3 routers, we expect 1 message
 			// and 2 message proofs.
 			if message_proof_count != expected_proof_count as u32 {
-				return Ok(post_dispatch_info);
+				return Ok(post_info);
 			}
 
 			let message = InboundMessages::<T>::get(message_proof).unwrap();
@@ -622,17 +624,17 @@ pub mod pallet {
 			InboundMessages::<T>::remove(message_proof);
 			InboundMessageProofCount::<T>::remove(message_proof);
 
-			post_dispatch_info.actual_weight = Some(
-				post_dispatch_info
+			post_info.actual_weight = Some(
+				post_info
 					.actual_weight
 					.unwrap()
-					.saturating_add(weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))),
+					.saturating_add(T::DbWeight::get().reads_writes(1, 2)),
 			);
 
 			match T::InboundMessageHandler::handle(domain_address, message) {
-				Ok(_) => Ok(post_dispatch_info),
+				Ok(_) => Ok(post_info),
 				Err(e) => Err(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info,
+					post_info,
 					error: e,
 				}),
 			}
@@ -648,16 +650,14 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
 
-			let read_weight = T::DbWeight::get().reads(1);
-
-			let mut post_dispatch_info = PostDispatchInfo {
-				actual_weight: Some(read_weight),
+			let mut post_info = PostDispatchInfo {
+				actual_weight: Some(T::DbWeight::get().reads(1)),
 				pays_fee: Pays::Yes,
 			};
 
 			let routers =
 				DomainMultiRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info,
+					post_info,
 					error: Error::<T>::MultiRouterNotFound.into(),
 				})?;
 
@@ -674,24 +674,24 @@ pub mod pallet {
 
 				match router.send(sender.clone(), router_msg) {
 					Ok(dispatch_info) => Self::update_total_post_dispatch_info_weight(
-						&mut post_dispatch_info,
+						&mut post_info,
 						dispatch_info.actual_weight,
 					),
 					Err(e) => {
 						Self::update_total_post_dispatch_info_weight(
-							&mut post_dispatch_info,
+							&mut post_info,
 							e.post_info.actual_weight,
 						);
 
 						return Err(DispatchErrorWithPostInfo {
-							post_info: post_dispatch_info,
+							post_info,
 							error: e.error,
 						});
 					}
 				}
 			}
 
-			Ok(post_dispatch_info)
+			Ok(post_info)
 		}
 
 		fn update_total_post_dispatch_info_weight(
