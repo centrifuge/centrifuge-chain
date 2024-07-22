@@ -257,6 +257,10 @@ pub mod pallet {
 		(Domain, T::AccountId, T::Message, DispatchError),
 	>;
 
+	#[pallet::storage]
+	pub(crate) type PackedMessage<T: Config> =
+		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Router initialization failed.
@@ -517,7 +521,11 @@ pub mod pallet {
 				}
 			};
 
-			T::InboundQueue::submit(domain_address, incoming_msg)
+			for msg in incoming_msg.unpack() {
+				T::InboundQueue::submit(domain_address.clone(), msg)?;
+			}
+
+			Ok(())
 		}
 
 		/// Convenience method for manually processing an outbound message.
@@ -599,6 +607,30 @@ pub mod pallet {
 					Ok(())
 				}
 			}
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn start_pack_batch(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			if PackedMessage::<T>::get((&sender, &destination)).is_none() {
+				PackedMessage::<T>::insert((sender, destination), T::Message::empty());
+			}
+
+			Ok(())
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn end_pack_batch(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			if let Some(msg) = PackedMessage::<T>::take((&sender, &destination)) {
+				Self::submit_message(destination, msg)?;
+			}
+
+			Ok(())
 		}
 	}
 
@@ -773,24 +805,8 @@ pub mod pallet {
 				.saturating_add(Weight::from_parts(0, pov_weight))
 				.saturating_add(extra_weight)
 		}
-	}
 
-	/// This pallet will be the `OutboundQueue` used by other pallets to send
-	/// outgoing messages.
-	///
-	/// NOTE - the sender provided as an argument is not used at the moment, we
-	/// are using the sender specified in the pallet config so that we can
-	/// ensure that the account is funded.
-	impl<T: Config> OutboundQueue for Pallet<T> {
-		type Destination = Domain;
-		type Message = T::Message;
-		type Sender = T::AccountId;
-
-		fn submit(
-			_sender: Self::Sender,
-			destination: Self::Destination,
-			message: Self::Message,
-		) -> DispatchResult {
+		fn submit_message(destination: Domain, message: T::Message) -> DispatchResult {
 			ensure!(
 				destination != Domain::Centrifuge,
 				Error::<T>::DomainNotSupported
@@ -816,6 +832,33 @@ pub mod pallet {
 				domain: destination,
 				message,
 			});
+
+			Ok(())
+		}
+	}
+
+	/// This pallet will be the `OutboundQueue` used by other pallets to send
+	/// outgoing messages.
+	///
+	/// NOTE - the sender provided as an argument is not used at the moment, we
+	/// are using the sender specified in the pallet config so that we can
+	/// ensure that the account is funded.
+	impl<T: Config> OutboundQueue for Pallet<T> {
+		type Destination = Domain;
+		type Message = T::Message;
+		type Sender = T::AccountId;
+
+		fn submit(
+			sender: Self::Sender,
+			destination: Self::Destination,
+			message: Self::Message,
+		) -> DispatchResult {
+			match PackedMessage::<T>::get((&sender, &destination)) {
+				Some(packed) => {
+					PackedMessage::<T>::insert((sender, destination), packed.pack(message)?)
+				}
+				None => Self::submit_message(destination, message)?,
+			}
 
 			Ok(())
 		}
