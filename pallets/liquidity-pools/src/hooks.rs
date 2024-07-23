@@ -12,10 +12,13 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
+	investments::TrancheCurrency,
+	liquidity_pools::{MessageQueue, OutboundQueue},
+	StatusNotificationHook,
 };
 use cfg_types::{
 	domain_address::DomainAddress,
+	gateway::GatewayMessage,
 	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
 };
 use frame_support::{
@@ -67,7 +70,14 @@ where
 			currency_payout: status.amount_decreased.into(),
 			remaining_invest_amount: status.amount_remaining.into(),
 		};
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
+
+		let msg = GatewayMessage::<T::AccountId, Message>::Outbound {
+			sender: T::TreasuryAccount::get(),
+			destination: domain_address.domain(),
+			message,
+		};
+
+		T::MessageQueue::submit(msg)?;
 
 		Ok(())
 	}
@@ -112,8 +122,13 @@ where
 			remaining_redeem_amount: status.amount_remaining.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
+		let msg = GatewayMessage::<T::AccountId, Message>::Outbound {
+			sender: T::TreasuryAccount::get(),
+			destination: domain_address.domain(),
+			message,
+		};
 
+		T::MessageQueue::submit(msg)?;
 		Ok(())
 	}
 }
@@ -156,7 +171,13 @@ where
 			remaining_invest_amount: status.amount_remaining.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
+		let msg = GatewayMessage::<T::AccountId, Message>::Outbound {
+			sender: T::TreasuryAccount::get(),
+			destination: domain_address.domain(),
+			message,
+		};
+
+		T::MessageQueue::submit(msg)?;
 
 		Ok(())
 	}

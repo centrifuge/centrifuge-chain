@@ -426,7 +426,7 @@ mod eth_address {
 				),
 				// But it's ok, we do not care about the router transaction in this context.
 				// Is already checked at `liquidity_pools.rs`
-				pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
+				pallet_liquidity_pools_gateway::Error::<T>::MultiRouterNotFound
 			);
 		});
 	}

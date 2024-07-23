@@ -12,10 +12,13 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, TimeAsSecs,
+	investments::ForeignInvestment,
+	liquidity_pools::{MessageQueue, OutboundQueue},
+	Permissions, TimeAsSecs,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	gateway::GatewayMessage,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -270,9 +273,23 @@ where
 			.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
+		Self::send_outbound_message(T::TreasuryAccount::get(), destination.domain(), message)?;
 
 		Ok(())
+	}
+
+	fn send_outbound_message(
+		sender: T::AccountId,
+		destination: Domain,
+		message: Message,
+	) -> DispatchResult {
+		let msg = GatewayMessage::<T::AccountId, Message>::Outbound {
+			sender,
+			destination,
+			message,
+		};
+
+		T::MessageQueue::submit(msg)
 	}
 
 	/// Cancels an existing redemption order of the investor by decreasing the

@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency},
-	liquidity_pools::InboundQueue,
+	liquidity_pools::InboundMessageHandler,
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
@@ -237,10 +237,12 @@ mod utils {
 		let domain = Domain::EVM(evm_chain_id);
 
 		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_multi_router(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
 				domain,
-				domain_router,
+				vec![domain_router]
+					.try_into()
+					.unwrap_or_else(|_| panic!("can't create bounded vec for routers")),
 			)
 		);
 	}

@@ -1,5 +1,5 @@
 use cfg_primitives::{PoolId, TrancheId};
-use cfg_traits::{liquidity_pools::InboundQueue, Millis, Seconds};
+use cfg_traits::{liquidity_pools::InboundMessageHandler, Millis};
 use cfg_types::{
 	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -1440,7 +1440,7 @@ fn receiving_invalid_message() {
 		let msg = Message::AddPool { pool_id: 123 };
 
 		assert_noop!(
-			LiquidityPools::submit(EVM_DOMAIN_ADDRESS, msg),
+			LiquidityPools::handle(EVM_ADDRESS, msg),
 			Error::<Runtime>::InvalidIncomingMessage,
 		);
 	})

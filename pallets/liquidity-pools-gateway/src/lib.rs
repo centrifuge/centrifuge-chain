@@ -29,18 +29,14 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{InboundMessageHandler, LPMessage, Router as DomainRouter},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
-use frame_system::{
-	ensure_signed,
-	pallet_prelude::{BlockNumberFor, OriginFor},
-};
+use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
@@ -82,8 +78,10 @@ pub mod pallet {
 	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
 	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
 
+	use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, MessageQueue};
+	use cfg_types::gateway::GatewayMessage;
 	use frame_support::dispatch::PostDispatchInfo;
-	use sp_runtime::DispatchErrorWithPostInfo;
+	use sp_runtime::{traits::EnsureSub, DispatchErrorWithPostInfo};
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -118,11 +116,8 @@ pub mod pallet {
 		/// admins.
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
-		/// The incoming and outgoing message type.
-		///
-		/// NOTE - this `Codec` trait is the Centrifuge trait for liquidity
-		/// pools' messages.
-		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
+		/// The LP message type.
+		type LPMessage: LPMessage + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// The message router type that is stored for each domain.
 		type Router: DomainRouter<Sender = Self::AccountId>
@@ -134,10 +129,13 @@ pub mod pallet {
 			+ EncodeLike
 			+ PartialEq;
 
-		/// The type that processes incoming messages.
-		type InboundQueue: InboundQueue<Sender = DomainAddress, Message = Self::Message>;
+		/// The type that handles incoming messages.
+		type InboundMessageHandler: InboundMessageHandler<
+			Sender = DomainAddress,
+			Message = Self::LPMessage,
+		>;
 
-		/// A way to recover a domain address from two byte slices
+		/// A way to recover a domain address from two byte slices.
 		type OriginRecovery: TryConvert<(Vec<u8>, Vec<u8>), DomainAddress, Error = DispatchError>;
 
 		type WeightInfo: WeightInfo;
@@ -151,16 +149,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type Sender: Get<Self::AccountId>;
 
-		/// Type used for outbound message identification.
-		type OutboundMessageNonce: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ EnsureAdd
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ MaxEncodedLen;
+		/// Maximum number of routers allowed for a domain in a multi-router
+		/// setup.
+		#[pallet::constant]
+		type MaxRouterCount: Get<u32>;
+
+		/// Type used for queueing messages.
+		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::AccountId, Self::LPMessage>>;
 	}
 
 	#[pallet::event]
@@ -181,28 +176,10 @@ pub mod pallet {
 		/// A relayer was removed.
 		RelayerRemoved { relayer: DomainAddress },
 
-		/// An outbound message has been submitted.
-		OutboundMessageSubmitted {
-			sender: T::AccountId,
+		/// The router for a given domain was set.
+		DomainMultiRouterSet {
 			domain: Domain,
-			message: T::Message,
-		},
-
-		/// Outbound message execution failure.
-		OutboundMessageExecutionFailure {
-			nonce: T::OutboundMessageNonce,
-			sender: T::AccountId,
-			domain: Domain,
-			message: T::Message,
-			error: DispatchError,
-		},
-
-		/// Outbound message execution success.
-		OutboundMessageExecutionSuccess {
-			nonce: T::OutboundMessageNonce,
-			sender: T::AccountId,
-			domain: Domain,
-			message: T::Message,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
 		},
 	}
 
@@ -212,6 +189,14 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn domain_routers)]
 	pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
+
+	/// Storage for domain multi-routers.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn domain_multi_routers)]
+	pub type DomainMultiRouters<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Router, T::MaxRouterCount>>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -231,31 +216,16 @@ pub mod pallet {
 	pub type RelayerList<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
+	/// Storage that keeps track of incoming message proofs.
 	#[pallet::storage]
-	#[pallet::getter(fn outbound_message_nonce_store)]
-	pub type OutboundMessageNonceStore<T: Config> =
-		StorageValue<_, T::OutboundMessageNonce, ValueQuery>;
+	#[pallet::getter(fn inbound_message_proof_count)]
+	pub type InboundMessageProofCount<T: Config> =
+		StorageMap<_, Blake2_128Concat, [u8; 32], u32, ValueQuery>;
 
-	/// Storage for outbound messages that will be processed during the
-	/// `on_idle` hook.
+	/// Storage that keeps track of incoming messages.
 	#[pallet::storage]
-	#[pallet::getter(fn outbound_message_queue)]
-	pub type OutboundMessageQueue<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::OutboundMessageNonce,
-		(Domain, T::AccountId, T::Message),
-	>;
-
-	/// Storage for failed outbound messages that can be manually re-triggered.
-	#[pallet::storage]
-	#[pallet::getter(fn failed_outbound_messages)]
-	pub type FailedOutboundMessages<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::OutboundMessageNonce,
-		(Domain, T::AccountId, T::Message, DispatchError),
-	>;
+	#[pallet::getter(fn inbound_messages)]
+	pub type InboundMessages<T: Config> = StorageMap<_, Blake2_128Concat, [u8; 32], T::LPMessage>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -267,6 +237,9 @@ pub mod pallet {
 
 		/// The domain is not supported.
 		DomainNotSupported,
+
+		/// Invalid multi router.
+		InvalidMultiRouter,
 
 		/// Message decoding error.
 		MessageDecodingFailed,
@@ -289,6 +262,9 @@ pub mod pallet {
 		/// Router not found.
 		RouterNotFound,
 
+		/// Multi-router not found.
+		MultiRouterNotFound,
+
 		/// Relayer messages need to prepend the with
 		/// the original source chain and source address
 		/// that triggered the message.
@@ -296,18 +272,8 @@ pub mod pallet {
 		/// signals malforming of the wrapping information.
 		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
 
-		/// Outbound message not found in storage.
-		OutboundMessageNotFound,
-
-		/// Failed outbound message not found in storage.
-		FailedOutboundMessageNotFound,
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_idle(_now: BlockNumberFor<T>, max_weight: Weight) -> Weight {
-			Self::service_outbound_message_queue(max_weight)
-		}
+		/// Message proof cannot be retrieved.
+		MessageProofRetrieval,
 	}
 
 	#[pallet::call]
@@ -424,7 +390,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
+			let (domain_address, message) = match T::LocalEVMOrigin::ensure_origin(origin)? {
 				GatewayOrigin::Domain(domain_address) => {
 					Pallet::<T>::validate(domain_address, msg)?
 				}
@@ -517,88 +483,36 @@ pub mod pallet {
 				}
 			};
 
-			T::InboundQueue::submit(domain_address, incoming_msg)
+			let gateway_message = GatewayMessage::<T::AccountId, T::LPMessage>::Inbound {
+				domain_address,
+				message,
+			};
+
+			T::MessageQueue::submit(gateway_message)
 		}
 
-		/// Convenience method for manually processing an outbound message.
-		///
-		/// If the execution fails, the message gets moved to the
-		/// `FailedOutboundMessages` storage.
-		#[pallet::weight(T::WeightInfo::process_outbound_message())]
-		#[pallet::call_index(6)]
-		pub fn process_outbound_message(
+		/// Set routers for a particular domain.
+		#[pallet::weight(T::WeightInfo::set_domain_multi_router())]
+		#[pallet::call_index(8)]
+		pub fn set_domain_multi_router(
 			origin: OriginFor<T>,
-			nonce: T::OutboundMessageNonce,
+			domain: Domain,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin)?;
 
-			let (domain, sender, message) = OutboundMessageQueue::<T>::take(nonce)
-				.ok_or(Error::<T>::OutboundMessageNotFound)?;
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			ensure!(routers.len() > 0, Error::<T>::InvalidMultiRouter);
 
-			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
-				Ok(_) => {
-					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
-						nonce,
-						domain,
-						sender,
-						message,
-					});
-
-					Ok(())
-				}
-				Err(e) => {
-					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
-						nonce,
-						domain: domain.clone(),
-						sender: sender.clone(),
-						message: message.clone(),
-						error: e.error,
-					});
-
-					FailedOutboundMessages::<T>::insert(nonce, (domain, sender, message, e.error));
-
-					Ok(())
-				}
+			for router in &routers {
+				router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
 			}
-		}
 
-		/// Manually process a failed outbound message.
-		#[pallet::weight(T::WeightInfo::process_failed_outbound_message())]
-		#[pallet::call_index(7)]
-		pub fn process_failed_outbound_message(
-			origin: OriginFor<T>,
-			nonce: T::OutboundMessageNonce,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
+			<DomainMultiRouters<T>>::insert(domain.clone(), routers.clone());
 
-			let (domain, sender, message, _) = FailedOutboundMessages::<T>::get(nonce)
-				.ok_or(Error::<T>::OutboundMessageNotFound)?;
+			Self::deposit_event(Event::DomainMultiRouterSet { domain, routers });
 
-			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
-				Ok(_) => {
-					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
-						nonce,
-						domain,
-						sender,
-						message,
-					});
-
-					FailedOutboundMessages::<T>::remove(nonce);
-
-					Ok(())
-				}
-				Err(e) => {
-					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
-						nonce,
-						domain: domain.clone(),
-						sender: sender.clone(),
-						message: message.clone(),
-						error: e.error,
-					});
-
-					Ok(())
-				}
-			}
+			Ok(())
 		}
 	}
 
@@ -624,7 +538,7 @@ pub mod pallet {
 		fn validate(
 			address: DomainAddress,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
-		) -> Result<(DomainAddress, T::Message), DispatchError> {
+		) -> Result<(DomainAddress, T::LPMessage), DispatchError> {
 			if let DomainAddress::Centrifuge(_) = address {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
@@ -634,190 +548,208 @@ pub mod pallet {
 				Error::<T>::UnknownInstance,
 			);
 
-			let incoming_msg = T::Message::deserialize(msg.as_slice())
+			let incoming_msg = T::LPMessage::deserialize(msg.as_slice())
 				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
 
 			Ok((address, incoming_msg))
 		}
 
-		/// Iterates over the outbound messages stored in the queue and attempts
-		/// to process them.
-		///
-		/// If a message fails to process it is moved to the
-		/// `FailedOutboundMessages` storage so that it can be executed again
-		/// via the `process_failed_outbound_message` extrinsic.
-		fn service_outbound_message_queue(max_weight: Weight) -> Weight {
-			let mut weight_used = Weight::zero();
-
-			let mut processed_entries = Vec::new();
-
-			for (nonce, (domain, sender, message)) in OutboundMessageQueue::<T>::iter() {
-				processed_entries.push(nonce);
-
-				let weight =
-					match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
-						Ok(post_info) => {
-							Self::deposit_event(Event::OutboundMessageExecutionSuccess {
-								nonce,
-								sender,
-								domain,
-								message,
-							});
-
-							post_info
-								.actual_weight
-								.expect("Message processing success already ensured")
-								// Extra weight breakdown:
-								//
-								// 1 read for the outbound message
-								// 1 write for the event
-								// 1 write for the outbound message removal
-								.saturating_add(T::DbWeight::get().reads_writes(1, 2))
-						}
-						Err(e) => {
-							Self::deposit_event(Event::OutboundMessageExecutionFailure {
-								nonce,
-								sender: sender.clone(),
-								domain: domain.clone(),
-								message: message.clone(),
-								error: e.error,
-							});
-
-							FailedOutboundMessages::<T>::insert(
-								nonce,
-								(domain, sender, message, e.error),
-							);
-
-							e.post_info
-								.actual_weight
-								.expect("Message processing success already ensured")
-								// Extra weight breakdown:
-								//
-								// 1 read for the outbound message
-								// 1 write for the event
-								// 1 write for the failed outbound message
-								// 1 write for the outbound message removal
-								.saturating_add(T::DbWeight::get().reads_writes(1, 3))
-						}
-					};
-
-				weight_used = weight_used.saturating_add(weight);
-
-				if weight_used.all_gte(max_weight) {
-					break;
-				}
-			}
-
-			for entry in processed_entries {
-				OutboundMessageQueue::<T>::remove(entry);
-			}
-
-			weight_used
-		}
-
-		/// Retrieves the router stored for the provided domain and sends the
-		/// message, calculating and returning the required weight for these
-		/// operations in the `DispatchResultWithPostInfo`.
-		fn process_message(
-			domain: Domain,
-			sender: T::AccountId,
-			message: T::Message,
+		fn process_inbound_message(
+			domain_address: DomainAddress,
+			message: T::LPMessage,
 		) -> DispatchResultWithPostInfo {
-			let read_weight = T::DbWeight::get().reads(1);
+			let mut post_info = PostDispatchInfo {
+				actual_weight: Some(T::DbWeight::get().reads(1)),
+				pays_fee: Pays::Yes,
+			};
 
-			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(read_weight),
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<T>::RouterNotFound.into(),
-			})?;
+			let routers_count = DomainMultiRouters::<T>::get(domain_address.domain())
+				.ok_or(DispatchErrorWithPostInfo {
+					post_info,
+					error: Error::<T>::MultiRouterNotFound.into(),
+				})?
+				.len();
 
-			let post_dispatch_info_fn =
-				|actual_weight: Option<Weight>, extra_weight: Weight| -> PostDispatchInfo {
-					PostDispatchInfo {
-						actual_weight: Some(Self::get_outbound_message_processing_weight(
-							actual_weight,
-							extra_weight,
-						)),
-						pays_fee: Pays::Yes,
-					}
-				};
+			let expected_proof_count = routers_count.ensure_sub(1)?;
 
-			match router.send(sender, message.serialize()) {
-				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
-					dispatch_info.actual_weight,
-					read_weight,
-				)),
+			let (message_proof, message_proof_count) = match message.get_message_proof() {
+				None => {
+					let message_proof = message
+						.to_message_proof()
+						.get_message_proof()
+						.ok_or(Error::<T>::MessageProofRetrieval)?;
+
+					InboundMessages::<T>::insert(message_proof, message);
+
+					(
+						message_proof,
+						InboundMessageProofCount::<T>::get(message_proof),
+					)
+				}
+				Some(message_proof) => {
+					let message_proof_count =
+						InboundMessageProofCount::<T>::try_mutate(message_proof, |count| {
+							*count += 1;
+
+							Ok::<u32, DispatchError>(*count)
+						})?;
+
+					(message_proof, message_proof_count)
+				}
+			};
+
+			post_info.actual_weight = Some(
+				post_info
+					.actual_weight
+					.unwrap_or_default()
+					.saturating_add(T::DbWeight::get().reads_writes(1, 1)),
+			);
+
+			// IMPORTANT - the number of routers on Centrifuge Chain and other domains are
+			// the same. It is always expected that one router sends the message and the
+			// others are sending the proofs, i.e. if we have 3 routers, we expect 1 message
+			// and 2 message proofs.
+			if message_proof_count != expected_proof_count as u32 {
+				return Ok(post_info);
+			}
+
+			post_info.actual_weight = Some(
+				post_info
+					.actual_weight
+					.unwrap_or_default()
+					.saturating_add(T::DbWeight::get().reads(1)),
+			);
+
+			let message = match InboundMessages::<T>::get(message_proof) {
+				Some(m) => m,
+				// Not finding the message here is not a problem. We might have the correct message proof
+				// count but no actual message.
+				None => return Ok(post_info),
+			};
+
+			InboundMessages::<T>::remove(message_proof);
+			InboundMessageProofCount::<T>::remove(message_proof);
+
+			post_info.actual_weight = Some(
+				post_info
+					.actual_weight
+					.unwrap_or_default()
+					.saturating_add(T::DbWeight::get().writes(2)),
+			);
+
+			match T::InboundMessageHandler::handle(domain_address, message) {
+				Ok(_) => Ok(post_info),
 				Err(e) => Err(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info_fn(e.post_info.actual_weight, read_weight),
-					error: e.error,
+					post_info,
+					error: e,
 				}),
 			}
 		}
 
+		/// Retrieves the routers stored for the provided domain and sends the
+		/// message and message proofs, calculating and returning the required
+		/// weight for these operations in the `DispatchResultWithPostInfo`.
+		fn process_outbound_message(
+			domain: Domain,
+			sender: T::AccountId,
+			message: T::LPMessage,
+		) -> DispatchResultWithPostInfo {
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+
+			let mut post_info = PostDispatchInfo {
+				actual_weight: Some(T::DbWeight::get().reads(1)),
+				pays_fee: Pays::Yes,
+			};
+
+			let routers =
+				DomainMultiRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
+					post_info,
+					error: Error::<T>::MultiRouterNotFound.into(),
+				})?;
+
+			let message_proof = message.to_message_proof();
+			let mut message_opt = Some(message);
+
+			for router in routers {
+				// Ensure that we only send the actual message once, using one router.
+				// The remaining routers will send the message proof.
+				let router_msg = match message_opt.take() {
+					Some(m) => m.serialize(),
+					None => message_proof.serialize(),
+				};
+
+				match router.send(sender.clone(), router_msg) {
+					Ok(dispatch_info) => Self::update_total_post_dispatch_info_weight(
+						&mut post_info,
+						dispatch_info.actual_weight,
+					),
+					Err(e) => {
+						Self::update_total_post_dispatch_info_weight(
+							&mut post_info,
+							e.post_info.actual_weight,
+						);
+
+						return Err(DispatchErrorWithPostInfo {
+							post_info,
+							error: e.error,
+						});
+					}
+				}
+			}
+
+			Ok(post_info)
+		}
+
+		fn update_total_post_dispatch_info_weight(
+			post_dispatch_info: &mut PostDispatchInfo,
+			router_call_weight: Option<Weight>,
+		) {
+			let router_call_weight =
+				Self::get_outbound_message_processing_weight(router_call_weight);
+
+			post_dispatch_info.actual_weight = Some(
+				post_dispatch_info
+					.actual_weight
+					.unwrap_or_default()
+					.saturating_add(router_call_weight),
+			);
+		}
+
 		/// Calculates the weight used by a router when processing an outbound
 		/// message.
-		fn get_outbound_message_processing_weight(
-			router_call_weight: Option<Weight>,
-			extra_weight: Weight,
-		) -> Weight {
+		fn get_outbound_message_processing_weight(router_call_weight: Option<Weight>) -> Weight {
 			let pov_weight: u64 = (Domain::max_encoded_len()
 				+ T::AccountId::max_encoded_len()
-				+ T::Message::max_encoded_len())
+				+ T::LPMessage::max_encoded_len())
 			.try_into()
 			.expect("can calculate outbound message POV weight");
 
 			router_call_weight
 				.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
 				.saturating_add(Weight::from_parts(0, pov_weight))
-				.saturating_add(extra_weight)
 		}
 	}
 
-	/// This pallet will be the `OutboundQueue` used by other pallets to send
-	/// outgoing messages.
-	///
-	/// NOTE - the sender provided as an argument is not used at the moment, we
-	/// are using the sender specified in the pallet config so that we can
-	/// ensure that the account is funded.
-	impl<T: Config> OutboundQueue for Pallet<T> {
-		type Destination = Domain;
-		type Message = T::Message;
-		type Sender = T::AccountId;
+	impl<T: Config> MessageProcessor for Pallet<T> {
+		type Message = GatewayMessage<T::AccountId, T::LPMessage>;
 
-		fn submit(
-			_sender: Self::Sender,
-			destination: Self::Destination,
-			message: Self::Message,
-		) -> DispatchResult {
-			ensure!(
-				destination != Domain::Centrifuge,
-				Error::<T>::DomainNotSupported
-			);
+		fn process(message: Self::Message) -> DispatchResultWithPostInfo {
+			match message {
+				GatewayMessage::Inbound {
+					domain_address,
+					message,
+				} => Self::process_inbound_message(domain_address, message),
+				GatewayMessage::Outbound {
+					destination,
+					message,
+					..
+				} => {
+					// Make sure we use the gateway sender.
+					let sender = T::Sender::get();
 
-			ensure!(
-				DomainRouters::<T>::contains_key(destination.clone()),
-				Error::<T>::RouterNotFound
-			);
-
-			let nonce = <OutboundMessageNonceStore<T>>::try_mutate(|n| {
-				n.ensure_add_assign(T::OutboundMessageNonce::one())?;
-				Ok::<T::OutboundMessageNonce, DispatchError>(*n)
-			})?;
-
-			OutboundMessageQueue::<T>::insert(
-				nonce,
-				(destination.clone(), T::Sender::get(), message.clone()),
-			);
-
-			Self::deposit_event(Event::OutboundMessageSubmitted {
-				sender: T::Sender::get(),
-				domain: destination,
-				message,
-			});
-
-			Ok(())
+					Self::process_outbound_message(destination, sender, message)
+				}
+			}
 		}
 	}
 }
