@@ -49,6 +49,16 @@ pub mod test_util {
 			}
 		}
 	}
+
+	impl LPMessage for Message {
+		fn get_message_proof(&self) -> Option<[u8; 32]> {
+			Some([1; 32])
+		}
+
+		fn to_message_proof(&self) -> Self {
+			Self
+		}
+	}
 }
 
 /// The trait required for sending outbound messages.

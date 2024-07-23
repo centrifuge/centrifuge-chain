@@ -29,20 +29,14 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{
-		InboundMessageHandler, LPMessage, MessageQueue, OutboundQueue, Router as DomainRouter,
-	},
+	liquidity_pools::{InboundMessageHandler, LPMessage, Router as DomainRouter},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
-use frame_system::{
-	ensure_signed,
-	pallet_prelude::{BlockNumberFor, OriginFor},
-};
+use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
@@ -87,7 +81,7 @@ pub mod pallet {
 	use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, MessageQueue};
 	use cfg_types::gateway::GatewayMessage;
 	use frame_support::dispatch::PostDispatchInfo;
-	use sp_runtime::DispatchErrorWithPostInfo;
+	use sp_runtime::{traits::EnsureSub, DispatchErrorWithPostInfo};
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -278,11 +272,8 @@ pub mod pallet {
 		/// signals malforming of the wrapping information.
 		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
 
-		/// Outbound message not found in storage.
-		OutboundMessageNotFound,
-
-		/// Failed outbound message not found in storage.
-		FailedOutboundMessageNotFound,
+		/// Message proof cannot be retrieved.
+		MessageProofRetrieval,
 	}
 
 	#[pallet::call]
@@ -579,11 +570,14 @@ pub mod pallet {
 				})?
 				.len();
 
-			let expected_proof_count = routers_count - 1;
+			let expected_proof_count = routers_count.ensure_sub(1)?;
 
 			let (message_proof, message_proof_count) = match message.get_message_proof() {
 				None => {
-					let message_proof = message.to_message_proof().get_message_proof().unwrap();
+					let message_proof = message
+						.to_message_proof()
+						.get_message_proof()
+						.ok_or(Error::<T>::MessageProofRetrieval)?;
 
 					InboundMessages::<T>::insert(message_proof, message);
 
@@ -607,7 +601,7 @@ pub mod pallet {
 			post_info.actual_weight = Some(
 				post_info
 					.actual_weight
-					.unwrap()
+					.unwrap_or_default()
 					.saturating_add(T::DbWeight::get().reads_writes(1, 1)),
 			);
 
@@ -619,7 +613,19 @@ pub mod pallet {
 				return Ok(post_info);
 			}
 
-			let message = InboundMessages::<T>::get(message_proof).unwrap();
+			post_info.actual_weight = Some(
+				post_info
+					.actual_weight
+					.unwrap_or_default()
+					.saturating_add(T::DbWeight::get().reads(1)),
+			);
+
+			let message = match InboundMessages::<T>::get(message_proof) {
+				Some(m) => m,
+				// Not finding the message here is not a problem. We might have the correct message proof
+				// count but no actual message.
+				None => return Ok(post_info),
+			};
 
 			InboundMessages::<T>::remove(message_proof);
 			InboundMessageProofCount::<T>::remove(message_proof);
@@ -627,8 +633,8 @@ pub mod pallet {
 			post_info.actual_weight = Some(
 				post_info
 					.actual_weight
-					.unwrap()
-					.saturating_add(T::DbWeight::get().reads_writes(1, 2)),
+					.unwrap_or_default()
+					.saturating_add(T::DbWeight::get().writes(2)),
 			);
 
 			match T::InboundMessageHandler::handle(domain_address, message) {

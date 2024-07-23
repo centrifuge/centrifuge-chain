@@ -1,13 +1,15 @@
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
-use cfg_primitives::OutboundMessageNonce;
+use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
+use cfg_mocks::{
+	pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue, pallet_mock_routers,
+	RouterMock,
+};
 use cfg_traits::liquidity_pools::test_util::Message;
 use cfg_types::domain_address::DomainAddress;
+use cfg_types::gateway::GatewayMessage;
 use frame_support::derive_impl;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::IdentityLookup;
-
-use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
 
 pub const LENGTH_SOURCE_CHAIN: usize = 10;
 pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";
@@ -20,6 +22,7 @@ frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
+		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
 		MockRouters: pallet_mock_routers,
 		MockOriginRecovery: cfg_mocks::converter::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
@@ -36,6 +39,10 @@ impl frame_system::Config for Runtime {
 impl pallet_mock_liquidity_pools::Config for Runtime {
 	type DomainAddress = DomainAddress;
 	type Message = Message;
+}
+
+impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
+	type Message = GatewayMessage<AccountId32, Message>;
 }
 
 impl pallet_mock_routers::Config for Runtime {}
@@ -59,12 +66,12 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
 	type OriginRecovery = MockOriginRecovery;
-	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type WeightInfo = ();
+	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
