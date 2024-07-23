@@ -117,7 +117,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Mint additional amount of payment currency
@@ -149,7 +149,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
@@ -177,7 +177,7 @@ where
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let amount = T::ForeignInvestment::investment(&investor, invest_id)?;
 
 		Self::handle_decrease_invest_order(pool_id, tranche_id, investor, currency_index, amount)
@@ -199,7 +199,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of
@@ -238,7 +238,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
@@ -287,7 +287,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let amount = T::ForeignInvestment::redemption(&investor, invest_id)?;
 
 		Self::handle_decrease_redeem_order(
@@ -317,7 +317,7 @@ where
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_currency_id(currency_index)?;
 
 		// NOTE: Dispatch of `ExecutedCollectInvest` is handled by
@@ -344,7 +344,7 @@ where
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		T::ForeignInvestment::collect_foreign_redemption(&investor, invest_id, payout_currency)?;

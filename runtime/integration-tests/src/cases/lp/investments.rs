@@ -30,8 +30,8 @@ use crate::{
 const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
-	use cfg_primitives::{AccountId, Balance};
-	use cfg_traits::{investments::TrancheCurrency, HasLocalAssetRepresentation};
+	use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId, TrancheId};
+	use cfg_traits::HasLocalAssetRepresentation;
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
 	use pallet_liquidity_pools::{GeneralCurrencyIndexOf, GeneralCurrencyIndexType};
@@ -62,10 +62,10 @@ mod utils {
 	}
 
 	pub fn investment_id<T: pallet_pool_system::Config>(
-		pool: T::PoolId,
-		tranche: T::TrancheId,
-	) -> <T as pallet_pool_system::Config>::TrancheCurrency {
-		<T as pallet_pool_system::Config>::TrancheCurrency::generate(pool, tranche)
+		pool: PoolId,
+		tranche: TrancheId,
+	) -> InvestmentId {
+		(pool, tranche)
 	}
 
 	// TODO: CHANGE EVM TO BE ENVIRONMENTAL AND MAKE TRAIT NON SELF BUT RATHER GET

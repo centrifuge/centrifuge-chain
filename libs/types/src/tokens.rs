@@ -16,7 +16,7 @@ use cfg_primitives::{
 	types::{PoolId, TrancheId},
 	Balance,
 };
-use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, HasLocalAssetRepresentation};
+use cfg_traits::HasLocalAssetRepresentation;
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -118,6 +118,12 @@ impl TryFrom<CurrencyId> for LocalAssetId {
 		} else {
 			Err(())
 		}
+	}
+}
+
+impl From<(PoolId, TrancheId)> for CurrencyId {
+	fn from((pool_id, tranche_id): (PoolId, TrancheId)) -> Self {
+		CurrencyId::Tranche(pool_id, tranche_id)
 	}
 }
 
@@ -227,55 +233,6 @@ where
 			index: value.into(),
 			_phantom: Default::default(),
 		}
-	}
-}
-
-/// A Currency that is solely used by tranches.
-///
-/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId,
-/// TranchId) in order to be able to have a clear separation of concerns. This
-/// enables us to use the `TrancheCurrency` type separately where solely this
-/// enum variant would be relevant. Most notably, in the `struct Tranche`.
-#[derive(
-	Clone,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-	Serialize,
-	Deserialize,
-)]
-pub struct TrancheCurrency {
-	pub pool_id: PoolId,
-	pub tranche_id: TrancheId,
-}
-
-impl From<TrancheCurrency> for CurrencyId {
-	fn from(x: TrancheCurrency) -> Self {
-		CurrencyId::Tranche(x.pool_id, x.tranche_id)
-	}
-}
-
-impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		Self {
-			pool_id,
-			tranche_id,
-		}
-	}
-
-	fn of_pool(&self) -> PoolId {
-		self.pool_id
-	}
-
-	fn of_tranche(&self) -> TrancheId {
-		self.tranche_id
 	}
 }
 

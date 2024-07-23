@@ -11,9 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
-};
+use cfg_traits::{liquidity_pools::OutboundQueue, StatusNotificationHook};
 use cfg_types::{
 	domain_address::DomainAddress,
 	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
@@ -39,12 +37,12 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
+	type Id = (T::AccountId, (T::PoolId, T::TrancheId));
 	type Status = ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
+		(investor, (pool_id, tranche_id)): Self::Id,
 		status: ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(status.foreign_currency)?;
@@ -60,8 +58,8 @@ where
 		)?;
 
 		let message = Message::ExecutedDecreaseInvestOrder {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_decreased.into(),
@@ -82,12 +80,12 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
+	type Id = (T::AccountId, (T::PoolId, T::TrancheId));
 	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
+		(investor, (pool_id, tranche_id)): Self::Id,
 		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
@@ -103,8 +101,8 @@ where
 		)?;
 
 		let message = Message::ExecutedCollectRedeem {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout.into(),
@@ -126,12 +124,12 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
+	type Id = (T::AccountId, (T::PoolId, T::TrancheId));
 	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
+		(investor, (pool_id, tranche_id)): Self::Id,
 		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
@@ -139,7 +137,7 @@ where
 		let domain_address: DomainAddress = wrapped_token.into();
 
 		T::Tokens::transfer(
-			investment_id.clone().into(),
+			(pool_id, tranche_id).into(),
 			&investor,
 			&domain_address.domain().into_account(),
 			status.amount_tranche_tokens_payout,
@@ -147,8 +145,8 @@ where
 		)?;
 
 		let message = Message::ExecutedCollectInvest {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout.into(),

@@ -5,7 +5,7 @@ use cfg_types::{
 	permissions::PermissionScope,
 	tokens::{
 		AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
-		LocalAssetId, TrancheCurrency,
+		LocalAssetId,
 	},
 };
 use frame_support::{derive_impl, traits::PalletInfo as _};
@@ -87,7 +87,6 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 }
 
@@ -101,7 +100,7 @@ impl cfg_mocks::asset_registry::pallet::Config for Runtime {
 impl cfg_mocks::foreign_investment::pallet::Config for Runtime {
 	type Amount = Balance;
 	type CurrencyId = CurrencyId;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = (PoolId, TrancheId);
 	type TrancheAmount = Balance;
 }
 
@@ -177,7 +176,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Time;
 	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = Pools;
 	type TreasuryAccount = TreasuryAccount;
