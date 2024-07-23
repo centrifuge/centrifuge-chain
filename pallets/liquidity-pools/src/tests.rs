@@ -80,6 +80,16 @@ mod util {
 		}
 	}
 
+	pub fn pool_locatable_transferable_metadata() -> AssetMetadata {
+		AssetMetadata {
+			additional: CustomMetadata {
+				pool_currency: true,
+				..transferable_metadata().additional
+			},
+			..locatable_transferable_metadata()
+		}
+	}
+
 	pub fn currency_index(currency_id: CurrencyId) -> u128 {
 		GeneralCurrencyIndexOf::<Runtime>::try_from(currency_id)
 			.unwrap()
@@ -623,6 +633,101 @@ mod add_tranche {
 	}
 }
 
+mod update_tranche_token_metadata {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Pools::mock_pool_exists(|_| true);
+			Pools::mock_tranche_exists(|_, _| true);
+			AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::UpdateTrancheTokenMetadata {
+						pool_id: POOL_ID,
+						tranche_id: TRANCHE_ID,
+						token_name: vec_to_fixed_array(NAME),
+						token_symbol: vec_to_fixed_array(SYMBOL),
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				EVM_DOMAIN_ADDRESS.domain(),
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_wrong_pool() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::PoolNotFound
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_tranche() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				Pools::mock_pool_exists(|_| true);
+				Pools::mock_tranche_exists(|_, _| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::TrancheNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_metadata() {
+			System::externalities().execute_with(|| {
+				Pools::mock_pool_exists(|_| true);
+				Pools::mock_tranche_exists(|_, _| true);
+				AssetRegistry::mock_metadata(|_| None);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_token_metadata(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::TrancheMetadataNotFound,
+				);
+			})
+		}
+	}
+}
+
 mod update_token_price {
 	use super::*;
 
@@ -952,6 +1057,376 @@ mod add_currency {
 				assert_noop!(
 					LiquidityPools::add_currency(RuntimeOrigin::signed(ALICE), CURRENCY_ID),
 					Error::<Runtime>::AssetNotLiquidityPoolsWrappedToken
+				);
+			})
+		}
+	}
+}
+
+mod allow_investment_currency {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			AssetRegistry::mock_metadata(|_| Some(util::pool_locatable_transferable_metadata()));
+			Permissions::mock_has(move |scope, who, role| {
+				assert_eq!(who, ALICE);
+				assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+				assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
+				true
+			});
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::AllowInvestmentCurrency {
+						pool_id: POOL_ID,
+						currency: util::currency_index(CURRENCY_ID),
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::allow_investment_currency(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				CURRENCY_ID
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_wrong_permissions() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_metadata() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| None);
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_unsupported_token() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CurrencyId::Native
+					),
+					TokenError::Unsupported,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_transferible_asset() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_location() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::transferable_metadata()));
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsWrappedToken
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_pool_currency() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
+
+				assert_noop!(
+					LiquidityPools::allow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetMetadataNotPoolCurrency
+				);
+			})
+		}
+	}
+}
+
+mod disallow_investment_currency {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			AssetRegistry::mock_metadata(|_| Some(util::pool_locatable_transferable_metadata()));
+			Permissions::mock_has(move |scope, who, role| {
+				assert_eq!(who, ALICE);
+				assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+				assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
+				true
+			});
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, ALICE);
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::DisallowInvestmentCurrency {
+						pool_id: POOL_ID,
+						currency: util::currency_index(CURRENCY_ID),
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::disallow_investment_currency(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				CURRENCY_ID
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_wrong_permissions() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_metadata() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| None);
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_unsupported_token() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CurrencyId::Native
+					),
+					TokenError::Unsupported,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_transferible_asset() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_location() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::transferable_metadata()));
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetNotLiquidityPoolsWrappedToken
+				);
+			})
+		}
+
+		#[test]
+		fn with_wrong_pool_currency() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(move |_, _, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
+
+				assert_noop!(
+					LiquidityPools::disallow_investment_currency(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						CURRENCY_ID
+					),
+					Error::<Runtime>::AssetMetadataNotPoolCurrency
+				);
+			})
+		}
+	}
+}
+
+mod schedule_upgrade {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, TreasuryAccount::get());
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::ScheduleUpgrade {
+						contract: CONTRACT_ACCOUNT
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::schedule_upgrade(
+				RuntimeOrigin::root(),
+				CHAIN_ID,
+				CONTRACT_ACCOUNT,
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_origin() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::schedule_upgrade(
+						RuntimeOrigin::signed(ALICE),
+						CHAIN_ID,
+						CONTRACT_ACCOUNT,
+					),
+					DispatchError::BadOrigin
+				);
+			})
+		}
+	}
+}
+
+mod cancel_upgrade {
+	use super::*;
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			Gateway::mock_submit(|sender, destination, msg| {
+				assert_eq!(sender, TreasuryAccount::get());
+				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(
+					msg,
+					Message::CancelUpgrade {
+						contract: CONTRACT_ACCOUNT
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(LiquidityPools::cancel_upgrade(
+				RuntimeOrigin::root(),
+				CHAIN_ID,
+				CONTRACT_ACCOUNT,
+			));
+		})
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_origin() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::cancel_upgrade(
+						RuntimeOrigin::signed(ALICE),
+						CHAIN_ID,
+						CONTRACT_ACCOUNT,
+					),
+					DispatchError::BadOrigin
 				);
 			})
 		}
