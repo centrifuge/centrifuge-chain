@@ -21,7 +21,7 @@ parameter_types! {
 
 /// The migration set for Development & Demo.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1200 = (
+pub type UpgradeDevelopment1300 = (
 	// Initialize OpenGov Technical Committee with Alice
 	runtime_common::migrations::technical_comittee::InitMigration<crate::Runtime, InitialTcMembers>,
 	runtime_common::migrations::increase_storage_version::Migration<crate::Referenda, 0, 1>,

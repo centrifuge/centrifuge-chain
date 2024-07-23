@@ -109,7 +109,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
+		tokens::CustomMetadata,
 		EVMChainId,
 	};
 	use frame_support::{
@@ -306,7 +306,7 @@ pub mod pallet {
 		/// The metadata of the given asset does not declare it as transferable
 		/// via LiquidityPools'.
 		AssetNotLiquidityPoolsTransferable,
-		/// The asset is not a [LiquidityPoolsWrappedToken] and thus cannot be
+		/// The asset is not a a wrapped token and thus cannot be
 		/// transferred via liquidity pools.
 		AssetNotLiquidityPoolsWrappedToken,
 		/// A pool could not be found.
@@ -453,14 +453,12 @@ pub mod pallet {
 			.ensure_mul(price)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
-					ensure!(
-						Domain::EVM(chain_id) == destination,
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == destination,
+				Error::<T>::InvalidDomain
+			);
+
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			T::OutboundQueue::submit(
@@ -614,14 +612,11 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
-					ensure!(
-						Domain::EVM(chain_id) == receiver.domain(),
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == receiver.domain(),
+				Error::<T>::InvalidDomain
+			);
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
@@ -674,10 +669,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			let LiquidityPoolsWrappedToken::EVM {
-				chain_id,
-				address: evm_address,
-			} = Self::try_get_wrapped_token(&currency_id)?;
+			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
 				who,
@@ -777,11 +769,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
-			);
-
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
@@ -872,13 +859,12 @@ pub mod pallet {
 		}
 
 		/// Checks whether the given currency is transferable via LiquidityPools
-		/// and whether its metadata contains a location which can be
-		/// converted to [LiquidityPoolsWrappedToken].
+		/// and whether its metadata contains an evm location.
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
 			currency_id: &T::CurrencyId,
-		) -> Result<LiquidityPoolsWrappedToken, DispatchError> {
+		) -> Result<(EVMChainId, [u8; 20]), DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_liquidity_pools(),
@@ -904,9 +890,7 @@ pub mod pallet {
 						network: None,
 						key: address,
 					}],
-				) if Some(pallet_instance.into()) == pallet_index => {
-					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
-				}
+				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address)),
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
 			}
 		}
@@ -934,6 +918,10 @@ pub mod pallet {
 		pub fn validate_investment_currency(
 			currency_id: T::CurrencyId,
 		) -> Result<(u128, EVMChainId), DispatchError> {
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+
 			// Ensure the currency is enabled as pool_currency
 			let metadata =
 				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
@@ -941,11 +929,6 @@ pub mod pallet {
 				metadata.additional.pool_currency,
 				Error::<T>::AssetMetadataNotPoolCurrency
 			);
-
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
-				Self::try_get_wrapped_token(&currency_id)?;
 
 			Ok((currency, chain_id))
 		}
