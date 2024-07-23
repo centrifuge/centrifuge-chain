@@ -18,8 +18,8 @@ jobs:
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
-    runs-on: ubuntu-latest-4-cores
-    runs-on: ubuntu-latest-4-cores
+    # As this is not a critical PR feedback item, we can run it on free ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         chain: [ altair, centrifuge, development ]
@@ -27,7 +27,6 @@ jobs:
     env:
       SRTOOL_IMAGE: "paritytech/srtool:1.77.0-0.15.0"
     steps:
-      # PREP
       # PREP
       - name: Check out code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b #4.1.4
@@ -45,7 +44,6 @@ jobs:
             ./target/srtool
           cache-directories: ./runtime
 
-      # Use this to debug what's going on inside the srtool container
       # Use this to debug what's going on inside the srtool container
       # - name: Run Docker SRTool
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
@@ -85,44 +83,17 @@ jobs:
               JSON="$line"
             done
             echo "json=$JSON" >> $GITHUB_OUTPUT
-
-            PROP=`echo $JSON | jq -r .runtimes.compact.prop`
-            echo "proposal_hash=$PROP" >> $GITHUB_OUTPUT
   
             WASM=`echo $JSON | jq -r .runtimes.compact.wasm`
             echo "wasm=$WASM" >> $GITHUB_OUTPUT
   
             Z_WASM=`echo $JSON | jq -r .runtimes.compressed.wasm`
             echo "wasm_compressed=$Z_WASM" >> $GITHUB_OUTPUT
-  
-            IPFS=`echo $JSON | jq -r .runtimes.compact.ipfs`
-            echo "ipfs=$IPFS" >> $GITHUB_OUTPUT
           }
              
       - name: Summary
         run: |
-          ## Summary and JSON output
-
-          echo ::group::Srtool version
-          CMD="docker run -i --rm -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} version -cM"
-          JSON=`$CMD`
-          echo $JSON | jq .
-          echo "version=$JSON" >> $GITHUB_OUTPUT
-          echo ::endgroup::
-
-          echo ::group::Srtool info
-          CMD="docker run -i --rm -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} info -cM"
-          JSON=`$CMD`
-          echo $JSON | jq .
-          echo "info=$JSON" >> $GITHUB_OUTPUT
-          echo ::endgroup::
-
-          echo "::group::Technical info"
-          echo "- proposal hash: ${{ steps.srtool_build.outputs.proposal_hash }}"
-          echo "- runtime location: ${{ steps.srtool_build.outputs.wasm }}"
-          echo "- IPFS: ${{ steps.srtool_build.outputs.ipfs }}"
-          echo "::endgroup"
-
+          ## JSON output
           echo "::group::JSON output"
           PRETTY_JSON=$(echo '${{ steps.srtool_build.outputs.json }}' | jq .)
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
@@ -148,12 +119,12 @@ jobs:
           ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
           gsutil cp \
-            "${{ steps.srtool_build.outputs.wasm }}" \
+            "${{ steps.srtool_build.wasm_compressed }}" \
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
           ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
           gsutil cp \
-            "${{ steps.srtool_build.outputs.wasm }}" \
+            "${{ steps.srtool_build.wasm_compressed }}" \
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
           gsutil cp \
             "${{ matrix.chain }}-srtool-digest.json" \
@@ -166,27 +137,7 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.outputs.wasm }}, ${{ matrix.chain }}-srtool-digest.json"
-          replacesArtifacts: true
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          omitBodyDuringUpdate: true
-          omitDraftDuringUpdate: true
-          omitNameDuringUpdate: true
-          omitPrereleaseDuringUpdate: true
-          # updateOnlyUnreleased: true # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
-          
-            "${{ matrix.chain }}-srtool-digest.json" \
-            "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json"
-
-      - name: Upload WASM to release tag ${{ github.ref_name }}
-        uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # @v1
-        if: github.event_name == 'release'
-        # https://github.com/ncipollo/release-action
-        with:
-          tag: ${{ github.ref_name }}
-          commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.outputs.wasm }}, ${{ matrix.chain }}-srtool-digest.json"
+          artifacts: "${{ steps.srtool_build.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
           replacesArtifacts: true
           allowUpdates: true
           artifactErrorsFailBuild: true
