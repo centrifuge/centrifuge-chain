@@ -48,11 +48,7 @@ else
   echo "Benchmarking all pallets"
   for pallet in $all_pallets
   do
-      if [[ $pallet != "frame_system" ]]; then
-        run_benchmark $pallet
-      else
-        echo "WARNING: Skipping frame_system. Please re-enable at Polkadot v1.0.0+ support."
-      fi
+    run_benchmark $pallet
   done
 fi
 

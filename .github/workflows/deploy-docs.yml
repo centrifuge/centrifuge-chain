@@ -57,12 +57,18 @@ jobs:
             echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
 
-      - name: upload Docs files
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 #v4.3.0
+      # - name: upload Docs files
+      #   uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 #v4.3.0
+      #   with:
+      #     name: github-pages
+      #     path: ./target/doc
+      #     retention-days: 1
+      # https://github.com/actions/deploy-pages/issues/179
+
+      - name: Upload Docs
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages
-          path: ./target/doc
-          retention-days: 1
+            path: ./target/doc
 
       - name: Deploy Docs
         # if: github.ref == 'refs/heads/main'

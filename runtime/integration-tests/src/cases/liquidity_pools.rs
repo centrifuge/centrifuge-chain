@@ -2,13 +2,13 @@ use cfg_primitives::{
 	currency_decimals, parachains, AccountId, Balance, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
-	investments::{Investment, OrderManager, TrancheCurrency},
+	investments::{OrderManager, TrancheCurrency},
 	liquidity_pools::InboundQueue,
 	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::{Quantity, Ratio},
+	fixed_point::Ratio,
 	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -26,10 +26,8 @@ use frame_support::{
 use liquidity_pools_gateway_routers::{
 	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
 };
-use orml_traits::MultiCurrency;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
@@ -74,7 +72,7 @@ pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
-pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+pub type LiquidityPoolMessage = Message;
 
 mod utils {
 	use cfg_types::oracles::OracleKey;
@@ -124,21 +122,6 @@ mod utils {
 
 	pub fn decimals(decimals: u32) -> Balance {
 		10u128.saturating_pow(decimals)
-	}
-
-	pub fn set_domain_router_call<T: Runtime>(
-		domain: Domain,
-		router: DomainRouter<T>,
-	) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
-	}
-
-	pub fn add_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::add_instance { instance }.into()
-	}
-
-	pub fn remove_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
-		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
 	}
 
 	/// Creates a new pool for for the given id with the provided currency.
@@ -675,321 +658,12 @@ mod utils {
 
 		amount_foreign_denominated
 	}
-
-	pub fn get_council_members() -> Vec<Keyring> {
-		vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
-	}
 }
 
 use utils::*;
 
 mod add_allow_upgrade {
-	use cfg_types::tokens::LiquidityPoolsWrappedToken;
-
 	use super::*;
-
-	#[test_runtimes([development])]
-	fn update_member<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			// Now create the pool
-			let pool_id = POOL_ID;
-
-			create_ausd_pool::<T>(pool_id);
-
-			let tranche_id = default_tranche_id::<T>(pool_id);
-
-			// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
-			// successfully when given a valid pool + tranche id pair.
-			let new_member = DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [3; 20]);
-
-			// Make ALICE the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
-				Keyring::Alice.into(),
-				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::InvestorAdmin),
-			));
-
-			// Verify it fails if the destination is not whitelisted yet
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_member(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					new_member.clone(),
-					DEFAULT_VALIDITY,
-				),
-				pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
-			);
-
-			// Whitelist destination as TrancheInvestor of this Pool
-			crate::utils::pool::give_role::<T>(
-				AccountConverter::convert(new_member.clone()),
-				pool_id,
-				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
-			);
-
-			// Verify the Investor role was set as expected in Permissions
-			assert!(pallet_permissions::Pallet::<T>::has(
-				PermissionScope::Pool(pool_id),
-				AccountConverter::convert(new_member.clone()),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, DEFAULT_VALIDITY)),
-			));
-
-			// Verify it now works
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
-				RawOrigin::Signed(Keyring::Alice.into()).into(),
-				pool_id,
-				tranche_id,
-				new_member,
-				DEFAULT_VALIDITY,
-			));
-
-			// Verify it cannot be called for another member without whitelisting the domain
-			// beforehand
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::update_member(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					pool_id,
-					tranche_id,
-					DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [9; 20]),
-					DEFAULT_VALIDITY,
-				),
-				pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
-			);
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn update_token_price<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let currency_id = AUSD_CURRENCY_ID;
-			let pool_id = POOL_ID;
-
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			create_ausd_pool::<T>(pool_id);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
-				RawOrigin::Signed(Keyring::Bob.into()).into(),
-				pool_id,
-				default_tranche_id::<T>(pool_id),
-				currency_id,
-				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-			));
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn add_currency<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			let gateway_sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
-			let currency_id = AUSD_CURRENCY_ID;
-
-			enable_liquidity_pool_transferability::<T>(currency_id);
-
-			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(GLMR_CURRENCY_ID, &gateway_sender),
-				DEFAULT_BALANCE_GLMR
-			);
-
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-				RawOrigin::Signed(Keyring::Bob.into()).into(),
-				currency_id,
-			));
-
-			let currency_index =
-				pallet_liquidity_pools::Pallet::<T>::try_get_general_index(currency_id)
-					.expect("can get general index for currency");
-
-			let LiquidityPoolsWrappedToken::EVM {
-				address: evm_address,
-				..
-			} = pallet_liquidity_pools::Pallet::<T>::try_get_wrapped_token(&currency_id)
-				.expect("can get wrapped token");
-
-			let outbound_message = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::get(
-				T::OutboundMessageNonce::one(),
-			)
-			.expect("expected outbound queue message");
-
-			assert_eq!(
-				outbound_message.2,
-				Message::AddCurrency {
-					currency: currency_index,
-					evm_address,
-				},
-			);
-		});
-	}
-
-	#[test_runtimes([development])]
-	fn add_currency_should_fail<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_parachain_storage(
-			Genesis::default()
-				.add(genesis::balances::<T>(cfg(1_000)))
-				.add(genesis::tokens::<T>(vec![(
-					GLMR_CURRENCY_ID,
-					DEFAULT_BALANCE_GLMR,
-				)]))
-				.storage(),
-		);
-
-		setup_test(&mut env);
-
-		env.parachain_state_mut(|| {
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::ForeignAsset(42)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Native
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotFound
-			);
-
-			// Should fail to add currency_id which is missing a registered
-			// Location
-			let currency_id = CurrencyId::ForeignAsset(100);
-
-			assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				AssetMetadata {
-					name: BoundedVec::default(),
-					symbol: BoundedVec::default(),
-					decimals: 12,
-					location: None,
-					existential_deposit: 1_000_000,
-					additional: CustomMetadata {
-						transferability: CrossChainTransferability::LiquidityPools,
-						mintable: false,
-						permissioned: false,
-						pool_currency: false,
-						local_representation: None,
-					},
-				},
-				Some(currency_id)
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
-			);
-
-			// Add convertable Location to metadata but remove transferability
-			assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				currency_id,
-				None,
-				None,
-				None,
-				None,
-				// Changed: Add multilocation to metadata for some random EVM chain id for
-				// which no instance is registered
-				Some(Some(liquidity_pools_transferable_multilocation::<T>(
-					u64::MAX,
-					[1u8; 20],
-				))),
-				Some(CustomMetadata {
-					// Changed: Disallow liquidityPools transferability
-					transferability: CrossChainTransferability::Xcm(Default::default()),
-					..Default::default()
-				}),
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-
-			// Switch transferability from XCM to None
-			assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				currency_id,
-				None,
-				None,
-				None,
-				None,
-				None,
-				Some(CustomMetadata {
-					// Changed: Disallow cross chain transferability entirely
-					transferability: CrossChainTransferability::None,
-					..Default::default()
-				})
-			));
-
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::add_currency(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					currency_id
-				),
-				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
-			);
-		});
-	}
 
 	#[test_runtimes([development])]
 	fn allow_investment_currency<T: Runtime + FudgeSupport>() {
@@ -1938,13 +1612,6 @@ mod foreign_investments {
 				enable_liquidity_pool_transferability::<T>(currency_id);
 				let investment_currency_id: CurrencyId = default_investment_id::<T>().into();
 
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
-
 				// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
 				// tokens
 				assert_ok!(pallet_investments::Pallet::<T>::process_invest_orders(
@@ -1958,14 +1625,6 @@ mod foreign_investments {
 					}
 				));
 
-				// Pre collect assertions
-				assert!(
-					pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
-
 				// Collecting through Investments should denote amounts and transition
 				// state
 				assert_ok!(pallet_investments::Pallet::<T>::collect_investments_for(
@@ -1973,12 +1632,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Tranche Tokens should still be transferred to collected to
 				// domain locator account already
@@ -2058,12 +1711,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::investment_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Tranche Tokens should be transferred to collected to
 				// domain locator account already
@@ -2597,12 +2244,6 @@ mod foreign_investments {
 					&pool_account,
 					redeem_amount
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
 				// tokens
@@ -2616,14 +2257,6 @@ mod foreign_investments {
 						price: Ratio::checked_from_rational(1, 4).unwrap(),
 					}
 				));
-
-				// Pre collect assertions
-				assert!(
-					pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 
 				// Collecting through investments should denote amounts and transition
 				// state
@@ -2666,12 +2299,6 @@ mod foreign_investments {
 						}
 						.into()
 				}));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 				// Since foreign currency is pool currency, the swap is immediately fulfilled
 				// and ExecutedCollectRedeem dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
@@ -2708,12 +2335,6 @@ mod foreign_investments {
 					investor.clone(),
 					default_investment_id::<T>()
 				));
-				assert!(
-					!pallet_investments::Pallet::<T>::redemption_requires_collect(
-						&investor,
-						default_investment_id::<T>()
-					)
-				);
 				assert!(!frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_investments::Event::<T>::RedeemCollectedForNonClearedOrderId {

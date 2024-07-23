@@ -23,7 +23,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
 
-use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
+use crate::{xcm::XcmMetadata, EVMChainId};
 
 pub const MAX_ASSET_STRING_LIMIT: u32 = 128;
 
@@ -392,44 +392,6 @@ impl CrossChainTransferability {
 		Self::Xcm(XcmMetadata {
 			fee_per_second: Some(value),
 		})
-	}
-}
-
-/// Liquidity Pools-wrapped tokens
-///
-/// Currently, LiquidityPools are only deployed on EVM-based chains and
-/// therefore we only support EVM tokens. In the far future, we might support
-/// wrapped tokens from other chains such as Cosmos based ones.
-#[derive(
-	Clone,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-	Serialize,
-	Deserialize,
-)]
-pub enum LiquidityPoolsWrappedToken {
-	/// An EVM-native token
-	EVM {
-		/// The EVM chain id where the token is deployed
-		chain_id: EVMChainId,
-		/// The token contract address
-		address: [u8; 20],
-	},
-}
-
-impl From<LiquidityPoolsWrappedToken> for DomainAddress {
-	fn from(token: LiquidityPoolsWrappedToken) -> Self {
-		match token {
-			LiquidityPoolsWrappedToken::EVM { chain_id, address } => Self::EVM(chain_id, address),
-		}
 	}
 }
 

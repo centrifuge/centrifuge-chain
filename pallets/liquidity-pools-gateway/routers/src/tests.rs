@@ -1,6 +1,5 @@
-use cfg_mocks::MessageMock;
 use cfg_primitives::CFG;
-use cfg_traits::liquidity_pools::{Codec, Router};
+use cfg_traits::liquidity_pools::Router;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
 use lazy_static::lazy_static;
 use pallet_evm::AddressMapping;
@@ -14,7 +13,10 @@ use staging_xcm::latest::{
 };
 
 use super::mock::*;
-use crate::*;
+use crate::{
+	routers::{axelar_evm::get_axelar_encoded_msg, ethereum_xcm::get_encoded_contract_call},
+	*,
+};
 
 lazy_static! {
 	static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
@@ -318,7 +320,7 @@ mod axelar_evm {
 			pub sender: AccountId32,
 			pub sender_h160: H160,
 			pub derived_sender: AccountId32,
-			pub msg: MessageMock,
+			pub msg: Vec<u8>,
 		}
 
 		pub fn get_test_data() -> AxelarEVMTestData {
@@ -342,7 +344,7 @@ mod axelar_evm {
 				H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
 			let derived_sender = IdentityAddressMapping::into_account_id(sender_h160);
 
-			let msg = MessageMock::Second;
+			let msg = vec![0x42];
 
 			AxelarEVMTestData {
 				axelar_contract_address,
@@ -496,7 +498,7 @@ mod axelar_xcm {
 			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
-			pub msg: MessageMock,
+			pub msg: Vec<u8>,
 		}
 
 		pub fn get_test_data() -> AxelarXCMTestData {
@@ -518,7 +520,7 @@ mod axelar_xcm {
 
 			let sender: AccountId32 = [0; 32].into();
 
-			let msg = MessageMock::First;
+			let msg = vec![0x42];
 
 			AxelarXCMTestData {
 				currency_id,
@@ -599,7 +601,7 @@ mod axelar_xcm {
 				}));
 
 				let contract_call = get_axelar_encoded_msg(
-					test_data.msg.serialize(),
+					test_data.msg,
 					test_data.axelar_target_chain.clone().into_inner(),
 					test_data.axelar_target_contract,
 				)
@@ -635,7 +637,7 @@ mod ethereum_xcm {
 			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
-			pub msg: MessageMock,
+			pub msg: Vec<u8>,
 		}
 
 		pub fn get_test_data() -> EthereumXCMTestData {
@@ -657,7 +659,7 @@ mod ethereum_xcm {
 
 			let sender: AccountId32 = [0; 32].into();
 
-			let msg = MessageMock::First;
+			let msg = vec![0x42];
 
 			EthereumXCMTestData {
 				currency_id,
@@ -730,7 +732,7 @@ mod ethereum_xcm {
 					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
 
-				let contract_call = get_encoded_contract_call(test_data.msg.serialize()).unwrap();
+				let contract_call = get_encoded_contract_call(test_data.msg).unwrap();
 				let expected_call = get_encoded_ethereum_xcm_call::<Runtime>(
 					test_data.xcm_domain.clone(),
 					contract_call,

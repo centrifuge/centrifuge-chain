@@ -50,7 +50,7 @@ bootnode () {
     echo "/ip4/$node/tcp/$p2p_port/p2p/$id"
 }
 
-args+=( "--" "--wasm-execution=compiled" "--execution=wasm" "--chain=${chain}" "--bootnodes=$(bootnode "$alice" "$alice_p2p_port" "$alice_rpc_port")" "--bootnodes=$(bootnode "$bob" "$bob_p2p_port" "$bob_rpc_port")" )
+args+=( "--" "--wasm-execution=compiled" "--chain=${chain}" "--bootnodes=$(bootnode "$alice" "$alice_p2p_port" "$alice_rpc_port")" "--bootnodes=$(bootnode "$bob" "$bob_p2p_port" "$bob_rpc_port")" )
 
 set -x
 "$ctpc" "${args[@]}"

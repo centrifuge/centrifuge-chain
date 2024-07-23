@@ -272,8 +272,9 @@ pub type LocationToAccountId<RelayNetwork> = (
 
 #[cfg(test)]
 mod test {
-	use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+	use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
 	use cfg_primitives::OutboundMessageNonce;
+	use cfg_traits::liquidity_pools::test_util::Message;
 	use frame_support::{assert_ok, derive_impl, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
 	use pallet_liquidity_pools_gateway::{EnsureLocal, GatewayOrigin};
@@ -313,7 +314,7 @@ mod test {
 
 	impl pallet_mock_liquidity_pools::Config for Runtime {
 		type DomainAddress = DomainAddress;
-		type Message = MessageMock;
+		type Message = Message;
 	}
 
 	impl pallet_mock_routers::Config for Runtime {}
@@ -323,7 +324,7 @@ mod test {
 		type InboundQueue = MockLP;
 		type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 		type MaxIncomingMessageSize = ConstU32<1024>;
-		type Message = MessageMock;
+		type Message = Message;
 		type OriginRecovery = MockOriginRecovery;
 		type OutboundMessageNonce = OutboundMessageNonce;
 		type Router = RouterMock<Runtime>;

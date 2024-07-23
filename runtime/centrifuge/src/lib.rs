@@ -23,10 +23,9 @@ use cfg_primitives::{
 	constants::*,
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
-		AccountId, Address, AllOfCouncil, AuraId, Balance, BlockNumber, CollectionId,
-		CouncilCollective, EnsureRootOr, HalfOfCouncil, Hash, Hashing, Header, IBalance, ItemId,
-		LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId, PoolFeeId, PoolId,
-		Signature, ThreeFourthOfCouncil, TrancheId, TrancheWeight, TwoThirdOfCouncil,
+		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
+		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
+		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 };
 use cfg_traits::{
@@ -111,12 +110,13 @@ use runtime_common::{
 	},
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	gateway, instances,
-	liquidity_pools::LiquidityPoolsMessage,
+	instances::CouncilCollective,
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
-	oracle::{
-		Feeder, OracleConverterBridge, OracleRatioProvider, OracleRatioProviderLocalAssetExtension,
-	},
+	oracle::{DigestedOracleRatioProvider, Feeder, OracleConverterBridge, OracleRatioProvider},
 	origin::EnsureAccountOrRootOr,
+	origins::gov::types::{
+		AllOfCouncil, EnsureRootOr, HalfOfCouncil, ThreeFourthOfCouncil, TwoThirdOfCouncil,
+	},
 	permissions::PoolAdminCheck,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
@@ -165,7 +165,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1100,
+	spec_version: 1300,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1693,7 +1693,7 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRegisteredPricesPerPool: u32 = 100;
 	pub const MaxRateCount: u32 = 1000; // See #1024
-	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+	pub FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 100;
@@ -1836,7 +1836,7 @@ impl pallet_order_book::Config for Runtime {
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
 	type Ratio = Ratio;
-	type RatioProvider = OracleRatioProviderLocalAssetExtension<
+	type RatioProvider = DigestedOracleRatioProvider<
 		RuntimeOrigin,
 		OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>,
 		OrmlAssetRegistry,
@@ -1885,6 +1885,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type MarketRatio = OrderBook;
 	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
@@ -1926,7 +1927,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = LiquidityPoolsMessage;
+	type Message = pallet_liquidity_pools::Message;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
@@ -2062,8 +2063,10 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 );
+
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
@@ -2078,7 +2081,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1100,
+	migrations::UpgradeCentrifuge1300,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata

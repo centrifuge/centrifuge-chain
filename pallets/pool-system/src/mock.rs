@@ -26,8 +26,6 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-#[cfg(feature = "runtime-benchmarks")]
-use frame_support::dispatch::RawOrigin;
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
 	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
@@ -393,6 +391,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, PoolId> for All {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(_: &PoolId) -> Result<RuntimeOrigin, ()> {
+		use frame_support::dispatch::RawOrigin;
 		Ok(RawOrigin::Root.into())
 	}
 }

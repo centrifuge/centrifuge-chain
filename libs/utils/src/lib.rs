@@ -13,8 +13,8 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use parity_scale_codec::{Decode, Encode, Error, Input};
-use sp_std::{cmp::min, vec::Vec};
+use parity_scale_codec::Encode;
+use sp_std::cmp::min;
 
 /// Build a fixed-size array using as many elements from `src` as possible
 /// without overflowing and ensuring that the array is 0 padded in the case
@@ -25,34 +25,6 @@ pub fn vec_to_fixed_array<const S: usize>(src: impl AsRef<[u8]>) -> [u8; S] {
 	dest[..len].copy_from_slice(&src.as_ref()[..len]);
 
 	dest
-}
-
-/// Encode a value in its big-endian representation of which all we know is that
-/// it implements Encode. We use this for number types to make sure they are
-/// encoded the way they are expected to be decoded on the Solidity side.
-pub fn encode_be(x: impl Encode) -> Vec<u8> {
-	let mut output = x.encode();
-	output.reverse();
-	output
-}
-
-/// Decode a type O by reading S bytes from I. Those bytes are expected to be
-/// encoded as big-endian and thus needs reversing to little-endian before
-/// decoding to O.
-pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
-	let mut bytes = [0; S];
-	input.read(&mut bytes[..])?;
-	bytes.reverse();
-
-	O::decode(&mut bytes.as_slice())
-}
-
-/// Decode a type 0 by reading S bytes from I.
-pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
-	let mut bytes = [0; S];
-	input.read(&mut bytes[..])?;
-
-	O::decode(&mut bytes.as_slice())
 }
 
 /// Function that initializes the frame system & Aura, so a timestamp can be set
@@ -151,6 +123,34 @@ pub mod math {
 			// Y symmetry emulation
 			y1.ensure_sub(left.ensure_mul_int(y1.ensure_sub(y2)?)?)
 		}
+	}
+
+	/// Converts the given number to percent.
+	///
+	/// # Example
+	///
+	/// ```
+	/// use sp_arithmetic::FixedI64;
+	/// use cfg_utils::math::to_percent;
+	///
+	/// assert_eq!(to_percent(3u128), FixedI64::from_rational(3, 100));
+	/// ```
+	pub const fn to_percent(x: u128) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_rational(x, 100)
+	}
+
+	/// Converts the given number to parts per million
+	///
+	/// # Example
+	///
+	/// ```
+	/// use sp_arithmetic::FixedI64;
+	/// use cfg_utils::math::to_ppm;
+	///
+	/// assert_eq!(to_ppm(3u128), FixedI64::from_rational(3, 1_000_000));
+	/// ```
+	pub const fn to_ppm(x: u128) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_rational(x, 1_000_000)
 	}
 
 	#[cfg(test)]

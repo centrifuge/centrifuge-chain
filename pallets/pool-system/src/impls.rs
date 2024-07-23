@@ -14,7 +14,7 @@ use cfg_traits::{
 	changes::ChangeGuard,
 	fee::{PoolFeeBucket, PoolFeesMutate},
 	investments::{InvestmentAccountant, TrancheCurrency},
-	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
+	PoolUpdateGuard, TrancheTokenPrice, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo, pools::PoolFeeInfo};
 use frame_support::traits::{
@@ -62,10 +62,10 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type PoolId = T::PoolId;
 	type TrancheId = T::TrancheId;
 
-	fn get(
+	fn get_price(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Seconds>> {
+	) -> Option<(T::BalanceRatio, Seconds)> {
 		let now = T::Time::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
@@ -84,21 +84,9 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
 			.ok()?;
 
-		let base = pool
-			.tranches
-			.tranche_currency(TrancheLoc::Id(tranche_id))?
-			.into();
-
 		let price = prices.get(tranche_index).cloned()?;
 
-		Some(PriceValue {
-			pair: CurrencyPair {
-				base,
-				quote: pool.currency,
-			},
-			price,
-			last_updated: nav_last_updated,
-		})
+		Some((price, nav_last_updated))
 	}
 }
 

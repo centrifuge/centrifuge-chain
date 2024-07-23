@@ -43,6 +43,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::{
 	liquidity_pools::{InboundQueue, OutboundQueue},
+	swaps::TokenSwaps,
 	PreConditions,
 };
 use cfg_types::{
@@ -60,7 +61,7 @@ use frame_support::{
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Convert},
+	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
@@ -73,6 +74,16 @@ use staging_xcm::{
 // be defensive.
 pub mod defensive_weights;
 
+/// Serializer for the LiquidityPool's Generic Message Passing Format (GMPF)
+mod gmpf {
+	mod de;
+	mod error;
+	mod ser;
+
+	pub use de::from_slice;
+	pub use ser::to_vec;
+}
+
 mod message;
 pub use message::Message;
 
@@ -84,15 +95,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-// Type aliases
-pub type MessageOf<T> = Message<
-	Domain,
-	<T as Config>::PoolId,
-	<T as Config>::TrancheId,
-	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
->;
 
 pub type GeneralCurrencyIndexType = u128;
 
@@ -107,7 +109,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
+		tokens::CustomMetadata,
 		EVMChainId,
 	};
 	use frame_support::{
@@ -136,7 +138,9 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ Into<u128>
+			+ From<u128>;
 
 		type PoolId: Member
 			+ Parameter
@@ -144,7 +148,9 @@ pub mod pallet {
 			+ Copy
 			+ HasCompact
 			+ MaxEncodedLen
-			+ core::fmt::Debug;
+			+ core::fmt::Debug
+			+ Into<u64>
+			+ From<u64>;
 
 		type TrancheId: Member
 			+ Parameter
@@ -152,13 +158,14 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen
 			+ TypeInfo
-			+ From<[u8; 16]>;
+			+ From<[u8; 16]>
+			+ Into<[u8; 16]>;
 
 		/// The fixed point number representation for higher precision.
 		type BalanceRatio: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
+			+ FixedPointNumber<Inner = u128>
 			+ TypeInfo;
 
 		/// The source of truth for pool inspection operations such as its
@@ -243,7 +250,7 @@ pub mod pallet {
 		/// The type for processing outgoing messages.
 		type OutboundQueue: OutboundQueue<
 			Sender = Self::AccountId,
-			Message = MessageOf<Self>,
+			Message = Message,
 			Destination = Domain,
 		>;
 
@@ -265,6 +272,13 @@ pub mod pallet {
 			Result = DispatchResult,
 		>;
 
+		/// Type used to retrive market ratio information about currencies
+		type MarketRatio: TokenSwaps<
+			Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Ratio = Self::BalanceRatio,
+		>;
+
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
@@ -276,7 +290,7 @@ pub mod pallet {
 		/// detected and is further processed
 		IncomingMessage {
 			sender: DomainAddress,
-			message: MessageOf<T>,
+			message: Message,
 		},
 	}
 
@@ -292,7 +306,7 @@ pub mod pallet {
 		/// The metadata of the given asset does not declare it as transferable
 		/// via LiquidityPools'.
 		AssetNotLiquidityPoolsTransferable,
-		/// The asset is not a [LiquidityPoolsWrappedToken] and thus cannot be
+		/// The asset is not a a wrapped token and thus cannot be
 		/// transferred via liquidity pools.
 		AssetNotLiquidityPoolsWrappedToken,
 		/// A pool could not be found.
@@ -355,7 +369,13 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			T::OutboundQueue::submit(who, domain, Message::AddPool { pool_id })?;
+			T::OutboundQueue::submit(
+				who,
+				domain,
+				Message::AddPool {
+					pool_id: pool_id.into(),
+				},
+			)?;
 			Ok(())
 		}
 
@@ -391,8 +411,8 @@ pub mod pallet {
 				who,
 				domain,
 				Message::AddTranche {
-					pool_id,
-					tranche_id,
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
@@ -423,32 +443,33 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
-			// currencies, this price must be first converted into the currency_id and then
-			// re-denominated to 18 decimals (i.e. `Ratio` precision)
-			let price_value = T::TrancheTokenPrice::get(pool_id, tranche_id)
+			let (price, computed_at) = T::TrancheTokenPrice::get_price(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?;
 
+			let foreign_price = T::MarketRatio::market_ratio(
+				currency_id,
+				T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?,
+			)?
+			.ensure_mul(price)?;
+
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
-					ensure!(
-						Domain::EVM(chain_id) == destination,
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == destination,
+				Error::<T>::InvalidDomain
+			);
+
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			T::OutboundQueue::submit(
 				who,
 				destination,
 				Message::UpdateTrancheTokenPrice {
-					pool_id,
-					tranche_id,
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
 					currency,
-					price: price_value.price,
-					computed_at: price_value.last_updated,
+					price: foreign_price.into_inner(),
+					computed_at,
 				},
 			)?;
 
@@ -495,8 +516,8 @@ pub mod pallet {
 				who,
 				domain_address.domain(),
 				Message::UpdateMember {
-					pool_id,
-					tranche_id,
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
 					valid_until,
 					member: domain_address.address(),
 				},
@@ -555,10 +576,10 @@ pub mod pallet {
 				who.clone(),
 				domain_address.domain(),
 				Message::TransferTrancheTokens {
-					pool_id,
-					tranche_id,
-					amount,
-					domain: domain_address.domain(),
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					amount: amount.into(),
+					domain: domain_address.domain().into(),
 					sender: who.into(),
 					receiver: domain_address.address(),
 				},
@@ -591,14 +612,11 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_token(&currency_id)? {
-				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
-					ensure!(
-						Domain::EVM(chain_id) == receiver.domain(),
-						Error::<T>::InvalidDomain
-					);
-				}
-			}
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+			ensure!(
+				Domain::EVM(chain_id) == receiver.domain(),
+				Error::<T>::InvalidDomain
+			);
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
@@ -632,7 +650,7 @@ pub mod pallet {
 				who.clone(),
 				receiver.domain(),
 				Message::Transfer {
-					amount,
+					amount: amount.into(),
 					currency,
 					sender: who.into(),
 					receiver: receiver.address(),
@@ -651,10 +669,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			let LiquidityPoolsWrappedToken::EVM {
-				chain_id,
-				address: evm_address,
-			} = Self::try_get_wrapped_token(&currency_id)?;
+			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
 				who,
@@ -696,7 +711,10 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AllowInvestmentCurrency { pool_id, currency },
+				Message::AllowInvestmentCurrency {
+					pool_id: pool_id.into(),
+					currency,
+				},
 			)?;
 
 			Ok(())
@@ -766,8 +784,8 @@ pub mod pallet {
 				who,
 				domain,
 				Message::UpdateTrancheTokenMetadata {
-					pool_id,
-					tranche_id,
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
 					token_name,
 					token_symbol,
 				},
@@ -799,7 +817,10 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::DisallowInvestmentCurrency { pool_id, currency },
+				Message::DisallowInvestmentCurrency {
+					pool_id: pool_id.into(),
+					currency,
+				},
 			)?;
 
 			Ok(())
@@ -843,13 +864,12 @@ pub mod pallet {
 		}
 
 		/// Checks whether the given currency is transferable via LiquidityPools
-		/// and whether its metadata contains a location which can be
-		/// converted to [LiquidityPoolsWrappedToken].
+		/// and whether its metadata contains an evm location.
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
 			currency_id: &T::CurrencyId,
-		) -> Result<LiquidityPoolsWrappedToken, DispatchError> {
+		) -> Result<(EVMChainId, [u8; 20]), DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_liquidity_pools(),
@@ -875,9 +895,7 @@ pub mod pallet {
 						network: None,
 						key: address,
 					}],
-				) if Some(pallet_instance.into()) == pallet_index => {
-					Ok(LiquidityPoolsWrappedToken::EVM { chain_id, address })
-				}
+				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address)),
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
 			}
 		}
@@ -915,8 +933,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
-				Self::try_get_wrapped_token(&currency_id)?;
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
 
 			Ok((currency, chain_id))
 		}
@@ -931,11 +948,11 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
-		type Message = MessageOf<T>;
+		type Message = Message;
 		type Sender = DomainAddress;
 
 		#[transactional]
-		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
+		fn submit(sender: DomainAddress, msg: Message) -> DispatchResult {
 			Self::deposit_event(Event::<T>::IncomingMessage {
 				sender: sender.clone(),
 				message: msg.clone(),
@@ -947,7 +964,7 @@ pub mod pallet {
 					receiver,
 					amount,
 					..
-				} => Self::handle_transfer(currency.into(), receiver.into(), amount),
+				} => Self::handle_transfer(currency.into(), receiver.into(), amount.into()),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -956,11 +973,11 @@ pub mod pallet {
 					amount,
 					..
 				} => Self::handle_tranche_tokens_transfer(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					sender.domain(),
-					T::DomainAccountToDomainAddress::convert((domain, receiver)),
-					amount,
+					T::DomainAccountToDomainAddress::convert((domain.try_into()?, receiver)),
+					amount.into(),
 				),
 				Message::IncreaseInvestOrder {
 					pool_id,
@@ -969,11 +986,11 @@ pub mod pallet {
 					currency,
 					amount,
 				} => Self::handle_increase_invest_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
-					amount,
+					amount.into(),
 				),
 				Message::DecreaseInvestOrder {
 					pool_id,
@@ -982,11 +999,11 @@ pub mod pallet {
 					currency,
 					amount,
 				} => Self::handle_decrease_invest_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
-					amount,
+					amount.into(),
 				),
 				Message::IncreaseRedeemOrder {
 					pool_id,
@@ -995,10 +1012,10 @@ pub mod pallet {
 					amount,
 					currency,
 				} => Self::handle_increase_redeem_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount,
+					amount.into(),
 					currency.into(),
 					sender,
 				),
@@ -1009,10 +1026,10 @@ pub mod pallet {
 					currency,
 					amount,
 				} => Self::handle_decrease_redeem_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount,
+					amount.into(),
 					currency.into(),
 					sender,
 				),
@@ -1022,8 +1039,8 @@ pub mod pallet {
 					investor,
 					currency,
 				} => Self::handle_collect_investment(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
@@ -1033,8 +1050,8 @@ pub mod pallet {
 					investor,
 					currency,
 				} => Self::handle_collect_redemption(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
@@ -1044,8 +1061,8 @@ pub mod pallet {
 					investor,
 					currency,
 				} => Self::handle_cancel_invest_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
@@ -1055,8 +1072,8 @@ pub mod pallet {
 					investor,
 					currency,
 				} => Self::handle_cancel_redeem_order(
-					pool_id,
-					tranche_id,
+					pool_id.into(),
+					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					sender,

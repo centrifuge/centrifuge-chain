@@ -10,20 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::liquidity_pools::Codec;
-use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
+use cfg_utils::vec_to_fixed_array;
 use frame_support::pallet_prelude::RuntimeDebug;
-use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
-use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
 
 /// A Domain is a chain or network we can send a message to.
-/// The domain indices need to match those used in the EVM contracts and these
-/// need to pass the Centrifuge domain to send tranche tokens from the other
-/// domain here. Therefore, DO NOT remove or move variants around.
 #[derive(Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling
@@ -34,33 +29,6 @@ pub enum Domain {
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),
-}
-
-impl Codec for Domain {
-	fn serialize(&self) -> Vec<u8> {
-		match self {
-			Self::Centrifuge => vec![0; 9],
-			Self::EVM(chain_id) => {
-				let mut output: Vec<u8> = 1u8.encode();
-				output.append(&mut chain_id.to_be_bytes().to_vec());
-
-				output
-			}
-		}
-	}
-
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
-		let variant = input.read_byte()?;
-
-		match variant {
-			0 => Ok(Self::Centrifuge),
-			1 => {
-				let chain_id = decode_be_bytes::<8, _, _>(input)?;
-				Ok(Self::EVM(chain_id))
-			}
-			_ => Err(parity_scale_codec::Error::from("Unknown Domain variant")),
-		}
-	}
 }
 
 impl Domain {
@@ -92,6 +60,12 @@ impl DomainAddress {
 
 	pub fn centrifuge(address: [u8; 32]) -> Self {
 		Self::Centrifuge(address)
+	}
+}
+
+impl From<(EVMChainId, [u8; 20])> for DomainAddress {
+	fn from((chain_id, address): (EVMChainId, [u8; 20])) -> Self {
+		Self::evm(chain_id, address)
 	}
 }
 
