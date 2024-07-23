@@ -137,7 +137,7 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
+          artifacts: "${{ steps.srtool_build.outputs.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
           replacesArtifacts: true
           allowUpdates: true
           artifactErrorsFailBuild: true
