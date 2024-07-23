@@ -1,101 +1,19 @@
-use cfg_primitives::{PoolId, TrancheId};
-use cfg_traits::{liquidity_pools::InboundQueue, Millis, Seconds};
+use cfg_traits::{liquidity_pools::InboundQueue, Seconds};
 use cfg_types::{
 	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
+	tokens::CurrencyId,
 };
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{
-		fungibles::{Inspect as _, Mutate as _},
-		PalletInfo as _,
-	},
+	traits::fungibles::{Inspect as _, Mutate as _},
 };
 use sp_runtime::{traits::Saturating, DispatchError, TokenError};
-use staging_xcm::{
-	v4::{Junction::*, Location, NetworkId},
-	VersionedLocation,
-};
 
-use crate::{mock::*, Error, GeneralCurrencyIndexOf, Message};
+use crate::{mock::*, Error, Message};
 
-const CHAIN_ID: u64 = 1;
-const ALICE: AccountId = AccountId::new([0; 32]);
-const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
-const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
-const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
-const AMOUNT: Balance = 100;
-const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
-const POOL_ID: PoolId = 1;
-const TRANCHE_ID: TrancheId = [1; 16];
-const NOW: Millis = 10000;
-const NOW_SECS: Seconds = 10;
-const NAME: &[u8] = b"Token name";
-const SYMBOL: &[u8] = b"Token symbol";
-const DECIMALS: u8 = 6;
-const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
-const TRANCHE_TOKEN_PRICE: Ratio = Ratio::from_rational(10, 1);
-const MARKET_RATIO: Ratio = Ratio::from_rational(2, 1);
-
-mod util {
-	use super::*;
-
-	pub fn default_metadata() -> AssetMetadata {
-		AssetMetadata {
-			decimals: DECIMALS as u32,
-			name: Vec::from(NAME).try_into().unwrap(),
-			symbol: Vec::from(SYMBOL).try_into().unwrap(),
-			..cfg_types::tokens::default_metadata()
-		}
-	}
-
-	pub fn transferable_metadata() -> AssetMetadata {
-		AssetMetadata {
-			additional: CustomMetadata {
-				transferability: CrossChainTransferability::LiquidityPools,
-				..Default::default()
-			},
-			..default_metadata()
-		}
-	}
-
-	pub fn locatable_transferable_metadata() -> AssetMetadata {
-		let pallet_index = PalletInfo::index::<LiquidityPools>();
-		AssetMetadata {
-			location: Some(VersionedLocation::V4(Location::new(
-				0,
-				[
-					PalletInstance(pallet_index.unwrap() as u8),
-					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
-					AccountKey20 {
-						network: None,
-						key: CONTRACT_ACCOUNT,
-					},
-				],
-			))),
-			..transferable_metadata()
-		}
-	}
-
-	pub fn pool_locatable_transferable_metadata() -> AssetMetadata {
-		AssetMetadata {
-			additional: CustomMetadata {
-				pool_currency: true,
-				..transferable_metadata().additional
-			},
-			..locatable_transferable_metadata()
-		}
-	}
-
-	pub fn currency_index(currency_id: CurrencyId) -> u128 {
-		GeneralCurrencyIndexOf::<Runtime>::try_from(currency_id)
-			.unwrap()
-			.index
-	}
-}
+mod inbound;
 
 mod transfer {
 	use super::*;

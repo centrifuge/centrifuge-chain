@@ -1,19 +1,50 @@
 use cfg_primitives::{PoolId, TrancheId};
-use cfg_traits::Millis;
+use cfg_traits::{Millis, Seconds};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::PermissionScope,
-	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{
+		AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
+		LocalAssetId, TrancheCurrency,
+	},
 };
-use frame_support::derive_impl;
+use frame_support::{derive_impl, traits::PalletInfo as _};
 use orml_traits::parameter_type_with_key;
 use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
+use staging_xcm::{
+	v4::{Junction::*, Location, NetworkId},
+	VersionedLocation,
+};
 
-use crate::pallet as pallet_liquidity_pools;
+use crate::{pallet as pallet_liquidity_pools, GeneralCurrencyIndexOf};
 
 pub type Balance = u128;
 pub type AccountId = AccountId32;
 pub type Ratio = FixedU128;
+
+pub const CHAIN_ID: u64 = 1;
+pub const ALICE: AccountId = AccountId::new([0; 32]);
+pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
+pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
+pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
+pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge([0; 32]);
+pub const AMOUNT: Balance = 100;
+pub const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+pub const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
+pub const POOL_ID: PoolId = 1;
+pub const TRANCHE_ID: TrancheId = [1; 16];
+pub const NOW: Millis = 10000;
+pub const NOW_SECS: Seconds = 10;
+pub const NAME: &[u8] = b"Token name";
+pub const SYMBOL: &[u8] = b"Token symbol";
+pub const DECIMALS: u8 = 6;
+pub const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
+pub const TRANCHE_TOKEN_PRICE: Ratio = Ratio::from_rational(10, 1);
+pub const MARKET_RATIO: Ratio = Ratio::from_rational(2, 1);
+pub const INVESTMENT_ID: TrancheCurrency = TrancheCurrency {
+	pool_id: POOL_ID,
+	tranche_id: TRANCHE_ID,
+};
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -148,4 +179,61 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type TrancheTokenPrice = Pools;
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
+}
+
+pub mod util {
+	use super::*;
+
+	pub fn default_metadata() -> AssetMetadata {
+		AssetMetadata {
+			decimals: DECIMALS as u32,
+			name: Vec::from(NAME).try_into().unwrap(),
+			symbol: Vec::from(SYMBOL).try_into().unwrap(),
+			..cfg_types::tokens::default_metadata()
+		}
+	}
+
+	pub fn transferable_metadata() -> AssetMetadata {
+		AssetMetadata {
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::LiquidityPools,
+				..Default::default()
+			},
+			..default_metadata()
+		}
+	}
+
+	pub fn locatable_transferable_metadata() -> AssetMetadata {
+		let pallet_index = PalletInfo::index::<LiquidityPools>();
+		AssetMetadata {
+			location: Some(VersionedLocation::V4(Location::new(
+				0,
+				[
+					PalletInstance(pallet_index.unwrap() as u8),
+					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+					AccountKey20 {
+						network: None,
+						key: CONTRACT_ACCOUNT,
+					},
+				],
+			))),
+			..transferable_metadata()
+		}
+	}
+
+	pub fn pool_locatable_transferable_metadata() -> AssetMetadata {
+		AssetMetadata {
+			additional: CustomMetadata {
+				pool_currency: true,
+				..transferable_metadata().additional
+			},
+			..locatable_transferable_metadata()
+		}
+	}
+
+	pub fn currency_index(currency_id: CurrencyId) -> u128 {
+		GeneralCurrencyIndexOf::<Runtime>::try_from(currency_id)
+			.unwrap()
+			.index
+	}
 }
