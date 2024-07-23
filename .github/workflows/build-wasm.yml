@@ -23,6 +23,8 @@ jobs:
       matrix:
         chain: [ altair, centrifuge, development ]
     name: build-runtime-${{ matrix.chain }}
+    env:
+      SRTOOL_IMAGE: "paritytech/srtool:1.77.0-0.15.0"
     steps:
       # PREP
       - name: Check out code
@@ -68,7 +70,7 @@ jobs:
           CMD="docker run --rm  --user root --platform=linux/amd64
           -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
           -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build 
-          paritytech/srtool:1.77.0-0.15.0 /srtool/build --app --json -cM"
+          ${{ env.SRTOOL_IMAGE }} /srtool/build --app --json -cM"
           echo ::debug::build::docker_run $CMD
           echo ::endgroup
           # here we keep streaming the progress and fetch the last line for the json result
@@ -96,11 +98,25 @@ jobs:
       - name: Summary
         run: |
           ## Summary and JSON output
-          echo "::group::Summary"
-          echo "- version: ${{ steps.srtool_build.outputs.version }}"
-          echo "- info: ${{ steps.srtool_build.outputs.info }}"
-          echo "- prop: ${{ steps.srtool_build.outputs.proposal_hash }}"
+
+          echo ::group::Srtool version
+          CMD="docker run -i --rm -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} version -cM"
+          JSON=`$CMD`
+          echo $JSON | jq .
+          echo "version=$JSON" >> $GITHUB_OUTPUT
+          echo ::endgroup::
+
+          echo ::group::Srtool info
+          CMD="docker run -i --rm -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} info -cM"
+          JSON=`$CMD`
+          echo $JSON | jq .
+          echo "info=$JSON" >> $GITHUB_OUTPUT
+          echo ::endgroup::
+
+          echo "::group::Technical info"
+          echo "- proposal hash: ${{ steps.srtool_build.outputs.proposal_hash }}"
           echo "- runtime location: ${{ steps.srtool_build.outputs.wasm }}"
+          echo "- IPFS: ${{ steps.srtool_build.outputs.ipfs }}"
           echo "::endgroup"
 
           echo "::group::JSON output"
