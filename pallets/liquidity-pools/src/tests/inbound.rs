@@ -90,15 +90,12 @@ mod handle_transfer {
 mod handle_tranche_tokens_transfer {
 	use super::*;
 
-	pub const LOCAL_ALICE: AccountId = AccountId::new([5; 32]);
-
-	fn config_mocks(receiver: DomainAddress, local_representation: AccountId) {
-		let local_representation_clone = local_representation.clone();
+	fn config_mocks(receiver: DomainAddress) {
 		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
-		DomainAddressToAccountId::mock_convert(move |_| local_representation_clone.clone());
+		DomainAddressToAccountId::mock_convert(move |_| ALICE);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, local_representation.clone());
+			assert_eq!(who, ALICE);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			assert!(matches!(
 				role,
@@ -113,7 +110,7 @@ mod handle_tranche_tokens_transfer {
 	#[test]
 	fn success_with_centrifuge_domain() {
 		System::externalities().execute_with(|| {
-			config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+			config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 
 			Tokens::mint_into(
 				TRANCHE_CURRENCY,
@@ -134,6 +131,8 @@ mod handle_tranche_tokens_transfer {
 				}
 			));
 
+			let origin = EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), 0);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE.into()), AMOUNT);
 		});
 	}
@@ -141,20 +140,20 @@ mod handle_tranche_tokens_transfer {
 	#[test]
 	fn success_with_evm_domain() {
 		System::externalities().execute_with(|| {
-			config_mocks(ALICE_EVM_DOMAIN_ADDRESS, LOCAL_ALICE);
+			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
 
 			TransferFilter::mock_check(|_| Ok(()));
 			Gateway::mock_submit(|sender, destination, msg| {
-				assert_eq!(sender, LOCAL_ALICE);
+				assert_eq!(sender, ALICE);
 				assert_eq!(destination, ALICE_EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::TransferTrancheTokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						sender: LOCAL_ALICE.into(),
+						sender: ALICE.into(),
 						domain: ALICE_EVM_DOMAIN_ADDRESS.domain().into(),
-						receiver: ALICE.into(),
+						receiver: ALICE_EVM_DOMAIN_ADDRESS.address().into(),
 						amount: AMOUNT
 					}
 				);
@@ -180,17 +179,11 @@ mod handle_tranche_tokens_transfer {
 				}
 			));
 
-			assert_eq!(
-				Tokens::balance(TRANCHE_CURRENCY, &EVM_DOMAIN_ADDRESS.address().into()),
-				0
-			);
-			assert_eq!(
-				Tokens::balance(
-					TRANCHE_CURRENCY,
-					&ALICE_EVM_DOMAIN_ADDRESS.domain().into_account()
-				),
-				AMOUNT
-			);
+			let origin = EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), 0);
+
+			let destination = ALICE_EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		});
 	}
 
@@ -200,7 +193,7 @@ mod handle_tranche_tokens_transfer {
 		#[test]
 		fn with_zero_balance() {
 			System::externalities().execute_with(|| {
-				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 
 				assert_noop!(
 					LiquidityPools::submit(
@@ -222,7 +215,7 @@ mod handle_tranche_tokens_transfer {
 		#[test]
 		fn with_wrong_permissions() {
 			System::externalities().execute_with(|| {
-				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 				Permissions::mock_has(|_, _, _| false);
 
 				assert_noop!(
@@ -245,7 +238,7 @@ mod handle_tranche_tokens_transfer {
 		#[test]
 		fn with_wrong_pool() {
 			System::externalities().execute_with(|| {
-				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
@@ -268,7 +261,7 @@ mod handle_tranche_tokens_transfer {
 		#[test]
 		fn with_wrong_tranche() {
 			System::externalities().execute_with(|| {
-				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
@@ -291,7 +284,7 @@ mod handle_tranche_tokens_transfer {
 		#[test]
 		fn without_sufficient_balance() {
 			System::externalities().execute_with(|| {
-				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS, ALICE);
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 
 				assert_noop!(
 					LiquidityPools::submit(
@@ -569,6 +562,10 @@ mod handle_increase_redeem_order {
 					amount: AMOUNT,
 				},
 			));
+
+			let destination = EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), 0);
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE), AMOUNT);
 		});
 	}
 
@@ -719,6 +716,10 @@ mod handle_cancel_redeem_order {
 					currency: util::currency_index(CURRENCY_ID),
 				},
 			));
+
+			let destination = EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE), 0);
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		});
 	}
 

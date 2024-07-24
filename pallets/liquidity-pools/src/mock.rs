@@ -23,10 +23,11 @@ pub type AccountId = AccountId32;
 pub type Ratio = FixedU128;
 
 pub const CHAIN_ID: u64 = 1;
-pub const ALICE: AccountId = AccountId::new([0; 32]);
-pub const ALICE_ETH: [u8; 20] = [0; 20];
-pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, ALICE_ETH);
-pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge([0; 32]); // Alice
+pub const ALICE_32: [u8; 32] = [2; 32];
+pub const ALICE: AccountId = AccountId::new(ALICE_32);
+pub const ALICE_ETH: [u8; 20] = [2; 20];
+pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(42, ALICE_ETH);
+pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge(ALICE_32);
 pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
 pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
 pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
