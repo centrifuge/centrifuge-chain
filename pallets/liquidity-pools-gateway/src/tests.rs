@@ -133,7 +133,7 @@ mod set_domain_router {
 	use super::*;
 
 	#[test]
-	fn success() {
+	fn success_with_root() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let router = RouterMock::<Runtime>::default();
@@ -141,6 +141,25 @@ mod set_domain_router {
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_router(
 				RuntimeOrigin::root(),
+				domain.clone(),
+				router.clone(),
+			));
+
+			let storage_entry = DomainRouters::<Runtime>::get(domain.clone());
+			assert_eq!(storage_entry.unwrap(), router);
+
+			event_exists(Event::<Runtime>::DomainRouterSet { domain, router });
+		});
+	}
+	#[test]
+	fn success_with_lp_admin_account() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
 				domain.clone(),
 				router.clone(),
 			));
@@ -214,13 +233,35 @@ mod add_instance {
 	use super::*;
 
 	#[test]
-	fn success() {
+	fn success_with_root() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert!(Allowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
+
+			event_exists(Event::<Runtime>::InstanceAdded {
+				instance: domain_address,
+			});
+		});
+	}
+
+	#[test]
+	fn success_with_lp_admin_account() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
 				domain_address.clone(),
 			));
 
@@ -301,7 +342,7 @@ mod remove_instance {
 	use super::*;
 
 	#[test]
-	fn success() {
+	fn success_with_root() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
@@ -313,6 +354,33 @@ mod remove_instance {
 
 			assert_ok!(LiquidityPoolsGateway::remove_instance(
 				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert!(!Allowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
+
+			event_exists(Event::<Runtime>::InstanceRemoved {
+				instance: domain_address.clone(),
+			});
+		});
+	}
+
+	#[test]
+	fn success_with_lp_admin_account() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::remove_instance(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
 				domain_address.clone(),
 			));
 
@@ -416,7 +484,7 @@ mod process_msg_axelar_relay {
 	}
 
 	#[test]
-	fn success() {
+	fn success_with_root() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
@@ -429,6 +497,57 @@ mod process_msg_axelar_relay {
 
 			assert_ok!(LiquidityPoolsGateway::add_relayer(
 				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = Message;
+			let expected_domain_address = domain_address.clone();
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			MockLiquidityPools::mock_submit(move |domain, message| {
+				assert_eq!(domain, expected_domain_address);
+				assert_eq!(message, expected_msg);
+				Ok(())
+			});
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			assert_ok!(LiquidityPoolsGateway::process_msg(
+				GatewayOrigin::AxelarRelay(relayer_address).into(),
+				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+			));
+		});
+	}
+
+	#[test]
+	fn success_with_lp_admin_account() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
 				relayer_address.clone(),
 			));
 
@@ -1098,6 +1217,72 @@ mod outbound_queue_impl {
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),
 				Error::<Runtime>::RouterNotFound
+			);
+		});
+	}
+}
+
+mod set_domain_hook {
+	use super::*;
+
+	#[test]
+	fn success_with_root() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let address = get_test_account_id();
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_hook_address(
+				RuntimeOrigin::root(),
+				domain,
+				address
+			));
+		});
+	}
+
+	#[test]
+	fn success_with_lp_admin_account() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let address = get_test_account_id();
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_hook_address(
+				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
+				domain,
+				address
+			));
+		});
+	}
+
+	#[test]
+	fn failure_bad_origin() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let address = get_test_account_id();
+
+			assert_noop!(
+				LiquidityPoolsGateway::set_domain_hook_address(
+					RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
+					domain,
+					address
+				),
+				BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn failure_centrifuge_domain() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::Centrifuge;
+			let address = get_test_account_id();
+
+			assert_noop!(
+				LiquidityPoolsGateway::set_domain_hook_address(
+					RuntimeOrigin::root(),
+					domain,
+					address
+				),
+				Error::<Runtime>::DomainNotSupported
 			);
 		});
 	}
