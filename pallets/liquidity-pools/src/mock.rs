@@ -24,10 +24,12 @@ pub type Ratio = FixedU128;
 
 pub const CHAIN_ID: u64 = 1;
 pub const ALICE: AccountId = AccountId::new([0; 32]);
+pub const ALICE_ETH: [u8; 20] = [0; 20];
+pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, ALICE_ETH);
+pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge([0; 32]); // Alice
 pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
 pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
 pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
-pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge([0; 32]);
 pub const AMOUNT: Balance = 100;
 pub const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
