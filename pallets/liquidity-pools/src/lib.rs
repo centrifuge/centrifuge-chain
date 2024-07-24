@@ -552,11 +552,7 @@ pub mod pallet {
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 
-			T::PreTransferFilter::check((
-				who.clone(),
-				domain_address.clone(),
-				invest_id.clone().into(),
-			))?;
+			T::PreTransferFilter::check((who.clone(), domain_address.clone(), invest_id.into()))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(

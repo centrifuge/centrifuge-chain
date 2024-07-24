@@ -205,7 +205,7 @@ where
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
 		T::Tokens::transfer(
-			invest_id.clone().into(),
+			invest_id.into(),
 			&sending_domain.domain().into_account(),
 			&investor,
 			amount,
@@ -244,13 +244,13 @@ where
 
 		T::ForeignInvestment::decrease_foreign_redemption(
 			&investor,
-			invest_id.clone(),
+			invest_id,
 			tranche_tokens_payout,
 			payout_currency,
 		)?;
 
 		T::Tokens::transfer(
-			invest_id.clone().into(),
+			invest_id.into(),
 			&investor,
 			&destination.domain().into_account(),
 			tranche_tokens_payout,
@@ -263,11 +263,7 @@ where
 			investor: investor.clone().into(),
 			currency: currency_u128,
 			tranche_tokens_payout: tranche_tokens_payout.into(),
-			remaining_redeem_amount: T::ForeignInvestment::redemption(
-				&investor,
-				invest_id.clone(),
-			)?
-			.into(),
+			remaining_redeem_amount: T::ForeignInvestment::redemption(&investor, invest_id)?.into(),
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

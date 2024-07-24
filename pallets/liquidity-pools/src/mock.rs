@@ -44,10 +44,7 @@ pub const DECIMALS: u8 = 6;
 pub const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
 pub const TRANCHE_TOKEN_PRICE: Ratio = Ratio::from_rational(10, 1);
 pub const MARKET_RATIO: Ratio = Ratio::from_rational(2, 1);
-pub const INVESTMENT_ID: TrancheCurrency = TrancheCurrency {
-	pool_id: POOL_ID,
-	tranche_id: TRANCHE_ID,
-};
+pub const INVESTMENT_ID: (PoolId, TrancheId) = (POOL_ID, TRANCHE_ID);
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
