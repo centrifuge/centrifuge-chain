@@ -111,6 +111,14 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			SourceConverter::new(EVM_DOMAIN),
 		));
 
+		assert_ok!(
+			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_hook_address(
+				RawOrigin::Root.into(),
+				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+				LOCAL_RESTRICTION_MANAGER_ADDRESS.into(),
+			)
+		);
+
 		additional(evm);
 	});
 

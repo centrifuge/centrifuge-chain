@@ -429,6 +429,8 @@ mod add_tranche {
 	use super::*;
 
 	fn config_mocks() {
+		let hook = [1u8; 32];
+
 		Permissions::mock_has(move |scope, who, role| {
 			assert_eq!(who, ALICE);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
@@ -438,7 +440,11 @@ mod add_tranche {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_get_address(move |domain| {
+			assert_eq!(domain, EVM_DOMAIN_ADDRESS.domain());
+			Some(hook.into())
+		});
+		Gateway::mock_submit(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -449,7 +455,7 @@ mod add_tranche {
 					token_name: vec_to_fixed_array(NAME),
 					token_symbol: vec_to_fixed_array(SYMBOL),
 					decimals: DECIMALS,
-					hook: AddTrancheHookAddress::get()
+					hook,
 				}
 			);
 			Ok(())
@@ -540,6 +546,27 @@ mod add_tranche {
 						EVM_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheMetadataNotFound,
+				);
+			})
+		}
+
+		#[test]
+		fn with_no_hook_address() {
+			System::externalities().execute_with(|| {
+				Permissions::mock_has(|_, _, _| true);
+				Pools::mock_pool_exists(|_| true);
+				Pools::mock_tranche_exists(|_, _| true);
+				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+				Gateway::mock_get_address(|_| None);
+
+				assert_noop!(
+					LiquidityPools::add_tranche(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::DomainHookAddressNotFound,
 				);
 			})
 		}

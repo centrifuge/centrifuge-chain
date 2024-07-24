@@ -19,12 +19,3 @@ pub mod rewards {
 	/// assigned to any member of the only group in block rewards.
 	pub const DEFAULT_COLLATOR_STAKE: Balance = CFG;
 }
-
-pub mod liquidity_pools {
-	/// The account id of the solidity restriction manager interface required
-	/// for the `hook` param of the `AddTranche` LP message.
-	///
-	/// NOTE: Temporarily hardcoded.
-	pub const SOLIDITY_RESTRICTION_MANAGER_ADDRESS: [u8; 32] =
-		hex_literal::hex!("193356f6df34af00288f98bbb34d6ec98512ed32000000000000000045564d00");
-}

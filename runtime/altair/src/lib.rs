@@ -1784,11 +1784,9 @@ impl pallet_foreign_investments::Config for Runtime {
 
 parameter_types! {
 	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
-	pub const AddTrancheHookAddress: [u8; 32] = cfg_types::consts::liquidity_pools::SOLIDITY_RESTRICTION_MANAGER_ADDRESS;
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AddTrancheHookAddress = AddTrancheHookAddress;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;

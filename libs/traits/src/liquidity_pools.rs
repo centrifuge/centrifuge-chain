@@ -88,3 +88,14 @@ pub trait InboundQueue {
 	/// Submit a message to the inbound queue.
 	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }
+
+/// Trait to query the domain hook address
+pub trait DomainHook {
+	/// The domain type for the input
+	type Domain;
+
+	/// The account address type for the response
+	type AccountId;
+
+	fn get_address(domain: Self::Domain) -> Option<Self::AccountId>;
+}

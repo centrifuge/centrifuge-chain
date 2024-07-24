@@ -3,7 +3,7 @@ use cfg_primitives::OutboundMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::derive_impl;
-use frame_system::EnsureRoot;
+use runtime_common::origin::EnsureAccountOrRoot;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::IdentityLookup;
 
@@ -15,6 +15,8 @@ pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
 
 pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
+
+pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -48,10 +50,11 @@ impl cfg_mocks::converter::pallet::Config for Runtime {
 frame_support::parameter_types! {
 	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId32>;
+	type AdminOrigin = EnsureAccountOrRoot<LpAdminAccount>;
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;

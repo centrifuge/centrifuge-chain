@@ -29,7 +29,9 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{
+		DomainHook, InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter,
+	},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -204,6 +206,12 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		},
+
+		/// The domain hook address was initialized or updated.
+		DomainHookAddressSet {
+			domain: Domain,
+			hook_address: T::AccountId,
+		},
 	}
 
 	/// Storage for domain routers.
@@ -256,6 +264,15 @@ pub mod pallet {
 		T::OutboundMessageNonce,
 		(Domain, T::AccountId, T::Message, DispatchError),
 	>;
+
+	/// Stores the hook address of a domain required for particular LP messages.
+	///
+	/// Lifetime: Indefinitely.
+	///
+	/// NOTE: Must only be changeable via root or `AdminOrigin`.
+	#[pallet::storage]
+	pub type DomainHookAddress<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, T::AccountId, OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -600,6 +617,30 @@ pub mod pallet {
 				}
 			}
 		}
+
+		/// Set the address of the domain hook
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		#[pallet::call_index(8)]
+		pub fn set_domain_hook_address(
+			origin: OriginFor<T>,
+			domain: Domain,
+			hook_address: T::AccountId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+
+			DomainHookAddress::<T>::insert(domain.clone(), hook_address.clone());
+
+			Self::deposit_event(Event::DomainHookAddressSet {
+				domain,
+				hook_address,
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -819,5 +860,14 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> DomainHook for Pallet<T> {
+	type AccountId = T::AccountId;
+	type Domain = Domain;
+
+	fn get_address(domain: Domain) -> Option<T::AccountId> {
+		DomainHookAddress::<T>::get(domain)
 	}
 }
