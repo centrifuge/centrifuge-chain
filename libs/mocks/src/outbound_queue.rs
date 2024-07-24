@@ -7,8 +7,8 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Sender: Parameter;
-		type Destination: Parameter;
+		type Sender;
+		type Destination;
 		type Message;
 	}
 
@@ -17,10 +17,6 @@ pub mod pallet {
 
 	#[pallet::storage]
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
-
-	#[pallet::storage]
-	type DomainAddressHook<T: Config> =
-		StorageMap<_, _, <T as Config>::Destination, <T as Config>::Sender>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_submit(
