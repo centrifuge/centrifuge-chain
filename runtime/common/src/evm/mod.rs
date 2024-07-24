@@ -11,11 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AuraId;
-use frame_support::{
-	traits::FindAuthor, weights::constants::WEIGHT_REF_TIME_PER_SECOND, Blake2_256, StorageHasher,
-};
+use frame_support::{traits::FindAuthor, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use pallet_ethereum::{Transaction, TransactionAction};
-use parity_scale_codec::Encode;
 use sp_core::{crypto::ByteArray, Hasher, H160};
 use sp_runtime::{ConsensusEngineId, Permill};
 use sp_std::marker::PhantomData;
@@ -127,9 +124,9 @@ const PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT: &[u8] =
 	b"PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT";
 
 pub fn passthrough_router_location() -> H160 {
-	H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
+	H160::from(sp_core::KeccakHasher::hash(
 		PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT,
-	)))
+	))
 }
 
 pub fn passthrough_genesis() -> (H160, fp_evm::GenesisAccount) {
