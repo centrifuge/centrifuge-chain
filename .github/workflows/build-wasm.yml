@@ -18,11 +18,14 @@ jobs:
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
-    runs-on: ubuntu-latest-4-cores
+    # As this is not a critical PR feedback item, we can run it on free ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         chain: [ altair, centrifuge, development ]
     name: build-runtime-${{ matrix.chain }}
+    env:
+      SRTOOL_IMAGE: "paritytech/srtool:1.77.0-0.15.0"
     steps:
       # PREP
       - name: Check out code
@@ -47,6 +50,7 @@ jobs:
       #   with:
       #     image: paritytech/srtool:${{ matrix.rust_version }}
       #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}-runtime
+      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}-runtime
       #     run: |
       #       echo "---- Env VARS ----"
       #       echo "BUILD_OPT=${BUILD_OPT}"
@@ -68,7 +72,7 @@ jobs:
           CMD="docker run --rm  --user root --platform=linux/amd64
           -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
           -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build 
-          paritytech/srtool:1.77.0-0.15.0 /srtool/build --app --json -cM"
+          ${{ env.SRTOOL_IMAGE }} /srtool/build --app --json -cM"
           echo ::debug::build::docker_run $CMD
           echo ::endgroup
           # here we keep streaming the progress and fetch the last line for the json result
@@ -79,30 +83,17 @@ jobs:
               JSON="$line"
             done
             echo "json=$JSON" >> $GITHUB_OUTPUT
-
-            PROP=`echo $JSON | jq -r .runtimes.compact.prop`
-            echo "proposal_hash=$PROP" >> $GITHUB_OUTPUT
   
             WASM=`echo $JSON | jq -r .runtimes.compact.wasm`
             echo "wasm=$WASM" >> $GITHUB_OUTPUT
   
             Z_WASM=`echo $JSON | jq -r .runtimes.compressed.wasm`
             echo "wasm_compressed=$Z_WASM" >> $GITHUB_OUTPUT
-  
-            IPFS=`echo $JSON | jq -r .runtimes.compact.ipfs`
-            echo "ipfs=$IPFS" >> $GITHUB_OUTPUT
           }
              
       - name: Summary
         run: |
-          ## Summary and JSON output
-          echo "::group::Summary"
-          echo "- version: ${{ steps.srtool_build.outputs.version }}"
-          echo "- info: ${{ steps.srtool_build.outputs.info }}"
-          echo "- prop: ${{ steps.srtool_build.outputs.proposal_hash }}"
-          echo "- runtime location: ${{ steps.srtool_build.outputs.wasm }}"
-          echo "::endgroup"
-
+          ## JSON output
           echo "::group::JSON output"
           PRETTY_JSON=$(echo '${{ steps.srtool_build.outputs.json }}' | jq .)
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
@@ -128,7 +119,12 @@ jobs:
           ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
           gsutil cp \
-            "${{ steps.srtool_build.outputs.wasm }}" \
+            "${{ steps.srtool_build.wasm_compressed }}" \
+            "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
+          ## Publish WASM and JSON summary
+          echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
+          gsutil cp \
+            "${{ steps.srtool_build.wasm_compressed }}" \
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
           gsutil cp \
             "${{ matrix.chain }}-srtool-digest.json" \
@@ -141,7 +137,7 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.outputs.wasm }}, ${{ matrix.chain }}-srtool-digest.json"
+          artifacts: "${{ steps.srtool_build.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
           replacesArtifacts: true
           allowUpdates: true
           artifactErrorsFailBuild: true
