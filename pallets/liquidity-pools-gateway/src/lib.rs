@@ -553,7 +553,7 @@ pub mod pallet {
 			let (domain, sender, message) = OutboundMessageQueue::<T>::take(nonce)
 				.ok_or(Error::<T>::OutboundMessageNotFound)?;
 
-			match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
+			match Self::send_message(domain.clone(), sender.clone(), message.clone()).0 {
 				Ok(_) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
 						nonce,
@@ -564,16 +564,16 @@ pub mod pallet {
 
 					Ok(())
 				}
-				Err(e) => {
+				Err(err) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
 						nonce,
 						domain: domain.clone(),
 						sender: sender.clone(),
 						message: message.clone(),
-						error: e.error,
+						error: err,
 					});
 
-					FailedOutboundMessages::<T>::insert(nonce, (domain, sender, message, e.error));
+					FailedOutboundMessages::<T>::insert(nonce, (domain, sender, message, err));
 
 					Ok(())
 				}
@@ -592,7 +592,7 @@ pub mod pallet {
 			let (domain, sender, message, _) = FailedOutboundMessages::<T>::get(nonce)
 				.ok_or(Error::<T>::OutboundMessageNotFound)?;
 
-			match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
+			match Self::send_message(domain.clone(), sender.clone(), message.clone()).0 {
 				Ok(_) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
 						nonce,
@@ -605,13 +605,13 @@ pub mod pallet {
 
 					Ok(())
 				}
-				Err(e) => {
+				Err(err) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
 						nonce,
 						domain: domain.clone(),
 						sender: sender.clone(),
 						message: message.clone(),
-						error: e.error,
+						error: err,
 					});
 
 					Ok(())
@@ -702,7 +702,7 @@ pub mod pallet {
 
 				let weight =
 					match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
-						Ok(post_info) => {
+						(Ok(()), weight) => {
 							Self::deposit_event(Event::OutboundMessageExecutionSuccess {
 								nonce,
 								sender,
@@ -710,40 +710,34 @@ pub mod pallet {
 								message,
 							});
 
-							post_info
-								.actual_weight
-								.expect("Message processing success already ensured")
-								// Extra weight breakdown:
-								//
-								// 1 read for the outbound message
-								// 1 write for the event
-								// 1 write for the outbound message removal
-								.saturating_add(T::DbWeight::get().reads_writes(1, 2))
+							// Extra weight breakdown:
+							//
+							// 1 read for the outbound message
+							// 1 write for the event
+							// 1 write for the outbound message removal
+							weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))
 						}
-						Err(e) => {
+						(Err(err), weight) => {
 							Self::deposit_event(Event::OutboundMessageExecutionFailure {
 								nonce,
 								sender: sender.clone(),
 								domain: domain.clone(),
 								message: message.clone(),
-								error: e.error,
+								error: err,
 							});
 
 							FailedOutboundMessages::<T>::insert(
 								nonce,
-								(domain, sender, message, e.error),
+								(domain, sender, message, err),
 							);
 
-							e.post_info
-								.actual_weight
-								.expect("Message processing success already ensured")
-								// Extra weight breakdown:
-								//
-								// 1 read for the outbound message
-								// 1 write for the event
-								// 1 write for the failed outbound message
-								// 1 write for the outbound message removal
-								.saturating_add(T::DbWeight::get().reads_writes(1, 3))
+							// Extra weight breakdown:
+							//
+							// 1 read for the outbound message
+							// 1 write for the event
+							// 1 write for the failed outbound message
+							// 1 write for the outbound message removal
+							weight.saturating_add(T::DbWeight::get().reads_writes(1, 3))
 						}
 					};
 
@@ -768,57 +762,30 @@ pub mod pallet {
 			domain: Domain,
 			sender: T::AccountId,
 			message: T::Message,
-		) -> DispatchResultWithPostInfo {
+		) -> (DispatchResult, Weight) {
 			let read_weight = T::DbWeight::get().reads(1);
 
-			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(read_weight),
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<T>::RouterNotFound.into(),
-			})?;
+			let Some(router) = DomainRouters::<T>::get(domain) else {
+				return (Err(Error::<T>::RouterNotFound.into()), read_weight);
+			};
 
-			let post_dispatch_info_fn =
-				|actual_weight: Option<Weight>, extra_weight: Weight| -> PostDispatchInfo {
-					PostDispatchInfo {
-						actual_weight: Some(Self::get_outbound_message_processing_weight(
-							actual_weight,
-							extra_weight,
-						)),
-						pays_fee: Pays::Yes,
-					}
-				};
+			let serialized = message.serialize();
 
-			match router.send(sender, message.serialize()) {
-				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
-					dispatch_info.actual_weight,
-					read_weight,
-				)),
-				Err(e) => Err(DispatchErrorWithPostInfo {
-					post_info: post_dispatch_info_fn(e.post_info.actual_weight, read_weight),
-					error: e.error,
-				}),
-			}
-		}
+			let message_weight =
+				read_weight.saturating_add(Weight::from_parts(0, serialized.len() as u64));
 
-		/// Calculates the weight used by a router when processing an outbound
-		/// message.
-		fn get_outbound_message_processing_weight(
-			router_call_weight: Option<Weight>,
-			extra_weight: Weight,
-		) -> Weight {
-			// TODO: add variable weights depending on the message size.
-			let pov_weight: u64 = (Domain::max_encoded_len()
-				+ T::AccountId::max_encoded_len()
-				+ T::Message::max_encoded_len())
-			.try_into()
-			.expect("can calculate outbound message POV weight");
+			let (result, router_weight) = match router.send(sender, serialized) {
+				Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
+				Err(e) => (Err(e.error), e.post_info.actual_weight),
+			};
 
-			router_call_weight
-				.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
-				.saturating_add(Weight::from_parts(0, pov_weight))
-				.saturating_add(extra_weight)
+			(
+				result,
+				router_weight
+					.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
+					.saturating_add(message_weight)
+					.saturating_add(read_weight),
+			)
 		}
 
 		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
