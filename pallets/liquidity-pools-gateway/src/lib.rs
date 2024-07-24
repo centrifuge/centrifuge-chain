@@ -305,6 +305,14 @@ pub mod pallet {
 
 		/// Failed outbound message not found in storage.
 		FailedOutboundMessageNotFound,
+
+		/// Emitted when you call `start_pack_message()` but that was already
+		/// called. You should finalize the message with `end_pack_message()`
+		MessagePackingAlreadyStarted,
+
+		/// Emitted when you can `end_pack_message()` but the packing process
+		/// was not started by `start_pack_message()`.
+		MessagePackingNotStarted,
 	}
 
 	#[pallet::hooks]
@@ -424,6 +432,8 @@ pub mod pallet {
 		/// Process an incoming message.
 		#[pallet::weight(T::WeightInfo::process_msg())]
 		#[pallet::call_index(5)]
+		// TODO: can we modify the name to receive_message() ?
+		// TODO: benchmark me again with max batch limit message
 		pub fn process_msg(
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
@@ -543,7 +553,7 @@ pub mod pallet {
 			let (domain, sender, message) = OutboundMessageQueue::<T>::take(nonce)
 				.ok_or(Error::<T>::OutboundMessageNotFound)?;
 
-			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+			match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
 				Ok(_) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
 						nonce,
@@ -582,7 +592,7 @@ pub mod pallet {
 			let (domain, sender, message, _) = FailedOutboundMessages::<T>::get(nonce)
 				.ok_or(Error::<T>::OutboundMessageNotFound)?;
 
-			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+			match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
 				Ok(_) => {
 					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
 						nonce,
@@ -610,13 +620,17 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1).ref_time())]
 		pub fn start_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			if PackedMessage::<T>::get((&sender, &destination)).is_none() {
-				PackedMessage::<T>::insert((sender, destination), T::Message::empty());
-			}
+			PackedMessage::<T>::mutate((&sender, &destination), |msg| match msg {
+				Some(_) => return Err(Error::<T>::MessagePackingAlreadyStarted),
+				None => {
+					*msg = Some(T::Message::empty());
+					Ok(())
+				}
+			})?;
 
 			Ok(())
 		}
@@ -626,11 +640,11 @@ pub mod pallet {
 		pub fn end_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			if let Some(msg) = PackedMessage::<T>::take((&sender, &destination)) {
-				Self::queue_message(destination, msg)?;
+			match PackedMessage::<T>::take((&sender, &destination)) {
+				Some(msg) if msg.unpack().is_empty() => Ok(()), //No-op
+				Some(msg) => Self::queue_message(destination, msg),
+				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
-
-			Ok(())
 		}
 	}
 
@@ -687,7 +701,7 @@ pub mod pallet {
 				processed_entries.push(nonce);
 
 				let weight =
-					match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+					match Self::send_message(domain.clone(), sender.clone(), message.clone()) {
 						Ok(post_info) => {
 							Self::deposit_event(Event::OutboundMessageExecutionSuccess {
 								nonce,
@@ -750,7 +764,7 @@ pub mod pallet {
 		/// Retrieves the router stored for the provided domain and sends the
 		/// message, calculating and returning the required weight for these
 		/// operations in the `DispatchResultWithPostInfo`.
-		fn process_message(
+		fn send_message(
 			domain: Domain,
 			sender: T::AccountId,
 			message: T::Message,
@@ -794,6 +808,7 @@ pub mod pallet {
 			router_call_weight: Option<Weight>,
 			extra_weight: Weight,
 		) -> Weight {
+			// TODO: add variable weights depending on the message size.
 			let pov_weight: u64 = (Domain::max_encoded_len()
 				+ T::AccountId::max_encoded_len()
 				+ T::Message::max_encoded_len())
