@@ -440,8 +440,8 @@ mod add_tranche {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		Gateway::mock_get_address(move |domain| {
-			assert_eq!(domain, EVM_DOMAIN_ADDRESS.domain());
+		Gateway::mock_get(move |domain| {
+			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
 			Some(hook.into())
 		});
 		Gateway::mock_submit(move |sender, destination, msg| {
@@ -557,7 +557,7 @@ mod add_tranche {
 				Pools::mock_pool_exists(|_| true);
 				Pools::mock_tranche_exists(|_, _| true);
 				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-				Gateway::mock_get_address(|_| None);
+				Gateway::mock_get(|_| None);
 
 				assert_noop!(
 					LiquidityPools::add_tranche(

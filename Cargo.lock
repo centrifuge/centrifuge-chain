@@ -8290,6 +8290,7 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "rand",

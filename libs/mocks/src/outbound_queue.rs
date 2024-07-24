@@ -1,8 +1,9 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::liquidity_pools::{DomainHook, OutboundQueue};
+	use cfg_traits::liquidity_pools::OutboundQueue;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
+	use orml_traits::GetByKey;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -28,8 +29,8 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_get_address(f: impl Fn(T::Destination) -> Option<T::Sender> + 'static) {
-			register_call!(move |a| f(a));
+		pub fn mock_get(f: impl Fn(&T::Destination) -> Option<T::Sender> + 'static) {
+			register_call!(f);
 		}
 	}
 
@@ -43,11 +44,8 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> DomainHook for Pallet<T> {
-		type AccountId = T::Sender;
-		type Domain = T::Destination;
-
-		fn get_address(a: Self::Domain) -> Option<Self::AccountId> {
+	impl<T: Config> GetByKey<T::Destination, Option<T::Sender>> for Pallet<T> {
+		fn get(a: &T::Destination) -> Option<T::Sender> {
 			execute_call!(a)
 		}
 	}

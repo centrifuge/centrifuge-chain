@@ -42,7 +42,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::{
-	liquidity_pools::{DomainHook, InboundQueue, OutboundQueue},
+	liquidity_pools::{InboundQueue, OutboundQueue},
 	swaps::TokenSwaps,
 	PreConditions,
 };
@@ -58,7 +58,10 @@ use frame_support::{
 	},
 	transactional,
 };
-use orml_traits::asset_registry::{self, Inspect as _};
+use orml_traits::{
+	asset_registry::{self, Inspect as _},
+	GetByKey,
+};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
@@ -253,7 +256,7 @@ pub mod pallet {
 		/// The type for processing outgoing messages and retrieving the domain
 		/// hook address.
 		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
-			+ DomainHook<Domain = Domain, AccountId = Self::AccountId>;
+			+ GetByKey<Domain, Option<Self::AccountId>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -408,7 +411,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let hook = <T::OutboundQueue as DomainHook>::get_address(domain.clone())
+			let hook = T::OutboundQueue::get(&domain)
 				.ok_or(Error::<T>::DomainHookAddressNotFound)?
 				.into();
 

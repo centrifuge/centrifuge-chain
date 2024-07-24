@@ -29,9 +29,7 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{
-		DomainHook, InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter,
-	},
+	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -40,6 +38,7 @@ use frame_system::{
 	ensure_signed,
 	pallet_prelude::{BlockNumberFor, OriginFor},
 };
+use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
 use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
@@ -863,11 +862,8 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> DomainHook for Pallet<T> {
-	type AccountId = T::AccountId;
-	type Domain = Domain;
-
-	fn get_address(domain: Domain) -> Option<T::AccountId> {
+impl<T: Config> GetByKey<Domain, Option<T::AccountId>> for Pallet<T> {
+	fn get(domain: &Domain) -> Option<T::AccountId> {
 		DomainHookAddress::<T>::get(domain)
 	}
 }
