@@ -13,7 +13,9 @@
 use cfg_primitives::AuraId;
 use frame_support::{traits::FindAuthor, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use pallet_ethereum::{Transaction, TransactionAction};
-use sp_core::{crypto::ByteArray, Hasher, KeccakHasher, H160};
+#[cfg(feature = "std")]
+use sp_core::KeccakHasher;
+use sp_core::{crypto::ByteArray, Hasher, H160};
 use sp_runtime::{ConsensusEngineId, Permill};
 use sp_std::marker::PhantomData;
 
