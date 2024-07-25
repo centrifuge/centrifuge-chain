@@ -28,6 +28,10 @@ mod utils {
 		[0u8; 32].into()
 	}
 
+	pub fn get_test_hook_bytes() -> [u8; 20] {
+		[10u8; 20]
+	}
+
 	pub fn event_exists<E: Into<MockEvent>>(e: E) {
 		let e: MockEvent = e.into();
 		assert!(frame_system::Pallet::<Runtime>::events()
@@ -1229,12 +1233,11 @@ mod set_domain_hook {
 	fn success_with_root() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let address = get_test_account_id();
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_hook_address(
 				RuntimeOrigin::root(),
 				domain,
-				address
+				get_test_hook_bytes()
 			));
 		});
 	}
@@ -1243,12 +1246,11 @@ mod set_domain_hook {
 	fn success_with_lp_admin_account() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let address = get_test_account_id();
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_hook_address(
 				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
 				domain,
-				address
+				get_test_hook_bytes()
 			));
 		});
 	}
@@ -1257,13 +1259,12 @@ mod set_domain_hook {
 	fn failure_bad_origin() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let address = get_test_account_id();
 
 			assert_noop!(
 				LiquidityPoolsGateway::set_domain_hook_address(
 					RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
 					domain,
-					address
+					get_test_hook_bytes()
 				),
 				BadOrigin
 			);
@@ -1274,13 +1275,12 @@ mod set_domain_hook {
 	fn failure_centrifuge_domain() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
-			let address = get_test_account_id();
 
 			assert_noop!(
 				LiquidityPoolsGateway::set_domain_hook_address(
 					RuntimeOrigin::root(),
 					domain,
-					address
+					get_test_hook_bytes()
 				),
 				Error::<Runtime>::DomainNotSupported
 			);

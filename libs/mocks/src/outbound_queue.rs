@@ -25,7 +25,7 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_get(f: impl Fn(&T::Destination) -> Option<T::Sender> + 'static) {
+		pub fn mock_get(f: impl Fn(&T::Destination) -> Option<[u8; 20]> + 'static) {
 			register_call!(f);
 		}
 	}
@@ -40,8 +40,8 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> GetByKey<T::Destination, Option<T::Sender>> for Pallet<T> {
-		fn get(a: &T::Destination) -> Option<T::Sender> {
+	impl<T: Config> GetByKey<T::Destination, Option<[u8; 20]>> for Pallet<T> {
+		fn get(a: &T::Destination) -> Option<[u8; 20]> {
 			execute_call!(a)
 		}
 	}

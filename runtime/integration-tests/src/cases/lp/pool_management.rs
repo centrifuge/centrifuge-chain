@@ -20,7 +20,6 @@ use cfg_types::{
 use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
-use pallet_evm::AddressMapping;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::FixedPointNumber;
@@ -177,9 +176,8 @@ fn add_pool<T: Runtime>() {
 fn hook_address<T: Runtime>() {
 	let env = super::setup::<T, _>(|_| {});
 	env.state(|evm| {
-		let solidity =
-			T::AddressMapping::into_account_id(evm.deployed(names::RESTRICTION_MANAGER).address());
-		let rust: AccountId = LOCAL_RESTRICTION_MANAGER_ADDRESS.into();
+		let solidity = evm.deployed(names::RESTRICTION_MANAGER).address();
+		let rust = LOCAL_RESTRICTION_MANAGER_ADDRESS.into();
 		assert_eq!(
 			solidity, rust,
 			"Hook address changed, please change our stored value (right) to the new address (left)"

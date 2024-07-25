@@ -429,7 +429,10 @@ mod add_tranche {
 	use super::*;
 
 	fn config_mocks() {
-		let hook = [1u8; 32];
+		let mut hook = [0; 32];
+		hook[0..20].copy_from_slice(&DOMAIN_HOOK_ADDRESS);
+		hook[20..28].copy_from_slice(&1u64.to_be_bytes());
+		hook[28..31].copy_from_slice(b"EVM");
 
 		Permissions::mock_has(move |scope, who, role| {
 			assert_eq!(who, ALICE);
@@ -442,7 +445,11 @@ mod add_tranche {
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 		Gateway::mock_get(move |domain| {
 			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
-			Some(hook.into())
+			Some(DOMAIN_HOOK_ADDRESS)
+		});
+		DomainAddressToAccountId::mock_convert(move |domain| {
+			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS));
+			hook.clone().into()
 		});
 		Gateway::mock_submit(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);

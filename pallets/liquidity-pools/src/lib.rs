@@ -256,7 +256,7 @@ pub mod pallet {
 		/// The type for processing outgoing messages and retrieving the domain
 		/// hook address.
 		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
-			+ GetByKey<Domain, Option<Self::AccountId>>;
+			+ GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -411,9 +411,17 @@ pub mod pallet {
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let hook = T::OutboundQueue::get(&domain)
-				.ok_or(Error::<T>::DomainHookAddressNotFound)?
-				.into();
+
+			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
+			let hook_bytes =
+				T::OutboundQueue::get(&domain).ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let evm_chain_id = match domain {
+				Domain::EVM(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+			let hook =
+				T::DomainAddressToAccountId::convert(DomainAddress::EVM(evm_chain_id, hook_bytes))
+					.into();
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(

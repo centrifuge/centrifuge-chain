@@ -209,7 +209,7 @@ pub mod pallet {
 		/// The domain hook address was initialized or updated.
 		DomainHookAddressSet {
 			domain: Domain,
-			hook_address: T::AccountId,
+			hook_address: [u8; 20],
 		},
 	}
 
@@ -271,7 +271,7 @@ pub mod pallet {
 	/// NOTE: Must only be changeable via root or `AdminOrigin`.
 	#[pallet::storage]
 	pub type DomainHookAddress<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, T::AccountId, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -625,13 +625,12 @@ pub mod pallet {
 		pub fn set_domain_hook_address(
 			origin: OriginFor<T>,
 			domain: Domain,
-			hook_address: T::AccountId,
+			hook_address: [u8; 20],
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
-
-			DomainHookAddress::<T>::insert(domain.clone(), hook_address.clone());
+			DomainHookAddress::<T>::insert(domain.clone(), hook_address);
 
 			Self::deposit_event(Event::DomainHookAddressSet {
 				domain,
@@ -862,8 +861,8 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> GetByKey<Domain, Option<T::AccountId>> for Pallet<T> {
-	fn get(domain: &Domain) -> Option<T::AccountId> {
+impl<T: Config> GetByKey<Domain, Option<[u8; 20]>> for Pallet<T> {
+	fn get(domain: &Domain) -> Option<[u8; 20]> {
 		DomainHookAddress::<T>::get(domain)
 	}
 }
