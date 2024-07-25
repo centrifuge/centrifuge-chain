@@ -104,8 +104,8 @@ pub type GeneralCurrencyIndexOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
+		investments::ForeignInvestment, CurrencyInspect, Permissions, PoolInspect, Seconds,
+		TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -204,11 +204,6 @@ pub mod pallet {
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
-		/// The currency type of investments.
-		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
-			+ Clone;
-
 		/// Enables investing and redeeming into investment classes with foreign
 		/// currencies.
 		type ForeignInvestment: ForeignInvestment<
@@ -217,7 +212,7 @@ pub mod pallet {
 			TrancheAmount = Self::Balance,
 			CurrencyId = Self::CurrencyId,
 			Error = DispatchError,
-			InvestmentId = <Self as Config>::TrancheCurrency,
+			InvestmentId = (Self::PoolId, Self::TrancheId),
 		>;
 
 		/// The source of truth for the transferability of assets via the
@@ -239,7 +234,8 @@ pub mod pallet {
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			// Enables checking whether currency is tranche token
-			+ CurrencyInspect<CurrencyId = Self::CurrencyId>;
+			+ CurrencyInspect<CurrencyId = Self::CurrencyId>
+			+ From<(Self::PoolId, Self::TrancheId)>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
@@ -556,11 +552,7 @@ pub mod pallet {
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 
-			T::PreTransferFilter::check((
-				who.clone(),
-				domain_address.clone(),
-				invest_id.clone().into(),
-			))?;
+			T::PreTransferFilter::check((who.clone(), domain_address.clone(), invest_id.into()))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -900,7 +892,7 @@ pub mod pallet {
 		pub fn derive_invest_id(
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
+		) -> Result<(T::PoolId, T::TrancheId), DispatchError> {
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
@@ -910,7 +902,7 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			Ok(TrancheCurrency::generate(pool_id, tranche_id))
+			Ok((pool_id, tranche_id))
 		}
 
 		/// Performs multiple checks for the provided currency and returns its

@@ -124,6 +124,9 @@ pub mod types {
 	/// A representation of a tranche identifier
 	pub type TrancheId = [u8; 16];
 
+	/// A representation of an investment
+	pub type InvestmentId = (PoolId, TrancheId);
+
 	/// A representation of a tranche weight, used to weight
 	/// importance of a tranche
 	#[derive(Encode, Decode, Copy, Debug, Default, Clone, PartialEq, Eq, TypeInfo, CompactAs)]

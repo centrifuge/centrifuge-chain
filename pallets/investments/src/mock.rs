@@ -35,9 +35,6 @@ use frame_support::{
 	},
 };
 use orml_traits::GetByKey;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
 use sp_runtime::{traits::AccountIdConversion, BuildStorage, DispatchError, DispatchResult};
@@ -111,7 +108,6 @@ impl cfg_mocks::pallet_mock_pools::Config for Runtime {
 	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = InvestmentId;
 	type TrancheId = TrancheId;
 }
 
@@ -153,51 +149,6 @@ impl<T> PreConditions<T> for Always {
 	}
 }
 
-// TODO: This struct should be temporarily needed only
-//       We should add the possibility to use subsets of the
-//       global CurrencyId enum
-#[derive(
-	Copy,
-	Clone,
-	Encode,
-	Decode,
-	PartialEq,
-	Debug,
-	Ord,
-	PartialOrd,
-	Eq,
-	TypeInfo,
-	Serialize,
-	Deserialize,
-	MaxEncodedLen,
-)]
-pub enum InvestmentId {
-	PoolTranche {
-		pool_id: PoolId,
-		tranche_id: TrancheId,
-	},
-}
-
-impl Default for InvestmentId {
-	fn default() -> Self {
-		Self::PoolTranche {
-			pool_id: Default::default(),
-			tranche_id: Default::default(),
-		}
-	}
-}
-
-impl From<InvestmentId> for CurrencyId {
-	fn from(val: InvestmentId) -> Self {
-		match val {
-			InvestmentId::PoolTranche {
-				pool_id,
-				tranche_id,
-			} => CurrencyId::Tranche(pool_id, tranche_id),
-		}
-	}
-}
-
 // Test externalities builder
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
@@ -226,21 +177,13 @@ pub const TRANCHE_ID_1: [u8; 16] = [1u8; 16];
 pub const OWNER_START_BALANCE: u128 = 100_000_000 * CURRENCY;
 
 /// The investment-id for investing into pool 0 and tranche 0
-pub const INVESTMENT_0_0: InvestmentId = InvestmentId::PoolTranche {
-	pool_id: POOL_ID,
-	tranche_id: TRANCHE_ID_0,
-};
+pub const INVESTMENT_0_0: InvestmentId = (POOL_ID, TRANCHE_ID_0);
+
 /// The investment-id for investing into pool 0 and tranche 1
-pub const INVESTMENT_0_1: InvestmentId = InvestmentId::PoolTranche {
-	pool_id: POOL_ID,
-	tranche_id: TRANCHE_ID_1,
-};
+pub const INVESTMENT_0_1: InvestmentId = (POOL_ID, TRANCHE_ID_1);
 
 /// An unknown investment id -> i.e. a not yet created pool
-pub const UNKNOWN_INVESTMENT: InvestmentId = InvestmentId::PoolTranche {
-	pool_id: 1,
-	tranche_id: TRANCHE_ID_0,
-};
+pub const UNKNOWN_INVESTMENT: InvestmentId = (1, TRANCHE_ID_0);
 
 /// The currency id for the AUSD token
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);

@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, ItemId, LoanId, Nonce,
-	OrderId, PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, InvestmentId, ItemId,
+	LoanId, Nonce, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -11,7 +11,7 @@ use cfg_types::{
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
-	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
+	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency},
 };
 use fp_evm::PrecompileSet;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
@@ -72,22 +72,20 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
-		TrancheCurrency = TrancheCurrency,
+		TrancheCurrency = InvestmentId,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
+		TrancheId = TrancheId,
 		InterestRate = Rate,
 		Balance = Balance,
 		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
-	+ pallet_investments::Config<
-		InvestmentId = <Self as pallet_pool_system::Config>::TrancheCurrency,
-		Amount = Balance,
-		BalanceRatio = Ratio,
-	> + pallet_loans::Config<
+	+ pallet_investments::Config<InvestmentId = InvestmentId, Amount = Balance, BalanceRatio = Ratio>
+	+ pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
 		LoanId = LoanId,
@@ -136,7 +134,6 @@ pub trait Runtime:
 		Balance = Balance,
 		PoolId = PoolId,
 		TrancheId = TrancheId,
-		TrancheCurrency = TrancheCurrency,
 		BalanceRatio = Ratio,
 	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
@@ -154,7 +151,7 @@ pub trait Runtime:
 		ForeignBalance = Balance,
 		PoolBalance = Balance,
 		TrancheBalance = Balance,
-		InvestmentId = TrancheCurrency,
+		InvestmentId = InvestmentId,
 		CurrencyId = CurrencyId,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
@@ -323,7 +320,7 @@ pub trait Runtime:
 		> + apis::runtime_decl_for_investments_api::InvestmentsApiV1<
 			Self::BlockExt,
 			AccountId,
-			TrancheCurrency,
+			InvestmentId,
 			InvestmentPortfolio<Balance, CurrencyId>,
 		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
 			Self::BlockExt,

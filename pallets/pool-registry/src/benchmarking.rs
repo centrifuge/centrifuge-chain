@@ -13,13 +13,8 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{
-	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket, investments::TrancheCurrency as _,
-};
-use cfg_types::{
-	pools::TrancheMetadata,
-	tokens::{CurrencyId, TrancheCurrency},
-};
+use cfg_traits::{benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket};
+use cfg_types::{pools::TrancheMetadata, tokens::CurrencyId};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::fungibles::Inspect;
 use frame_system::RawOrigin;
@@ -61,7 +56,7 @@ benchmarks! {
 		<PoolId = u64,
 			  TrancheId = [u8; 16],
 			  Balance = u128,
-			  CurrencyId = CurrencyId> + pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = u128>,
+			  CurrencyId = CurrencyId> + pallet_investments::Config<InvestmentId = (u64, [u8; 16]), Amount = u128>,
 		T: pallet_pool_system::Config<PoolId = u64,
 			  TrancheId = [u8; 16],
 			  Balance = u128,
@@ -136,7 +131,7 @@ benchmarks! {
 		let amount = MAX_RESERVE / 2;
 		let investor = create_investor::<T>(0, TRANCHE, Some(amount))?;
 		let locator = get_tranche_id::<T>(TRANCHE);
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), amount)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), (POOL, locator), amount)?;
 
 
 		let changes = PoolChanges {
@@ -202,12 +197,12 @@ benchmarks! {
 		let investor = create_investor::<T>(0, TRANCHE, Some(1))?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		// Submit redemption order so the update isn't immediately executed
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), (POOL, locator), 1)?;
 
 		update_pool::<T>(changes.clone())?;
 
 		// Withdraw redeem order so the update can be executed after that
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), (POOL, locator), 0)?;
 	}: execute_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();

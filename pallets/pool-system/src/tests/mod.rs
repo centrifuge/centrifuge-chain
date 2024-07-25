@@ -11,15 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{constants::SECONDS_PER_YEAR, Balance};
-use cfg_traits::{
-	fee::PoolFeeBucket, investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, PoolNAV,
-	TrancheTokenPrice,
-};
+use cfg_traits::{fee::PoolFeeBucket, PoolMutate, PoolNAV, TrancheTokenPrice};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
 	pools::TrancheMetadata,
-	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
@@ -151,7 +148,7 @@ pub mod util {
 			// forcing to call `execute_epoch()` later.
 			Investments::update_invest_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(0, SeniorTrancheId::get()),
+				(0, SeniorTrancheId::get()),
 				500 * CURRENCY,
 			)
 			.unwrap();
@@ -269,19 +266,19 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			currency: TrancheCurrency::generate(0, [0u8; 16]),
+			currency: (0, [0u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			currency: TrancheCurrency::generate(0, [1u8; 16]),
+			currency: (0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			currency: TrancheCurrency::generate(0, [2u8; 16]),
+			currency: (0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			currency: TrancheCurrency::generate(0, [3u8; 16]),
+			currency: (0, [3u8; 16]),
 			..Default::default()
 		};
 		let tranches = Tranches::new(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
@@ -454,7 +451,7 @@ fn pool_constraints_pass() {
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
 			seniority: 3,
-			currency: TrancheCurrency::generate(0, [3u8; 16]),
+			currency: (0, [3u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -463,7 +460,7 @@ fn pool_constraints_pass() {
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
 			seniority: 2,
-			currency: TrancheCurrency::generate(0, [2u8; 16]),
+			currency: (0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -472,13 +469,13 @@ fn pool_constraints_pass() {
 				min_risk_buffer: Perquintill::from_float(0.05),
 			},
 			seniority: 1,
-			currency: TrancheCurrency::generate(0, [1u8; 16]),
+			currency: (0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			tranche_type: TrancheType::Residual,
 			seniority: 0,
-			currency: TrancheCurrency::generate(0, [0u8; 16]),
+			currency: (0, [0u8; 16]),
 			..Default::default()
 		};
 		let tranches = Tranches::new(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
@@ -601,12 +598,12 @@ fn epoch() {
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(1),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -648,11 +645,11 @@ fn epoch() {
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 		assert_ok!(Investments::collect_investments(
 			RuntimeOrigin::signed(1),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 		));
 
 		let pool = PoolSystem::pool(0).unwrap();
@@ -753,7 +750,7 @@ fn epoch() {
 		next_block();
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(1),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -838,12 +835,12 @@ fn submission_period() {
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(1),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -860,13 +857,13 @@ fn submission_period() {
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -1047,7 +1044,7 @@ fn execute_info_removed_after_epoch_execute() {
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -1106,14 +1103,14 @@ fn pool_updates_should_be_constrained() {
 
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			100 * CURRENCY
 		));
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		let initial_pool = &crate::Pool::<Runtime>::try_get(pool_id).unwrap();
@@ -1147,7 +1144,7 @@ fn pool_updates_should_be_constrained() {
 
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			100 * CURRENCY
 		));
 
@@ -1667,7 +1664,7 @@ fn triger_challange_period_with_zero_solution() {
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -1761,7 +1758,7 @@ fn min_challenge_time_is_respected() {
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -1857,14 +1854,14 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		// Attempt to invest above reserve
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));
 
 		// Attempt to invest above reserve
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(1),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			1 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
@@ -2059,17 +2056,17 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		// Redeem so that we are exactly at 10 percent risk buffer
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			88_888_888_888_888_888_799
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));
 
@@ -2919,7 +2916,7 @@ mod pool_fees {
 			// Attempt to redeem everything
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				(DEFAULT_POOL_ID, JuniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 			assert_ok!(PoolSystem::close_epoch(
@@ -3049,7 +3046,7 @@ mod pool_fees {
 			// Closing should update fee nav by disbursements because reserve is sufficient
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				(DEFAULT_POOL_ID, JuniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 			next_block();
@@ -3266,12 +3263,12 @@ mod pool_fees {
 			// Redeem all junior and senior tranche tokens to require manual epoch execution
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				(DEFAULT_POOL_ID, JuniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(1),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, SeniorTrancheId::get()),
+				(DEFAULT_POOL_ID, SeniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 
@@ -3384,12 +3381,12 @@ mod pool_fees {
 			// Reinvest to check for fulfillment later
 			assert_ok!(Investments::update_invest_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				(DEFAULT_POOL_ID, JuniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				(DEFAULT_POOL_ID, JuniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 
@@ -3456,7 +3453,7 @@ mod pool_fees {
 			assert_eq!(
 				pallet_investments::InvestOrders::<Runtime>::get(
 					0,
-					TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get())
+					(DEFAULT_POOL_ID, JuniorTrancheId::get())
 				)
 				.expect("InvestOrders should not be fulfilled due to reserve drain from pool fees")
 				.amount(),
@@ -3465,7 +3462,7 @@ mod pool_fees {
 			assert_eq!(
 				pallet_investments::RedeemOrders::<Runtime>::get(
 					0,
-					TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get())
+					(DEFAULT_POOL_ID, JuniorTrancheId::get())
 				)
 				.expect("RedeemOrder should not be fulfilled due to reserve drain from pool fees")
 				.amount(),
