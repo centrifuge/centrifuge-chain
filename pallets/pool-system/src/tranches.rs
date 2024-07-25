@@ -1458,15 +1458,13 @@ fn finalize_combine<R, T, W>(
 #[cfg(test)]
 pub mod test {
 	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-	use cfg_types::{
-		fixed_point::{FixedPointNumberExtension, Quantity, Rate},
-		tokens::TrancheCurrency,
-	};
+	use cfg_types::fixed_point::{FixedPointNumberExtension, Quantity, Rate};
 
 	use super::*;
 	use crate::mock::MaxTranches;
 
 	type BalanceRatio = Quantity;
+	type TrancheCurrency = (PoolId, TrancheId);
 	type TTrancheType = TrancheType<Rate>;
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches =
@@ -1525,7 +1523,7 @@ pub mod test {
 			Self {
 				tranche_type: TrancheType::Residual,
 				seniority: 1,
-				currency: TrancheCurrency::generate(0, [0u8; 16]),
+				currency: (0, [0u8; 16]),
 				debt: Zero::zero(),
 				reserve: Zero::zero(),
 				loss: Zero::zero(),
@@ -1540,7 +1538,7 @@ pub mod test {
 	impl Default for EpochExecutionTranche<Balance, Quantity, TrancheWeight, TrancheCurrency> {
 		fn default() -> Self {
 			Self {
-				currency: TrancheCurrency::generate(0, [0u8; 16]),
+				currency: (0, [0u8; 16]),
 				supply: 0,
 				price: Quantity::one(),
 				invest: 0,
@@ -1560,7 +1558,7 @@ pub mod test {
 		TTranche {
 			tranche_type: TrancheType::Residual,
 			seniority: seniority,
-			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
+			currency: (DEFAULT_POOL_ID, [id; 16]),
 			debt,
 			reserve,
 			loss: 0,
@@ -1601,7 +1599,7 @@ pub mod test {
 				min_risk_buffer,
 			},
 			seniority: seniority,
-			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
+			currency: (DEFAULT_POOL_ID, [id; 16]),
 			debt,
 			reserve,
 			loss: 0,
@@ -1843,15 +1841,15 @@ pub mod test {
 			let tranches = default_tranches();
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(0)),
-				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [0u8; 16]))
+				Some((DEFAULT_POOL_ID, [0u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(1)),
-				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [1u8; 16]))
+				Some((DEFAULT_POOL_ID, [1u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(2)),
-				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [2u8; 16]))
+				Some((DEFAULT_POOL_ID, [2u8; 16]))
 			);
 			assert_eq!(tranches.tranche_currency(TrancheLoc::Index(3)), None);
 		}
@@ -2008,16 +2006,13 @@ pub mod test {
 					reserve: 0,
 					loss: 0,
 					seniority: 5,
-					currency: TrancheCurrency { .. },
+					currency: _,
 					last_updated_interest: SECS_PER_YEAR,
 					..
 				} if b == min_risk_buffer && int_per_sec == ir => true,
 				_ => false,
 			});
-			assert_eq!(
-				new_tranche.currency,
-				TrancheCurrency::generate(DEFAULT_POOL_ID, tranche_id)
-			);
+			assert_eq!(new_tranche.currency, (DEFAULT_POOL_ID, tranche_id));
 			assert_eq!(new_tranche.ratio, Perquintill::zero());
 
 			// Create tranche with implicit seniority (through index)

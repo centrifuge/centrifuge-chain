@@ -20,7 +20,6 @@
 
 use cfg_traits::{
 	fee::{PoolFeeBucket, PoolFeesInspect},
-	investments::TrancheCurrency,
 	AssetMetadataOf, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
@@ -121,19 +120,9 @@ pub mod pallet {
 
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
 
-		/// The currency type of investments.
-		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>;
+		type CurrencyId: Parameter + Copy + From<(Self::PoolId, Self::TrancheId)>;
 
-		type CurrencyId: Parameter + Copy;
-
-		type TrancheId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<[u8; 16]>;
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -450,7 +439,7 @@ pub mod pallet {
 			pool_id: Self::PoolId,
 			tranche_id: Self::TrancheId,
 		) -> Result<Self::AssetMetadata, DispatchError> {
-			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
+			let currency_id = (pool_id, tranche_id).into();
 			T::AssetRegistry::metadata(&currency_id)
 				.ok_or(Error::<T>::MetadataForCurrencyNotFound.into())
 		}
@@ -460,7 +449,7 @@ pub mod pallet {
 			tranche: Self::TrancheId,
 			metadata: Self::AssetMetadata,
 		) -> DispatchResult {
-			let currency_id = T::TrancheCurrency::generate(pool_id, tranche).into();
+			let currency_id = (pool_id, tranche).into();
 			T::AssetRegistry::register_asset(Some(currency_id), metadata)
 		}
 
@@ -474,7 +463,7 @@ pub mod pallet {
 			location: Option<Option<VersionedLocation>>,
 			additional: Option<Self::CustomMetadata>,
 		) -> DispatchResult {
-			let currency_id = T::TrancheCurrency::generate(pool_id, tranche).into();
+			let currency_id = (pool_id, tranche).into();
 			T::AssetRegistry::update_asset(
 				currency_id,
 				decimals,

@@ -26,7 +26,7 @@ use cfg_traits::{
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::{
 	derive_impl,
@@ -164,7 +164,7 @@ impl pallet_pool_system::Config for Test {
 	type StringLimit = StringLimit;
 	type Time = Timestamp;
 	type Tokens = OrmlTokens;
-	type TrancheCurrency = TrancheCurrency;
+	type TrancheCurrency = (PoolId, TrancheId);
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
@@ -316,7 +316,6 @@ impl Config for Test {
 	type PoolFeesInspect = MockPoolFeesInspect;
 	type PoolId = u64;
 	type RuntimeEvent = RuntimeEvent;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
@@ -349,7 +348,7 @@ impl orml_tokens::Config for Test {
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = DispatchError;
-	type Id = (AccountId, TrancheCurrency);
+	type Id = (AccountId, (PoolId, TrancheId));
 	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
@@ -365,7 +364,7 @@ impl pallet_investments::Config for Test {
 	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook = NoopCollectHook;
 	type CollectedRedemptionHook = NoopCollectHook;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = (PoolId, TrancheId);
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
 	type RuntimeEvent = RuntimeEvent;
@@ -411,7 +410,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
-		TrancheCurrency,
+		(PoolId, TrancheId),
 		u32,
 		Balance,
 		Rate,
