@@ -13,7 +13,7 @@
 use cfg_primitives::AuraId;
 use frame_support::{traits::FindAuthor, weights::constants::WEIGHT_REF_TIME_PER_SECOND};
 use pallet_ethereum::{Transaction, TransactionAction};
-use sp_core::{crypto::ByteArray, Hasher, H160};
+use sp_core::{crypto::ByteArray, Hasher, KeccakHasher, H160};
 use sp_runtime::{ConsensusEngineId, Permill};
 use sp_std::marker::PhantomData;
 
@@ -124,12 +124,14 @@ const PASSTHROUGH_ROUTER_ACCOUNT_CODES: [u8; 3289] = hex_literal::hex!("60806040
 const PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT: &[u8] =
 	b"PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT";
 
+#[cfg(feature = "std")]
 pub fn passthrough_router_location() -> H160 {
-	H160::from(sp_core::KeccakHasher::hash(
+	H160::from(KeccakHasher::hash(
 		PASSTHROUGH_ROUTER_ACCOUNT_CODES_ACCOUNT_LOCATION_SALT,
 	))
 }
 
+#[cfg(feature = "std")]
 pub fn passthrough_genesis() -> (H160, fp_evm::GenesisAccount) {
 	(
 		passthrough_router_location(),
@@ -167,12 +169,12 @@ mod tests {
 }
 
 pub mod utils {
-	use std::collections::BTreeMap;
-
 	use sp_core::H160;
+	use sp_std::collections::btree_map::BTreeMap;
 
 	use crate::evm::precompile::H160Addresses;
 
+	#[cfg(feature = "std")]
 	pub fn account_genesis<PrecompileSet: H160Addresses>() -> BTreeMap<H160, fp_evm::GenesisAccount>
 	{
 		let mut precompiles =
