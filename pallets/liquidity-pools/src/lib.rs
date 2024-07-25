@@ -58,7 +58,10 @@ use frame_support::{
 	},
 	transactional,
 };
-use orml_traits::asset_registry::{self, Inspect as _};
+use orml_traits::{
+	asset_registry::{self, Inspect as _},
+	GetByKey,
+};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
@@ -250,12 +253,10 @@ pub mod pallet {
 		/// The converter from a Domain and a 32 byte array to DomainAddress.
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
-		/// The type for processing outgoing messages.
-		type OutboundQueue: OutboundQueue<
-			Sender = Self::AccountId,
-			Message = Message,
-			Destination = Domain,
-		>;
+		/// The type for processing outgoing messages and retrieving the domain
+		/// hook address.
+		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
+			+ GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -281,12 +282,6 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Ratio = Self::BalanceRatio,
 		>;
-
-		/// Temporary hardcoded address for `AddTranche.hook` field which
-		/// represents the address which is associated with the solidity
-		/// restriction manager interface.
-		#[pallet::constant]
-		type AddTrancheHookAddress: Get<[u8; 32]>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
@@ -347,6 +342,8 @@ pub mod pallet {
 		InvestorDomainAddressNotAMember,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
+		/// The domain hook address could not be found.
+		DomainHookAddressNotFound,
 	}
 
 	#[pallet::call]
@@ -415,6 +412,17 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
+			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
+			let hook_bytes =
+				T::OutboundQueue::get(&domain).ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let evm_chain_id = match domain {
+				Domain::EVM(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+			let hook =
+				T::DomainAddressToAccountId::convert(DomainAddress::EVM(evm_chain_id, hook_bytes))
+					.into();
+
 			// Send the message to the domain
 			T::OutboundQueue::submit(
 				who,
@@ -425,10 +433,7 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
-					// only available option. We will design a dynamic approach going forward where
-					// this value can be set on a per-tranche-token basis on storage.
-					hook: T::AddTrancheHookAddress::get(),
+					hook,
 				},
 			)?;
 

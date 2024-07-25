@@ -30,6 +30,7 @@ pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(42, ALICE
 pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge(ALICE_32);
 pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
 pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
+pub const DOMAIN_HOOK_ADDRESS: [u8; 20] = [10u8; 20];
 pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
 pub const AMOUNT: Balance = 100;
 pub const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
@@ -157,11 +158,9 @@ impl orml_tokens::Config for Runtime {
 frame_support::parameter_types! {
 	pub CurrencyPrefix: [u8; 12] = [1; 12];
 	pub TreasuryAccount: AccountId = [2; 32].into();
-	pub AddTrancheHookAddress: [u8; 32] = [3; 32];
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AddTrancheHookAddress = AddTrancheHookAddress;
 	type AssetRegistry = AssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;

@@ -101,6 +101,11 @@ pub const DOMAIN_EVM: u8 = 1;
 /// Represents Centrifuge Chain id which is 0
 pub const CENTRIFUGE_CHAIN_ID: u8 = 0;
 
+/// The address of the local restriction manager contract required for
+/// `AddTranche` message
+pub const LOCAL_RESTRICTION_MANAGER_ADDRESS: [u8; 20] =
+	hex_literal::hex!("193356f6df34af00288f98bbb34d6ec98512ed32");
+
 pub mod contracts {
 	pub const ROOT: &str = "Root";
 	pub const ESCROW: &str = "Escrow";
