@@ -88,3 +88,20 @@ pub trait InboundQueue {
 	/// Submit a message to the inbound queue.
 	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }
+
+/// The trait required for queueing messages.
+pub trait MessageQueue {
+	/// The message type.
+	type Message;
+
+	/// Submit a message to the queue.
+	fn submit(msg: Self::Message) -> DispatchResult;
+}
+
+pub trait MessageProcessor {
+	/// The message type.
+	type Message;
+
+	/// Process a message.
+	fn process(msg: Self::Message) -> DispatchResultWithPostInfo;
+}

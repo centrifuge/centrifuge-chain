@@ -1197,6 +1197,7 @@ mod outbound_queue_impl {
 			});
 		});
 	}
+
 	#[test]
 	fn local_domain() {
 		new_test_ext().execute_with(|| {
