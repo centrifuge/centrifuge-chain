@@ -109,6 +109,7 @@ pallet-investments = { workspace = true }
 pallet-keystore = { workspace = true }
 pallet-liquidity-pools = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
+pallet-liquidity-pools-gateway-queue = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }

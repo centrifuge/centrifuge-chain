@@ -27,6 +27,7 @@ use cfg_primitives::{
 		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
+	LPGatewayQueueMessageNonce,
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
@@ -1927,6 +1928,14 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Message = pallet_liquidity_pools::Message;
+	type MessageNonce = LPGatewayQueueMessageNonce;
+	type MessageProcessor = LiquidityPoolsGateway;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
 }
@@ -2135,6 +2144,7 @@ construct_runtime!(
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
+		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

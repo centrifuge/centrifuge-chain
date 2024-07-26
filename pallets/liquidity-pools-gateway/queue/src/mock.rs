@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_liquidity_pools_gateway;
-use cfg_primitives::LPGatewayMessageNonce;
+use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use frame_support::derive_impl;
 use frame_support::dispatch::PostDispatchInfo;
@@ -51,7 +51,7 @@ impl pallet_mock_liquidity_pools_gateway::Config for Runtime {
 impl Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Message = LPTestMessage;
-	type MessageNonce = LPGatewayMessageNonce;
+	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LPGatewayMock;
 	type WeightInfo = ();
 }

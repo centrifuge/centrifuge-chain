@@ -27,6 +27,7 @@ use cfg_primitives::{
 		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
+	LPGatewayQueueMessageNonce,
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
@@ -1831,6 +1832,14 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Message = pallet_liquidity_pools::Message;
+	type MessageNonce = LPGatewayQueueMessageNonce;
+	type MessageProcessor = LiquidityPoolsGateway;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
 }
@@ -2166,6 +2175,7 @@ construct_runtime!(
 		// Removed: Migration = 199
 		// Removed: Swaps = 200
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
+		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 202,
 	}
 );
 

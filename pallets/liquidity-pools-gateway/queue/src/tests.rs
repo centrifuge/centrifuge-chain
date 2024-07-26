@@ -5,7 +5,7 @@ use crate::Error;
 use crate::Event;
 use crate::FailedMessageQueue;
 use crate::MessageQueue;
-use cfg_primitives::LPGatewayMessageNonce;
+use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
 use frame_support::assert_noop;
@@ -37,7 +37,7 @@ mod process_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let message = LPTestMessage {};
-			let nonce = LPGatewayMessageNonce::one();
+			let nonce = LPGatewayQueueMessageNonce::one();
 
 			MessageQueue::<Runtime>::insert(nonce, message.clone());
 
@@ -65,7 +65,7 @@ mod process_message {
 			assert_noop!(
 				LPGatewayQueue::process_message(
 					RawOrigin::None.into(),
-					LPGatewayMessageNonce::zero(),
+					LPGatewayQueueMessageNonce::zero(),
 				),
 				BadOrigin,
 			);
@@ -78,7 +78,7 @@ mod process_message {
 			assert_noop!(
 				LPGatewayQueue::process_message(
 					RuntimeOrigin::signed(1),
-					LPGatewayMessageNonce::zero(),
+					LPGatewayQueueMessageNonce::zero(),
 				),
 				Error::<Runtime>::MessageNotFound,
 			);
@@ -89,7 +89,7 @@ mod process_message {
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
 			let message = LPTestMessage {};
-			let nonce = LPGatewayMessageNonce::one();
+			let nonce = LPGatewayQueueMessageNonce::one();
 
 			MessageQueue::<Runtime>::insert(nonce, message.clone());
 
@@ -131,7 +131,7 @@ mod process_failed_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let message = LPTestMessage {};
-			let nonce = LPGatewayMessageNonce::one();
+			let nonce = LPGatewayQueueMessageNonce::one();
 			let error = DispatchError::Unavailable;
 
 			FailedMessageQueue::<Runtime>::insert(nonce, (message.clone(), error));
@@ -160,7 +160,7 @@ mod process_failed_message {
 			assert_noop!(
 				LPGatewayQueue::process_failed_message(
 					RawOrigin::None.into(),
-					LPGatewayMessageNonce::zero(),
+					LPGatewayQueueMessageNonce::zero(),
 				),
 				BadOrigin,
 			);
@@ -173,7 +173,7 @@ mod process_failed_message {
 			assert_noop!(
 				LPGatewayQueue::process_failed_message(
 					RuntimeOrigin::signed(1),
-					LPGatewayMessageNonce::zero(),
+					LPGatewayQueueMessageNonce::zero(),
 				),
 				Error::<Runtime>::MessageNotFound,
 			);
@@ -184,7 +184,7 @@ mod process_failed_message {
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
 			let message = LPTestMessage {};
-			let nonce = LPGatewayMessageNonce::one();
+			let nonce = LPGatewayQueueMessageNonce::one();
 			let error = DispatchError::Unavailable;
 
 			FailedMessageQueue::<Runtime>::insert(nonce, (message.clone(), error));
@@ -229,7 +229,7 @@ mod message_queue_impl {
 
 			assert_ok!(LPGatewayQueue::submit(message.clone()));
 
-			let nonce = LPGatewayMessageNonce::one();
+			let nonce = LPGatewayQueueMessageNonce::one();
 
 			assert_eq!(MessageQueue::<Runtime>::get(nonce), Some(message.clone()));
 

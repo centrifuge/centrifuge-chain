@@ -13,14 +13,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
+use core::fmt::Debug;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
+pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
-use std::fmt::Debug;
-
-pub use pallet::*;
+use sp_std::vec::Vec;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -197,7 +197,7 @@ pub mod pallet {
 
 						post_info
 							.actual_weight
-							.expect("Message processing success already ensured")
+							.unwrap_or_default()
 							// Extra weight breakdown:
 							//
 							// 1 read for the message

@@ -160,7 +160,7 @@ pub mod types {
 	pub type OutboundMessageNonce = u64;
 
 	/// The type for LP gateway message nonces.
-	pub type LPGatewayMessageNonce = u64;
+	pub type LPGatewayQueueMessageNonce = u64;
 }
 
 /// Common constants for all runtimes
