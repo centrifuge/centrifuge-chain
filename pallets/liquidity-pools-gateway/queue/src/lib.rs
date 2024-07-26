@@ -216,7 +216,7 @@ pub mod pallet {
 
 						e.post_info
 							.actual_weight
-							.expect("Message processing success already ensured")
+							.unwrap_or_default()
 							// Extra weight breakdown:
 							//
 							// 1 read for the message
