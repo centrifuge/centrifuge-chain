@@ -55,7 +55,7 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**liquidity-pools-gateway**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools_gateway/index.html)): The main handler of incoming and outgoing Liquidity Pools messages.
 - 
-- [**liquidity-pools-gateway-queue**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools_gateway/index.html)): The main handler of incoming and outgoing Liquidity Pools messages.
+- [**liquidity-pools-gateway-queue**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/queue) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools_gateway_queue/index.html)): The queue used by the Liquidity Pools Gateway for processing inbound/outbound messages.
 
 - [**liquidity-pools-gateway-routers**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/routers) ([docs](https://reference.centrifuge.io/liquidity_pools_gateway_routers/index.html)): This crate contains the `DomainRouters` used by the Liquidity Pools Gateway pallet.
 
