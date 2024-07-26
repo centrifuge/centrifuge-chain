@@ -15,6 +15,7 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
+use sp_core::U256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
 use sp_std::{vec, vec::Vec};
 
@@ -229,7 +230,9 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
-		hash: [u8; 32],
+		message: [u8; 32],
+		/// The address of the router
+		router: [u8; 32],
 	},
 	/// A batch of ordered messages.
 	/// Don't allow nested batch messages.
@@ -251,19 +254,21 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The EVM contract address
 		contract: [u8; 20],
 	},
-	/// Allows Governance to recover tokens sent to the wrong contract by
+	/// Allows Governance to recover ERC-20 assets sent to the wrong contract by
 	/// mistake.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	RecoverTokens {
+	RecoverAssets {
 		/// The EVM contract address to which the tokens were wrongfully sent
 		contract: Address,
-		/// The tranche token to recover
-		tranche_token: Address,
+		/// The ERC-20 asset to recover
+		asset: Address,
 		/// The user address which receives the recovered tokens
 		recipient: Address,
 		/// The amount of tokens to recover
-		amount: u128,
+		///
+		/// NOTE: Use `u256` as EVM balances are `u256`.
+		amount: U256,
 	},
 	// --- Gas service ---
 	/// Updates the gas price which should cover transaction fees on Centrifuge
@@ -272,7 +277,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Directionality: Centrifuge -> EVM Domain.
 	UpdateCentrifugeGasPrice {
 		/// The new gas price
-		price: u64,
+		price: u128,
 	},
 	// --- Pool Manager ---
 	/// Add a currency to a domain, i.e, register the mapping of a currency id
@@ -346,6 +351,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
 	UpdateTrancheHook {
+		pool_id: u64,
 		tranche_id: TrancheId,
 		/// The address to be used for this tranche token on the domain it will
 		/// be added and subsequently deployed in.
