@@ -735,7 +735,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..}) |
 					// Borrowers should be able to (un)charge fees as part of the borrow flow
 					RuntimeCall::PoolFees(pallet_pool_fees::Call::charge_fee { .. }) |
-					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. })
+					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. }) |
+					RuntimeCall::Remarks(pallet_remarks::Call::remark { .. })
 				) | ProxyType::PodOperation.filter(c)
 			}
 			ProxyType::Invest => matches!(
