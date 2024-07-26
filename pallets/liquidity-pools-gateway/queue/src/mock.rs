@@ -15,6 +15,7 @@ use cfg_mocks::pallet_mock_liquidity_pools_gateway;
 use cfg_primitives::LPGatewayMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use frame_support::derive_impl;
+use frame_support::dispatch::PostDispatchInfo;
 use sp_runtime::traits::ConstU128;
 
 use crate::{self as pallet_liquidity_pools_gateway_queue, Config};
@@ -53,6 +54,14 @@ impl Config for Runtime {
 	type MessageNonce = LPGatewayMessageNonce;
 	type MessageProcessor = LPGatewayMock;
 	type WeightInfo = ();
+}
+
+pub fn mock_lp_gateway_process_success(expected_message: LPTestMessage) {
+	LPGatewayMock::mock_process(move |msg| {
+		assert_eq!(msg, expected_message);
+
+		Ok(PostDispatchInfo::default())
+	});
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

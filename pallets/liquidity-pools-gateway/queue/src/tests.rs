@@ -110,6 +110,11 @@ mod process_message {
 				nonce
 			));
 
+			assert_eq!(
+				FailedMessageQueue::<Runtime>::get(nonce),
+				Some((message.clone(), error))
+			);
+
 			event_exists(Event::<Runtime>::MessageExecutionFailure {
 				nonce,
 				message,
@@ -200,7 +205,10 @@ mod process_failed_message {
 				nonce
 			));
 
-			assert!(FailedMessageQueue::<Runtime>::get(nonce).is_some());
+			assert_eq!(
+				FailedMessageQueue::<Runtime>::get(nonce),
+				Some((message.clone(), error))
+			);
 
 			event_exists(Event::<Runtime>::MessageExecutionFailure {
 				nonce,
