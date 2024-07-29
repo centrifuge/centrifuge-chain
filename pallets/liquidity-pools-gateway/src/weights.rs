@@ -18,7 +18,7 @@ pub trait WeightInfo {
 	fn remove_instance() -> Weight;
 	fn add_relayer() -> Weight;
 	fn remove_relayer() -> Weight;
-	fn process_msg() -> Weight;
+	fn receive_message() -> Weight;
 	fn process_outbound_message() -> Weight;
 	fn process_failed_outbound_message() -> Weight;
 }
@@ -84,7 +84,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn process_msg() -> Weight {
+	fn receive_message() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		//

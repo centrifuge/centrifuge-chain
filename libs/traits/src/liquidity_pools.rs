@@ -18,6 +18,8 @@ use sp_std::vec::Vec;
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait LPEncoding: Sized {
+	const MAX_PACKED_MESSAGES: u32;
+
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
@@ -43,6 +45,8 @@ pub mod test_util {
 	#[derive(Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
 	pub struct Message;
 	impl LPEncoding for Message {
+		const MAX_PACKED_MESSAGES: u32 = 1;
+
 		fn serialize(&self) -> Vec<u8> {
 			vec![0x42]
 		}

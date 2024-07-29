@@ -532,6 +532,8 @@ pub enum Message<BatchContent = BatchMessages> {
 impl Message {}
 
 impl LPEncoding for Message {
+	const MAX_PACKED_MESSAGES: u32 = MAX_BATCH_MESSAGES;
+
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}

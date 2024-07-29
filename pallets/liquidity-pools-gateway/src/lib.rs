@@ -40,7 +40,7 @@ use frame_system::{
 };
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
+use sp_runtime::traits::{AtLeast32BitUnsigned, BadOrigin, EnsureAdd, EnsureAddAssign, One};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
@@ -81,9 +81,6 @@ pub mod pallet {
 	///
 	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
 	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
-
-	use frame_support::dispatch::PostDispatchInfo;
-	use sp_runtime::DispatchErrorWithPostInfo;
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -272,9 +269,6 @@ pub mod pallet {
 		/// The domain is not supported.
 		DomainNotSupported,
 
-		/// Message decoding error.
-		MessageDecodingFailed,
-
 		/// Instance was already added to the domain.
 		InstanceAlreadyAdded,
 
@@ -430,109 +424,26 @@ pub mod pallet {
 		}
 
 		/// Process an incoming message.
-		#[pallet::weight(T::WeightInfo::process_msg())]
+		#[pallet::weight(T::WeightInfo::receive_message().saturating_mul(
+            Pallet::<T>::deserialize_message(expected_gateway_origin.clone(), msg.clone())
+                .map(|(_, msg)| msg.unpack().len() as u64)
+                .unwrap_or(T::Message::MAX_PACKED_MESSAGES as u64)
+            )
+        )]
 		#[pallet::call_index(5)]
-		// TODO: can we modify the name to receive_message() ?
-		// TODO: benchmark me again with max batch limit message
-		pub fn process_msg(
+		pub fn receive_message(
 			origin: OriginFor<T>,
+			expected_gateway_origin: GatewayOrigin,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
-				GatewayOrigin::Domain(domain_address) => {
-					Pallet::<T>::validate(domain_address, msg)?
-				}
-				GatewayOrigin::AxelarRelay(domain_address) => {
-					// Every axelar relay address has a separate storage
-					ensure!(
-						RelayerList::<T>::contains_key(domain_address.domain(), domain_address),
-						Error::<T>::UnknownRelayer
-					);
+			let gateway_origin = T::LocalEVMOrigin::ensure_origin(origin)?;
 
-					// Every axelar relay will prepend the (sourceChain,
-					// sourceAddress) from actual origination chain to the
-					// message bytes, with a length identifier
-					let slice_ref = &mut msg.as_slice();
-					let length_source_chain: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceChainLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
+			ensure!(gateway_origin == expected_gateway_origin, BadOrigin);
 
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
-
-					let source_chain = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_chain,
-						Error::<T>::from(MalformedSourceChain),
-						|source_chain| Ok(source_chain.to_vec()),
-					)?;
-
-					let length_source_address: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceAddressLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
-
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
-
-					let source_address = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_address,
-						Error::<T>::from(MalformedSourceAddress),
-						|source_address| {
-							// NOTE: Axelar simply provides the hexadecimal string of an EVM
-							//       address as the `sourceAddress` argument. Solidity does on the
-							//       other side recognize the hex-encoding and encode the hex bytes
-							//       to utf-8 bytes.
-							//
-							//       Hence, we are reverting this process here.
-							let source_address =
-								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
-									.ok_or(Error::<T>::from(MalformedSourceAddress))?;
-
-							Ok(source_address.to_vec())
-						},
-					)?;
-
-					let origin_msg = Pallet::<T>::try_range(
-						slice_ref,
-						slice_ref.len(),
-						Error::<T>::from(MalformedMessage),
-						|msg| {
-							BoundedVec::try_from(msg.to_vec()).map_err(|_| {
-								DispatchError::Other(
-									"Remaining bytes smaller vector in the first place. qed.",
-								)
-							})
-						},
-					)?;
-
-					let origin_domain =
-						T::OriginRecovery::try_convert((source_chain, source_address))?;
-
-					Pallet::<T>::validate(origin_domain, origin_msg)?
-				}
-			};
+			let (origin_address, incoming_msg) = Self::deserialize_message(gateway_origin, msg)?;
 
 			for msg in incoming_msg.unpack() {
-				T::InboundQueue::submit(domain_address.clone(), msg)?;
+				T::InboundQueue::submit(origin_address.clone(), msg)?;
 			}
 
 			Ok(())
@@ -652,13 +563,13 @@ pub mod pallet {
 		pub(crate) fn try_range<'a, D, F>(
 			slice: &mut &'a [u8],
 			next_steps: usize,
-			error: Error<T>,
+			error: impl Into<DispatchError>,
 			transformer: F,
 		) -> Result<D, DispatchError>
 		where
 			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
 		{
-			ensure!(slice.len() >= next_steps, error);
+			ensure!(slice.len() >= next_steps, error.into());
 
 			let (input, new_slice) = slice.split_at(next_steps);
 			let res = transformer(input)?;
@@ -667,23 +578,112 @@ pub mod pallet {
 			Ok(res)
 		}
 
-		fn validate(
-			address: DomainAddress,
+		fn deserialize_message(
+			gateway_origin: GatewayOrigin,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> Result<(DomainAddress, T::Message), DispatchError> {
-			if let DomainAddress::Centrifuge(_) = address {
+			let (origin_address, origin_msg) = match gateway_origin {
+				GatewayOrigin::Domain(domain_address) => (domain_address, msg),
+				GatewayOrigin::AxelarRelay(domain_address) => {
+					// Every axelar relay address has a separate storage
+					ensure!(
+						RelayerList::<T>::contains_key(domain_address.domain(), domain_address),
+						Error::<T>::UnknownRelayer
+					);
+
+					// Every axelar relay will prepend the (sourceChain,
+					// sourceAddress) from actual origination chain to the
+					// message bytes, with a length identifier
+					let slice_ref = &mut msg.as_slice();
+
+					let length_source_chain: usize = Pallet::<T>::try_range(
+						slice_ref,
+						BYTES_U32,
+						Error::<T>::from(MalformedSourceChainLength),
+						|be_bytes_u32| {
+							let mut bytes = [0u8; BYTES_U32];
+							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
+							// bytes have the right length. I.e. 4 in this case
+							bytes.copy_from_slice(be_bytes_u32);
+
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
+								DispatchError::Other("Expect: usize in wasm is always ge u32")
+							})
+						},
+					)?;
+
+					let source_chain = Pallet::<T>::try_range(
+						slice_ref,
+						length_source_chain,
+						Error::<T>::from(MalformedSourceChain),
+						|source_chain| Ok(source_chain.to_vec()),
+					)?;
+
+					let length_source_address: usize = Pallet::<T>::try_range(
+						slice_ref,
+						BYTES_U32,
+						Error::<T>::from(MalformedSourceAddressLength),
+						|be_bytes_u32| {
+							let mut bytes = [0u8; BYTES_U32];
+							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
+							// bytes have the right length. I.e. 4 in this case
+							bytes.copy_from_slice(be_bytes_u32);
+
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
+								DispatchError::Other("Expect: usize in wasm is always ge u32")
+							})
+						},
+					)?;
+
+					let source_address = Pallet::<T>::try_range(
+						slice_ref,
+						length_source_address,
+						Error::<T>::from(MalformedSourceAddress),
+						|source_address| {
+							// NOTE: Axelar simply provides the hexadecimal string of an EVM
+							//       address as the `sourceAddress` argument. Solidity does on the
+							//       other side recognize the hex-encoding and encode the hex bytes
+							//       to utf-8 bytes.
+							//
+							//       Hence, we are reverting this process here.
+							let source_address =
+								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
+									.ok_or(Error::<T>::from(MalformedSourceAddress))?;
+
+							Ok(source_address.to_vec())
+						},
+					)?;
+
+					let origin_msg = Pallet::<T>::try_range(
+						slice_ref,
+						slice_ref.len(),
+						Error::<T>::from(MalformedMessage),
+						|msg| {
+							BoundedVec::try_from(msg.to_vec()).map_err(|_| {
+								DispatchError::Other(
+									"Remaining bytes smaller vector in the first place. qed.",
+								)
+							})
+						},
+					)?;
+
+					let origin_domain =
+						T::OriginRecovery::try_convert((source_chain, source_address))?;
+
+					(origin_domain, origin_msg)
+				}
+			};
+
+			if let DomainAddress::Centrifuge(_) = origin_address {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
 
 			ensure!(
-				Allowlist::<T>::contains_key(address.domain(), address.clone()),
+				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
 				Error::<T>::UnknownInstance,
 			);
 
-			let incoming_msg = T::Message::deserialize(msg.as_slice())
-				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
-
-			Ok((address, incoming_msg))
+			Ok((origin_address, T::Message::deserialize(&origin_msg)?))
 		}
 
 		/// Iterates over the outbound messages stored in the queue and attempts

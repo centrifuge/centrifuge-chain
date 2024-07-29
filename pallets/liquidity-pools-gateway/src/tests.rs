@@ -52,10 +52,10 @@ mod pallet_internals {
 				Pallet::<Runtime>::try_range(
 					&mut three_bytes.as_slice(),
 					steps,
-					Error::<Runtime>::MessageDecodingFailed,
+					DispatchError::Other("err"),
 					|_| Ok(())
 				),
-				Error::<Runtime>::MessageDecodingFailed
+				DispatchError::Other("err"),
 			);
 		})
 	}
@@ -69,7 +69,7 @@ mod pallet_internals {
 			let first_section = Pallet::<Runtime>::try_range(
 				slice,
 				steps,
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("err"),
 				|first_section| Ok(first_section),
 			)
 			.expect("Slice is long enough");
@@ -80,7 +80,7 @@ mod pallet_internals {
 			let second_section = Pallet::<Runtime>::try_range(
 				slice,
 				steps,
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("err"),
 				|second_section| Ok(second_section),
 			)
 			.expect("Slice is long enough");
@@ -91,7 +91,7 @@ mod pallet_internals {
 			let third_section = Pallet::<Runtime>::try_range(
 				slice,
 				steps,
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("err"),
 				|third_section| Ok(third_section),
 			)
 			.expect("Slice is long enough");
@@ -109,7 +109,7 @@ mod pallet_internals {
 			let first_section = Pallet::<Runtime>::try_range(
 				slice,
 				steps,
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("err"),
 				|first_section| Ok(first_section),
 			)
 			.expect("Slice is long enough");
@@ -120,7 +120,7 @@ mod pallet_internals {
 			assert!(Pallet::<Runtime>::try_range(
 				slice,
 				steps,
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("err"),
 				|_| Err::<(), _>(DispatchError::Corruption)
 			)
 			.is_err());
@@ -408,8 +408,9 @@ mod process_msg_axelar_relay {
             let solidity_header = "0000000a657468657265756d2d320000002a307838353033623434353242663632333863433736436462454532323362343664373139366231633933";
 			let payload = [hex::decode(solidity_header).unwrap(), Message.serialize()].concat();
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
-				GatewayOrigin::AxelarRelay(relayer_address).into(),
+			assert_ok!(LiquidityPoolsGateway::receive_message(
+				GatewayOrigin::AxelarRelay(relayer_address.clone()).into(),
+                GatewayOrigin::AxelarRelay(relayer_address),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(payload).unwrap()
 			));
 		})
@@ -459,8 +460,9 @@ mod process_msg_axelar_relay {
 				Ok(expected_domain_address.clone())
 			});
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
-				GatewayOrigin::AxelarRelay(relayer_address).into(),
+			assert_ok!(LiquidityPoolsGateway::receive_message(
+				GatewayOrigin::AxelarRelay(relayer_address.clone()).into(),
+				GatewayOrigin::AxelarRelay(relayer_address),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 			));
 		});
@@ -497,8 +499,9 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::AxelarRelay(relayer_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::AxelarRelay(relayer_address.clone()).into(),
+					GatewayOrigin::AxelarRelay(relayer_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
 				Error::<Runtime>::RelayerMessageDecodingFailed {
@@ -541,8 +544,9 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::AxelarRelay(relayer_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::AxelarRelay(relayer_address.clone()).into(),
+					GatewayOrigin::AxelarRelay(relayer_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
 				Error::<Runtime>::UnknownInstance
@@ -580,11 +584,12 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("unsupported message"),
 			);
 		});
 	}
@@ -618,8 +623,9 @@ mod process_msg_axelar_relay {
 			MockLiquidityPools::mock_submit(move |_, _| Err(err));
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,
@@ -655,8 +661,9 @@ mod process_msg_domain {
 				Ok(())
 			});
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
-				GatewayOrigin::Domain(domain_address).into(),
+			assert_ok!(LiquidityPoolsGateway::receive_message(
+				GatewayOrigin::Domain(domain_address.clone()).into(),
+				GatewayOrigin::Domain(domain_address),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
 		});
@@ -667,9 +674,13 @@ mod process_msg_domain {
 		new_test_ext().execute_with(|| {
 			let encoded_msg = Message.serialize();
 
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(0, address.into());
+
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					RuntimeOrigin::root(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				BadOrigin,
@@ -684,8 +695,9 @@ mod process_msg_domain {
 			let encoded_msg = Message.serialize();
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::InvalidMessageOrigin,
@@ -701,8 +713,9 @@ mod process_msg_domain {
 			let encoded_msg = Message.serialize();
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::UnknownInstance,
@@ -724,11 +737,12 @@ mod process_msg_domain {
 			let encoded_msg: Vec<u8> = vec![11];
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other("unsupported message"),
 			);
 		});
 	}
@@ -758,8 +772,9 @@ mod process_msg_domain {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
+				LiquidityPoolsGateway::receive_message(
+					GatewayOrigin::Domain(domain_address.clone()).into(),
+					GatewayOrigin::Domain(domain_address),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,
