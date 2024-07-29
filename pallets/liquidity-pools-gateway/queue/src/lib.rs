@@ -31,9 +31,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod weights;
+pub mod weights;
 
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -135,20 +135,17 @@ pub mod pallet {
 		/// are not reverted.
 		#[pallet::weight(T::WeightInfo::process_message())]
 		#[pallet::call_index(0)]
-		pub fn process_message(
-			origin: OriginFor<T>,
-			nonce: T::MessageNonce,
-		) -> DispatchResultWithPostInfo {
+		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
 			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				Ok(p) => Ok(p),
+				Ok(_) => Ok(()),
 				Err(e) => {
 					FailedMessageQueue::<T>::insert(nonce, (message, e.error));
 
-					Ok(e.post_info)
+					Ok(())
 				}
 			}
 		}
@@ -166,19 +163,19 @@ pub mod pallet {
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
 			nonce: T::MessageNonce,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			let (message, _) =
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
 			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				Ok(p) => {
+				Ok(_) => {
 					FailedMessageQueue::<T>::remove(nonce);
 
-					Ok(p)
+					Ok(())
 				}
-				Err(e) => Ok(e.post_info),
+				Err(_) => Ok(()),
 			}
 		}
 	}
