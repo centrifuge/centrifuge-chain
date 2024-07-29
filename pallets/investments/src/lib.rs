@@ -1166,6 +1166,13 @@ impl<T: Config> OrderManager for Pallet<T> {
 			},
 		)?;
 
+		// NOTE: The accountant already receives the current amount of investments
+		T::Accountant::debit(
+			investment_id,
+			&InvestmentAccount { investment_id }.into_account_truncating(),
+			total_orders.amount,
+		)?;
+
 		let order_id = InvestOrderId::<T>::try_mutate(
 			investment_id,
 			|order_id| -> Result<OrderId, DispatchError> {
@@ -1257,13 +1264,8 @@ impl<T: Config> OrderManager for Pallet<T> {
 					InvestmentAccount { investment_id }.into_account_truncating();
 				let info = T::Accountant::info(investment_id)?;
 
-				T::Tokens::transfer(
-					info.payment_currency,
-					&investment_account,
-					&info.owner,
-					invest_amount,
-					Preservation::Expendable,
-				)?;
+				// NOTE: The accountant gives back what he did not used for the investment
+				T::Accountant::credit(investment_id, &investment_account, remaining_invest_amount)?;
 
 				// The amount of investments the accountant needs to
 				// note newly in his books is the invest amount divide through
@@ -1349,14 +1351,7 @@ impl<T: Config> OrderManager for Pallet<T> {
 					InvestmentAccount { investment_id }.into_account_truncating();
 				let info = T::Accountant::info(investment_id)?;
 
-				T::Tokens::transfer(
-					info.payment_currency,
-					&info.owner,
-					&investment_account,
-					redeem_amount_payment,
-					Preservation::Expendable,
-				)?;
-
+				T::Accountant::credit(investment_id, &investment_account, redeem_amount_payment)?;
 				T::Accountant::withdraw(&investment_account, info.id, redeem_amount)?;
 
 				// The previous OrderId is always 1 away

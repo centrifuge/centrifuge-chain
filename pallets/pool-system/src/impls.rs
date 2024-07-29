@@ -360,6 +360,22 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		T::Tokens::transfer(id.into(), source, dest, amount, Preservation::Expendable).map(|_| ())
 	}
 
+	fn debit(
+		id: Self::InvestmentId,
+		from: &T::AccountId,
+		amount: Self::Amount,
+	) -> sp_runtime::DispatchResult {
+		Self::do_debit(id.of_pool(), from, amount)
+	}
+
+	fn credit(
+		id: Self::InvestmentId,
+		to: &T::AccountId,
+		amount: Self::Amount,
+	) -> sp_runtime::DispatchResult {
+		Self::do_credit(id.of_pool(), to, amount)
+	}
+
 	fn deposit(
 		buyer: &T::AccountId,
 		id: Self::InvestmentId,
