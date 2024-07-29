@@ -1,5 +1,6 @@
-use pallet_order_book::weights::Weight;
 use std::marker::PhantomData;
+
+use frame_support::weights::Weight;
 
 /// Defensive weights for LP gateway queue extrinsics.
 pub struct WeightInfo<T>(PhantomData<T>);

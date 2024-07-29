@@ -28,15 +28,18 @@
 
 use core::fmt::Debug;
 
-use crate::weights::WeightInfo;
-use cfg_traits::liquidity_pools::MessageProcessor;
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{
+		InboundQueue, LPEncoding, MessageProcessor, OutboundQueue, Router as DomainRouter,
+	},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::dispatch::PostDispatchInfo;
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
+use frame_support::{
+	dispatch::{DispatchResult, PostDispatchInfo},
+	pallet_prelude::*,
+	PalletError,
+};
 use frame_system::{
 	ensure_signed,
 	pallet_prelude::{BlockNumberFor, OriginFor},
@@ -46,6 +49,8 @@ pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
 use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
 use sp_std::{convert::TryInto, vec::Vec};
+
+use crate::weights::WeightInfo;
 
 mod origin;
 pub use origin::*;

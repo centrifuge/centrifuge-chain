@@ -1933,10 +1933,10 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
 }
 

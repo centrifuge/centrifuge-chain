@@ -1,12 +1,13 @@
-use crate::config::Runtime;
-use crate::env::{Blocks, Env};
-use crate::envs::fudge_env::{FudgeEnv, FudgeSupport};
-use crate::utils::currency::cfg;
-use crate::utils::genesis;
-use crate::utils::genesis::Genesis;
 use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
 use frame_support::assert_ok;
 use sp_runtime::traits::One;
+
+use crate::{
+	config::Runtime,
+	env::{Blocks, Env},
+	envs::fudge_env::{FudgeEnv, FudgeSupport},
+	utils::{currency::cfg, genesis, genesis::Genesis},
+};
 
 #[test_runtimes(all)]
 fn submit_and_process<T: Runtime + FudgeSupport>() {

@@ -14,9 +14,11 @@
 use cfg_mocks::pallet_mock_liquidity_pools_gateway;
 use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
-use frame_support::derive_impl;
-use frame_support::dispatch::{Pays, PostDispatchInfo};
-use frame_support::pallet_prelude::Weight;
+use frame_support::{
+	derive_impl,
+	dispatch::{Pays, PostDispatchInfo},
+	pallet_prelude::Weight,
+};
 use sp_runtime::traits::ConstU128;
 
 use crate::{
@@ -52,10 +54,10 @@ impl pallet_mock_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Message = LPTestMessage;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LPGatewayMock;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

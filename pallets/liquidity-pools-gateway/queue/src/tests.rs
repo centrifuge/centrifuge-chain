@@ -1,21 +1,23 @@
-use crate::mock::new_test_ext;
-use crate::mock::LPGatewayMock;
-use crate::mock::{LPGatewayQueue, Runtime, RuntimeEvent as MockEvent, RuntimeOrigin};
-use crate::Error;
-use crate::Event;
-use crate::FailedMessageQueue;
-use crate::MessageQueue;
 use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
-use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
-use frame_support::assert_noop;
-use frame_support::assert_ok;
-use frame_support::dispatch::PostDispatchInfo;
-use frame_support::dispatch::RawOrigin;
-use sp_runtime::traits::BadOrigin;
-use sp_runtime::traits::One;
-use sp_runtime::traits::Zero;
-use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
+use cfg_traits::liquidity_pools::{
+	test_util::Message as LPTestMessage, MessageQueue as MessageQueueT,
+};
+use frame_support::{
+	assert_noop, assert_ok,
+	dispatch::{PostDispatchInfo, RawOrigin},
+};
+use sp_runtime::{
+	traits::{BadOrigin, One, Zero},
+	DispatchError, DispatchErrorWithPostInfo,
+};
+
+use crate::{
+	mock::{
+		new_test_ext, LPGatewayMock, LPGatewayQueue, Runtime, RuntimeEvent as MockEvent,
+		RuntimeOrigin,
+	},
+	Error, Event, FailedMessageQueue, MessageQueue,
+};
 
 mod utils {
 	use super::*;

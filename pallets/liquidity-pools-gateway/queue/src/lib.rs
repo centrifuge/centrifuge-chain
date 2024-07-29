@@ -12,8 +12,9 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use core::fmt::Debug;
+
+use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -129,8 +130,9 @@ pub mod pallet {
 		/// If the execution fails, the message gets moved to the
 		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing to ensure
-		/// that any storage changes (i.e. to the message queues) are not reverted.
+		/// NOTE - this extrinsic does not error out during message processing
+		/// to ensure that any storage changes (i.e. to the message queues)
+		/// are not reverted.
 		#[pallet::weight(T::WeightInfo::process_message())]
 		#[pallet::call_index(0)]
 		pub fn process_message(
@@ -153,10 +155,12 @@ pub mod pallet {
 
 		/// Convenience method for manually processing a failed message.
 		///
-		/// If the execution is successful, the message gets removed from the `FailedMessageQueue` storage.
+		/// If the execution is successful, the message gets removed from the
+		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing to ensure
-		/// that any storage changes (i.e. to the message queues) are not reverted.
+		/// NOTE - this extrinsic does not error out during message processing
+		/// to ensure that any storage changes (i.e. to the message queues)
+		/// are not reverted.
 		#[pallet::weight(T::WeightInfo::process_failed_message())]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
