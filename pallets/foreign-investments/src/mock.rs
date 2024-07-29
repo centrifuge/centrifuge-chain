@@ -62,9 +62,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type ForeignBalance = Balance;
 	type Hooks = MockHooks;
 	type Investment = MockInvestment;
+	type InvestmentId = (PoolId, TrancheId);
 	type OrderBook = MockTokenSwaps;
 	type OrderId = OrderId;
-	type InvestmentId = (PoolId, TrancheId);
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
 	type RuntimeEvent = RuntimeEvent;
