@@ -117,7 +117,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Mint additional amount of payment currency
@@ -168,13 +168,13 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
 		T::Tokens::transfer(
-			invest_id.clone().into(),
+			invest_id.into(),
 			&sending_domain.domain().into_account(),
 			&investor,
 			amount,
@@ -203,18 +203,15 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
-		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
 
-		let amount = T::ForeignInvestment::cancel_foreign_redemption(
-			&investor,
-			invest_id.clone(),
-			payout_currency,
-		)?;
+		let amount =
+			T::ForeignInvestment::cancel_foreign_redemption(&investor, invest_id, payout_currency)?;
 
 		T::Tokens::transfer(
-			invest_id.clone().into(),
+			invest_id.into(),
 			&investor,
 			&destination.domain().into_account(),
 			amount,

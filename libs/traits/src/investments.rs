@@ -24,6 +24,20 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 	fn of_tranche(&self) -> TrancheId;
 }
 
+impl<PoolId: Clone, TrancheId: Clone> TrancheCurrency<PoolId, TrancheId> for (PoolId, TrancheId) {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		(pool_id, tranche_id)
+	}
+
+	fn of_pool(&self) -> PoolId {
+		self.0.clone()
+	}
+
+	fn of_tranche(&self) -> TrancheId {
+		self.1.clone()
+	}
+}
+
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {

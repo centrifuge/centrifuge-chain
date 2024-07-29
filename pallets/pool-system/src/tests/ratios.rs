@@ -62,13 +62,13 @@ fn ensure_ratios_are_distributed_correctly_2_tranches() {
 		// Attempt to redeem 40%
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			200 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 		));
 
 		let new_residual_ratio = Perquintill::from_rational(5u64, 8u64);
@@ -88,13 +88,13 @@ fn ensure_ratios_are_distributed_correctly_2_tranches() {
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			300 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 		));
 
 		let new_residual_ratio = Perquintill::one();
@@ -172,13 +172,13 @@ fn ensure_ratios_are_distributed_correctly_1_tranche() {
 		// Attempt to redeem 40%
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			200 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		// Ensure ratio is 100
@@ -194,13 +194,13 @@ fn ensure_ratios_are_distributed_correctly_1_tranche() {
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			300 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		// Ensure ratio is 0
@@ -284,13 +284,13 @@ fn ensure_ratios_are_distributed_correctly_3_tranches() {
 
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		let check_ratios = [
@@ -312,13 +312,13 @@ fn ensure_ratios_are_distributed_correctly_3_tranches() {
 
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			(0, SecondSeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			(0, SecondSeniorTrancheId::get()),
 		));
 
 		let check_ratios = [
@@ -361,35 +361,35 @@ fn ensure_ratios_are_distributed_correctly_3_tranches() {
 		// Redeem everything
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			(0, SecondSeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SecondSeniorTrancheId::get()),
+			(0, SecondSeniorTrancheId::get()),
 		));
 
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, SeniorTrancheId::get()),
+			(0, SeniorTrancheId::get()),
 		));
 
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			RuntimeOrigin::signed(0),
-			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			(0, JuniorTrancheId::get()),
 		));
 
 		// Ensure ratios are 0

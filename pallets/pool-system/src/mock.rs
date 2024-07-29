@@ -15,16 +15,15 @@ use cfg_primitives::{
 };
 pub use cfg_primitives::{PoolEpochId, TrancheWeight};
 use cfg_traits::{
-	fee::PoolFeeBucket,
-	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds,
+	fee::PoolFeeBucket, investments::OrderManager, Millis, Permissions as PermissionsT,
+	PoolUpdateGuard, PreConditions, Seconds,
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	time::TimeProvider,
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
@@ -285,7 +284,7 @@ where
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
-	type Id = (AccountId, TrancheCurrency);
+	type Id = (AccountId, (PoolId, TrancheId));
 	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
@@ -301,7 +300,7 @@ impl pallet_investments::Config for Runtime {
 	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook = NoopCollectHook;
 	type CollectedRedemptionHook = NoopCollectHook;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = (PoolId, TrancheId);
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
 	type RuntimeEvent = RuntimeEvent;
@@ -430,7 +429,7 @@ impl Config for Runtime {
 	type StringLimit = StringLimit;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
+	type TrancheCurrency = (PoolId, TrancheId);
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
@@ -452,7 +451,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
-		TrancheCurrency,
+		(PoolId, TrancheId),
 		u32,
 		Balance,
 		Rate,
@@ -625,7 +624,7 @@ pub fn invest_close_and_collect(pool_id: u64, investments: Vec<(AccountId, Tranc
 	for (account, tranche_id, investment) in investments.clone() {
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(account),
-			TrancheCurrency::generate(pool_id, tranche_id),
+			(pool_id, tranche_id),
 			investment
 		));
 	}
@@ -637,7 +636,7 @@ pub fn invest_close_and_collect(pool_id: u64, investments: Vec<(AccountId, Tranc
 	for (account, tranche_id, _) in investments {
 		assert_ok!(Investments::collect_investments(
 			RuntimeOrigin::signed(account),
-			TrancheCurrency::generate(pool_id, tranche_id),
+			(pool_id, tranche_id),
 		));
 	}
 }

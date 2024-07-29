@@ -3,6 +3,7 @@ pub mod pallet {
 	use cfg_traits::liquidity_pools::OutboundQueue;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
+	use orml_traits::GetByKey;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -23,6 +24,10 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_get(f: impl Fn(&T::Destination) -> Option<[u8; 20]> + 'static) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: Config> OutboundQueue for Pallet<T> {
@@ -36,6 +41,12 @@ pub mod pallet {
 
 		fn weight() -> Weight {
 			Weight::zero()
+		}
+	}
+
+	impl<T: Config> GetByKey<T::Destination, Option<[u8; 20]>> for Pallet<T> {
+		fn get(a: &T::Destination) -> Option<[u8; 20]> {
+			execute_call!(a)
 		}
 	}
 }

@@ -16,6 +16,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex = { workspace = true }
+orml-traits = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-core = { workspace = true }
@@ -36,6 +37,7 @@ cfg-primitives = { workspace = true, default-features = true }
 hex-literal = { workspace = true }
 pallet-balances = { workspace = true, default-features = true }
 rand = { workspace = true, default-features = true }
+runtime-common = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
 [features]
@@ -47,6 +49,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking/std",
+  "orml-traits/std",
   "sp-std/std",
   "sp-core/std",
   "sp-runtime/std",

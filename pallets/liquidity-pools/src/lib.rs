@@ -58,7 +58,10 @@ use frame_support::{
 	},
 	transactional,
 };
-use orml_traits::asset_registry::{self, Inspect as _};
+use orml_traits::{
+	asset_registry::{self, Inspect as _},
+	GetByKey,
+};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
@@ -104,8 +107,8 @@ pub type GeneralCurrencyIndexOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
+		investments::ForeignInvestment, CurrencyInspect, Permissions, PoolInspect, Seconds,
+		TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -200,11 +203,6 @@ pub mod pallet {
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
-		/// The currency type of investments.
-		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
-			+ Clone;
-
 		/// Enables investing and redeeming into investment classes with foreign
 		/// currencies.
 		type ForeignInvestment: ForeignInvestment<
@@ -212,7 +210,7 @@ pub mod pallet {
 			Amount = Self::Balance,
 			TrancheAmount = Self::Balance,
 			CurrencyId = Self::CurrencyId,
-			InvestmentId = Self::TrancheCurrency,
+			InvestmentId = (Self::PoolId, Self::TrancheId),
 		>;
 
 		/// The source of truth for the transferability of assets via the
@@ -234,7 +232,8 @@ pub mod pallet {
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			// Enables checking whether currency is tranche token
-			+ CurrencyInspect<CurrencyId = Self::CurrencyId>;
+			+ CurrencyInspect<CurrencyId = Self::CurrencyId>
+			+ From<(Self::PoolId, Self::TrancheId)>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
@@ -242,12 +241,10 @@ pub mod pallet {
 		/// The converter from a Domain and a 32 byte array to DomainAddress.
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
-		/// The type for processing outgoing messages.
-		type OutboundQueue: OutboundQueue<
-			Sender = Self::AccountId,
-			Message = Message,
-			Destination = Domain,
-		>;
+		/// The type for processing outgoing messages and retrieving the domain
+		/// hook address.
+		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
+			+ GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -273,12 +270,6 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Ratio = Self::BalanceRatio,
 		>;
-
-		/// Temporary hardcoded address for `AddTranche.hook` field which
-		/// represents the address which is associated with the solidity
-		/// restriction manager interface.
-		#[pallet::constant]
-		type AddTrancheHookAddress: Get<[u8; 32]>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
@@ -339,6 +330,8 @@ pub mod pallet {
 		InvestorDomainAddressNotAMember,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
+		/// The domain hook address could not be found.
+		DomainHookAddressNotFound,
 		/// This pallet does not expect to receive direclty a batch message,
 		/// instead it expects several calls to it with different messages.
 		UnsupportedBatchMessage,
@@ -410,6 +403,17 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
+			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
+			let hook_bytes =
+				T::OutboundQueue::get(&domain).ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let evm_chain_id = match domain {
+				Domain::EVM(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+			let hook =
+				T::DomainAddressToAccountId::convert(DomainAddress::EVM(evm_chain_id, hook_bytes))
+					.into();
+
 			// Send the message to the domain
 			T::OutboundQueue::submit(
 				who,
@@ -420,10 +424,7 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
-					// only available option. We will design a dynamic approach going forward where
-					// this value can be set on a per-tranche-token basis on storage.
-					hook: T::AddTrancheHookAddress::get(),
+					hook,
 				},
 			)?;
 
@@ -562,11 +563,7 @@ pub mod pallet {
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 
-			T::PreTransferFilter::check((
-				who.clone(),
-				domain_address.clone(),
-				invest_id.clone().into(),
-			))?;
+			T::PreTransferFilter::check((who.clone(), domain_address.clone(), invest_id.into()))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -773,11 +770,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
-			);
-
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
@@ -909,7 +901,7 @@ pub mod pallet {
 		pub fn derive_invest_id(
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
+		) -> Result<(T::PoolId, T::TrancheId), DispatchError> {
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
@@ -919,7 +911,7 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			Ok(TrancheCurrency::generate(pool_id, tranche_id))
+			Ok((pool_id, tranche_id))
 		}
 
 		/// Performs multiple checks for the provided currency and returns its
@@ -927,6 +919,10 @@ pub mod pallet {
 		pub fn validate_investment_currency(
 			currency_id: T::CurrencyId,
 		) -> Result<(u128, EVMChainId), DispatchError> {
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+
 			// Ensure the currency is enabled as pool_currency
 			let metadata =
 				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
@@ -934,10 +930,6 @@ pub mod pallet {
 				metadata.additional.pool_currency,
 				Error::<T>::AssetMetadataNotPoolCurrency
 			);
-
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
 
 			Ok((currency, chain_id))
 		}

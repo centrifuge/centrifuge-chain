@@ -1,7 +1,4 @@
-use cfg_traits::investments::TrancheCurrency;
 use frame_support::derive_impl;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
 use sp_runtime::FixedU128;
 
 use crate::pallet as pallet_foreign_investments;
@@ -13,25 +10,6 @@ pub type PoolId = u64;
 pub type OrderId = u64;
 pub type CurrencyId = u8;
 pub type Ratio = FixedU128;
-
-#[derive(
-	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub struct InvestmentId(pub PoolId, pub TrancheId);
-
-impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		Self(pool_id, tranche_id)
-	}
-
-	fn of_pool(&self) -> PoolId {
-		self.0
-	}
-
-	fn of_tranche(&self) -> TrancheId {
-		self.1
-	}
-}
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -52,7 +30,7 @@ impl frame_system::Config for Runtime {
 impl cfg_mocks::investment::pallet::Config for Runtime {
 	type Amount = Balance;
 	type CurrencyId = CurrencyId;
-	type InvestmentId = InvestmentId;
+	type InvestmentId = (PoolId, TrancheId);
 	type TrancheAmount = Balance;
 }
 
@@ -67,7 +45,7 @@ impl cfg_mocks::token_swaps::pallet::Config for Runtime {
 impl cfg_mocks::foreign_investment_hooks::pallet::Config for Runtime {
 	type Amount = Balance;
 	type CurrencyId = CurrencyId;
-	type InvestmentId = InvestmentId;
+	type InvestmentId = (PoolId, TrancheId);
 	type TrancheAmount = Balance;
 }
 
@@ -76,7 +54,6 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = InvestmentId;
 	type TrancheId = TrancheId;
 }
 
@@ -85,9 +62,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type ForeignBalance = Balance;
 	type Hooks = MockHooks;
 	type Investment = MockInvestment;
-	type InvestmentId = InvestmentId;
 	type OrderBook = MockTokenSwaps;
 	type OrderId = OrderId;
+	type InvestmentId = (PoolId, TrancheId);
 	type PoolBalance = Balance;
 	type PoolInspect = MockPools;
 	type RuntimeEvent = RuntimeEvent;

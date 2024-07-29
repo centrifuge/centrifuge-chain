@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	investments::{ForeignInvestmentHooks, TrancheCurrency},
-	liquidity_pools::OutboundQueue,
-};
+use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundQueue};
 use cfg_types::domain_address::DomainAddress;
 use frame_support::traits::{
 	fungibles::Mutate,
@@ -31,12 +28,12 @@ where
 {
 	type Amount = T::Balance;
 	type CurrencyId = T::CurrencyId;
-	type InvestmentId = T::TrancheCurrency;
+	type InvestmentId = (T::PoolId, T::TrancheId);
 	type TrancheAmount = T::Balance;
 
 	fn fulfill_cancel_investment(
 		who: &T::AccountId,
-		investment_id: Self::InvestmentId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
 		currency_id: Self::CurrencyId,
 		amount_cancelled: Self::Amount,
 		fulfilled: Self::Amount,
@@ -54,8 +51,8 @@ where
 		)?;
 
 		let message = Message::FulfilledCancelDepositRequest {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: who.clone().into(),
 			currency,
 			currency_payout: amount_cancelled.into(),
@@ -67,7 +64,7 @@ where
 
 	fn fulfill_collect_investment(
 		who: &T::AccountId,
-		investment_id: Self::InvestmentId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
 		currency_id: Self::CurrencyId,
 		amount_collected: Self::Amount,
 		tranche_tokens_payout: Self::TrancheAmount,
@@ -77,7 +74,7 @@ where
 		let domain_address: DomainAddress = wrapped_token.into();
 
 		T::Tokens::transfer(
-			investment_id.clone().into(),
+			(pool_id, tranche_id).into(),
 			who,
 			&domain_address.domain().into_account(),
 			tranche_tokens_payout,
@@ -85,8 +82,8 @@ where
 		)?;
 
 		let message = Message::FulfilledDepositRequest {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: who.clone().into(),
 			currency,
 			currency_payout: amount_collected.into(),
@@ -98,7 +95,7 @@ where
 
 	fn fulfill_collect_redemption(
 		who: &T::AccountId,
-		investment_id: Self::InvestmentId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
 		currency_id: Self::CurrencyId,
 		tranche_tokens_collected: Self::TrancheAmount,
 		amount_payout: Self::Amount,
@@ -116,8 +113,8 @@ where
 		)?;
 
 		let message = Message::FulfilledRedeemRequest {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
 			investor: who.clone().into(),
 			currency,
 			currency_payout: amount_payout.into(),

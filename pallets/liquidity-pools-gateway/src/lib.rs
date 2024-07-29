@@ -38,6 +38,7 @@ use frame_system::{
 	ensure_signed,
 	pallet_prelude::{BlockNumberFor, OriginFor},
 };
+use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
 use sp_runtime::traits::{AtLeast32BitUnsigned, BadOrigin, EnsureAdd, EnsureAddAssign, One};
@@ -201,6 +202,12 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		},
+
+		/// The domain hook address was initialized or updated.
+		DomainHookAddressSet {
+			domain: Domain,
+			hook_address: [u8; 20],
+		},
 	}
 
 	/// Storage for domain routers.
@@ -254,6 +261,18 @@ pub mod pallet {
 		(Domain, T::AccountId, T::Message, DispatchError),
 	>;
 
+	/// Stores the hook address of a domain required for particular LP messages.
+	///
+	/// Lifetime: Indefinitely.
+	///
+	/// NOTE: Must only be changeable via root or `AdminOrigin`.
+	#[pallet::storage]
+	pub type DomainHookAddress<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
+
+	/// Stores a packed message, not ready yet to be enqueue.
+	/// Lifetime handled by `start_pack_messages()` and `end_pack_messages()`
+	/// extrinsics.
 	#[pallet::storage]
 	pub(crate) type PackedMessage<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
@@ -300,12 +319,12 @@ pub mod pallet {
 		/// Failed outbound message not found in storage.
 		FailedOutboundMessageNotFound,
 
-		/// Emitted when you call `start_pack_message()` but that was already
-		/// called. You should finalize the message with `end_pack_message()`
+		/// Emitted when you call `start_pack_messages()` but that was already
+		/// called. You should finalize the message with `end_pack_messages()`
 		MessagePackingAlreadyStarted,
 
-		/// Emitted when you can `end_pack_message()` but the packing process
-		/// was not started by `start_pack_message()`.
+		/// Emitted when you can `end_pack_messages()` but the packing process
+		/// was not started by `start_pack_messages()`.
 		MessagePackingNotStarted,
 	}
 
@@ -530,7 +549,33 @@ pub mod pallet {
 			}
 		}
 
+		/// Set the address of the domain hook
+		///
+		/// Can only be called by `AdminOrigin`.
 		#[pallet::call_index(8)]
+		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		pub fn set_domain_hook_address(
+			origin: OriginFor<T>,
+			domain: Domain,
+			hook_address: [u8; 20],
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			DomainHookAddress::<T>::insert(domain.clone(), hook_address);
+
+			Self::deposit_event(Event::DomainHookAddressSet {
+				domain,
+				hook_address,
+			});
+
+			Ok(())
+		}
+
+		/// Start packing messages in a single message instead of enqueue
+		/// messages.
+		/// The message will be enqueued once `end_pack_messages()` is called.
+		#[pallet::call_index(9)]
 		#[pallet::weight(T::DbWeight::get().reads_writes(1, 1))]
 		pub fn start_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -544,7 +589,9 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::call_index(9)]
+		/// End packing messages.
+		/// If exists any packed message it will be enqueued.
+		#[pallet::call_index(10)]
 		#[pallet::weight(T::DbWeight::get().reads_writes(1, 1).saturating_add(Pallet::<T>::weight()))]
 		pub fn end_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -788,5 +835,11 @@ pub mod pallet {
 				.reads_writes(3, 4)
 				.saturating_add(Weight::from_parts(0, T::Message::max_encoded_len() as u64))
 		}
+	}
+}
+
+impl<T: Config> GetByKey<Domain, Option<[u8; 20]>> for Pallet<T> {
+	fn get(domain: &Domain) -> Option<[u8; 20]> {
+		DomainHookAddress::<T>::get(domain)
 	}
 }
