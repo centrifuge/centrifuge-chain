@@ -2984,6 +2984,7 @@ mod benches {
 		[pallet_membership, TechnicalCommitteeMembership]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 

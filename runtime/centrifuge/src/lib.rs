@@ -2817,6 +2817,7 @@ mod benches {
 		[pallet_remarks, Remarks]
 		[pallet_pool_fees, PoolFees]
 		[pallet_token_mux, TokenMux]
+		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 
