@@ -17,7 +17,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_submit(f: impl Fn(T::Message) -> DispatchResult + 'static) {
-			register_call!(move |msg| f(msg));
+			register_call!(f);
 		}
 	}
 

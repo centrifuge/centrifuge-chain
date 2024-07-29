@@ -30,6 +30,10 @@ pub mod test_util {
 	use super::*;
 
 	#[derive(Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(
+		any(test, feature = "std", feature = "runtime-benchmarks"),
+		derive(Default)
+	)]
 	pub struct Message;
 	impl LPEncoding for Message {
 		fn serialize(&self) -> Vec<u8> {

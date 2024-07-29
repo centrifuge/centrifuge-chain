@@ -11,7 +11,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*};
 use frame_system::RawOrigin;
 use parity_scale_codec::EncodeLike;
@@ -20,7 +19,7 @@ use super::*;
 
 #[benchmarks(
 	where
-		T: Config<Message = LPTestMessage>,
+		T: Config,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 )]
 mod benchmarks {
@@ -29,13 +28,13 @@ mod benchmarks {
 	#[benchmark]
 	fn process_message() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = account("acc_0", 0, 0);
-		let message = LPTestMessage {};
+		let message = T::Message::default();
 		let nonce = T::MessageNonce::one();
 
 		MessageQueue::<T>::insert(nonce, message.clone());
 
 		#[cfg(test)]
-		mock::mock_lp_gateway_process_success(message);
+		mock::mock_lp_gateway_process_success::<T>();
 
 		#[extrinsic_call]
 		process_message(RawOrigin::Signed(caller), nonce);
@@ -46,14 +45,14 @@ mod benchmarks {
 	#[benchmark]
 	fn process_failed_message() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = account("acc_0", 0, 0);
-		let message = LPTestMessage {};
+		let message = T::Message::default();
 		let error = DispatchError::Unavailable;
 		let nonce = T::MessageNonce::one();
 
 		FailedMessageQueue::<T>::insert(nonce, (message.clone(), error));
 
 		#[cfg(test)]
-		mock::mock_lp_gateway_process_success(message);
+		mock::mock_lp_gateway_process_success::<T>();
 
 		#[extrinsic_call]
 		process_failed_message(RawOrigin::Signed(caller), nonce);

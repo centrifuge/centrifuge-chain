@@ -61,10 +61,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub fn mock_lp_gateway_process_success(expected_message: LPTestMessage) {
-	LPGatewayMock::mock_process(move |msg| {
-		assert_eq!(msg, expected_message);
-
+pub fn mock_lp_gateway_process_success<T: Config>() {
+	LPGatewayMock::mock_process(move |_| {
 		Ok(PostDispatchInfo {
 			// Defensive weight that we should also use during bookmarks.
 			actual_weight: Some(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 256)),
