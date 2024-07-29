@@ -1,10 +1,9 @@
 use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, OrderId, PoolId, TrancheId,
+	currency_decimals, parachains, AccountId, Balance, InvestmentId, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
-	investments::{OrderManager, TrancheCurrency},
-	liquidity_pools::InboundQueue,
-	IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate, Seconds,
+	investments::OrderManager, liquidity_pools::InboundQueue, IdentityCurrencyConversion,
+	Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -348,16 +347,12 @@ mod utils {
 	pub fn investment_id<T: Runtime + FudgeSupport>(
 		pool_id: u64,
 		tranche_id: TrancheId,
-	) -> cfg_types::tokens::TrancheCurrency {
-		<T as pallet_liquidity_pools::Config>::TrancheCurrency::generate(pool_id, tranche_id)
+	) -> InvestmentId {
+		(pool_id, tranche_id)
 	}
 
-	pub fn default_investment_id<T: Runtime + FudgeSupport>() -> cfg_types::tokens::TrancheCurrency
-	{
-		<T as pallet_liquidity_pools::Config>::TrancheCurrency::generate(
-			POOL_ID,
-			default_tranche_id::<T>(POOL_ID),
-		)
+	pub fn default_investment_id<T: Runtime + FudgeSupport>() -> InvestmentId {
+		(POOL_ID, default_tranche_id::<T>(POOL_ID))
 	}
 
 	pub fn default_order_id<T: Runtime + FudgeSupport>(investor: &AccountId) -> OrderId {

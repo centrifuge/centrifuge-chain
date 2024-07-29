@@ -1,10 +1,6 @@
 use cfg_primitives::{AccountId, Balance, PoolId};
-use cfg_traits::{investments::TrancheCurrency as _, Seconds};
-use cfg_types::{
-	investments::InvestmentPortfolio,
-	permissions::PoolRole,
-	tokens::{CurrencyId, TrancheCurrency},
-};
+use cfg_traits::Seconds;
+use cfg_types::{investments::InvestmentPortfolio, permissions::PoolRole, tokens::CurrencyId};
 use frame_support::traits::fungibles::MutateHold;
 use runtime_common::apis::{
 	runtime_decl_for_investments_api::InvestmentsApiV1, runtime_decl_for_pools_api::PoolsApiV1,
@@ -66,7 +62,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 	let mut env = common::initialize_state_for_investments::<RuntimeEnv<T>, T>();
 
 	let tranche_id = env.parachain_state(|| T::Api::tranche_id(POOL_A, 0).unwrap());
-	let invest_id = TrancheCurrency::generate(POOL_A, tranche_id);
+	let invest_id = (POOL_A, tranche_id);
 
 	let mut investment_portfolio =
 		env.parachain_state(|| T::Api::investment_portfolio(INVESTOR.id()));

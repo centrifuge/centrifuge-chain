@@ -5,7 +5,7 @@ use cfg_types::{
 	permissions::PermissionScope,
 	tokens::{
 		AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
-		LocalAssetId, TrancheCurrency,
+		LocalAssetId,
 	},
 };
 use frame_support::{derive_impl, traits::PalletInfo as _};
@@ -45,10 +45,7 @@ pub const DECIMALS: u8 = 6;
 pub const TRANCHE_CURRENCY: CurrencyId = CurrencyId::Tranche(POOL_ID, TRANCHE_ID);
 pub const TRANCHE_TOKEN_PRICE: Ratio = Ratio::from_rational(10, 1);
 pub const MARKET_RATIO: Ratio = Ratio::from_rational(2, 1);
-pub const INVESTMENT_ID: TrancheCurrency = TrancheCurrency {
-	pool_id: POOL_ID,
-	tranche_id: TRANCHE_ID,
-};
+pub const INVESTMENT_ID: (PoolId, TrancheId) = (POOL_ID, TRANCHE_ID);
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -88,7 +85,6 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 }
 
@@ -102,7 +98,7 @@ impl cfg_mocks::asset_registry::pallet::Config for Runtime {
 impl cfg_mocks::foreign_investment::pallet::Config for Runtime {
 	type Amount = Balance;
 	type CurrencyId = CurrencyId;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = (PoolId, TrancheId);
 	type TrancheAmount = Balance;
 }
 
@@ -178,7 +174,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Time;
 	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = Pools;
 	type TreasuryAccount = TreasuryAccount;

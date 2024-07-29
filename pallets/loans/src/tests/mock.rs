@@ -17,7 +17,7 @@ use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_data, pallet_mock_permissions, pallet_mock_pools,
 };
 use cfg_traits::Millis;
-use cfg_types::{permissions::PermissionScope, tokens::TrancheCurrency};
+use cfg_types::permissions::PermissionScope;
 use frame_support::{
 	derive_impl,
 	traits::{
@@ -168,7 +168,6 @@ impl pallet_mock_pools::Config for Runtime {
 	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 }
 

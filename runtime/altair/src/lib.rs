@@ -24,13 +24,13 @@ use cfg_primitives::{
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
 		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
-		IBalance, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex, PoolEpochId,
-		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
+		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex,
+		PoolEpochId, PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 };
 use cfg_traits::{
-	investments::{OrderManager, TrancheCurrency as _},
-	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds,
+	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	Seconds,
 };
 use cfg_types::{
 	fee_keys::{Fee, FeeKey},
@@ -42,8 +42,7 @@ use cfg_types::{
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
-		AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, LocalAssetId,
-		StakingCurrency, TrancheCurrency,
+		AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, LocalAssetId, StakingCurrency,
 	},
 };
 use constants::currency::*;
@@ -642,7 +641,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..}) |
 					// Borrowers should be able to (un)charge fees as part of the borrow flow
 					RuntimeCall::PoolFees(pallet_pool_fees::Call::charge_fee { .. }) |
-					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. })
+					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. }) |
+					RuntimeCall::Remarks(pallet_remarks::Call::remark { .. })
 				) | ProxyType::PodOperation.filter(c)
 			}
 			ProxyType::Invest => matches!(
@@ -1531,7 +1531,7 @@ impl pallet_pool_system::Config for Runtime {
 	type StringLimit = AssetStringLimit;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
+	type TrancheCurrency = InvestmentId;
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
@@ -1552,7 +1552,6 @@ impl pallet_pool_registry::Config for Runtime {
 	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
 }
@@ -1599,7 +1598,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
-		TrancheCurrency,
+		InvestmentId,
 		u32,
 		Balance,
 		Rate,
@@ -1641,7 +1640,7 @@ impl PoolUpdateGuard for UpdateGuard {
 			.ids_non_residual_top()
 			.iter()
 			.map(|tranche_id| {
-				let investment_id = TrancheCurrency::generate(pool_id, *tranche_id);
+				let investment_id = (pool_id, *tranche_id);
 				Investments::redeem_orders(investment_id).amount
 			})
 			.fold(Balance::zero(), |acc, redemption| {
@@ -1665,7 +1664,7 @@ impl pallet_investments::Config for Runtime {
 	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook = pallet_foreign_investments::CollectedInvestmentHook<Runtime>;
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
@@ -1679,35 +1678,29 @@ pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		T: UnixTime,
-	> PreConditions<OrderType<AccountId, TrancheCurrency, Balance>> for IsTrancheInvestor<P, T>
+	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsTrancheInvestor<P, T>
 {
 	type Result = DispatchResult;
 
-	fn check(order: OrderType<AccountId, TrancheCurrency, Balance>) -> Self::Result {
+	fn check(order: OrderType<AccountId, InvestmentId, Balance>) -> Self::Result {
 		let is_tranche_investor = match order {
 			OrderType::Investment {
 				who,
-				investment_id: tranche,
+				investment_id: (pool_id, tranche_id),
 				..
 			} => P::has(
-				PermissionScope::Pool(tranche.of_pool()),
+				PermissionScope::Pool(pool_id),
 				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(
-					tranche.of_tranche(),
-					T::now().as_secs(),
-				)),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
 			),
 			OrderType::Redemption {
 				who,
-				investment_id: tranche,
+				investment_id: (pool_id, tranche_id),
 				..
 			} => P::has(
-				PermissionScope::Pool(tranche.of_pool()),
+				PermissionScope::Pool(pool_id),
 				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(
-					tranche.of_tranche(),
-					T::now().as_secs(),
-				)),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
 			),
 		};
 
@@ -1771,7 +1764,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type ForeignBalance = Balance;
 	type Hooks = LiquidityPools;
 	type Investment = Investments;
-	type InvestmentId = TrancheCurrency;
+	type InvestmentId = InvestmentId;
 	type OrderBook = OrderBook;
 	type OrderId = OrderId;
 	type PoolBalance = Balance;
@@ -1804,7 +1797,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = PoolSystem;
 	type TreasuryAccount = TreasuryAccount;
@@ -2483,8 +2475,8 @@ impl_runtime_apis! {
 	}
 
 	// Investment Runtime APIs
-	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>> for Runtime {
-		fn investment_portfolio(account_id: AccountId) -> Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)> {
+	impl runtime_common::apis::InvestmentsApi<Block, AccountId, InvestmentId, InvestmentPortfolio<Balance, CurrencyId>> for Runtime {
+		fn investment_portfolio(account_id: AccountId) -> Vec<(InvestmentId, InvestmentPortfolio<Balance, CurrencyId>)> {
 			runtime_common::investment_portfolios::get_account_portfolio::<Runtime>(account_id).unwrap_or_default()
 		}
 	}
