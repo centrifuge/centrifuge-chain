@@ -19,7 +19,8 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
+use sp_arithmetic::traits::BaseArithmetic;
+use sp_runtime::traits::{EnsureAddAssign, One};
 use sp_std::vec::Vec;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -35,6 +36,12 @@ use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	/// Some gateway routers do not return an actual weight when sending a
+	/// message, thus, this default is required, and it's based on:
+	///
+	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
+	pub(crate) const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
+
 	use super::*;
 
 	#[pallet::config]
@@ -47,10 +54,9 @@ pub mod pallet {
 		/// Type used for message identification.
 		type MessageNonce: Parameter
 			+ Member
-			+ AtLeast32BitUnsigned
+			+ BaseArithmetic
 			+ Default
 			+ Copy
-			+ EnsureAdd
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
@@ -122,52 +128,67 @@ pub mod pallet {
 		///
 		/// If the execution fails, the message gets moved to the
 		/// `FailedMessageQueue` storage.
+		///
+		/// NOTE - this extrinsic does not error out during message processing to ensure
+		/// that any storage changes (i.e. to the message queues) are not reverted.
 		#[pallet::weight(T::WeightInfo::process_message())]
 		#[pallet::call_index(0)]
-		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
+		pub fn process_message(
+			origin: OriginFor<T>,
+			nonce: T::MessageNonce,
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			match T::MessageProcessor::process(message.clone()) {
-				Ok(_) => {
-					Self::deposit_event(Event::<T>::MessageExecutionSuccess { nonce, message });
-
-					Ok(())
-				}
+			match Self::process_message_and_deposit_event(nonce, message.clone()) {
+				Ok(p) => Ok(p),
 				Err(e) => {
-					FailedMessageQueue::<T>::insert(nonce, (message.clone(), e.error));
+					FailedMessageQueue::<T>::insert(nonce, (message, e.error));
 
-					Self::deposit_event(Event::<T>::MessageExecutionFailure {
-						nonce,
-						message,
-						error: e.error,
-					});
-
-					Ok(())
+					Ok(e.post_info)
 				}
 			}
 		}
 
 		/// Convenience method for manually processing a failed message.
+		///
+		/// If the execution is successful, the message gets removed from the `FailedMessageQueue` storage.
+		///
+		/// NOTE - this extrinsic does not error out during message processing to ensure
+		/// that any storage changes (i.e. to the message queues) are not reverted.
 		#[pallet::weight(T::WeightInfo::process_failed_message())]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
 			nonce: T::MessageNonce,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			let (message, _) =
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			match T::MessageProcessor::process(message.clone()) {
-				Ok(_) => {
-					Self::deposit_event(Event::<T>::MessageExecutionSuccess { nonce, message });
-
+			match Self::process_message_and_deposit_event(nonce, message.clone()) {
+				Ok(p) => {
 					FailedMessageQueue::<T>::remove(nonce);
 
-					Ok(())
+					Ok(p)
+				}
+				Err(e) => Ok(e.post_info),
+			}
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn process_message_and_deposit_event(
+			nonce: T::MessageNonce,
+			message: T::Message,
+		) -> DispatchResultWithPostInfo {
+			match T::MessageProcessor::process(message.clone()) {
+				Ok(post_dispatch_info) => {
+					Self::deposit_event(Event::<T>::MessageExecutionSuccess { nonce, message });
+
+					Ok(post_dispatch_info)
 				}
 				Err(e) => {
 					Self::deposit_event(Event::<T>::MessageExecutionFailure {
@@ -176,13 +197,11 @@ pub mod pallet {
 						error: e.error,
 					});
 
-					Ok(())
+					Err(e)
 				}
 			}
 		}
-	}
 
-	impl<T: Config> Pallet<T> {
 		fn service_message_queue(max_weight: Weight) -> Weight {
 			let mut weight_used = Weight::zero();
 
@@ -191,13 +210,11 @@ pub mod pallet {
 			for (nonce, message) in MessageQueue::<T>::iter() {
 				processed_entries.push(nonce);
 
-				let weight = match T::MessageProcessor::process(message.clone()) {
+				let weight = match Self::process_message_and_deposit_event(nonce, message.clone()) {
 					Ok(post_info) => {
-						Self::deposit_event(Event::MessageExecutionSuccess { nonce, message });
-
 						post_info
 							.actual_weight
-							.unwrap_or_default()
+							.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
 							// Extra weight breakdown:
 							//
 							// 1 read for the message
@@ -206,17 +223,11 @@ pub mod pallet {
 							.saturating_add(T::DbWeight::get().reads_writes(1, 2))
 					}
 					Err(e) => {
-						Self::deposit_event(Event::MessageExecutionFailure {
-							nonce,
-							message: message.clone(),
-							error: e.error,
-						});
-
 						FailedMessageQueue::<T>::insert(nonce, (message, e.error));
 
 						e.post_info
 							.actual_weight
-							.unwrap_or_default()
+							.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
 							// Extra weight breakdown:
 							//
 							// 1 read for the message

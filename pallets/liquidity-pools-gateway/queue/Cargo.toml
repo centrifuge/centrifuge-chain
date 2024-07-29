@@ -20,6 +20,7 @@ frame-system = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+sp-arithmetic = { workspace = true }
 
 cfg-traits = { workspace = true }
 
@@ -41,6 +42,7 @@ std = [
     "frame-system/std",
     "sp-runtime/std",
     "sp-std/std",
+    "sp-arithmetic/std",
     "frame-benchmarking/std",
     "cfg-primitives/std",
 ]

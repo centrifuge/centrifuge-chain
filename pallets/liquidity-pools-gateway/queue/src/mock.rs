@@ -15,10 +15,13 @@ use cfg_mocks::pallet_mock_liquidity_pools_gateway;
 use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use frame_support::derive_impl;
-use frame_support::dispatch::PostDispatchInfo;
+use frame_support::dispatch::{Pays, PostDispatchInfo};
+use frame_support::pallet_prelude::Weight;
 use sp_runtime::traits::ConstU128;
 
-use crate::{self as pallet_liquidity_pools_gateway_queue, Config};
+use crate::{
+	self as pallet_liquidity_pools_gateway_queue, pallet::DEFAULT_WEIGHT_REF_TIME, Config,
+};
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -60,7 +63,11 @@ pub fn mock_lp_gateway_process_success(expected_message: LPTestMessage) {
 	LPGatewayMock::mock_process(move |msg| {
 		assert_eq!(msg, expected_message);
 
-		Ok(PostDispatchInfo::default())
+		Ok(PostDispatchInfo {
+			// Defensive weight that we should also use during bookmarks.
+			actual_weight: Some(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 256)),
+			pays_fee: Pays::Yes,
+		})
 	});
 }
 
