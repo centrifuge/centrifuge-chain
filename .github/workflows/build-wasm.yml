@@ -102,7 +102,7 @@ jobs:
           echo "::endgroup"
 
       - id: 'auth'
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         uses: 'google-github-actions/auth@5a50e581162a13f4baa8916d01180d2acbc04363' # v2.1.0
         with:
           workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
