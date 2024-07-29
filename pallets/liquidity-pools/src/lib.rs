@@ -72,10 +72,6 @@ use staging_xcm::{
 
 use crate::message::UpdateRestrictionMessage;
 
-// NOTE: Should be replaced with generated weights in the future. For now, let's
-// be defensive.
-pub mod defensive_weights;
-
 /// Serializer for the LiquidityPool's Generic Message Passing Format (GMPF)
 mod gmpf {
 	mod de;
@@ -125,16 +121,12 @@ pub mod pallet {
 	use sp_runtime::{traits::Zero, DispatchError};
 
 	use super::*;
-	use crate::defensive_weights::WeightInfo;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Weight information for extrinsics in this pallet.
-		type WeightInfo: WeightInfo;
-
 		/// The source of truth for the balance of accounts in native currency.
 		type Balance: Parameter
 			+ Member
@@ -358,8 +350,8 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
 		/// Add a pool to a given domain
-		#[pallet::weight(T::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(2, 0))]
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -392,8 +384,8 @@ pub mod pallet {
 		}
 
 		/// Add a tranche to a given domain
-		#[pallet::weight(T::WeightInfo::add_tranche())]
 		#[pallet::call_index(3)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(3, 0))]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -444,8 +436,8 @@ pub mod pallet {
 		/// domain, this call origin can be permissionless.
 		///
 		/// The `currency_id` parameter is necessary for the EVM side.
-		#[pallet::weight(T::WeightInfo::update_token_price())]
 		#[pallet::call_index(4)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(6, 0))]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -489,8 +481,8 @@ pub mod pallet {
 		}
 
 		/// Update a member
-		#[pallet::weight(T::WeightInfo::update_member())]
 		#[pallet::call_index(5)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(6, 0))]
 		pub fn update_member(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -546,8 +538,8 @@ pub mod pallet {
 		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
-		#[pallet::weight(T::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(9, 3))]
 		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -607,8 +599,8 @@ pub mod pallet {
 		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
-		#[pallet::weight(T::WeightInfo::transfer())]
 		#[pallet::call_index(7)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(10, 5))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -674,8 +666,8 @@ pub mod pallet {
 
 		/// Add a currency to the set of known currencies on the domain derived
 		/// from the given currency.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		#[pallet::call_index(8)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(4, 0))]
 		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -698,7 +690,7 @@ pub mod pallet {
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
 		#[pallet::call_index(9)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(Pallet::<T>::outbound_weight(4, 0))]
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -733,8 +725,8 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(<T as Config>::WeightInfo::schedule_upgrade())]
 		#[pallet::call_index(10)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(0, 0))]
 		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
 			evm_chain_id: EVMChainId,
@@ -750,8 +742,8 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(T::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(0, 0))]
 		pub fn cancel_upgrade(
 			origin: OriginFor<T>,
 			evm_chain_id: EVMChainId,
@@ -771,8 +763,8 @@ pub mod pallet {
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
 		/// beforehand.
-		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
+		#[pallet::weight(Pallet::<T>::outbound_weight(3, 0))]
 		pub fn update_tranche_token_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -807,7 +799,7 @@ pub mod pallet {
 		/// Disallow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
 		#[pallet::call_index(13)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(Pallet::<T>::outbound_weight(4, 0))]
 		pub fn disallow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -953,6 +945,12 @@ pub mod pallet {
 		fn domain_account_to_account_id(domain_account: (Domain, [u8; 32])) -> T::AccountId {
 			let domain_address = T::DomainAccountToDomainAddress::convert(domain_account);
 			T::DomainAddressToAccountId::convert(domain_address)
+		}
+
+		fn outbound_weight(reads: u64, writes: u64) -> Weight {
+			Weight::from_parts(1_000_000, 256) //defensive base weights
+				.saturating_add(T::DbWeight::get().reads_writes(reads, writes))
+				.saturating_add(T::OutboundQueue::weight())
 		}
 	}
 

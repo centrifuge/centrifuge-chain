@@ -11,7 +11,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
+use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	pallet_prelude::Weight,
+};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -102,6 +105,9 @@ pub trait OutboundQueue {
 		destination: Self::Destination,
 		msg: Self::Message,
 	) -> DispatchResult;
+
+	/// Returns the required defensive weight to submit any message
+	fn weight() -> Weight;
 }
 
 /// The trait required for processing incoming messages.

@@ -33,5 +33,9 @@ pub mod pallet {
 		fn submit(a: Self::Sender, b: Self::Destination, c: Self::Message) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
+
+		fn weight() -> Weight {
+			Weight::zero()
+		}
 	}
 }

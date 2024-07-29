@@ -531,7 +531,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1).ref_time())]
+		#[pallet::weight(T::DbWeight::get().reads_writes(1, 1))]
 		pub fn start_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -547,13 +547,13 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(9)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())] //TODO: benchmark me
+		#[pallet::weight(T::DbWeight::get().reads_writes(1, 1).saturating_add(Pallet::<T>::weight()))]
 		pub fn end_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			match PackedMessage::<T>::take((&sender, &destination)) {
 				Some(msg) if msg.unpack().is_empty() => Ok(()), //No-op
-				Some(msg) => Self::queue_message(destination, msg),
+				Some(msg) => Self::enqueue_message(destination, msg),
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
 		}
@@ -730,7 +730,7 @@ pub mod pallet {
 			)
 		}
 
-		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
+		fn enqueue_message(destination: Domain, message: T::Message) -> DispatchResult {
 			let nonce = <OutboundMessageNonceStore<T>>::try_mutate(|n| {
 				n.ensure_add_assign(T::OutboundMessageNonce::one())?;
 				Ok::<T::OutboundMessageNonce, DispatchError>(*n)
@@ -781,10 +781,16 @@ pub mod pallet {
 				Some(packed) => {
 					PackedMessage::<T>::insert((sender, destination), packed.pack(message)?)
 				}
-				None => Self::queue_message(destination, message)?,
+				None => Self::enqueue_message(destination, message)?,
 			}
 
 			Ok(())
+		}
+
+		fn weight() -> Weight {
+			T::DbWeight::get()
+				.reads_writes(3, 4)
+				.saturating_add(Weight::from_parts(0, T::Message::max_encoded_len() as u64))
 		}
 	}
 }

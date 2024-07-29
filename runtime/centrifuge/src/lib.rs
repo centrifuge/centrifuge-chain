@@ -1887,7 +1887,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = PoolSystem;
 	type TreasuryAccount = TreasuryAccount;
-	type WeightInfo = ();
 }
 
 parameter_types! {
