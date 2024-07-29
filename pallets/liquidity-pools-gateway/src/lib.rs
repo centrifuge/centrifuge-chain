@@ -560,24 +560,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn try_range<'a, D, F>(
-			slice: &mut &'a [u8],
-			next_steps: usize,
-			error: impl Into<DispatchError>,
-			transformer: F,
-		) -> Result<D, DispatchError>
-		where
-			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
-		{
-			ensure!(slice.len() >= next_steps, error.into());
-
-			let (input, new_slice) = slice.split_at(next_steps);
-			let res = transformer(input)?;
-			*slice = new_slice;
-
-			Ok(res)
-		}
-
 		fn deserialize_message(
 			gateway_origin: GatewayOrigin,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
@@ -594,83 +576,43 @@ pub mod pallet {
 					// Every axelar relay will prepend the (sourceChain,
 					// sourceAddress) from actual origination chain to the
 					// message bytes, with a length identifier
-					let slice_ref = &mut msg.as_slice();
+					let mut input = cfg_utils::BufferReader(msg.as_slice());
 
-					let length_source_chain: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceChainLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
+					let length_source_chain = match input.read_array::<BYTES_U32>() {
+						Some(bytes) => u32::from_be_bytes(*bytes),
+						None => Err(Error::<T>::from(MalformedSourceChainLength))?,
+					};
 
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
+					let source_chain = match input.read_bytes(length_source_chain as usize) {
+						Some(bytes) => bytes.to_vec(),
+						None => Err(Error::<T>::from(MalformedSourceChain))?,
+					};
 
-					let source_chain = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_chain,
-						Error::<T>::from(MalformedSourceChain),
-						|source_chain| Ok(source_chain.to_vec()),
-					)?;
+					let length_source_address = match input.read_array::<BYTES_U32>() {
+						Some(bytes) => u32::from_be_bytes(*bytes),
+						None => Err(Error::<T>::from(MalformedSourceAddressLength))?,
+					};
 
-					let length_source_address: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceAddressLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
-
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
-
-					let source_address = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_address,
-						Error::<T>::from(MalformedSourceAddress),
-						|source_address| {
+					let source_address = match input.read_bytes(length_source_address as usize) {
+						Some(bytes) => {
 							// NOTE: Axelar simply provides the hexadecimal string of an EVM
-							//       address as the `sourceAddress` argument. Solidity does on the
-							//       other side recognize the hex-encoding and encode the hex bytes
-							//       to utf-8 bytes.
+							//       address as the `sourceAddress` argument. Solidity does on
+							// the       other side recognize the hex-encoding and
+							// encode the hex bytes       to utf-8 bytes.
 							//
 							//       Hence, we are reverting this process here.
-							let source_address =
-								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
-									.ok_or(Error::<T>::from(MalformedSourceAddress))?;
+							cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(bytes)
+								.ok_or(Error::<T>::from(MalformedSourceAddress))?
+								.to_vec()
+						}
+						None => Err(Error::<T>::from(MalformedSourceAddress))?,
+					};
 
-							Ok(source_address.to_vec())
-						},
-					)?;
-
-					let origin_msg = Pallet::<T>::try_range(
-						slice_ref,
-						slice_ref.len(),
-						Error::<T>::from(MalformedMessage),
-						|msg| {
-							BoundedVec::try_from(msg.to_vec()).map_err(|_| {
-								DispatchError::Other(
-									"Remaining bytes smaller vector in the first place. qed.",
-								)
-							})
-						},
-					)?;
-
-					let origin_domain =
-						T::OriginRecovery::try_convert((source_chain, source_address))?;
-
-					(origin_domain, origin_msg)
+					(
+						T::OriginRecovery::try_convert((source_chain, source_address))?,
+						BoundedVec::try_from(input.0.to_vec())
+							.map_err(|_| Error::<T>::from(MalformedMessage))?,
+					)
 				}
 			};
 
