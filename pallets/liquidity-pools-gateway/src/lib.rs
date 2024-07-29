@@ -536,14 +536,12 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			PackedMessage::<T>::mutate((&sender, &destination), |msg| match msg {
-				Some(_) => return Err(Error::<T>::MessagePackingAlreadyStarted),
+				Some(_) => Err(Error::<T>::MessagePackingAlreadyStarted.into()),
 				None => {
 					*msg = Some(T::Message::empty());
 					Ok(())
 				}
-			})?;
-
-			Ok(())
+			})
 		}
 
 		#[pallet::call_index(9)]
@@ -712,9 +710,7 @@ pub mod pallet {
 			};
 
 			let serialized = message.serialize();
-
-			let message_weight =
-				read_weight.saturating_add(Weight::from_parts(0, serialized.len() as u64));
+			let serialized_len = serialized.len() as u64;
 
 			let (result, router_weight) = match router.send(sender, serialized) {
 				Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
@@ -725,7 +721,7 @@ pub mod pallet {
 				result,
 				router_weight
 					.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
-					.saturating_add(message_weight)
+					.saturating_add(Weight::from_parts(0, serialized_len))
 					.saturating_add(read_weight),
 			)
 		}
