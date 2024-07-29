@@ -1837,7 +1837,7 @@ impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
 	type Message = pallet_liquidity_pools::Message;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
 }
 
 parameter_types! {
