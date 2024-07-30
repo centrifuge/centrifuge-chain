@@ -13,10 +13,10 @@ pub trait IntoMillis {
 }
 
 /// Type to distinguish NumWrapper as millis
-pub struct MillisType;
+pub struct MillisId;
 
 /// Type to represent milliseconds
-pub type Millis<T> = NumWrapper<T, MillisType>;
+pub type Millis<T> = NumWrapper<T, MillisId>;
 
 macro_rules! into_seconds {
 	($type_name:ident < $t:ty >) => {
@@ -41,10 +41,10 @@ into_seconds!(Millis<u64>);
 into_seconds!(Millis<u128>);
 
 /// Type to distinguish NumWrapper as seconds
-pub struct SecondsType;
+pub struct SecondsId;
 
 /// Type to represent seconds
-pub type Seconds<T> = NumWrapper<T, SecondsType>;
+pub type Seconds<T> = NumWrapper<T, SecondsId>;
 
 macro_rules! into_millis {
 	($type_name:ident < $t:ty >) => {
