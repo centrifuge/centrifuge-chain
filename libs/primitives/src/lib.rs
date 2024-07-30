@@ -187,17 +187,17 @@ pub mod constants {
 	pub const SLOT_DURATION: Millis = MILLISECS_PER_BLOCK;
 
 	// Time is measured by number of blocks.
-	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK.inner as BlockNumber);
+	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK.get() as BlockNumber);
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
 
 	// Seconds units
 	pub const SECONDS_PER_MINUTE: Seconds = Seconds::from(60);
-	pub const SECONDS_PER_HOUR: Seconds = SECONDS_PER_MINUTE.mul(60);
-	pub const SECONDS_PER_DAY: Seconds = SECONDS_PER_HOUR.mul(24);
-	pub const SECONDS_PER_WEEK: Seconds = SECONDS_PER_DAY.mul(7);
-	pub const SECONDS_PER_MONTH: Seconds = SECONDS_PER_DAY.mul(30);
-	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul(365);
+	pub const SECONDS_PER_HOUR: Seconds = SECONDS_PER_MINUTE.mul_int(60);
+	pub const SECONDS_PER_DAY: Seconds = SECONDS_PER_HOUR.mul_int(24);
+	pub const SECONDS_PER_WEEK: Seconds = SECONDS_PER_DAY.mul_int(7);
+	pub const SECONDS_PER_MONTH: Seconds = SECONDS_PER_DAY.mul_int(30);
+	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul_int(365);
 
 	/// Milliseconds per day
 	pub const MILLISECS_PER_DAY: Millis = SECONDS_PER_DAY.into_millis();

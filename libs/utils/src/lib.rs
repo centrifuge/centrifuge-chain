@@ -17,6 +17,7 @@ use parity_scale_codec::Encode;
 use sp_std::cmp::min;
 
 pub mod num_wrapper;
+pub mod time;
 
 /// Build a fixed-size array using as many elements from `src` as possible
 /// without overflowing and ensuring that the array is 0 padded in the case
@@ -209,90 +210,6 @@ pub mod math {
 			assert_eq!(y_coord_in_rect::<u32, u32>((7, 24), (3, 12), 4), Ok(15));
 		}
 	}
-}
-
-pub mod time {
-	use crate::num_wrapper::NumWrapper;
-
-	/// Trait to convert into seconds
-	pub trait IntoSeconds {
-		type Seconds;
-		fn into_seconds(self) -> Self::Seconds;
-	}
-
-	/// Trait to convert into millis
-	pub trait IntoMillis {
-		type Millis;
-		fn into_millis(self) -> Self::Millis;
-	}
-
-	/// Type to distinguish NumWrapper as millis
-	pub struct MillisType;
-
-	/// Type to represent milliseconds
-	pub type Millis<T> = NumWrapper<T, MillisType>;
-
-	macro_rules! into_seconds {
-		($type_name:ident < $t:ty >) => {
-			impl $type_name<$t> {
-				pub const fn into_seconds(self) -> Seconds<$t> {
-					Seconds::from(self.inner / 1000)
-				}
-
-				/// Constant factor multiplication
-				pub const fn mul(self, other: $t) -> Self {
-					Self::from(self.inner * other)
-				}
-			}
-
-			impl IntoSeconds for $type_name<$t> {
-				type Seconds = Seconds<$t>;
-
-				fn into_seconds(self) -> Seconds<$t> {
-					self.into_seconds()
-				}
-			}
-		};
-	}
-
-	into_seconds!(Millis<u16>);
-	into_seconds!(Millis<u32>);
-	into_seconds!(Millis<u64>);
-	into_seconds!(Millis<u128>);
-
-	/// Type to distinguish NumWrapper as seconds
-	pub struct SecondsType;
-
-	/// Type to represent seconds
-	pub type Seconds<T> = NumWrapper<T, SecondsType>;
-
-	macro_rules! into_millis {
-		($type_name:ident < $t:ty >) => {
-			impl $type_name<$t> {
-				pub const fn into_millis(self) -> Millis<$t> {
-					Millis::from(self.inner.saturating_mul(1000))
-				}
-
-				/// Constant factor multiplication
-				pub const fn mul(self, other: $t) -> Self {
-					Self::from(self.inner * other)
-				}
-			}
-
-			impl IntoMillis for $type_name<$t> {
-				type Millis = Millis<$t>;
-
-				fn into_millis(self) -> Millis<$t> {
-					self.into_millis()
-				}
-			}
-		};
-	}
-
-	into_millis!(Seconds<u16>);
-	into_millis!(Seconds<u32>);
-	into_millis!(Seconds<u64>);
-	into_millis!(Seconds<u128>);
 }
 
 #[cfg(test)]

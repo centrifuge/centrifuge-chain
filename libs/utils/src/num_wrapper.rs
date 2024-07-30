@@ -1,7 +1,4 @@
-use parity_scale_codec::{
-	Compact, CompactAs, CompactRef, Decode, Encode, EncodeAsRef, EncodeLike, HasCompact, Input,
-	MaxEncodedLen, Ref, WrapperTypeDecode, WrapperTypeEncode,
-};
+use parity_scale_codec::{Compact, CompactAs, Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{
@@ -13,8 +10,7 @@ use sp_std::{
 	fmt::{self, Debug},
 	marker::PhantomData,
 	ops::{
-		Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, Shr, Sub,
-		SubAssign,
+		Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, Shr, Sub, SubAssign,
 	},
 };
 
@@ -22,7 +18,7 @@ use sp_std::{
 /// type:
 ///
 /// ```
-/// # use crate::num_wrapper::NumWrapper;
+/// # use cfg_utils::num_wrapper::NumWrapper;
 ///
 /// struct Id1;
 /// struct Id2;
@@ -30,10 +26,10 @@ use sp_std::{
 /// type FooU64 = NumWrapper<u64, Id1>;
 /// type BarU64 = NumWrapper<u64, Id2>;
 /// ```
-#[derive(TypeInfo, Serialize, Deserialize)]
+#[derive(TypeInfo, Serialize, Deserialize, Encode, Decode, MaxEncodedLen)]
 #[scale_info(skip_type_params(T, I))]
 pub struct NumWrapper<T, I> {
-	pub inner: T,
+	inner: T,
 	_instance: PhantomData<I>,
 }
 
@@ -46,37 +42,251 @@ impl<T, I> NumWrapper<T, I> {
 	}
 }
 
-/*
-impl<T: From<u8>, I> From<u8> for NumWrapper<T, I> {
-	fn from(other: u8) -> Self {
+macro_rules! const_methods {
+	($t:ty) => {
+		impl<I> NumWrapper<$t, I> {
+			pub const fn add_int(self, other: $t) -> Self {
+				Self::from(self.inner + other)
+			}
+
+			pub const fn sub_int(self, other: $t) -> Self {
+				Self::from(self.inner - other)
+			}
+
+			pub const fn mul_int(self, other: $t) -> Self {
+				Self::from(self.inner * other)
+			}
+
+			pub const fn div_int(self, other: $t) -> Self {
+				Self::from(self.inner / other)
+			}
+
+			pub const fn add(self, other: Self) -> Self {
+				Self::from(self.inner + other.inner)
+			}
+
+			pub const fn sub(self, other: Self) -> Self {
+				Self::from(self.inner - other.inner)
+			}
+
+			pub const fn mul(self, other: Self) -> Self {
+				Self::from(self.inner * other.inner)
+			}
+
+			pub const fn div(self, other: Self) -> Self {
+				Self::from(self.inner / other.inner)
+			}
+
+			pub const fn get(self) -> $t {
+				self.inner
+			}
+		}
+	};
+}
+
+const_methods!(u8);
+const_methods!(u16);
+const_methods!(u32);
+const_methods!(u64);
+const_methods!(u128);
+
+impl<T, I> From<T> for NumWrapper<T, I> {
+	fn from(other: T) -> Self {
 		Self::from((other).into())
 	}
 }
 
-impl<T: From<u16>, I> From<u16> for NumWrapper<T, I> {
-	fn from(other: u16) -> Self {
-		Self::from((other).into())
+///  ------------------ From u8 -----------------------
+
+impl<I> TryFrom<u16> for NumWrapper<u8, I> {
+	type Error = <u8 as TryFrom<u16>>::Error;
+
+	fn try_from(other: u16) -> Result<NumWrapper<u8, I>, Self::Error> {
+		Ok(Self::from(u8::try_from(other)?))
 	}
 }
 
-impl<T: From<u32>, I> From<u32> for NumWrapper<T, I> {
-	fn from(other: u32) -> Self {
-		Self::from((other).into())
+impl<I> TryFrom<u32> for NumWrapper<u8, I> {
+	type Error = <u8 as TryFrom<u32>>::Error;
+
+	fn try_from(other: u32) -> Result<NumWrapper<u8, I>, Self::Error> {
+		Ok(Self::from(u8::try_from(other)?))
 	}
 }
 
-impl<T: From<u64>, I> From<u64> for NumWrapper<T, I> {
-	fn from(other: u64) -> Self {
-		Self::from((other).into())
+impl<I> TryFrom<u64> for NumWrapper<u8, I> {
+	type Error = <u8 as TryFrom<u64>>::Error;
+
+	fn try_from(other: u64) -> Result<NumWrapper<u8, I>, Self::Error> {
+		Ok(Self::from(u8::try_from(other)?))
 	}
 }
 
-impl<T: From<u128>, I> From<u128> for NumWrapper<T, I> {
-	fn from(other: u128) -> Self {
-		Self::from((other).into())
+impl<I> TryFrom<u128> for NumWrapper<u8, I> {
+	type Error = <u8 as TryFrom<u128>>::Error;
+
+	fn try_from(other: u128) -> Result<NumWrapper<u8, I>, Self::Error> {
+		Ok(Self::from(u8::try_from(other)?))
 	}
 }
-*/
+
+impl<I> TryFrom<usize> for NumWrapper<u8, I> {
+	type Error = <u8 as TryFrom<usize>>::Error;
+
+	fn try_from(other: usize) -> Result<NumWrapper<u8, I>, Self::Error> {
+		Ok(Self::from(u8::try_from(other)?))
+	}
+}
+
+///  ------------------ From u16 -----------------------
+
+impl<I> From<u8> for NumWrapper<u16, I> {
+	fn from(other: u8) -> NumWrapper<u16, I> {
+		Self::from(other as u16)
+	}
+}
+
+impl<I> TryFrom<u32> for NumWrapper<u16, I> {
+	type Error = <u16 as TryFrom<u32>>::Error;
+
+	fn try_from(other: u32) -> Result<NumWrapper<u16, I>, Self::Error> {
+		Ok(Self::from(u16::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<u64> for NumWrapper<u16, I> {
+	type Error = <u16 as TryFrom<u64>>::Error;
+
+	fn try_from(other: u64) -> Result<NumWrapper<u16, I>, Self::Error> {
+		Ok(Self::from(u16::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<u128> for NumWrapper<u16, I> {
+	type Error = <u16 as TryFrom<u128>>::Error;
+
+	fn try_from(other: u128) -> Result<NumWrapper<u16, I>, Self::Error> {
+		Ok(Self::from(u16::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<usize> for NumWrapper<u16, I> {
+	type Error = <u16 as TryFrom<usize>>::Error;
+
+	fn try_from(other: usize) -> Result<NumWrapper<u16, I>, Self::Error> {
+		Ok(Self::from(u16::try_from(other)?))
+	}
+}
+
+///  ------------------ From u32 -----------------------
+
+impl<I> From<u8> for NumWrapper<u32, I> {
+	fn from(other: u8) -> NumWrapper<u32, I> {
+		Self::from(other as u32)
+	}
+}
+
+impl<I> From<u16> for NumWrapper<u32, I> {
+	fn from(other: u16) -> NumWrapper<u32, I> {
+		Self::from(other as u32)
+	}
+}
+
+impl<I> TryFrom<u64> for NumWrapper<u32, I> {
+	type Error = <u32 as TryFrom<u64>>::Error;
+
+	fn try_from(other: u64) -> Result<NumWrapper<u32, I>, Self::Error> {
+		Ok(Self::from(u32::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<u128> for NumWrapper<u32, I> {
+	type Error = <u32 as TryFrom<u128>>::Error;
+
+	fn try_from(other: u128) -> Result<NumWrapper<u32, I>, Self::Error> {
+		Ok(Self::from(u32::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<usize> for NumWrapper<u32, I> {
+	type Error = <u32 as TryFrom<usize>>::Error;
+
+	fn try_from(other: usize) -> Result<NumWrapper<u32, I>, Self::Error> {
+		Ok(Self::from(u32::try_from(other)?))
+	}
+}
+
+///  ------------------ From u64 -----------------------
+
+impl<I> From<u8> for NumWrapper<u64, I> {
+	fn from(other: u8) -> NumWrapper<u64, I> {
+		Self::from(other as u64)
+	}
+}
+
+impl<I> From<u16> for NumWrapper<u64, I> {
+	fn from(other: u16) -> NumWrapper<u64, I> {
+		Self::from(other as u64)
+	}
+}
+
+impl<I> From<u32> for NumWrapper<u64, I> {
+	fn from(other: u32) -> NumWrapper<u64, I> {
+		Self::from(other as u64)
+	}
+}
+
+impl<I> TryFrom<u128> for NumWrapper<u64, I> {
+	type Error = <u64 as TryFrom<u128>>::Error;
+
+	fn try_from(other: u128) -> Result<NumWrapper<u64, I>, Self::Error> {
+		Ok(Self::from(u64::try_from(other)?))
+	}
+}
+
+impl<I> TryFrom<usize> for NumWrapper<u64, I> {
+	type Error = <u64 as TryFrom<usize>>::Error;
+
+	fn try_from(other: usize) -> Result<NumWrapper<u64, I>, Self::Error> {
+		Ok(Self::from(u64::try_from(other)?))
+	}
+}
+
+///  ------------------ From u128 -----------------------
+
+impl<I> From<u8> for NumWrapper<u128, I> {
+	fn from(other: u8) -> NumWrapper<u128, I> {
+		Self::from(other as u128)
+	}
+}
+
+impl<I> From<u16> for NumWrapper<u128, I> {
+	fn from(other: u16) -> NumWrapper<u128, I> {
+		Self::from(other as u128)
+	}
+}
+
+impl<I> From<u32> for NumWrapper<u128, I> {
+	fn from(other: u32) -> NumWrapper<u128, I> {
+		Self::from(other as u128)
+	}
+}
+
+impl<I> From<u64> for NumWrapper<u128, I> {
+	fn from(other: u64) -> NumWrapper<u128, I> {
+		Self::from(other as u128)
+	}
+}
+
+impl<I> TryFrom<usize> for NumWrapper<u128, I> {
+	type Error = <u128 as TryFrom<usize>>::Error;
+
+	fn try_from(other: usize) -> Result<NumWrapper<u128, I>, Self::Error> {
+		Ok(Self::from(u128::try_from(other)?))
+	}
+}
+
+/// -------------------  Into T -----------------------
 
 impl<T: TryInto<u8>, I> TryInto<u8> for NumWrapper<T, I> {
 	type Error = T::Error;
@@ -114,6 +324,14 @@ impl<T: TryInto<u128>, I> TryInto<u128> for NumWrapper<T, I> {
 	type Error = T::Error;
 
 	fn try_into(self) -> Result<u128, Self::Error> {
+		Ok(self.inner.try_into()?)
+	}
+}
+
+impl<T: TryInto<usize>, I> TryInto<usize> for NumWrapper<T, I> {
+	type Error = T::Error;
+
+	fn try_into(self) -> Result<usize, Self::Error> {
 		Ok(self.inner.try_into()?)
 	}
 }
@@ -346,132 +564,68 @@ impl<T: Bounded, I> Bounded for NumWrapper<T, I> {
 	}
 }
 
-/*
-impl<T: Encode, I> Encode for NumWrapper<T, I> {
-	fn encode(&self) -> Vec<u8> {
-		self.inner.encode()
-	}
-}
-
-impl<T: Decode, I> Decode for NumWrapper<T, I> {
-	fn decode<In: Input>(input: &mut In) -> Result<Self, parity_scale_codec::Error> {
-		Ok(Self::from(T::decode(input)?))
-	}
-}
-*/
-
-impl<T, I> Deref for NumWrapper<T, I> {
-	type Target = T;
-
-	fn deref(&self) -> &Self::Target {
-		&self.inner
-	}
-}
-
-impl<T, I> WrapperTypeEncode for NumWrapper<T, I> {}
-
-impl<T: Into<Self>, I> WrapperTypeDecode for NumWrapper<T, I> {
-	type Wrapped = T;
-}
-
-impl<T, I> From<T> for NumWrapper<T, I> {
-	fn from(other: T) -> Self {
-		Self::from(other)
-	}
-}
-
-impl<T, I> From<Compact<T>> for NumWrapper<T, I> {
-	fn from(other: Compact<T>) -> Self {
-		Self::from(other.0)
-	}
-}
-
 impl<T, I> From<Compact<Self>> for NumWrapper<T, I> {
 	fn from(other: Compact<Self>) -> Self {
 		other.0
 	}
 }
 
-impl<T: CompactAs, I> CompactAs for NumWrapper<T, I> {
-	type As = T::As;
+impl<T, I> CompactAs for NumWrapper<T, I> {
+	type As = T;
 
 	fn encode_as(&self) -> &Self::As {
-		self.inner.encode_as()
+		&self.inner
 	}
 
 	fn decode_from(x: Self::As) -> Result<Self, parity_scale_codec::Error> {
-		Ok(Self::from(T::decode_from(x)?))
+		Ok(Self::from(x))
 	}
 }
-
-impl<T: MaxEncodedLen, I> MaxEncodedLen for NumWrapper<T, I> {
-	fn max_encoded_len() -> usize {
-		T::max_encoded_len()
-	}
-}
-
-impl<'a, T: 'a, I: 'a> EncodeAsRef<'a, Self> for NumWrapper<T, I>
-where
-	CompactRef<'a, T>: Encode + From<&'a Self>,
-{
-	type RefType = CompactRef<'a, T>;
-}
-
-impl<T: EncodeLike, I> EncodeLike for NumWrapper<T, I> {}
-impl<T: Encode, I> EncodeLike<T> for NumWrapper<T, I> {}
-impl<T: Encode, I> EncodeLike<T> for &NumWrapper<T, I> {}
 
 #[cfg(test)]
 mod tests {
+	use frame_support::Parameter;
+	use parity_scale_codec::{EncodeLike, HasCompact};
 	use sp_arithmetic::traits::BaseArithmetic;
+	use sp_runtime::traits::Member;
 
 	use super::*;
 
-	/*
-	#[derive(Debug, PartialEq, Encode, Decode)]
-	enum TestGenericHasCompact {
-		A {
-			#[codec(compact)]
-			a: NumWrapper<u64, ()>,
-		},
-	}
-	*/
-
 	fn is_has_compact<T: HasCompact>() {}
-
-	#[test]
-	fn ensure_is_has_compact() {
-		/*
-		#[derive(Encode, Decode, MaxEncodedLen)]
-		struct Example {
-			#[codec(compact)]
-			a: NumWrapper<u64, ()>,
-		}
-
-		let example = Example { a: 256.into() };
-
-		let encoded = (&example).encode();
-
-		dbg!(encoded);
-		panic!()
-			*/
-
-		is_has_compact::<NumWrapper<u64, ()>>();
-	}
-
-	/*
-	#[test]
-	fn foo() {
-		Compact
-	} EncodeAsRef,
-	*/
-
-	/*
 	fn is_base_arithmetic<T: BaseArithmetic>() {}
+	fn is_encode<T: Encode + Decode + MaxEncodedLen>() {}
+	fn is_member<T: Member>() {}
+	fn is_parameter<T: Parameter>() {}
+	fn is_type_info<T: TypeInfo>() {}
+	fn is_encode_like<T: EncodeLike>() {}
 
-	#[test]
-	fn ensure_is_base_arithmetic() {
-		is_base_arithmetic::<NumWrapper<u64, ()>>();
+	// Id does not require any implementation
+	struct Id;
+
+	macro_rules! check_wrapper {
+		($name:ident, $t:ty) => {
+			mod $name {
+				use super::*;
+
+				#[test]
+				fn check_wrapper() {
+					type Num = NumWrapper<$t, Id>;
+
+					is_has_compact::<Num>();
+					is_base_arithmetic::<Num>();
+					is_encode::<Num>();
+					is_member::<Num>();
+					is_parameter::<Num>();
+					is_type_info::<Num>();
+					is_encode_like::<Num>();
+				}
+			}
+		};
 	}
-	*/
+
+	check_wrapper!(u8_type, u8);
+	check_wrapper!(u16_type, u8);
+	check_wrapper!(u32_type, u8);
+	check_wrapper!(u64_type, u8);
+	check_wrapper!(u128_type, u8);
 }
