@@ -116,9 +116,11 @@ impl<T: pallet_aura::Config<AuthorityId = AuraId>> FindAuthor<H160> for FindAuth
 /// NOTE: If the above file changes, this code needs to be adapted as follows:
 ///  1. Update the `liquidity-pools` submodule to the latest desired state
 ///  2. Build with `forge-build`
-///  3. Go to `./out/PassthroughAdapter.sol` and copy-paste the `deployedBytecode` here.
+///  3. Go to `./out/PassthroughAdapter.sol` and copy-paste the
+///     `deployedBytecode` here.
 ///  4. Run tests and update mismatching hashes.
-///  5. On Development chain, you might also have to update the `evm.accountCodes` storage via raw writing.
+///  5. On Development chain, you might also have to update the
+///     `evm.accountCodes` storage via raw writing.
 ///
 /// Blake256 hash of the deployed passthrough router contract code as
 /// Encoded::encode(Vec<Code>):
@@ -161,7 +163,8 @@ mod tests {
 	fn stable_passthrough_location() {
 		assert_eq!(
 			passthrough_router_location().as_bytes(),
-			// NOTE: Any change to this value requires to set a new domain router on dev with `targetContractAddress` matching the updated hash.
+			// NOTE: Any change to this value requires to set a new domain router on dev with
+			// `targetContractAddress` matching the updated hash.
 			hex_literal::hex!("33e7daf228e7613ba85ef6c3647dbceb0f011f7c")
 		);
 	}
@@ -170,7 +173,8 @@ mod tests {
 	fn stable_passthrough_bytecode_hash() {
 		assert_eq!(
 			BlakeTwo256::hash_of(&PASSTHROUGH_ROUTER_ACCOUNT_CODES.to_vec()),
-			// NOTE: Any change to this value requires to set a new domain router on dev with `targetContractHash` matching the updated hash.
+			// NOTE: Any change to this value requires to set a new domain router on dev with
+			// `targetContractHash` matching the updated hash.
 			hex_literal::hex!("283d01c648e109952e3120e8928a19614c5c694477c780920ac29a748f96babf")
 				.into()
 		);
