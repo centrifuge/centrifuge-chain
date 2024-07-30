@@ -200,10 +200,10 @@ impl BatchMessages {
 	RuntimeDebug,
 	TypeInfo,
 	MaxEncodedLen,
+	Default,
 )]
-#[cfg_attr(feature = "runtime-benchmarks", derive(Default))]
 pub enum Message<BatchContent = BatchMessages> {
-	#[cfg_attr(feature = "runtime-benchmarks", default)]
+	#[default]
 	Invalid,
 	// --- Gateway ---
 	/// Proof a message has been executed.
