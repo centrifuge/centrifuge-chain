@@ -16,7 +16,7 @@ use crate::{
 };
 
 const USER: AccountId = 1;
-const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
+const INVESTMENT_ID: (PoolId, TrancheId) = (42, 23);
 const FOREIGN_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 const STABLE_RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr

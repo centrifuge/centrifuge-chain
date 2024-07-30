@@ -21,7 +21,6 @@ use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::PermissionScope,
 	pools::{PayableFeeAmount, PoolFeeAmount, PoolFeeEditor, PoolFeeType},
-	tokens::TrancheCurrency,
 };
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
@@ -98,7 +97,6 @@ impl pallet_mock_pools::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 }
 

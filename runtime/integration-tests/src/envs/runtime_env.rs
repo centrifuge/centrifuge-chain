@@ -191,9 +191,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 		ext.execute_with(|| {
 			// Precompiles need to have code-set
 			pallet_evm::GenesisConfig::<T> {
-				accounts: runtime_common::evm::precompile::utils::precompile_account_genesis::<
-					T::PrecompilesTypeExt,
-				>(),
+				accounts: runtime_common::evm::utils::account_genesis::<T::PrecompilesTypeExt>(),
 				_marker: PhantomData::default(),
 			}
 			.build();

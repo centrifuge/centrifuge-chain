@@ -133,7 +133,6 @@ default = ["std"]
 std = [
   "parity-scale-codec/std",
   "log/std",
-
   # Substrate related
   "frame-support/std",
   "frame-system/std",
@@ -161,7 +160,6 @@ std = [
   "sp-api/std",
   "sp-arithmetic/std",
   "sp-core/std",
-  "sp-core/std",
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
@@ -169,14 +167,12 @@ std = [
   "xcm-primitives/std",
   "staging-xcm-builder/std",
   "staging-xcm/std",
-
   # Locals
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
   "cfg-utils/std",
   "cfg-mocks/std",
-
   # Pallet exporting list
   "axelar-gateway-precompile/std",
   "chainbridge/std",
@@ -255,14 +251,12 @@ runtime-benchmarks = [
   "staging-xcm-builder/runtime-benchmarks",
   "polkadot-parachain-primitives/runtime-benchmarks",
   "cumulus-primitives-core/runtime-benchmarks",
-
   # Locals
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
-
   # Pallet exporting list
   "axelar-gateway-precompile/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
@@ -329,7 +323,6 @@ try-runtime = [
   "cfg-mocks/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
-
   # Pallet exporting list
   "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",

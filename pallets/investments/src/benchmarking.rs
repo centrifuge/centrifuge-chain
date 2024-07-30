@@ -39,7 +39,7 @@ where
 
 		#[cfg(test)]
 		crate::mock::MockAccountant::mock_bench_default_investment_id(|_| {
-			crate::mock::InvestmentId::default()
+			cfg_primitives::InvestmentId::default()
 		});
 
 		T::Accountant::bench_create_funded_pool(pool_id, &pool_admin);
