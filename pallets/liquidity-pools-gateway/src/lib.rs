@@ -99,7 +99,6 @@ pub mod pallet {
 	};
 
 	#[pallet::pallet]
-
 	pub struct Pallet<T>(_);
 
 	#[pallet::origin]
