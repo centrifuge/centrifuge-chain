@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1301,
+	spec_version: 1303,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -735,7 +735,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::TokenMux(pallet_token_mux::Call::match_swap {..}) |
 					// Borrowers should be able to (un)charge fees as part of the borrow flow
 					RuntimeCall::PoolFees(pallet_pool_fees::Call::charge_fee { .. }) |
-					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. })
+					RuntimeCall::PoolFees(pallet_pool_fees::Call::uncharge_fee { .. }) |
+					RuntimeCall::Remarks(pallet_remarks::Call::remark { .. })
 				) | ProxyType::PodOperation.filter(c)
 			}
 			ProxyType::Invest => matches!(
@@ -2071,7 +2072,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1301,
+	migrations::UpgradeCentrifuge1303,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
