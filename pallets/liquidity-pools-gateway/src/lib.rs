@@ -29,11 +29,17 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{
+		InboundQueue, LPEncoding, MessageProcessor, OutboundQueue, Router as DomainRouter,
+	},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
+use frame_support::{
+	dispatch::{DispatchResult, PostDispatchInfo},
+	pallet_prelude::*,
+	PalletError,
+};
 use frame_system::{
 	ensure_signed,
 	pallet_prelude::{BlockNumberFor, OriginFor},
@@ -864,5 +870,13 @@ pub mod pallet {
 impl<T: Config> GetByKey<Domain, Option<[u8; 20]>> for Pallet<T> {
 	fn get(domain: &Domain) -> Option<[u8; 20]> {
 		DomainHookAddress::<T>::get(domain)
+	}
+}
+
+impl<T: Config> MessageProcessor for Pallet<T> {
+	type Message = T::Message;
+
+	fn process(_: Self::Message) -> DispatchResultWithPostInfo {
+		Ok(PostDispatchInfo::default())
 	}
 }

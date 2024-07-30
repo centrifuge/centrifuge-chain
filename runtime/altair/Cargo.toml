@@ -108,6 +108,7 @@ pallet-investments = { workspace = true }
 pallet-keystore = { workspace = true }
 pallet-liquidity-pools = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
+pallet-liquidity-pools-gateway-queue = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
@@ -272,6 +273,7 @@ std = [
   "pallet-xcm-transactor/std",
   "pallet-message-queue/std",
   "staging-parachain-info/std",
+  "pallet-liquidity-pools-gateway-queue/std",
 ]
 
 runtime-benchmarks = [
@@ -356,6 +358,7 @@ runtime-benchmarks = [
   "pallet-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
   "pallet-message-queue/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway-queue/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -446,6 +449,7 @@ try-runtime = [
   "pallet-xcm-transactor/try-runtime",
   "pallet-message-queue/try-runtime",
   "staging-parachain-info/try-runtime",
+  "pallet-liquidity-pools-gateway-queue/try-runtime",
 ]
 
 # Enable the metadata hash generation.

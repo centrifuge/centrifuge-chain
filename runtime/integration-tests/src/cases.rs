@@ -6,6 +6,7 @@ mod ethereum_transaction;
 mod example;
 mod investments;
 mod liquidity_pools;
+mod liquidity_pools_gateway_queue;
 mod loans;
 mod lp;
 mod oracles;

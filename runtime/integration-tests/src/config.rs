@@ -136,6 +136,7 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Ratio,
 	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
+	+ pallet_liquidity_pools_gateway_queue::Config<Message = Message>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
@@ -217,6 +218,7 @@ pub trait Runtime:
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
 		+ From<pallet_liquidity_pools_gateway::Call<Self>>
+		+ From<pallet_liquidity_pools_gateway_queue::Call<Self>>
 		+ From<pallet_remarks::Call<Self>>
 		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_utility::Call<Self>>
@@ -239,6 +241,7 @@ pub trait Runtime:
 		+ TryInto<pallet_loans::Event<Self>>
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
+		+ TryInto<pallet_liquidity_pools_gateway_queue::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
 		+ TryInto<pallet_ethereum::Event>
 		+ TryInto<pallet_evm::Event<Self>>
@@ -257,6 +260,7 @@ pub trait Runtime:
 		+ From<pallet_collator_selection::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
 		+ From<pallet_liquidity_pools_gateway::Event<Self>>
+		+ From<pallet_liquidity_pools_gateway_queue::Event<Self>>
 		+ From<pallet_order_book::Event<Self>>
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>

@@ -200,8 +200,10 @@ impl BatchMessages {
 	RuntimeDebug,
 	TypeInfo,
 	MaxEncodedLen,
+	Default,
 )]
 pub enum Message<BatchContent = BatchMessages> {
+	#[default]
 	Invalid,
 	// --- Gateway ---
 	/// Proof a message has been executed.
@@ -286,9 +288,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Add a pool to a domain.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	AddPool {
-		pool_id: u64,
-	},
+	AddPool { pool_id: u64 },
 	/// Add a tranche to an already existing pool on the target domain.
 	/// The decimals of a tranche MUST be equal to the decimals of a pool.
 	/// Thus, consuming domains MUST take care of storing the decimals upon
@@ -309,18 +309,12 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Allow a currency to be used as a pool currency and to invest in a pool.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	AllowAsset {
-		pool_id: u64,
-		currency: u128,
-	},
+	AllowAsset { pool_id: u64, currency: u128 },
 	/// Disallow a currency to be used as a pool currency and to invest in a
 	/// pool.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	DisallowAsset {
-		pool_id: u64,
-		currency: u128,
-	},
+	DisallowAsset { pool_id: u64, currency: u128 },
 	/// Update the price of a tranche token on the target domain.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.

@@ -27,6 +27,7 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex,
 		PoolEpochId, PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
+	LPGatewayQueueMessageNonce,
 };
 use cfg_traits::{
 	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
@@ -1823,6 +1824,14 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
+	type Message = pallet_liquidity_pools::Message;
+	type MessageNonce = LPGatewayQueueMessageNonce;
+	type MessageProcessor = LiquidityPoolsGateway;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
+}
+
 parameter_types! {
 	pub const TokenMuxPalletId: PalletId = cfg_types::ids::TOKEN_MUX_PALLET_ID;
 }
@@ -2158,6 +2167,7 @@ construct_runtime!(
 		// Removed: Migration = 199
 		// Removed: Swaps = 200
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
+		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 202,
 	}
 );
 
@@ -2862,6 +2872,7 @@ mod benches {
 		[pallet_membership, TechnicalCommitteeMembership]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 
