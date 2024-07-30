@@ -262,8 +262,6 @@ mod tests {
 		use super::*;
 		use crate::fixed_point::{Quantity, Rate};
 
-		type Balance = u128;
-
 		#[test]
 		fn rate_zero() {
 			assert_eq!(

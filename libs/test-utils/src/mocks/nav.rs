@@ -14,7 +14,8 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{PoolNAV, Seconds};
+	use cfg_primitives::Seconds;
+	use cfg_traits::PoolNAV;
 	use frame_support::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, Zero};
@@ -53,7 +54,7 @@ pub mod pallet {
 		}
 
 		pub fn latest(pool_id: T::PoolId) -> (T::Balance, Seconds) {
-			Nav::<T>::get(pool_id).unwrap_or((T::Balance::zero(), 0))
+			Nav::<T>::get(pool_id).unwrap_or((T::Balance::zero(), Seconds::zero()))
 		}
 	}
 

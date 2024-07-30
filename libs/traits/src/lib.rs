@@ -18,6 +18,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::Seconds;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
@@ -62,7 +63,7 @@ pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
 	type RuntimeOrigin;
 	// nav returns the nav and the last time it was calculated
-	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
+	fn nav(pool_id: PoolId) -> Option<(Amount, Seconds)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 	fn initialise(
 		origin: Self::RuntimeOrigin,
@@ -384,7 +385,7 @@ pub trait TryConvert<A, B> {
 
 /// Trait to obtain the time as seconds
 pub trait TimeAsSecs: UnixTime {
-	fn now() -> cfg_primitives::Seconds {
+	fn now() -> Seconds {
 		<Self as UnixTime>::now().as_secs().into()
 	}
 }
