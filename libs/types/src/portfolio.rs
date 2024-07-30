@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{Seconds, TimeAsSecs};
+use cfg_primitives::Seconds;
+use cfg_traits::TimeAsSecs;
 use frame_support::{pallet_prelude::RuntimeDebug, traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -179,7 +180,7 @@ mod tests {
 
 	#[test]
 	fn general_usage() {
-		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(10);
+		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(Seconds::from(10));
 
 		assert_ok!(portfolio.insert_elem(1, 100));
 		assert_ok!(portfolio.insert_elem(2, 200));

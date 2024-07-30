@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{Properties, Seconds, TimeAsSecs};
+use cfg_primitives::Seconds;
+use cfg_traits::{Properties, TimeAsSecs};
 use frame_support::{traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -185,7 +186,7 @@ where
 /// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
 /// Seconds) variant. This UNION shall reflect that and explain to the reader
 /// why it is passed here.
-pub const UNION: Seconds = 0;
+pub const UNION: Seconds = Seconds::from(0);
 
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
@@ -459,36 +460,33 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: u64 = 4;
+		pub const MinDelay: Seconds = Seconds::from(4);
 		pub const MaxTranches: u32 = 5;
 	}
 
 	struct Now;
 	impl Now {
-		fn pass(delta: u64) {
+		fn pass(delta: Seconds) {
 			unsafe {
 				let current = NOW_HOLDER;
-				NOW_HOLDER = current + delta;
+				NOW_HOLDER = current.add(delta);
 			};
 		}
 
-		fn set(now: u64) {
+		fn set(now: Seconds) {
 			unsafe {
 				NOW_HOLDER = now;
 			};
 		}
 	}
 
-	static mut NOW_HOLDER: u64 = 0;
+	static mut NOW_HOLDER: Seconds = Seconds::from(0);
 	impl frame_support::traits::UnixTime for Now {
 		fn now() -> Duration {
-			unsafe { Duration::new(NOW_HOLDER, 0) }
+			unsafe { Duration::new(NOW_HOLDER.get(), 0) }
 		}
 	}
 
-	/// The exists call does not care what is passed as moment. This type shall
-	/// reflect that
-	const UNION: u64 = 0u64;
 	/// The tranceh id type we use in our runtime-common. But we don't want a
 	/// dependency here.
 	type TrancheId = [u8; 16];
@@ -507,19 +505,19 @@ mod tests {
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				10
+				Seconds::from(10)
 			)))
 			.is_ok());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				9
+				Seconds::from(9)
 			)))
 			.is_err());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				11
+				Seconds::from(11)
 			)))
 			.is_ok());
 
@@ -543,10 +541,10 @@ mod tests {
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(0),
-				0
+				Seconds::from(0)
 			)))
 			.is_err());
-		Now::pass(1);
+		Now::pass(Seconds::from(1));
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			UNION
@@ -561,7 +559,7 @@ mod tests {
 			into_tranche_id(0),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::from(0));
 
 		// Removing after MinDelay works (i.e. this is after min_delay the account will
 		// be invalid)
@@ -571,12 +569,12 @@ mod tests {
 				MinDelay::get()
 			)))
 			.is_ok());
-		Now::pass(6);
+		Now::pass(Seconds::from(6));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::from(0));
 
 		// Multiple tranches work
 		assert!(roles
@@ -624,12 +622,12 @@ mod tests {
 			into_tranche_id(8),
 			UNION
 		))));
-		Now::pass(1);
+		Now::pass(Seconds::from(1));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::from(0));
 
 		// Role must be added for at least min_delay
 		assert!(roles

@@ -45,21 +45,8 @@ impl<T, I> NumWrapper<T, I> {
 macro_rules! const_methods {
 	($t:ty) => {
 		impl<I> NumWrapper<$t, I> {
-			pub const fn add_int(self, other: $t) -> Self {
-				Self::from(self.inner + other)
-			}
-
-			pub const fn sub_int(self, other: $t) -> Self {
-				Self::from(self.inner - other)
-			}
-
-			pub const fn mul_int(self, other: $t) -> Self {
-				Self::from(self.inner * other)
-			}
-
-			pub const fn div_int(self, other: $t) -> Self {
-				Self::from(self.inner / other)
-			}
+			pub const MAX: Self = Self::from(<$t>::MAX);
+			pub const MIN: Self = Self::from(<$t>::MIN);
 
 			pub const fn add(self, other: Self) -> Self {
 				Self::from(self.inner + other.inner)
@@ -75,6 +62,38 @@ macro_rules! const_methods {
 
 			pub const fn div(self, other: Self) -> Self {
 				Self::from(self.inner / other.inner)
+			}
+
+			pub const fn saturating_add(self, other: Self) -> Self {
+				Self::from(self.inner.saturating_add(other.inner))
+			}
+
+			pub const fn saturating_sub(self, other: Self) -> Self {
+				Self::from(self.inner.saturating_sub(other.inner))
+			}
+
+			pub const fn saturating_mul(self, other: Self) -> Self {
+				Self::from(self.inner.saturating_mul(other.inner))
+			}
+
+			pub const fn saturating_div(self, other: Self) -> Self {
+				Self::from(self.inner.saturating_div(other.inner))
+			}
+
+			pub const fn add_int(self, other: $t) -> Self {
+				Self::from(self.inner + other)
+			}
+
+			pub const fn sub_int(self, other: $t) -> Self {
+				Self::from(self.inner - other)
+			}
+
+			pub const fn mul_int(self, other: $t) -> Self {
+				Self::from(self.inner * other)
+			}
+
+			pub const fn div_int(self, other: $t) -> Self {
+				Self::from(self.inner / other)
 			}
 
 			pub const fn get(self) -> $t {
@@ -320,11 +339,9 @@ impl<T: TryInto<u64>, I> TryInto<u64> for NumWrapper<T, I> {
 	}
 }
 
-impl<T: TryInto<u128>, I> TryInto<u128> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<u128, Self::Error> {
-		Ok(self.inner.try_into()?)
+impl<T: Into<u128>, I> Into<u128> for NumWrapper<T, I> {
+	fn into(self) -> u128 {
+		self.inner.into()
 	}
 }
 
@@ -335,6 +352,8 @@ impl<T: TryInto<usize>, I> TryInto<usize> for NumWrapper<T, I> {
 		Ok(self.inner.try_into()?)
 	}
 }
+
+/// -----------------------------------------------------
 
 impl<T: Default, I> Default for NumWrapper<T, I> {
 	fn default() -> Self {
@@ -432,6 +451,46 @@ impl<T: Shr<u32, Output = T>, I> Shr<u32> for NumWrapper<T, I> {
 	}
 }
 
+impl<T: Add<Output = T>, I> Add<T> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn add(self, rhs: T) -> Self {
+		Self::from(self.inner.add(rhs))
+	}
+}
+
+impl<T: Sub<Output = T>, I> Sub<T> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn sub(self, rhs: T) -> Self {
+		Self::from(self.inner.sub(rhs))
+	}
+}
+
+impl<T: Mul<Output = T>, I> Mul<T> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn mul(self, rhs: T) -> Self {
+		Self::from(self.inner.mul(rhs))
+	}
+}
+
+impl<T: Div<Output = T>, I> Div<T> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn div(self, rhs: T) -> Self {
+		Self::from(self.inner.div(rhs))
+	}
+}
+
+impl<T: Rem<Output = T>, I> Rem<T> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn rem(self, rhs: T) -> Self {
+		Self::from(self.inner.rem(rhs))
+	}
+}
+
 impl<T: AddAssign, I> AddAssign for NumWrapper<T, I> {
 	fn add_assign(&mut self, rhs: Self) {
 		self.inner.add_assign(rhs.inner)
@@ -459,6 +518,36 @@ impl<T: DivAssign, I> DivAssign for NumWrapper<T, I> {
 impl<T: RemAssign, I> RemAssign for NumWrapper<T, I> {
 	fn rem_assign(&mut self, rhs: Self) {
 		self.inner.rem_assign(rhs.inner)
+	}
+}
+
+impl<T: AddAssign, I> AddAssign<T> for NumWrapper<T, I> {
+	fn add_assign(&mut self, rhs: T) {
+		self.inner.add_assign(rhs)
+	}
+}
+
+impl<T: SubAssign, I> SubAssign<T> for NumWrapper<T, I> {
+	fn sub_assign(&mut self, rhs: T) {
+		self.inner.sub_assign(rhs)
+	}
+}
+
+impl<T: MulAssign, I> MulAssign<T> for NumWrapper<T, I> {
+	fn mul_assign(&mut self, rhs: T) {
+		self.inner.mul_assign(rhs)
+	}
+}
+
+impl<T: DivAssign, I> DivAssign<T> for NumWrapper<T, I> {
+	fn div_assign(&mut self, rhs: T) {
+		self.inner.div_assign(rhs)
+	}
+}
+
+impl<T: RemAssign, I> RemAssign<T> for NumWrapper<T, I> {
+	fn rem_assign(&mut self, rhs: T) {
+		self.inner.rem_assign(rhs)
 	}
 }
 
@@ -587,7 +676,7 @@ mod tests {
 	use frame_support::Parameter;
 	use parity_scale_codec::{EncodeLike, HasCompact};
 	use sp_arithmetic::traits::BaseArithmetic;
-	use sp_runtime::traits::Member;
+	use sp_runtime::{traits::Member, FixedPointOperand};
 
 	use super::*;
 
@@ -598,6 +687,7 @@ mod tests {
 	fn is_parameter<T: Parameter>() {}
 	fn is_type_info<T: TypeInfo>() {}
 	fn is_encode_like<T: EncodeLike>() {}
+	fn is_fixed_point_operand<T: FixedPointOperand>() {}
 
 	// Id does not require any implementation
 	struct Id;
@@ -618,6 +708,7 @@ mod tests {
 					is_parameter::<Num>();
 					is_type_info::<Num>();
 					is_encode_like::<Num>();
+					is_fixed_point_operand::<Num>();
 				}
 			}
 		};
