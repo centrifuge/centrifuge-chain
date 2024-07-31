@@ -567,9 +567,8 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::Message,
 		) -> DispatchResultWithPostInfo {
-			// NOTE - The next iteration will have more weight processing.
 			let post_info = PostDispatchInfo {
-				actual_weight: None,
+				actual_weight: Some(Weight::from_parts(0, T::Message::max_encoded_len() as u64)),
 				pays_fee: Pays::Yes,
 			};
 
