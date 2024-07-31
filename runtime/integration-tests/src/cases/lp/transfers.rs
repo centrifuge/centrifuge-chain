@@ -19,7 +19,8 @@ use ethabi::{ethereum_types::U256, Token};
 use frame_support::traits::OriginTrait;
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::Message;
-use sp_core::ByteArray;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use sp_core::{ByteArray, Get};
 
 use crate::{
 	cases::lp::{
@@ -285,13 +286,17 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 		lp::utils::process_outbound::<T>(|msg| {
 			assert_eq!(
 				msg,
-				Message::TransferTrancheTokens {
-					pool_id: POOL_A,
-					tranche_id: pool_a_tranche_1_id::<T>(),
-					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
-					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
-					amount: AMOUNT,
-				}
+				GatewayMessage::Outbound {
+					sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+					destination: Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+					message: Message::TransferTrancheTokens {
+						pool_id: POOL_A,
+						tranche_id: pool_a_tranche_1_id::<T>(),
+						domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
+						receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
+						amount: AMOUNT,
+					},
+				},
 			);
 		});
 	});

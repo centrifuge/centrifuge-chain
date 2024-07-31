@@ -155,7 +155,8 @@ pub trait Env<T: Runtime>: Default {
 	fn check_event(&self, event: impl Into<T::RuntimeEventExt>) -> Option<()> {
 		self.parachain_state(|| {
 			let event = event.into();
-			frame_system::Pallet::<T>::events()
+			let events = frame_system::Pallet::<T>::events();
+			events
 				.into_iter()
 				.rev()
 				.find(|record| record.event == event)

@@ -22,6 +22,7 @@ use frame_support::{
 };
 use liquidity_pools_gateway_routers::DomainRouter;
 use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use pallet_transaction_payment::CurrencyAdapter;
 use parity_scale_codec::Codec;
 use runtime_common::{
@@ -136,7 +137,7 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Ratio,
 	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
-	+ pallet_liquidity_pools_gateway_queue::Config<Message = Message>
+	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<AccountId, Message>>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
