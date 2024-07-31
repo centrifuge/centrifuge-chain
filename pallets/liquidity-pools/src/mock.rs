@@ -55,7 +55,7 @@ frame_support::construct_runtime!(
 		Pools: cfg_mocks::pools::pallet,
 		AssetRegistry: cfg_mocks::asset_registry::pallet,
 		ForeignInvestment: cfg_mocks::foreign_investment::pallet,
-		Gateway: cfg_mocks::outbound_queue::pallet,
+		Gateway: cfg_mocks::pallet_mock_liquidity_pools_gateway,
 		DomainAddressToAccountId: cfg_mocks::converter::pallet::<Instance1>,
 		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance2>,
 		TransferFilter: cfg_mocks::pre_conditions::pallet,
@@ -102,10 +102,9 @@ impl cfg_mocks::foreign_investment::pallet::Config for Runtime {
 	type TrancheAmount = Balance;
 }
 
-impl cfg_mocks::outbound_queue::pallet::Config for Runtime {
+impl cfg_mocks::pallet_mock_liquidity_pools_gateway::Config for Runtime {
 	type Destination = Domain;
 	type Message = crate::Message;
-	type Sender = AccountId;
 }
 
 impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance1> for Runtime {
@@ -166,7 +165,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type ForeignInvestment = ForeignInvestment;
 	type GeneralCurrencyPrefix = CurrencyPrefix;
 	type MarketRatio = MarketRatio;
-	type OutboundQueue = Gateway;
+	type OutboundMessageHandler = Gateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = Pools;

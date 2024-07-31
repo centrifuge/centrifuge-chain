@@ -23,7 +23,7 @@ mod transfer {
 		System::externalities().execute_with(|| {
 			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 			TransferFilter::mock_check(|_| Ok(()));
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -224,7 +224,7 @@ mod transfer_tranche_tokens {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		TransferFilter::mock_check(|_| Ok(()));
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -372,7 +372,7 @@ mod add_pool {
 				true
 			});
 			Pools::mock_pool_exists(|_| true);
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(msg, Message::AddPool { pool_id: POOL_ID });
@@ -451,7 +451,7 @@ mod add_tranche {
 			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS));
 			hook.clone().into()
 		});
-		Gateway::mock_submit(move |sender, destination, msg| {
+		Gateway::mock_handle(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -584,7 +584,7 @@ mod update_tranche_token_metadata {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -685,7 +685,7 @@ mod update_token_price {
 			Ok(MARKET_RATIO)
 		});
 		AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -818,7 +818,7 @@ mod update_member {
 			));
 			true
 		});
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -938,7 +938,7 @@ mod add_currency {
 	fn success() {
 		System::externalities().execute_with(|| {
 			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -1024,7 +1024,7 @@ mod allow_investment_currency {
 				assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
 				true
 			});
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -1164,7 +1164,7 @@ mod disallow_investment_currency {
 				assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
 				true
 			});
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -1297,7 +1297,7 @@ mod schedule_upgrade {
 	#[test]
 	fn success() {
 		System::externalities().execute_with(|| {
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, TreasuryAccount::get());
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -1342,7 +1342,7 @@ mod cancel_upgrade {
 	#[test]
 	fn success() {
 		System::externalities().execute_with(|| {
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, TreasuryAccount::get());
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
