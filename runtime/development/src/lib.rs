@@ -24,8 +24,8 @@ use cfg_primitives::{
 	liquidity_pools::GeneralCurrencyPrefix,
 	types::{
 		AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Hash, Hashing, Header,
-		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex,
-		PoolEpochId, PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
+		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, PalletIndex, PoolEpochId,
+		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
 	LPGatewayQueueMessageNonce,
 };
@@ -84,6 +84,7 @@ use pallet_evm::{
 	Runner,
 };
 use pallet_investments::OrderType;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
@@ -1927,7 +1928,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = pallet_liquidity_pools::Message;
+	type Message = GatewayMessage<AccountId, pallet_liquidity_pools::Message>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;

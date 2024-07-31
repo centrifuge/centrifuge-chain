@@ -103,17 +103,17 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
 	assert!(matches!(
-		last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionFailure { .. }
+		last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
+		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure { .. }
 	));
 }
 
 pub fn verify_outbound_success<T: Runtime>(
-	message: <T as pallet_liquidity_pools_gateway::Config>::Message,
+	message: <T as pallet_liquidity_pools_gateway_queue::Config>::Message,
 ) {
 	assert!(matches!(
-		last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
+		last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
+		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
 			message: processed_message,
 			..
 		} if processed_message == message
@@ -121,17 +121,17 @@ pub fn verify_outbound_success<T: Runtime>(
 }
 
 pub fn process_outbound<T: Runtime>(
-	mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::Message),
+	mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway_queue::Config>::Message),
 ) {
-	let msgs = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
-		.map(|(nonce, (_, _, msg))| (nonce, msg))
+	let msgs = pallet_liquidity_pools_gateway_queue::MessageQueue::<T>::iter()
+		.map(|(nonce, msg)| (nonce, msg))
 		.collect::<Vec<_>>();
 
 	// The function should panic if there is nothing to be processed.
 	assert!(msgs.len() > 0);
 
 	msgs.into_iter().for_each(|(nonce, msg)| {
-		pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
+		pallet_liquidity_pools_gateway_queue::Pallet::<T>::process_message(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
 			nonce,
 		)

@@ -1,5 +1,5 @@
 use cfg_primitives::Balance;
-use cfg_traits::liquidity_pools::OutboundQueue;
+use cfg_traits::liquidity_pools::OutboundMessageHandler;
 use cfg_types::{
 	domain_address::Domain,
 	tokens::{AssetMetadata, CurrencyId},
@@ -10,6 +10,7 @@ use liquidity_pools_gateway_routers::{
 	FeeValues, XCMRouter, XcmDomain,
 };
 use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::gateway::get_gateway_h160_account;
 use sp_core::{Get, H160, U256};
@@ -115,18 +116,20 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 		};
 
 		assert_ok!(
-			<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
+			<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundMessageHandler>::handle(
 				Keyring::Alice.into(),
 				TEST_DOMAIN,
 				msg.clone(),
 			)
 		);
 
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
-			sender: T::Sender::get(),
-			domain: TEST_DOMAIN,
-			message: msg,
-			nonce: T::OutboundMessageNonce::one(),
+		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
+			message: GatewayMessage::Outbound {
+				sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+				destination: TEST_DOMAIN,
+				message: msg,
+			},
+			nonce: T::MessageNonce::one(),
 		}
 	});
 

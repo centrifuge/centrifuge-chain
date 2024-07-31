@@ -2,7 +2,7 @@ use cfg_primitives::{
 	currency_decimals, parachains, AccountId, Balance, InvestmentId, OrderId, PoolId, TrancheId,
 };
 use cfg_traits::{
-	investments::OrderManager, liquidity_pools::InboundQueue, IdentityCurrencyConversion,
+	investments::OrderManager, liquidity_pools::InboundMessageHandler, IdentityCurrencyConversion,
 	Permissions, PoolInspect, PoolMutate, Seconds,
 };
 use cfg_types::{
@@ -28,6 +28,8 @@ use liquidity_pools_gateway_routers::{
 use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
@@ -81,7 +83,7 @@ pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 
 pub type LiquidityPoolMessage = Message;
 
-mod utils {
+pub(crate) mod utils {
 	use cfg_types::oracles::OracleKey;
 	use frame_support::weights::Weight;
 	use runtime_common::oracle::Feeder;
@@ -424,7 +426,7 @@ mod utils {
 		// investment after the swap was fulfilled
 		if currency_id == pool_currency {
 			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::submit(
+				pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg.clone()
 				),
@@ -455,7 +457,7 @@ mod utils {
 			.expect("Should not overflow when incrementing amount");
 
 		// Execute byte message
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 			DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -526,7 +528,7 @@ mod utils {
 
 		// Should fail if investor does not have investor role yet
 		assert_noop!(
-			pallet_liquidity_pools::Pallet::<T>::submit(
+			pallet_liquidity_pools::Pallet::<T>::handle(
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				msg.clone()
 			),
@@ -540,7 +542,7 @@ mod utils {
 			PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
 		);
 
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 			DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -672,10 +674,10 @@ mod utils {
 			.filter(|e1| !events_before.iter().any(|e2| e1 == e2))
 			.any(|e| {
 				if let Ok(event) = e.event.clone().try_into()
-					as Result<pallet_liquidity_pools_gateway::Event<T>, _>
+					as Result<pallet_liquidity_pools_gateway_queue::Event<T>, _>
 				{
 					match event {
-						pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						pallet_liquidity_pools_gateway_queue::Event::MessageSubmitted {
 							..
 						} => true,
 						_ => false,
@@ -740,7 +742,7 @@ mod foreign_investments {
 					currency: general_currency_index::<T>(currency_id),
 					amount,
 				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -787,7 +789,7 @@ mod foreign_investments {
 				// Expect failure if transferability is disabled since this is required for
 				// preparing the `FulfilledCancelDepositRequest` message.
 				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::submit(
+					pallet_liquidity_pools::Pallet::<T>::handle(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg.clone()
 					),
@@ -796,7 +798,7 @@ mod foreign_investments {
 				enable_liquidity_pool_transferability::<T>(currency_id);
 
 				// Execute byte message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -886,7 +888,7 @@ mod foreign_investments {
 				// Expect failure if transferability is disabled since this is required for
 				// preparing the `FulfilledCancelDepositRequest` message.
 				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::submit(
+					pallet_liquidity_pools::Pallet::<T>::handle(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg.clone()
 					),
@@ -896,7 +898,7 @@ mod foreign_investments {
 				enable_liquidity_pool_transferability::<T>(currency_id);
 
 				// Execute byte message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -1056,21 +1058,26 @@ mod foreign_investments {
 						.into()
 				}));
 
+				let nonce = MessageNonceStore::<T>::get();
+
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				// Clearing of foreign InvestState should be dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: amount,
-								tranche_tokens_payout: amount,
+						== pallet_liquidity_pools_gateway_queue::Event::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(currency_id),
+									currency_payout: amount,
+									tranche_tokens_payout: amount,
+								},
 							},
 						}
 						.into()
@@ -1156,20 +1163,25 @@ mod foreign_investments {
 						.into()
 				}));
 
+				let nonce = MessageNonceStore::<T>::get();
+
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: pallet_liquidity_pools::Message::FulfilledDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: invest_amount / 2,
-								tranche_tokens_payout: invest_amount * 2,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: Message::FulfilledDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(currency_id),
+									currency_payout: invest_amount / 2,
+									tranche_tokens_payout: invest_amount * 2,
+								},
 							},
 						}
 						.into()
@@ -1246,18 +1258,23 @@ mod foreign_investments {
 						.into()
 				}));
 
+				let nonce = MessageNonceStore::<T>::get();
+
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: invest_amount / 2,
-								tranche_tokens_payout: invest_amount,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(currency_id),
+									currency_payout: invest_amount / 2,
+									tranche_tokens_payout: invest_amount,
+								},
 							},
 						}
 						.into()
@@ -1277,19 +1294,23 @@ mod foreign_investments {
 					.filter(|e1| !events_before.iter().any(|e2| e1 == e2))
 					.any(|e| {
 						if let Ok(event) = e.event.clone().try_into()
-							as Result<pallet_liquidity_pools_gateway::Event<T>, _>
+							as Result<pallet_liquidity_pools_gateway_queue::Event<T>, _>
 						{
 							match event {
-							pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
-								sender: event_sender,
-								domain: event_domain,
-								message: Message::FulfilledDepositRequest { .. },
-							} => {
-								event_sender == sender
-									&& event_domain == DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()
+								pallet_liquidity_pools_gateway_queue::Event::MessageSubmitted {
+									message:
+										GatewayMessage::Outbound {
+											sender: event_sender,
+											destination: event_domain,
+											message: Message::FulfilledDepositRequest { .. },
+										},
+									..
+								} => {
+									event_sender == sender
+										&& event_domain == DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()
+								}
+								_ => false,
 							}
-							_ => false,
-						}
 						} else {
 							false
 						}
@@ -1347,7 +1368,7 @@ mod foreign_investments {
 					currency: general_currency_index::<T>(currency_id),
 					amount,
 				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -1400,7 +1421,7 @@ mod foreign_investments {
 				};
 
 				// Execute byte message
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -1520,20 +1541,25 @@ mod foreign_investments {
 						.into()
 				}));
 
+				let nonce = MessageNonceStore::<T>::get();
+
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledRedeemRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: redeem_amount / 8,
-								tranche_tokens_payout: redeem_amount / 2,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledRedeemRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(currency_id),
+									currency_payout: redeem_amount / 8,
+									tranche_tokens_payout: redeem_amount / 2,
+								},
 							},
 						}
 						.into()
@@ -1605,19 +1631,25 @@ mod foreign_investments {
 						amount: redeem_amount / 4
 					}
 					.into()));
+
+				let nonce = MessageNonceStore::<T>::get();
+
 				// Clearing of foreign RedeemState should have been dispatched exactly once
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledRedeemRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(currency_id),
-								currency_payout: redeem_amount / 4,
-								tranche_tokens_payout: redeem_amount / 2,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledRedeemRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(currency_id),
+									currency_payout: redeem_amount / 4,
+									tranche_tokens_payout: redeem_amount / 2,
+								},
 							},
 						}
 						.into()
@@ -1687,7 +1719,7 @@ mod foreign_investments {
 							amount: AUSD_ED,
 						};
 						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
+							pallet_liquidity_pools::Pallet::<T>::handle(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								increase_msg
 							),
@@ -1702,7 +1734,7 @@ mod foreign_investments {
 							currency: general_currency_index::<T>(currency_id),
 						};
 						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
+							pallet_liquidity_pools::Pallet::<T>::handle(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								decrease_msg
 							),
@@ -1774,7 +1806,7 @@ mod foreign_investments {
 							amount: 1,
 						};
 						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
+							pallet_liquidity_pools::Pallet::<T>::handle(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								increase_msg
 							),
@@ -1789,7 +1821,7 @@ mod foreign_investments {
 							currency: general_currency_index::<T>(currency_id),
 						};
 						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
+							pallet_liquidity_pools::Pallet::<T>::handle(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								decrease_msg
 							),
@@ -1847,7 +1879,7 @@ mod foreign_investments {
 							currency: general_currency_index::<T>(foreign_currency),
 						};
 						assert_noop!(
-							pallet_liquidity_pools::Pallet::<T>::submit(
+							pallet_liquidity_pools::Pallet::<T>::handle(
 								DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 								decrease_msg
 							),
@@ -1860,6 +1892,8 @@ mod foreign_investments {
 	}
 
 	mod mismatching_currencies {
+		use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
+
 		use super::*;
 
 		#[test_runtimes([development])]
@@ -1918,7 +1952,7 @@ mod foreign_investments {
 					currency: general_currency_index::<T>(foreign_currency),
 					amount: invest_amount_foreign_denominated,
 				};
-				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 					msg
 				));
@@ -1952,20 +1986,25 @@ mod foreign_investments {
 					invest_amount_pool_denominated * 2
 				);
 
+				let nonce = MessageNonceStore::<T>::get();
+
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated,
-								tranche_tokens_payout: 2 * invest_amount_pool_denominated,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(foreign_currency),
+									currency_payout: invest_amount_foreign_denominated,
+									tranche_tokens_payout: 2 * invest_amount_pool_denominated,
+								},
 							},
 						}
 						.into()
@@ -2050,7 +2089,7 @@ mod foreign_investments {
 				// FulfilledCancel message dispatch blocked until pool currency is swapped back
 				// to foreign
 				assert!(!outbound_message_dispatched::<T>(|| {
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg.clone()
 					));
@@ -2098,20 +2137,26 @@ mod foreign_investments {
 						}
 						.into()
 				}));
+
+				let nonce = MessageNonceStore::<T>::get();
+
 				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: sender.clone(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated,
-								fulfilled_invest_amount: invest_amount_foreign_denominated,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(foreign_currency),
+									currency_payout: invest_amount_foreign_denominated,
+									fulfilled_invest_amount: invest_amount_foreign_denominated,
+								},
 							},
 						}
 						.into()
@@ -2193,7 +2238,7 @@ mod foreign_investments {
 						currency: general_currency_index::<T>(foreign_currency),
 					};
 
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						cancel_msg
 					));
@@ -2205,18 +2250,25 @@ mod foreign_investments {
 					invest_amount_pool_denominated / 2
 				));
 
+				let nonce = MessageNonceStore::<T>::get();
+
+				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
+
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-							message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								currency_payout: invest_amount_foreign_denominated / 2,
-								fulfilled_invest_amount: invest_amount_foreign_denominated / 2,
+						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
+							nonce,
+							message: GatewayMessage::Outbound {
+								sender: sender.clone(),
+								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
+									pool_id,
+									tranche_id: default_tranche_id::<T>(pool_id),
+									investor: investor.clone().into(),
+									currency: general_currency_index::<T>(foreign_currency),
+									currency_payout: invest_amount_foreign_denominated / 2,
+									fulfilled_invest_amount: invest_amount_foreign_denominated / 2,
+								},
 							},
 						}
 						.into()
