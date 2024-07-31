@@ -224,7 +224,7 @@ pub fn default_accounts() -> Vec<Keyring> {
 
 /// Returns a Vector of default investor accounts
 pub fn default_investors() -> Vec<Keyring> {
-	(0..=50).map(Keyring::TrancheInvestor).collect()
+	(0..=2).map(Keyring::TrancheInvestor).collect()
 }
 
 #[cfg(test)]
