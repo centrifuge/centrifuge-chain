@@ -53,6 +53,12 @@ pub enum DomainAddress {
 	EVM(EVMChainId, [u8; 20]),
 }
 
+impl Default for DomainAddress {
+	fn default() -> Self {
+		DomainAddress::Centrifuge([0; 32])
+	}
+}
+
 impl DomainAddress {
 	pub fn evm(chain_id: EVMChainId, address: [u8; 20]) -> Self {
 		Self::EVM(chain_id, address)

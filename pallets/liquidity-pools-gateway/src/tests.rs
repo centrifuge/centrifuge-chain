@@ -2,10 +2,11 @@ use cfg_mocks::*;
 use cfg_traits::liquidity_pools::{
 	test_util::Message, LPEncoding, MessageProcessor, OutboundMessageHandler,
 };
-use cfg_types::{domain_address::*, gateway::GatewayMessage};
+use cfg_types::domain_address::*;
 use frame_support::{
 	assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays, weights::Weight,
 };
+use parity_scale_codec::MaxEncodedLen;
 use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin, DispatchErrorWithPostInfo};
 
@@ -14,6 +15,7 @@ use super::{
 	origin::*,
 	pallet::*,
 };
+use crate::GatewayMessage;
 
 mod utils {
 	use super::*;
@@ -1083,7 +1085,21 @@ mod message_processor_impl {
 					Err(err)
 				});
 
-				assert_noop!(LiquidityPoolsGateway::process(gateway_message), err);
+				let expected_error = DispatchErrorWithPostInfo {
+					post_info: PostDispatchInfo {
+						actual_weight: Some(Weight::from_parts(
+							0,
+							Message::max_encoded_len() as u64,
+						)),
+						pays_fee: Pays::Yes,
+					},
+					error: err,
+				};
+
+				assert_noop!(
+					LiquidityPoolsGateway::process(gateway_message),
+					expected_error
+				);
 			});
 		}
 	}
