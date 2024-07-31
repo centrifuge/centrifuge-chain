@@ -560,10 +560,7 @@ mod add_tranche {
 		#[test]
 		fn with_no_hook_address() {
 			System::externalities().execute_with(|| {
-				Permissions::mock_has(|_, _, _| true);
-				Pools::mock_pool_exists(|_| true);
-				Pools::mock_tranche_exists(|_, _| true);
-				AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
+				config_mocks();
 				Gateway::mock_get(|_| None);
 
 				assert_noop!(
