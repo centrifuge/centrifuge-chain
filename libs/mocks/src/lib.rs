@@ -11,7 +11,6 @@ pub mod liquidity_pools;
 pub mod liquidity_pools_gateway;
 pub mod liquidity_pools_gateway_queue;
 pub mod liquidity_pools_gateway_routers;
-pub mod outbound_queue;
 pub mod pay_fee;
 pub mod permissions;
 pub mod pools;

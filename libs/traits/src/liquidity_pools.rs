@@ -58,37 +58,6 @@ pub trait Router {
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
 }
 
-/// The trait required for processing outbound messages.
-pub trait OutboundQueue {
-	/// The sender type of the outgoing message.
-	type Sender;
-
-	/// The destination this message should go to.
-	type Destination;
-
-	/// The message type that is processed.
-	type Message;
-
-	/// Submit a message to the outbound queue.
-	fn submit(
-		sender: Self::Sender,
-		destination: Self::Destination,
-		msg: Self::Message,
-	) -> DispatchResult;
-}
-
-/// The trait required for processing incoming messages.
-pub trait InboundQueue {
-	/// The sender type of the incoming message.
-	type Sender;
-
-	/// The liquidityPools message type.
-	type Message;
-
-	/// Submit a message to the inbound queue.
-	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
-}
-
 /// The trait required for queueing messages.
 pub trait MessageQueue {
 	/// The message type.
@@ -104,4 +73,35 @@ pub trait MessageProcessor {
 
 	/// Process a message.
 	fn process(msg: Self::Message) -> DispatchResultWithPostInfo;
+}
+
+/// The trait required for handling outbound LP messages.
+pub trait OutboundMessageHandler {
+	/// The sender type of the outbound message.
+	type Sender;
+
+	/// The destination type of the outbound message.
+	type Destination;
+
+	/// The message type.
+	type Message;
+
+	/// Handle an outbound message.
+	fn handle(
+		sender: Self::Sender,
+		destination: Self::Destination,
+		msg: Self::Message,
+	) -> DispatchResult;
+}
+
+/// The trait required for handling inbound LP messages.
+pub trait InboundMessageHandler {
+	/// The sender type of the inbound message.
+	type Sender;
+
+	/// The message type.
+	type Message;
+
+	/// Handle an inbound message.
+	fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }

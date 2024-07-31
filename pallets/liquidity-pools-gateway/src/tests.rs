@@ -1,19 +1,13 @@
 use cfg_mocks::*;
-use cfg_primitives::OutboundMessageNonce;
-use cfg_traits::liquidity_pools::{test_util::Message, LPEncoding, OutboundQueue};
-use cfg_types::domain_address::*;
+use cfg_traits::liquidity_pools::{
+	test_util::Message, LPEncoding, MessageProcessor, OutboundMessageHandler,
+};
+use cfg_types::{domain_address::*, gateway::GatewayMessage};
 use frame_support::{
-	assert_noop, assert_ok,
-	dispatch::{Pays, PostDispatchInfo},
-	weights::Weight,
+	assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays, weights::Weight,
 };
-use sp_core::{crypto::AccountId32, ByteArray, H160};
-use sp_runtime::{
-	traits::{One, Zero},
-	DispatchError,
-	DispatchError::BadOrigin,
-	DispatchErrorWithPostInfo,
-};
+use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
+use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 
 use super::{
 	mock::{RuntimeEvent as MockEvent, *},
@@ -460,9 +454,10 @@ mod process_msg_axelar_relay {
 			let expected_msg = Message;
 			let expected_domain_address = domain_address.clone();
 
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
-				assert_eq!(message, expected_msg);
+			let inbound_message = GatewayMessage::<AccountId32, Message>::Inbound { domain_address: expected_domain_address, message: expected_msg };
+
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				assert_eq!(mock_message, inbound_message);
 				Ok(())
 			});
 
@@ -493,7 +488,7 @@ mod process_msg_axelar_relay {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
 			let relayer_address = DomainAddress::EVM(0, address.into());
-
+			let message = Message;
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
@@ -504,19 +499,13 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = Message;
-			let expected_domain_address = domain_address.clone();
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+				domain_address: domain_address.clone(),
+				message: message.clone(),
+			};
 
-			let mut msg = Vec::new();
-			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_CHAIN);
-			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_ADDRESS);
-			msg.extend_from_slice(&expected_msg.serialize());
-
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
-				assert_eq!(message, expected_msg);
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				assert_eq!(mock_message, gateway_message);
 				Ok(())
 			});
 
@@ -530,6 +519,13 @@ mod process_msg_axelar_relay {
 
 				Ok(expected_domain_address.clone())
 			});
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&message.serialize());
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
@@ -544,6 +540,7 @@ mod process_msg_axelar_relay {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
 			let relayer_address = DomainAddress::EVM(0, address.into());
+			let message = Message;
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::signed(LP_ADMIN_ACCOUNT),
@@ -555,19 +552,13 @@ mod process_msg_axelar_relay {
 				relayer_address.clone(),
 			));
 
-			let expected_msg = Message;
-			let expected_domain_address = domain_address.clone();
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+				domain_address: domain_address.clone(),
+				message: message.clone(),
+			};
 
-			let mut msg = Vec::new();
-			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_CHAIN);
-			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
-			msg.extend_from_slice(&SOURCE_ADDRESS);
-			msg.extend_from_slice(&expected_msg.serialize());
-
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
-				assert_eq!(message, expected_msg);
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				assert_eq!(mock_message, gateway_message);
 				Ok(())
 			});
 
@@ -581,6 +572,13 @@ mod process_msg_axelar_relay {
 
 				Ok(expected_domain_address.clone())
 			});
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&message.serialize());
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
@@ -713,7 +711,7 @@ mod process_msg_axelar_relay {
 	}
 
 	#[test]
-	fn liquidity_pools_error() {
+	fn message_queue_error() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
@@ -736,9 +734,9 @@ mod process_msg_axelar_relay {
 
 			MockOriginRecovery::mock_try_convert(move |_| Ok(expected_domain_address.clone()));
 
-			let err = sp_runtime::DispatchError::from("liquidity_pools error");
+			let err = sp_runtime::DispatchError::from("message queue error");
 
-			MockLiquidityPools::mock_submit(move |_, _| Err(err));
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |_| Err(err));
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -752,8 +750,6 @@ mod process_msg_axelar_relay {
 }
 
 mod process_msg_domain {
-	use sp_core::bounded::BoundedVec;
-
 	use super::*;
 
 	#[test]
@@ -761,20 +757,22 @@ mod process_msg_domain {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
+			let message = Message;
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
 
-			let expected_msg = Message;
-			let encoded_msg = expected_msg.serialize();
+			let encoded_msg = message.serialize();
 
-			let expected_domain_address = domain_address.clone();
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+				domain_address: domain_address.clone(),
+				message: message.clone(),
+			};
 
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
-				assert_eq!(message, expected_msg);
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				assert_eq!(mock_message, gateway_message);
 				Ok(())
 			});
 
@@ -857,26 +855,28 @@ mod process_msg_domain {
 	}
 
 	#[test]
-	fn liquidity_pools_error() {
+	fn message_queue_error() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
+			let message = Message;
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
 
-			let expected_msg = Message;
-			let encoded_msg = expected_msg.serialize();
-
-			let expected_domain_address = domain_address.clone();
+			let encoded_msg = message.serialize();
 
 			let err = sp_runtime::DispatchError::from("liquidity_pools error");
 
-			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
-				assert_eq!(message, expected_msg);
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+				domain_address: domain_address.clone(),
+				message: message.clone(),
+			};
+
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				assert_eq!(mock_message, gateway_message);
 				Err(err)
 			});
 
@@ -891,272 +891,7 @@ mod process_msg_domain {
 	}
 }
 
-mod process_outbound_message {
-	use super::*;
-
-	#[test]
-	fn success() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
-			let sender = get_test_account_id();
-			let msg = Message;
-
-			router.mock_send({
-				let sender = sender.clone();
-				let msg = msg.clone();
-
-				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
-					assert_eq!(msg.serialize(), mock_msg);
-
-					Ok(PostDispatchInfo {
-						actual_weight: Some(Weight::from_parts(100, 100)),
-						pays_fee: Pays::Yes,
-					})
-				}
-			});
-
-			let nonce = OutboundMessageNonce::one();
-
-			OutboundMessageQueue::<Runtime>::insert(
-				nonce,
-				(domain.clone(), sender.clone(), msg.clone()),
-			);
-
-			assert_ok!(LiquidityPoolsGateway::process_outbound_message(
-				RuntimeOrigin::signed(sender.clone()),
-				nonce
-			));
-
-			assert!(!OutboundMessageQueue::<Runtime>::contains_key(nonce));
-
-			event_exists(Event::<Runtime>::OutboundMessageExecutionSuccess {
-				nonce,
-				sender,
-				domain,
-				message: msg,
-			});
-		});
-	}
-
-	#[test]
-	fn message_not_found() {
-		new_test_ext().execute_with(|| {
-			assert_noop!(
-				LiquidityPoolsGateway::process_outbound_message(
-					RuntimeOrigin::signed(get_test_account_id()),
-					OutboundMessageNonce::zero(),
-				),
-				Error::<Runtime>::OutboundMessageNotFound,
-			);
-		});
-	}
-
-	#[test]
-	fn failure() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
-			let sender = get_test_account_id();
-			let msg = Message;
-			let err = DispatchError::Unavailable;
-
-			router.mock_send({
-				let err = err.clone();
-
-				move |_, _| {
-					Err(DispatchErrorWithPostInfo {
-						post_info: PostDispatchInfo {
-							actual_weight: Some(Weight::from_parts(100, 100)),
-							pays_fee: Pays::Yes,
-						},
-						error: err,
-					})
-				}
-			});
-
-			let nonce = OutboundMessageNonce::one();
-
-			OutboundMessageQueue::<Runtime>::insert(
-				nonce,
-				(domain.clone(), sender.clone(), msg.clone()),
-			);
-
-			assert_ok!(LiquidityPoolsGateway::process_outbound_message(
-				RuntimeOrigin::signed(sender.clone()),
-				nonce
-			));
-
-			assert!(!OutboundMessageQueue::<Runtime>::contains_key(nonce));
-
-			let failed_queue_entry = FailedOutboundMessages::<Runtime>::get(nonce)
-				.expect("expected failed message queue entry");
-
-			assert_eq!(
-				failed_queue_entry,
-				(domain.clone(), sender.clone(), msg.clone(), err.clone())
-			);
-
-			event_exists(Event::<Runtime>::OutboundMessageExecutionFailure {
-				nonce,
-				sender,
-				domain,
-				message: msg,
-				error: err,
-			});
-		});
-	}
-}
-
-mod process_failed_outbound_message {
-	use super::*;
-
-	#[test]
-	fn success() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
-			let sender = get_test_account_id();
-			let msg = Message;
-			let err = DispatchError::Unavailable;
-
-			router.mock_send({
-				let sender = sender.clone();
-				let msg = msg.clone();
-
-				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
-					assert_eq!(msg.serialize(), mock_msg);
-
-					Ok(PostDispatchInfo {
-						actual_weight: Some(Weight::from_parts(100, 100)),
-						pays_fee: Pays::Yes,
-					})
-				}
-			});
-
-			let nonce = OutboundMessageNonce::one();
-
-			FailedOutboundMessages::<Runtime>::insert(
-				nonce,
-				(domain.clone(), sender.clone(), msg.clone(), err),
-			);
-
-			assert_ok!(LiquidityPoolsGateway::process_failed_outbound_message(
-				RuntimeOrigin::signed(sender.clone()),
-				nonce
-			));
-
-			assert!(!FailedOutboundMessages::<Runtime>::contains_key(nonce));
-
-			event_exists(Event::<Runtime>::OutboundMessageExecutionSuccess {
-				nonce,
-				sender,
-				domain,
-				message: msg,
-			});
-		});
-	}
-
-	#[test]
-	fn message_not_found() {
-		new_test_ext().execute_with(|| {
-			assert_noop!(
-				LiquidityPoolsGateway::process_failed_outbound_message(
-					RuntimeOrigin::signed(get_test_account_id()),
-					OutboundMessageNonce::zero(),
-				),
-				Error::<Runtime>::OutboundMessageNotFound,
-			);
-		});
-	}
-
-	#[test]
-	fn failure() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
-			let sender = get_test_account_id();
-			let msg = Message;
-			let err = DispatchError::Unavailable;
-
-			router.mock_send({
-				let err = err.clone();
-
-				move |_, _| {
-					Err(DispatchErrorWithPostInfo {
-						post_info: PostDispatchInfo {
-							actual_weight: Some(Weight::from_parts(100, 100)),
-							pays_fee: Pays::Yes,
-						},
-						error: err,
-					})
-				}
-			});
-
-			let nonce = OutboundMessageNonce::one();
-
-			FailedOutboundMessages::<Runtime>::insert(
-				nonce,
-				(domain.clone(), sender.clone(), msg.clone(), err.clone()),
-			);
-
-			assert_ok!(LiquidityPoolsGateway::process_failed_outbound_message(
-				RuntimeOrigin::signed(sender.clone()),
-				nonce
-			));
-
-			assert!(FailedOutboundMessages::<Runtime>::contains_key(nonce));
-
-			event_exists(Event::<Runtime>::OutboundMessageExecutionFailure {
-				nonce,
-				sender,
-				domain,
-				message: msg,
-				error: err,
-			});
-		});
-	}
-}
-
-mod outbound_queue_impl {
+mod outbound_message_handler_impl {
 	use super::*;
 
 	#[test]
@@ -1175,26 +910,19 @@ mod outbound_queue_impl {
 				router.clone(),
 			));
 
-			assert_ok!(LiquidityPoolsGateway::submit(
-				sender.clone(),
-				domain.clone(),
-				msg.clone()
-			));
-
-			let expected_nonce = OutboundMessageNonce::one();
-
-			let queue_entry = OutboundMessageQueue::<Runtime>::get(expected_nonce)
-				.expect("an entry is added to the queue");
-
-			let gateway_sender = <Runtime as Config>::Sender::get();
-
-			assert_eq!(queue_entry, (domain.clone(), gateway_sender, msg.clone()));
-
-			event_exists(Event::<Runtime>::OutboundMessageSubmitted {
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
 				sender: <Runtime as Config>::Sender::get(),
-				domain,
-				message: msg,
+				destination: domain.clone(),
+				message: msg.clone(),
+			};
+
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				assert_eq!(mock_msg, gateway_message);
+
+				Ok(())
 			});
+
+			assert_ok!(LiquidityPoolsGateway::handle(sender, domain, msg));
 		});
 	}
 
@@ -1206,23 +934,43 @@ mod outbound_queue_impl {
 			let msg = Message;
 
 			assert_noop!(
-				LiquidityPoolsGateway::submit(sender, domain, msg),
+				LiquidityPoolsGateway::handle(sender, domain, msg),
 				Error::<Runtime>::DomainNotSupported
 			);
 		});
 	}
 
 	#[test]
-	fn router_not_found() {
+	fn message_queue_error() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
 			let msg = Message;
 
-			assert_noop!(
-				LiquidityPoolsGateway::submit(sender, domain, msg),
-				Error::<Runtime>::RouterNotFound
-			);
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				router.clone(),
+			));
+
+			let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+				sender: <Runtime as Config>::Sender::get(),
+				destination: domain.clone(),
+				message: msg.clone(),
+			};
+
+			let err = DispatchError::Unavailable;
+
+			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				assert_eq!(mock_msg, gateway_message);
+
+				Err(err)
+			});
+
+			assert_noop!(LiquidityPoolsGateway::handle(sender, domain, msg), err);
 		});
 	}
 }
@@ -1286,5 +1034,198 @@ mod set_domain_hook {
 				Error::<Runtime>::DomainNotSupported
 			);
 		});
+	}
+}
+
+mod message_processor_impl {
+	use super::*;
+
+	mod inbound {
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let domain_address = DomainAddress::EVM(1, [1; 20]);
+				let message = Message;
+				let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+					domain_address: domain_address.clone(),
+					message: message.clone(),
+				};
+
+				MockLiquidityPools::mock_handle(move |mock_domain_address, mock_mesage| {
+					assert_eq!(mock_domain_address, domain_address);
+					assert_eq!(mock_mesage, message);
+
+					Ok(())
+				});
+
+				assert_ok!(LiquidityPoolsGateway::process(gateway_message));
+			});
+		}
+
+		#[test]
+		fn inbound_message_handler_error() {
+			new_test_ext().execute_with(|| {
+				let domain_address = DomainAddress::EVM(1, [1; 20]);
+				let message = Message;
+				let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+					domain_address: domain_address.clone(),
+					message: message.clone(),
+				};
+
+				let err = DispatchError::Unavailable;
+
+				MockLiquidityPools::mock_handle(move |mock_domain_address, mock_mesage| {
+					assert_eq!(mock_domain_address, domain_address);
+					assert_eq!(mock_mesage, message);
+
+					Err(err)
+				});
+
+				assert_noop!(LiquidityPoolsGateway::process(gateway_message), err);
+			});
+		}
+	}
+
+	mod outbound {
+		use sp_runtime::DispatchErrorWithPostInfo;
+
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let sender = get_test_account_id();
+				let domain = Domain::EVM(1);
+				let message = Message;
+
+				let expected_sender = sender.clone();
+				let expected_message = message.clone();
+
+				let router_post_info = PostDispatchInfo {
+					actual_weight: Some(Weight::from_parts(1, 1)),
+					pays_fee: Pays::Yes,
+				};
+
+				let router_mock = RouterMock::<Runtime>::default();
+				router_mock.mock_send(move |mock_sender, mock_message| {
+					assert_eq!(mock_sender, expected_sender);
+					assert_eq!(mock_message, expected_message.serialize());
+
+					Ok(router_post_info)
+				});
+
+				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
+
+				let mut expected_post_info = PostDispatchInfo {
+					actual_weight: Some(
+						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
+					),
+					pays_fee: Pays::Yes,
+				};
+
+				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
+					&mut expected_post_info,
+					router_post_info.actual_weight,
+				);
+
+				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+					sender,
+					destination: domain,
+					message,
+				};
+
+				let res = LiquidityPoolsGateway::process(gateway_message);
+				assert!(res.is_ok());
+				assert_eq!(res.unwrap(), expected_post_info);
+			});
+		}
+
+		#[test]
+		fn router_not_found() {
+			new_test_ext().execute_with(|| {
+				let sender = get_test_account_id();
+				let domain = Domain::EVM(1);
+				let message = Message;
+
+				let expected_post_info = PostDispatchInfo {
+					actual_weight: Some(
+						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
+					),
+					pays_fee: Pays::Yes,
+				};
+
+				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+					sender,
+					destination: domain,
+					message,
+				};
+
+				let res = LiquidityPoolsGateway::process(gateway_message);
+				assert!(res.is_err());
+
+				let err = res.err().unwrap();
+				assert_eq!(err.post_info, expected_post_info);
+				assert_eq!(err.error, Error::<Runtime>::RouterNotFound.into());
+			});
+		}
+
+		#[test]
+		fn router_error() {
+			new_test_ext().execute_with(|| {
+				let sender = get_test_account_id();
+				let domain = Domain::EVM(1);
+				let message = Message;
+
+				let expected_sender = sender.clone();
+				let expected_message = message.clone();
+
+				let router_post_info = PostDispatchInfo {
+					actual_weight: Some(Weight::from_parts(1, 1)),
+					pays_fee: Pays::Yes,
+				};
+
+				let router_err = DispatchError::Unavailable;
+
+				let router_mock = RouterMock::<Runtime>::default();
+				router_mock.mock_send(move |mock_sender, mock_message| {
+					assert_eq!(mock_sender, expected_sender);
+					assert_eq!(mock_message, expected_message.serialize());
+
+					Err(DispatchErrorWithPostInfo {
+						post_info: router_post_info,
+						error: router_err,
+					})
+				});
+
+				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
+
+				let mut expected_post_info = PostDispatchInfo {
+					actual_weight: Some(
+						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
+					),
+					pays_fee: Pays::Yes,
+				};
+
+				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
+					&mut expected_post_info,
+					router_post_info.actual_weight,
+				);
+
+				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+					sender,
+					destination: domain,
+					message,
+				};
+
+				let res = LiquidityPoolsGateway::process(gateway_message);
+				assert!(res.is_err());
+
+				let err = res.err().unwrap();
+				assert_eq!(err.post_info, expected_post_info);
+				assert_eq!(err.error, router_err);
+			});
+		}
 	}
 }

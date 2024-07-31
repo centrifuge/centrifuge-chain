@@ -159,9 +159,6 @@ pub mod types {
 	/// The representation of a pool fee identifier
 	pub type PoolFeeId = u64;
 
-	/// The type for outbound LP message nonces.
-	pub type OutboundMessageNonce = u64;
-
 	/// The type for LP gateway message nonces.
 	pub type LPGatewayQueueMessageNonce = u64;
 }
