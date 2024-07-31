@@ -7,7 +7,7 @@ use frame_support::{
 	assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays, weights::Weight,
 };
 use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
-use sp_runtime::{DispatchError, DispatchError::BadOrigin};
+use sp_runtime::{DispatchError, DispatchError::BadOrigin, DispatchErrorWithPostInfo};
 
 use super::{
 	mock::{RuntimeEvent as MockEvent, *},
@@ -1089,8 +1089,6 @@ mod message_processor_impl {
 	}
 
 	mod outbound {
-		use sp_runtime::DispatchErrorWithPostInfo;
-
 		use super::*;
 
 		#[test]

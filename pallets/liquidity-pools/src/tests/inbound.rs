@@ -1,4 +1,4 @@
-use cfg_traits::liquidity_pools::InboundQueue;
+use cfg_traits::liquidity_pools::InboundMessageHandler;
 use cfg_types::{
 	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -17,7 +17,7 @@ fn receiving_invalid_message() {
 		let msg = Message::AddPool { pool_id: 123 };
 
 		assert_noop!(
-			LiquidityPools::submit(EVM_DOMAIN_ADDRESS, msg),
+			LiquidityPools::handle(EVM_DOMAIN_ADDRESS, msg),
 			Error::<Runtime>::InvalidIncomingMessage,
 		);
 	})
@@ -31,7 +31,7 @@ mod handle_transfer {
 		System::externalities().execute_with(|| {
 			AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::TransferAssets {
 					currency: util::currency_index(CURRENCY_ID),
@@ -51,7 +51,7 @@ mod handle_transfer {
 		fn with_zero_balance() {
 			System::externalities().execute_with(|| {
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
@@ -69,7 +69,7 @@ mod handle_transfer {
 			System::externalities().execute_with(|| {
 				AssetRegistry::mock_metadata(|_| None);
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
@@ -116,7 +116,7 @@ mod handle_tranche_tokens_transfer {
 			)
 			.unwrap();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
@@ -139,7 +139,7 @@ mod handle_tranche_tokens_transfer {
 			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
 
 			TransferFilter::mock_check(|_| Ok(()));
-			Gateway::mock_submit(|sender, destination, msg| {
+			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
 				assert_eq!(destination, ALICE_EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
@@ -162,7 +162,7 @@ mod handle_tranche_tokens_transfer {
 			)
 			.unwrap();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
@@ -190,7 +190,7 @@ mod handle_tranche_tokens_transfer {
 				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
@@ -212,7 +212,7 @@ mod handle_tranche_tokens_transfer {
 				Permissions::mock_has(|_, _, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
@@ -234,7 +234,7 @@ mod handle_tranche_tokens_transfer {
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
@@ -256,7 +256,7 @@ mod handle_tranche_tokens_transfer {
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
@@ -277,7 +277,7 @@ mod handle_tranche_tokens_transfer {
 				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
@@ -319,7 +319,7 @@ mod handle_increase_invest_order {
 		System::externalities().execute_with(|| {
 			config_mocks();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::DepositRequest {
 					pool_id: POOL_ID,
@@ -342,7 +342,7 @@ mod handle_increase_invest_order {
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
@@ -364,7 +364,7 @@ mod handle_increase_invest_order {
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
@@ -386,7 +386,7 @@ mod handle_increase_invest_order {
 				AssetRegistry::mock_metadata(|_| None);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
@@ -427,7 +427,7 @@ mod handle_cancel_invest_order {
 		System::externalities().execute_with(|| {
 			config_mocks();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::CancelDepositRequest {
 					pool_id: POOL_ID,
@@ -449,7 +449,7 @@ mod handle_cancel_invest_order {
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
@@ -470,7 +470,7 @@ mod handle_cancel_invest_order {
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
@@ -491,7 +491,7 @@ mod handle_cancel_invest_order {
 				AssetRegistry::mock_metadata(|_| None);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
@@ -539,7 +539,7 @@ mod handle_increase_redeem_order {
 			)
 			.unwrap();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::RedeemRequest {
 					pool_id: POOL_ID,
@@ -566,7 +566,7 @@ mod handle_increase_redeem_order {
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
@@ -588,7 +588,7 @@ mod handle_increase_redeem_order {
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
@@ -610,7 +610,7 @@ mod handle_increase_redeem_order {
 				AssetRegistry::mock_metadata(|_| None);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
@@ -631,7 +631,7 @@ mod handle_increase_redeem_order {
 				config_mocks();
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
@@ -668,7 +668,7 @@ mod handle_cancel_redeem_order {
 				Ok(AMOUNT)
 			},
 		);
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, TreasuryAccount::get());
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -690,7 +690,7 @@ mod handle_cancel_redeem_order {
 		System::externalities().execute_with(|| {
 			config_mocks();
 
-			assert_ok!(LiquidityPools::submit(
+			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::CancelRedeemRequest {
 					pool_id: POOL_ID,
@@ -716,7 +716,7 @@ mod handle_cancel_redeem_order {
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
@@ -737,7 +737,7 @@ mod handle_cancel_redeem_order {
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
@@ -758,7 +758,7 @@ mod handle_cancel_redeem_order {
 				AssetRegistry::mock_metadata(|_| None);
 
 				assert_noop!(
-					LiquidityPools::submit(
+					LiquidityPools::handle(
 						EVM_DOMAIN_ADDRESS,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
