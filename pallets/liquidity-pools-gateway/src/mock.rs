@@ -3,13 +3,13 @@ use cfg_mocks::{
 	RouterMock,
 };
 use cfg_traits::liquidity_pools::test_util::Message;
-use cfg_types::{domain_address::DomainAddress, gateway::GatewayMessage};
+use cfg_types::domain_address::DomainAddress;
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use runtime_common::origin::EnsureAccountOrRoot;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::IdentityLookup;
 
-use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
+use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
 pub const LENGTH_SOURCE_CHAIN: usize = 10;
 pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";

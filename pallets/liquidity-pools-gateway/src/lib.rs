@@ -35,12 +35,10 @@ use cfg_traits::{
 	},
 	TryConvert,
 };
-use cfg_types::{
-	domain_address::{Domain, DomainAddress},
-	gateway::GatewayMessage,
-};
+use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
 use frame_system::pallet_prelude::OriginFor;
+use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
@@ -50,6 +48,8 @@ use crate::weights::WeightInfo;
 
 mod origin;
 pub use origin::*;
+
+pub mod message;
 
 pub mod weights;
 
