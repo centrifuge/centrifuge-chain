@@ -12,4 +12,4 @@
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1301 = ();
+pub type UpgradeAltair1303 = ();

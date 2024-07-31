@@ -12,4 +12,4 @@
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1301 = ();
+pub type UpgradeCentrifuge1303 = ();
