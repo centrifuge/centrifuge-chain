@@ -28,6 +28,7 @@ mod benchmarks {
 	#[benchmark]
 	fn process_message() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = account("acc_0", 0, 0);
+		//TODO(cdamian): Add a way of retrieving the "heaviest" message.
 		let message = T::Message::default();
 		let nonce = T::MessageNonce::one();
 
