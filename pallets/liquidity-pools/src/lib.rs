@@ -41,11 +41,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{
-	liquidity_pools::{InboundQueue, OutboundQueue},
-	swaps::TokenSwaps,
-	PreConditions,
-};
+use cfg_traits::{liquidity_pools::OutboundMessageHandler, swaps::TokenSwaps, PreConditions};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
@@ -111,8 +107,8 @@ pub type GeneralCurrencyIndexOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::ForeignInvestment, CurrencyInspect, Permissions, PoolInspect, Seconds,
-		TimeAsSecs, TrancheTokenPrice,
+		investments::ForeignInvestment, liquidity_pools::InboundMessageHandler, CurrencyInspect,
+		Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -251,8 +247,11 @@ pub mod pallet {
 
 		/// The type for processing outgoing messages and retrieving the domain
 		/// hook address.
-		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
-			+ GetByKey<Domain, Option<[u8; 20]>>;
+		type OutboundMessageHandler: OutboundMessageHandler<
+				Sender = Self::AccountId,
+				Message = Message,
+				Destination = Domain,
+			> + GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
@@ -371,7 +370,7 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
 				Message::AddPool {
@@ -409,8 +408,8 @@ pub mod pallet {
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
-			let hook_bytes =
-				T::OutboundQueue::get(&domain).ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let hook_bytes = T::OutboundMessageHandler::get(&domain)
+				.ok_or(Error::<T>::DomainHookAddressNotFound)?;
 			let evm_chain_id = match domain {
 				Domain::EVM(id) => Ok(id),
 				_ => Err(Error::<T>::InvalidDomain),
@@ -420,7 +419,7 @@ pub mod pallet {
 					.into();
 
 			// Send the message to the domain
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
 				Message::AddTranche {
@@ -471,7 +470,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				destination,
 				Message::UpdateTranchePrice {
@@ -522,7 +521,7 @@ pub mod pallet {
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain_address.domain(),
 				Message::UpdateRestriction {
@@ -580,7 +579,7 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who.clone(),
 				domain_address.domain(),
 				Message::TransferTrancheTokens {
@@ -653,7 +652,7 @@ pub mod pallet {
 				Fortitude::Polite,
 			)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who.clone(),
 				receiver.domain(),
 				Message::TransferAssets {
@@ -677,7 +676,7 @@ pub mod pallet {
 
 			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				Domain::EVM(chain_id),
 				Message::AddAsset {
@@ -714,7 +713,7 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				Domain::EVM(chain_id),
 				Message::AllowAsset {
@@ -736,7 +735,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				T::TreasuryAccount::get(),
 				Domain::EVM(evm_chain_id),
 				Message::ScheduleUpgrade { contract },
@@ -753,7 +752,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				T::TreasuryAccount::get(),
 				Domain::EVM(evm_chain_id),
 				Message::CancelUpgrade { contract },
@@ -781,7 +780,7 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
 				Message::UpdateTrancheMetadata {
@@ -815,7 +814,7 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				Domain::EVM(chain_id),
 				Message::DisallowAsset {
@@ -945,7 +944,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> InboundQueue for Pallet<T>
+	impl<T: Config> InboundMessageHandler for Pallet<T>
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
@@ -953,7 +952,7 @@ pub mod pallet {
 		type Sender = DomainAddress;
 
 		#[transactional]
-		fn submit(sender: DomainAddress, msg: Message) -> DispatchResult {
+		fn handle(sender: DomainAddress, msg: Message) -> DispatchResult {
 			Self::deposit_event(Event::<T>::IncomingMessage {
 				sender: sender.clone(),
 				message: msg.clone(),

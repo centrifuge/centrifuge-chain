@@ -27,6 +27,7 @@ cfg-traits = { workspace = true }
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
 cfg-primitives = { workspace = true, default-features = true }
+cfg-types = { workspace = true, default-features = true }
 
 pallet-balances = { workspace = true, default-features = true }
 

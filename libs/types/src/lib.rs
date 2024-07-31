@@ -21,6 +21,7 @@ pub mod domain_address;
 pub mod epoch;
 pub mod fee_keys;
 pub mod fixed_point;
+pub mod gateway;
 pub mod ids;
 pub mod investments;
 pub mod locations;

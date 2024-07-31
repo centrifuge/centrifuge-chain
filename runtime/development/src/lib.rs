@@ -1896,7 +1896,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type MarketRatio = OrderBook;
-	type OutboundQueue = LiquidityPoolsGateway;
+	type OutboundMessageHandler = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -1917,12 +1917,12 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
+	type InboundMessageHandler = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message;
+	type MessageQueue = LiquidityPoolsGatewayQueue;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
-	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

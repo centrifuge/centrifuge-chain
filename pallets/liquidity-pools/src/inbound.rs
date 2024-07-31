@@ -12,7 +12,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, TimeAsSecs,
+	investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler, Permissions,
+	TimeAsSecs,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -226,7 +227,11 @@ where
 			tranche_tokens_payout: amount.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
+		T::OutboundMessageHandler::handle(
+			T::TreasuryAccount::get(),
+			destination.domain(),
+			message,
+		)?;
 
 		Ok(())
 	}

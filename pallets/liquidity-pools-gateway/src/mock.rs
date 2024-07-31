@@ -1,8 +1,10 @@
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
-use cfg_primitives::OutboundMessageNonce;
+use cfg_mocks::{
+	pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue, pallet_mock_routers,
+	RouterMock,
+};
 use cfg_traits::liquidity_pools::test_util::Message;
-use cfg_types::domain_address::DomainAddress;
-use frame_support::derive_impl;
+use cfg_types::{domain_address::DomainAddress, gateway::GatewayMessage};
+use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use runtime_common::origin::EnsureAccountOrRoot;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::IdentityLookup;
@@ -22,6 +24,7 @@ frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
+		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
 		MockRouters: pallet_mock_routers,
 		MockOriginRecovery: cfg_mocks::converter::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
@@ -32,6 +35,7 @@ frame_support::construct_runtime!(
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId32;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
+	type DbWeight = RocksDbWeight;
 	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
@@ -47,6 +51,10 @@ impl cfg_mocks::converter::pallet::Config for Runtime {
 	type To = DomainAddress;
 }
 
+impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
+	type Message = GatewayMessage<AccountId32, Message>;
+}
+
 frame_support::parameter_types! {
 	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
 	pub const MaxIncomingMessageSize: u32 = 1024;
@@ -55,12 +63,12 @@ frame_support::parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRoot<LpAdminAccount>;
-	type InboundQueue = MockLiquidityPools;
+	type InboundMessageHandler = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = Message;
+	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type OriginRecovery = MockOriginRecovery;
-	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
