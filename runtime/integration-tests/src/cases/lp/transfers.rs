@@ -235,7 +235,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([development])]
 fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_tt_domain::<T>(&mut env);
@@ -271,7 +271,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
 				Token::Uint(DOMAIN_EVM.into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
-				Token::Address(Keyring::TrancheInvestor(2).into()),
+				Token::FixedBytes(Keyring::TrancheInvestor(2).id().to_raw_vec()),
 				Token::Uint(AMOUNT.into()),
 			]),
 		)
