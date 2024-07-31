@@ -72,8 +72,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			),
 			fee_values: FeeValues {
 				value: sp_core::U256::zero(),
-				// FIXME: Diverges from prod (500_000)
-				gas_limit: sp_core::U256::from(500_000_000),
+				gas_limit: sp_core::U256::from(500_000),
 				gas_price: sp_core::U256::from(base_fee),
 			},
 		};
@@ -283,21 +282,6 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	// FIXME: Fails
-	// evm.register(
-	// 	names::RM_POOL_A_T_1,
-	// 	contracts::RESTRICTION_MANAGER,
-	// 	Decoder::<H160>::decode(
-	// 		&evm.view(
-	// 			Keyring::Alice,
-	// 			names::POOL_A_T_1,
-	// 			"restrictionManager",
-	// 			None,
-	// 		)
-	// 		.unwrap()
-	// 		.value,
-	// 	),
-	// );
 
 	// AddTranche 1 of B
 	let tranche_id = {
@@ -341,21 +325,6 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	// FIXME: Fails
-	// evm.register(
-	// 	names::RM_POOL_B_T_1,
-	// 	contracts::RESTRICTION_MANAGER,
-	// 	Decoder::<H160>::decode(
-	// 		&evm.view(
-	// 			Keyring::Alice,
-	// 			names::POOL_B_T_1,
-	// 			"restrictionManager",
-	// 			None,
-	// 		)
-	// 		.unwrap()
-	// 		.value,
-	// 	),
-	// );
 
 	// AddTranche 2 of B
 	let tranche_id = {
@@ -399,21 +368,6 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			.value,
 		),
 	);
-	// FIXME: Fails
-	// evm.register(
-	// 	names::RM_POOL_B_T_2,
-	// 	contracts::RESTRICTION_MANAGER,
-	// 	Decoder::<H160>::decode(
-	// 		&evm.view(
-	// 			Keyring::Alice,
-	// 			names::POOL_B_T_2,
-	// 			"restrictionManager",
-	// 			None,
-	// 		)
-	// 		.unwrap()
-	// 		.value,
-	// 	),
-	// );
 
 	// AddTranche 1 of C
 	let tranche_id = {
