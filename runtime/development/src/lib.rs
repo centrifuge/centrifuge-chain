@@ -584,6 +584,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
                     RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
                     RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
+					RuntimeCall::Loans(pallet_loans::Call::increase_debt { .. }) |
+					RuntimeCall::Loans(pallet_loans::Call::decrease_debt { .. }) |
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
