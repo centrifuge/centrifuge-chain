@@ -131,7 +131,7 @@ jobs:
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json"
 
       - name: Upload WASM to release tag ${{ github.ref_name }}
-        uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # @v1
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5 # @v1
         if: github.event_name == 'release'
         # https://github.com/ncipollo/release-action
         with:
