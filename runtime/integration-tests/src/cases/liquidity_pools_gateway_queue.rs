@@ -13,7 +13,7 @@ use crate::{
 
 /// Confirm that an inbound messages reaches its destination:
 /// LP pallet
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn inbound<T: Runtime + FudgeSupport>() {
 	let mut env = FudgeEnv::<T>::default();
 
@@ -45,7 +45,7 @@ fn inbound<T: Runtime + FudgeSupport>() {
 
 /// Confirm that an inbound messages reaches its destination:
 /// LP gateway pallet
-#[test_runtimes([development])]
+#[test_runtimes(all)]
 fn outbound<T: Runtime + FudgeSupport>() {
 	let mut env = FudgeEnv::<T>::default();
 
