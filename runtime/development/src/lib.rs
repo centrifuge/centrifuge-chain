@@ -676,6 +676,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				c,
 				RuntimeCall::Uniques(..)
 					| RuntimeCall::Anchor(..)
+					| RuntimeCall::AnchorsV2(..)
 					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
 			),
 			// This type of proxy is used only for authenticating with the centrifuge POD,
