@@ -19,9 +19,8 @@ use fp_evm::CallInfo;
 use frame_support::traits::{OriginTrait, PalletInfo};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::ExecutionInfo;
-use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
-use sp_core::{crypto::AccountId32, ByteArray, Get};
+use sp_core::{ByteArray, Get};
 use sp_runtime::{
 	traits::{Convert, EnsureAdd},
 	DispatchError,
@@ -135,7 +134,7 @@ pub fn process_gateway_message<T: Runtime>(
 		.collect::<Vec<_>>();
 
 	// The function should panic if there is nothing to be processed.
-	assert!(msgs.len() > 0);
+	assert!(msgs.len() > 0, "No messages in the queue");
 
 	msgs.into_iter().for_each(|(nonce, msg)| {
 		pallet_liquidity_pools_gateway_queue::Pallet::<T>::process_message(
@@ -143,6 +142,8 @@ pub fn process_gateway_message<T: Runtime>(
 			nonce,
 		)
 		.unwrap();
+
+		let _events = frame_system::Pallet::<T>::events();
 
 		match msg {
 			GatewayMessage::Inbound { message, .. } => verifier(message),

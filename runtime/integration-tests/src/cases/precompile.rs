@@ -14,7 +14,7 @@ use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	config::Runtime,
-	env::Env,
+	env::{Blocks, Env, EnvEvmExtension},
 	envs::runtime_env::RuntimeEnv,
 	utils::{
 		currency::{usd18, CurrencyInfo, Usd18},
@@ -25,25 +25,27 @@ use crate::{
 
 #[test_runtimes(all)]
 fn axelar_precompile_execute<T: Runtime>() {
-	RuntimeEnv::<T>::from_parachain_storage(
+	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::assets::<T>([(Usd18.id(), &Usd18.metadata())]))
 			.storage(),
-	)
-	.parachain_state_mut(|| {
-		let lp_axelar_gateway = H160::from_low_u64_be(LP_AXELAR_GATEWAY);
+	);
 
-		let sender_address = H160::from_low_u64_be(1_000_002);
-		let receiver_address = H160::from_low_u64_be(1_000_003);
+	let lp_axelar_gateway = H160::from_low_u64_be(LP_AXELAR_GATEWAY);
 
-		let source_address = H160::from_low_u64_be(1111);
-		let evm_chain_name = String::from("Ethereum");
-		let evm_chain_id = 0;
-		let command_id = H256::from_low_u64_be(5678);
-		let transfer_amount = usd18(100);
+	let sender_address = H160::from_low_u64_be(1_000_002);
+	let receiver_address = H160::from_low_u64_be(1_000_003);
 
-		let derived_receiver_account = T::AddressMapping::into_account_id(receiver_address);
+	let source_address = H160::from_low_u64_be(1111);
+	let evm_chain_name = String::from("Ethereum");
+	let evm_chain_id = 0;
+	let command_id = H256::from_low_u64_be(5678);
+	let transfer_amount = usd18(100);
 
+	let derived_receiver_account =
+		env.state(|_| T::AddressMapping::into_account_id(receiver_address));
+
+	env.parachain_state_mut(|| {
 		evm::mint_balance_into_derived_account::<T>(sender_address, 1 * CFG);
 
 		let general_currency_id =
@@ -122,7 +124,11 @@ fn axelar_precompile_execute<T: Runtime>() {
 			Some(U256::from(0)),
 			Vec::new(),
 		));
+	});
 
+	env.pass(Blocks::ByNumber(1));
+
+	env.state(|_| {
 		assert_eq!(
 			orml_tokens::Pallet::<T>::free_balance(Usd18.id(), &derived_receiver_account),
 			transfer_amount

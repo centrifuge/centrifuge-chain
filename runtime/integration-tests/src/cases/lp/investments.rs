@@ -326,13 +326,10 @@ mod with_pool_currency {
 }
 
 mod with_foreign_currency {
-	use cfg_types::{domain_address::Domain, fixed_point::Quantity};
+	use cfg_types::fixed_point::Quantity;
 	use cfg_utils::vec_to_fixed_array;
 	use pallet_foreign_investments::Action;
 	use pallet_liquidity_pools::Message;
-	use pallet_liquidity_pools_gateway::message::GatewayMessage;
-	use runtime_common::account_conversion::AccountConverter;
-	use sp_core::{ByteArray, Get};
 	use sp_runtime::{
 		traits::{EnsureFixedPointNumber, EnsureSub, One},
 		FixedPointNumber,
@@ -340,8 +337,10 @@ mod with_foreign_currency {
 
 	use super::{utils, *};
 	use crate::cases::lp::{
-		investments::utils::close_and_collect, utils as lp_utils, utils::pool_a_tranche_1_id,
-		EVM_DOMAIN_CHAIN_ID, POOL_A,
+		investments::utils::close_and_collect,
+		utils as lp_utils,
+		utils::{as_h160_32bytes, pool_a_tranche_1_id},
+		POOL_A,
 	};
 
 	#[test_runtimes([centrifuge, development])]
@@ -742,19 +741,13 @@ mod with_foreign_currency {
 				remaining_amount
 			);
 
-			// Required given that the deposit request address for this account
-			// does not have the extra chain id + EVM tag.
-			let tranche_investor_remote_account =
-				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1));
-			let tranche_investor_evm_account = &tranche_investor_remote_account.as_slice()[..20];
-
 			lp_utils::process_gateway_message::<T>(|msg| {
 				assert_eq!(
 					msg,
 					Message::CancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(tranche_investor_evm_account),
+						investor: as_h160_32bytes(Keyring::TrancheInvestor(1)),
 						currency: utils::index_lp(evm, names::USDC),
 					}
 				);

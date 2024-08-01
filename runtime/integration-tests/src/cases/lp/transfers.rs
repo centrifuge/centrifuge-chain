@@ -19,8 +19,7 @@ use ethabi::{ethereum_types::U256, Token};
 use frame_support::traits::OriginTrait;
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::message::GatewayMessage;
-use sp_core::{ByteArray, Get};
+use sp_core::ByteArray;
 
 use crate::{
 	cases::lp::{
@@ -136,7 +135,11 @@ mod utils {
 				]),
 			)
 			.unwrap();
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state(|_| {
 			assert_eq!(
 				orml_tokens::Accounts::<T>::get(Keyring::Ferdie.id(), USDC.id()).free,
 				AMOUNT
@@ -297,6 +300,8 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 		});
 	});
 
+	env.pass(Blocks::ByNumber(1));
+
 	env.state(|evm| {
 		assert_eq!(
 			Decoder::<Balance>::decode(
@@ -356,6 +361,8 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 		)
 		.unwrap();
 	});
+
+	env.pass(Blocks::ByNumber(1));
 
 	env.state(|_evm| {
 		assert_eq!(
