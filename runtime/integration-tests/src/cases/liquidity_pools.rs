@@ -83,7 +83,7 @@ pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 
 pub type LiquidityPoolMessage = Message;
 
-pub(crate) mod utils {
+mod utils {
 	use cfg_types::oracles::OracleKey;
 	use frame_support::weights::Weight;
 	use runtime_common::oracle::Feeder;
