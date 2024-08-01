@@ -119,12 +119,12 @@ jobs:
           ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
           gsutil cp \
-            "${{ steps.srtool_build.wasm_compressed }}" \
+            "${{ steps.srtool_build.outputs.wasm_compressed }}" \
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
           ## Publish WASM and JSON summary
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
           gsutil cp \
-            "${{ steps.srtool_build.wasm_compressed }}" \
+            "${{ steps.srtool_build.outputs.wasm_compressed }}" \
             "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
           gsutil cp \
             "${{ matrix.chain }}-srtool-digest.json" \
@@ -137,7 +137,7 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
+          artifacts: "${{ steps.srtool_build.outputs.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
           replacesArtifacts: true
           allowUpdates: true
           artifactErrorsFailBuild: true
