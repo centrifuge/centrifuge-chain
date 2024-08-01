@@ -85,8 +85,6 @@ pub mod pallet {
 	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
 	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
 
-	use std::ops::AddAssign;
-
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
 		MalformedMessage, MalformedSourceAddress, MalformedSourceAddressLength,
@@ -205,35 +203,6 @@ pub mod pallet {
 	#[pallet::getter(fn relayer)]
 	pub type RelayerList<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
-
-	//TODO(cdamian): Migration?
-	// #[pallet::storage]
-	// #[pallet::getter(fn outbound_message_nonce_store)]
-	// pub type OutboundMessageNonceStore<T: Config> =
-	// 	StorageValue<_, T::OutboundMessageNonce, ValueQuery>;
-
-	//TODO(cdamian): Migration?
-	// /// Storage for outbound messages that will be processed during the
-	// /// `on_idle` hook.
-	// #[pallet::storage]
-	// #[pallet::getter(fn outbound_message_queue)]
-	// pub type OutboundMessageQueue<T: Config> = StorageMap<
-	// 	_,
-	// 	Blake2_128Concat,
-	// 	T::OutboundMessageNonce,
-	// 	(Domain, T::AccountId, T::Message),
-	// >;
-
-	//TODO(cdamian): Migration?
-	// /// Storage for failed outbound messages that can be manually re-triggered.
-	// #[pallet::storage]
-	// #[pallet::getter(fn failed_outbound_messages)]
-	// pub type FailedOutboundMessages<T: Config> = StorageMap<
-	// 	_,
-	// 	Blake2_128Concat,
-	// 	T::OutboundMessageNonce,
-	// 	(Domain, T::AccountId, T::Message, DispatchError),
-	// >;
 
 	/// Stores the hook address of a domain required for particular LP messages.
 	///
@@ -616,7 +585,7 @@ pub mod pallet {
 			let router_call_weight =
 				Self::get_outbound_message_processing_weight(router_call_weight);
 
-			weight.add_assign(router_call_weight);
+			*weight = weight.saturating_add(router_call_weight);
 		}
 
 		/// Calculates the weight used by a router when processing an outbound
