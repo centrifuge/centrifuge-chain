@@ -48,7 +48,7 @@ use staging_xcm::{
 use crate::{
 	config::Runtime,
 	env::Env,
-	envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
+	envs::{fudge_env::handle::SIBLING_ID, runtime_env::RuntimeEnv},
 	utils::{accounts::Keyring, genesis, genesis::Genesis, orml_asset_registry},
 };
 
@@ -94,11 +94,11 @@ mod utils {
 	///  * BOB as admin and depositor
 	///  * Two tranches
 	///  * AUSD as pool currency with max reserve 10k.
-	pub fn create_ausd_pool<T: Runtime + FudgeSupport>(pool_id: u64) {
+	pub fn create_ausd_pool<T: Runtime>(pool_id: u64) {
 		create_currency_pool::<T>(pool_id, AUSD_CURRENCY_ID, decimals(currency_decimals::AUSD))
 	}
 
-	pub fn register_ausd<T: Runtime + FudgeSupport>() {
+	pub fn register_ausd<T: Runtime>() {
 		let meta: AssetMetadata = AssetMetadata {
 			decimals: 12,
 			name: BoundedVec::default(),
@@ -137,7 +137,7 @@ mod utils {
 	///  * BOB as admin and depositor
 	///  * Two tranches
 	///  * The given `currency` as pool currency with of `currency_decimals`.
-	pub fn create_currency_pool<T: Runtime + FudgeSupport>(
+	pub fn create_currency_pool<T: Runtime>(
 		pool_id: u64,
 		currency_id: CurrencyId,
 		currency_decimals: Balance,
@@ -188,7 +188,7 @@ mod utils {
 		));
 	}
 
-	pub fn register_glmr<T: Runtime + FudgeSupport>() {
+	pub fn register_glmr<T: Runtime>() {
 		let meta: AssetMetadata = AssetMetadata {
 			decimals: 18,
 			name: BoundedVec::default(),
@@ -211,7 +211,7 @@ mod utils {
 		));
 	}
 
-	pub fn set_test_domain_router<T: Runtime + FudgeSupport>(
+	pub fn set_test_domain_router<T: Runtime>(
 		evm_chain_id: u64,
 		xcm_domain_location: VersionedLocation,
 		currency_id: CurrencyId,
@@ -247,7 +247,7 @@ mod utils {
 		);
 	}
 
-	pub fn default_tranche_id<T: Runtime + FudgeSupport>(pool_id: u64) -> TrancheId {
+	pub fn default_tranche_id<T: Runtime>(pool_id: u64) -> TrancheId {
 		let pool_details =
 			pallet_pool_system::pallet::Pool::<T>::get(pool_id).expect("Pool should exist");
 		pool_details
@@ -259,7 +259,7 @@ mod utils {
 	/// Returns a `VersionedLocation` that can be converted into
 	/// `LiquidityPoolsWrappedToken` which is required for cross chain asset
 	/// registration and transfer.
-	pub fn liquidity_pools_transferable_multilocation<T: Runtime + FudgeSupport>(
+	pub fn liquidity_pools_transferable_multilocation<T: Runtime>(
 		chain_id: u64,
 		address: [u8; 20],
 	) -> VersionedLocation {
@@ -288,9 +288,7 @@ mod utils {
 	/// NOTE: Sets the location to the `MOONBEAM_EVM_CHAIN_ID` with dummy
 	/// address as the location is required for LiquidityPoolsWrappedToken
 	/// conversions.
-	pub fn enable_liquidity_pool_transferability<T: Runtime + FudgeSupport>(
-		currency_id: CurrencyId,
-	) {
+	pub fn enable_liquidity_pool_transferability<T: Runtime>(currency_id: CurrencyId) {
 		let metadata = orml_asset_registry::Metadata::<T>::get(currency_id)
 			.expect("Currency should be registered");
 		let location = Some(Some(liquidity_pools_transferable_multilocation::<T>(
@@ -315,7 +313,7 @@ mod utils {
 		));
 	}
 
-	pub fn setup_test<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
+	pub fn setup_test<T: Runtime>(env: &mut RuntimeEnv<T>) {
 		env.parachain_state_mut(|| {
 			register_ausd::<T>();
 			register_glmr::<T>();
@@ -340,24 +338,21 @@ mod utils {
 	///
 	/// Throws if the provided currency_id is not
 	/// `CurrencyId::ForeignAsset(id)`.
-	pub fn general_currency_index<T: Runtime + FudgeSupport>(currency_id: CurrencyId) -> u128 {
+	pub fn general_currency_index<T: Runtime>(currency_id: CurrencyId) -> u128 {
 		pallet_liquidity_pools::Pallet::<T>::try_get_general_index(currency_id)
 			.expect("ForeignAsset should convert into u128")
 	}
 
 	/// Returns the investment_id of the given pool and tranche ids.
-	pub fn investment_id<T: Runtime + FudgeSupport>(
-		pool_id: u64,
-		tranche_id: TrancheId,
-	) -> InvestmentId {
+	pub fn investment_id<T: Runtime>(pool_id: u64, tranche_id: TrancheId) -> InvestmentId {
 		(pool_id, tranche_id)
 	}
 
-	pub fn default_investment_id<T: Runtime + FudgeSupport>() -> InvestmentId {
+	pub fn default_investment_id<T: Runtime>() -> InvestmentId {
 		(POOL_ID, default_tranche_id::<T>(POOL_ID))
 	}
 
-	pub fn default_order_id<T: Runtime + FudgeSupport>(investor: &AccountId) -> OrderId {
+	pub fn default_order_id<T: Runtime>(investor: &AccountId) -> OrderId {
 		pallet_foreign_investments::Pallet::<T>::order_id(
 			&investor,
 			default_investment_id::<T>(),
@@ -368,7 +363,7 @@ mod utils {
 
 	/// Returns the default investment account derived from the
 	/// `DEFAULT_POOL_ID` and its default tranche.
-	pub fn default_investment_account<T: Runtime + FudgeSupport>() -> AccountId {
+	pub fn default_investment_account<T: Runtime>() -> AccountId {
 		InvestmentAccount {
 			investment_id: default_investment_id::<T>(),
 		}
@@ -403,7 +398,7 @@ mod utils {
 	/// Assumes `setup_pre_requirements` and
 	/// `investments::create_currency_pool` to have been called
 	/// beforehand
-	pub fn do_initial_increase_investment<T: Runtime + FudgeSupport>(
+	pub fn do_initial_increase_investment<T: Runtime>(
 		pool_id: u64,
 		amount: Balance,
 		investor: AccountId,
@@ -490,7 +485,7 @@ mod utils {
 	/// beforehand.
 	///
 	/// NOTE: Mints exactly the redeeming amount of tranche tokens.
-	pub fn do_initial_increase_redemption<T: Runtime + FudgeSupport>(
+	pub fn do_initial_increase_redemption<T: Runtime>(
 		pool_id: u64,
 		amount: Balance,
 		investor: AccountId,
@@ -595,7 +590,7 @@ mod utils {
 	/// chain transferability.
 	///
 	/// NOTE: Assumes to be executed within an externalities environment.
-	fn register_usdt<T: Runtime + FudgeSupport>() {
+	fn register_usdt<T: Runtime>() {
 		let meta: AssetMetadata = AssetMetadata {
 			decimals: 6,
 			name: BoundedVec::default(),
@@ -621,7 +616,7 @@ mod utils {
 
 	/// Registers USDT currency, adds bidirectional trading pairs with
 	/// conversion ratio one and returns the amount in foreign denomination.
-	pub fn enable_usdt_trading<T: Runtime + FudgeSupport>(
+	pub fn enable_usdt_trading<T: Runtime>(
 		pool_currency: CurrencyId,
 		amount_pool_denominated: Balance,
 		enable_lp_transferability: bool,
@@ -664,7 +659,7 @@ mod utils {
 		amount_foreign_denominated
 	}
 
-	pub fn outbound_message_dispatched<T: Runtime + FudgeSupport>(f: impl Fn() -> ()) -> bool {
+	pub fn outbound_message_dispatched<T: Runtime>(f: impl Fn() -> ()) -> bool {
 		let events_before = frame_system::Pallet::<T>::events();
 
 		f();
@@ -698,8 +693,8 @@ mod foreign_investments {
 		use super::*;
 
 		#[test_runtimes([development])]
-		fn increase_deposit_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn increase_deposit_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.add(genesis::tokens::<T>(vec![(
@@ -750,8 +745,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn decrease_deposit_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn decrease_deposit_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -840,8 +835,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn cancel_deposit_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn cancel_deposit_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -940,8 +935,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn collect_deposit_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn collect_deposit_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -1086,8 +1081,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn collect_investment<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn collect_investment<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -1323,8 +1318,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn increase_redeem_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn increase_redeem_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -1376,8 +1371,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn cancel_redeem_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn cancel_redeem_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -1471,8 +1466,8 @@ mod foreign_investments {
 		}
 
 		#[test_runtimes([development])]
-		fn collect_redeem_request<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn collect_redeem_request<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -1664,8 +1659,8 @@ mod foreign_investments {
 				use super::*;
 
 				#[test_runtimes([development])]
-				fn invest_requires_collect<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
+				fn invest_requires_collect<T: Runtime>() {
+					let mut env = RuntimeEnv::<T>::from_parachain_storage(
 						Genesis::default()
 							.add(genesis::balances::<T>(cfg(1_000)))
 							.storage(),
@@ -1744,8 +1739,8 @@ mod foreign_investments {
 				}
 
 				#[test_runtimes([development])]
-				fn redeem_requires_collect<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
+				fn redeem_requires_collect<T: Runtime>() {
+					let mut env = RuntimeEnv::<T>::from_parachain_storage(
 						Genesis::default()
 							.add(genesis::balances::<T>(cfg(1_000)))
 							.storage(),
@@ -1835,8 +1830,8 @@ mod foreign_investments {
 				use super::*;
 
 				#[test_runtimes([development])]
-				fn redeem_payout_currency_not_found<T: Runtime + FudgeSupport>() {
-					let mut env = FudgeEnv::<T>::from_parachain_storage(
+				fn redeem_payout_currency_not_found<T: Runtime>() {
+					let mut env = RuntimeEnv::<T>::from_parachain_storage(
 						Genesis::default()
 							.add(genesis::balances::<T>(cfg(1_000)))
 							.storage(),
@@ -1897,8 +1892,8 @@ mod foreign_investments {
 		use super::*;
 
 		#[test_runtimes([development])]
-		fn collect_foreign_investment_for<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn collect_foreign_investment_for<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
@@ -2015,8 +2010,8 @@ mod foreign_investments {
 		/// Invest, fulfill swap foreign->pool, cancel, fulfill swap
 		/// pool->foreign
 		#[test_runtimes([development])]
-		fn cancel_unprocessed_investment<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn cancel_unprocessed_investment<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.add(genesis::tokens::<T>(vec![
@@ -2167,8 +2162,8 @@ mod foreign_investments {
 		/// Invest, fulfill swap foreign->pool, process 50% of investment,
 		/// cancel, swap back pool->foreign of remaining unprocessed investment
 		#[test_runtimes([development])]
-		fn cancel_partially_processed_investment<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_parachain_storage(
+		fn cancel_partially_processed_investment<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
 					.storage(),
