@@ -10,6 +10,11 @@ use crate::{
 	env::{Blocks, Env},
 	envs::fudge_env::{FudgeEnv, FudgeSupport},
 };
+/// NOTE - we're using fudge here because in a non-fudge environment, the event
+/// can only be read before block finalization. The LP gateway queue is
+/// processing messages during the `on_idle` hook, just before the block is
+/// finished, after the message is processed, the block is finalized and the
+/// event resets.
 
 /// Confirm that an inbound messages reaches its destination:
 /// LP pallet
