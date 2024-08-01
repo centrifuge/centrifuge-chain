@@ -30,7 +30,7 @@ use crate::{
 const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
-	use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId, TrancheId};
+	use cfg_primitives::{AccountId, InvestmentId, PoolId, TrancheId};
 	use cfg_traits::HasLocalAssetRepresentation;
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
@@ -155,7 +155,7 @@ mod with_pool_currency {
 	use super::{utils, *};
 	use crate::cases::lp::utils as lp_utils;
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_invest<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -189,7 +189,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_collect<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -257,7 +257,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -335,7 +335,7 @@ mod with_foreign_currency {
 		POOL_A,
 	};
 
-	#[test_runtimes([development], ignore = "solidity mismatch")]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_before_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -346,7 +346,7 @@ mod with_foreign_currency {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
-					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None,
 			);
@@ -371,7 +371,7 @@ mod with_foreign_currency {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
-					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
 			);
@@ -393,7 +393,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
 
@@ -486,7 +486,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 2).unwrap();
@@ -589,7 +589,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development], ignore = "solidity mismatch")]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially_inter_epoch_close<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 3).unwrap();
@@ -713,8 +713,8 @@ mod with_foreign_currency {
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),
-						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
-						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
+						currency_payout: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
+						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
 					}
 				)
 			});

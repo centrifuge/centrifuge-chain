@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Balance;
+use cfg_primitives::{AccountId, Balance};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::CurrencyId,
@@ -144,7 +144,7 @@ mod utils {
 	}
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([centrifuge, development])]
 fn transfer_tokens_from_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_usdc_local::<T>(&mut env);
@@ -173,7 +173,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([centrifuge, development])]
 fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 
@@ -235,7 +235,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development], ignore = "solidity mismatch")]
+#[test_runtimes([centrifuge, development])]
 fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_tt_domain::<T>(&mut env);
@@ -261,6 +261,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 			]),
 		)
 		.unwrap();
+
 		evm.call(
 			Keyring::TrancheInvestor(1),
 			sp_core::U256::zero(),
@@ -271,7 +272,9 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 				Token::FixedBytes(pool_a_tranche_1_id::<T>().into()),
 				Token::Uint(DOMAIN_EVM.into()),
 				Token::Uint(EVM_DOMAIN_CHAIN_ID.into()),
-				Token::Address(Keyring::TrancheInvestor(2).into()),
+				Token::FixedBytes(
+					AccountId::from(as_h160_32bytes(Keyring::TrancheInvestor(2))).to_raw_vec(),
+				),
 				Token::Uint(AMOUNT.into()),
 			]),
 		)
@@ -310,7 +313,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	});
 }
 
-#[test_runtimes([development])]
+#[test_runtimes([centrifuge, development])]
 fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 	let mut env = super::setup_full::<T>();
 	utils::prepare_hold_tt_domain::<T>(&mut env);

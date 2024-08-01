@@ -148,7 +148,9 @@ impl<T: Config> InvestmentInfo<T> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
 		let cancel_pool_amount = T::Investment::investment(who, investment_id)?;
-		T::Investment::update_investment(who, investment_id, Zero::zero())?;
+		if !cancel_pool_amount.is_zero() {
+			T::Investment::update_investment(who, investment_id, Zero::zero())?;
+		}
 
 		if self.foreign_currency != pool_currency {
 			let increase_foreign = match self.order_id {
@@ -320,7 +322,9 @@ impl<T: Config> RedemptionInfo<T> {
 		investment_id: T::InvestmentId,
 	) -> Result<T::TrancheBalance, DispatchError> {
 		let cancelled = T::Investment::redemption(who, investment_id)?;
-		T::Investment::update_redemption(who, investment_id, Zero::zero())?;
+		if !cancelled.is_zero() {
+			T::Investment::update_redemption(who, investment_id, Zero::zero())?;
+		}
 		Ok(cancelled)
 	}
 

@@ -86,7 +86,7 @@ pub fn pool_b_tranche_2_id<T: Runtime>() -> TrancheId {
 pub fn pool_c_tranche_1_id<T: Runtime>() -> TrancheId {
 	*get_tranche_ids::<T>(POOL_C)
 		.get(0)
-		.expect("Pool B has two non-residuary tranches")
+		.expect("Pool C has one non-residuary tranche")
 }
 
 pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
