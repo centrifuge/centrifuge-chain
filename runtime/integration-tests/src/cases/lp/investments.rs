@@ -155,7 +155,7 @@ mod with_pool_currency {
 	use super::{utils, *};
 	use crate::cases::lp::utils as lp_utils;
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_invest<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -189,7 +189,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_collect<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -257,7 +257,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -335,7 +335,7 @@ mod with_foreign_currency {
 		POOL_A,
 	};
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_before_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -393,7 +393,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
 
@@ -486,7 +486,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 2).unwrap();
@@ -589,7 +589,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes([development])]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially_inter_epoch_close<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 3).unwrap();
