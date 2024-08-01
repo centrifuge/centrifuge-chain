@@ -13,13 +13,15 @@
 use std::{cmp::min, fmt::Debug};
 
 use cfg_primitives::{Balance, TrancheId};
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use ethabi::ethereum_types::{H160, H256, U256};
 use fp_evm::CallInfo;
 use frame_support::traits::{OriginTrait, PalletInfo};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::ExecutionInfo;
-use sp_core::{ByteArray, Get};
+use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use sp_core::{crypto::AccountId32, ByteArray, Get};
 use sp_runtime::{
 	traits::{Convert, EnsureAdd},
 	DispatchError,
@@ -108,20 +110,25 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 	));
 }
 
-pub fn verify_outbound_success<T: Runtime>(
-	message: <T as pallet_liquidity_pools_gateway_queue::Config>::Message,
+pub fn verify_gateway_message_success<T: Runtime>(
+	lp_message: <T as pallet_liquidity_pools_gateway::Config>::Message,
 ) {
 	assert!(matches!(
-		last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
-		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
-			message: processed_message,
-			..
-		} if processed_message == message
+	   last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
+	   pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
+		  message: processed_message,
+		  ..
+	   } if {
+		  match &processed_message {
+			 GatewayMessage::Inbound{ message, .. } => *message == lp_message,
+			 GatewayMessage::Outbound{ message, .. } => *message == lp_message,
+		  }
+	   }
 	));
 }
 
-pub fn process_outbound<T: Runtime>(
-	mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway_queue::Config>::Message),
+pub fn process_gateway_message<T: Runtime>(
+	mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::Message),
 ) {
 	let msgs = pallet_liquidity_pools_gateway_queue::MessageQueue::<T>::iter()
 		.map(|(nonce, msg)| (nonce, msg))
@@ -137,7 +144,21 @@ pub fn process_outbound<T: Runtime>(
 		)
 		.unwrap();
 
-		verifier(msg);
+		match msg {
+			GatewayMessage::Inbound { message, .. } => verifier(message),
+			GatewayMessage::Outbound {
+				sender,
+				destination,
+				message,
+			} => {
+				assert_eq!(
+					sender,
+					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
+				);
+				assert_eq!(destination, Domain::EVM(EVM_DOMAIN_CHAIN_ID));
+				verifier(message)
+			}
+		}
 	});
 }
 

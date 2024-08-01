@@ -79,7 +79,7 @@ fn add_currency<T: Runtime>() {
 			TestCurrency.id()
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>)
 	});
 
 	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency.id()).unwrap();
@@ -121,7 +121,7 @@ fn add_currency<T: Runtime>() {
 			TestCurrency.id()
 		));
 
-		utils::process_outbound::<T>(|_| {
+		utils::process_gateway_message::<T>(|_| {
 			utils::verify_outbound_failure_on_lp::<T>(evm.deployed(names::ADAPTER).address())
 		});
 	});
@@ -141,7 +141,7 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		let creation_time = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 
@@ -166,7 +166,7 @@ fn add_pool<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(|_| {
+		utils::process_gateway_message::<T>(|_| {
 			utils::verify_outbound_failure_on_lp::<T>(evm.deployed(names::ADAPTER).address())
 		});
 	});
@@ -216,7 +216,7 @@ fn add_tranche<T: Runtime>() {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state_mut(|evm| {
@@ -299,7 +299,7 @@ fn allow_investment_currency<T: Runtime>() {
 				USDC.id(),
 			),
 		);
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -352,7 +352,7 @@ fn disallow_investment_currency<T: Runtime>() {
 				USDC.id()
 			),
 		);
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -416,7 +416,7 @@ fn update_member<T: Runtime>() {
 			SECONDS_PER_YEAR,
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -519,7 +519,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 				Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 			)
 		);
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -595,7 +595,7 @@ fn update_tranche_token_price<T: Runtime>() {
 			USDC.id(),
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		price
 	});

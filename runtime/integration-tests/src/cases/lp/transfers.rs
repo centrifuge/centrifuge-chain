@@ -83,7 +83,7 @@ mod utils {
 				AMOUNT,
 			)
 			.unwrap();
-			lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+			lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 		});
 
 		env.state(|evm| {
@@ -158,7 +158,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 			AMOUNT,
 		)
 		.unwrap();
-		lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+		lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -216,7 +216,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 			AMOUNT,
 		)
 		.unwrap();
-		lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+		lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -283,19 +283,15 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	});
 
 	env.state_mut(|_evm| {
-		lp::utils::process_outbound::<T>(|msg| {
+		lp::utils::process_gateway_message::<T>(|msg| {
 			assert_eq!(
 				msg,
-				GatewayMessage::Outbound {
-					sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-					destination: Domain::EVM(EVM_DOMAIN_CHAIN_ID),
-					message: Message::TransferTrancheTokens {
-						pool_id: POOL_A,
-						tranche_id: pool_a_tranche_1_id::<T>(),
-						domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
-						receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
-						amount: AMOUNT,
-					},
+				Message::TransferTrancheTokens {
+					pool_id: POOL_A,
+					tranche_id: pool_a_tranche_1_id::<T>(),
+					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
+					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
+					amount: AMOUNT,
 				},
 			);
 		});
