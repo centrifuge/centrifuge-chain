@@ -11,7 +11,7 @@ use frame_support::{
 };
 use sp_runtime::{traits::Saturating, DispatchError, TokenError};
 
-use crate::{mock::*, Error, Message};
+use crate::{mock::*, Error, Message, UpdateRestrictionMessage};
 
 mod inbound;
 
@@ -28,9 +28,8 @@ mod transfer {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::Transfer {
+					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
-						sender: ALICE.into(),
 						receiver: EVM_DOMAIN_ADDRESS.address(),
 						amount: AMOUNT
 					}
@@ -233,7 +232,6 @@ mod transfer_tranche_tokens {
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					sender: ALICE.into(),
 					domain: EVM_DOMAIN_ADDRESS.domain().into(),
 					receiver: EVM_DOMAIN_ADDRESS.address(),
 					amount: AMOUNT
@@ -431,6 +429,11 @@ mod add_tranche {
 	use super::*;
 
 	fn config_mocks() {
+		let mut hook = [0; 32];
+		hook[0..20].copy_from_slice(&DOMAIN_HOOK_ADDRESS);
+		hook[20..28].copy_from_slice(&1u64.to_be_bytes());
+		hook[28..31].copy_from_slice(b"EVM");
+
 		Permissions::mock_has(move |scope, who, role| {
 			assert_eq!(who, ALICE);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
@@ -440,7 +443,15 @@ mod add_tranche {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		Gateway::mock_submit(|sender, destination, msg| {
+		Gateway::mock_get(move |domain| {
+			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
+			Some(DOMAIN_HOOK_ADDRESS)
+		});
+		DomainAddressToAccountId::mock_convert(move |domain| {
+			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS));
+			hook.clone().into()
+		});
+		Gateway::mock_submit(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
@@ -451,7 +462,7 @@ mod add_tranche {
 					token_name: vec_to_fixed_array(NAME),
 					token_symbol: vec_to_fixed_array(SYMBOL),
 					decimals: DECIMALS,
-					restriction_set: 1
+					hook,
 				}
 			);
 			Ok(())
@@ -545,6 +556,24 @@ mod add_tranche {
 				);
 			})
 		}
+
+		#[test]
+		fn with_no_hook_address() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+				Gateway::mock_get(|_| None);
+
+				assert_noop!(
+					LiquidityPools::add_tranche(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS.domain(),
+					),
+					Error::<Runtime>::DomainHookAddressNotFound,
+				);
+			})
+		}
 	}
 }
 
@@ -560,7 +589,7 @@ mod update_tranche_token_metadata {
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
-				Message::UpdateTrancheTokenMetadata {
+				Message::UpdateTrancheMetadata {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					token_name: vec_to_fixed_array(NAME),
@@ -661,7 +690,7 @@ mod update_token_price {
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
-				Message::UpdateTrancheTokenPrice {
+				Message::UpdateTranchePrice {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					currency: util::currency_index(CURRENCY_ID),
@@ -794,11 +823,13 @@ mod update_member {
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
-				Message::UpdateMember {
+				Message::UpdateRestriction {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					valid_until: VALID_UNTIL_SECS,
-					member: EVM_DOMAIN_ADDRESS.address(),
+					update: UpdateRestrictionMessage::UpdateMember {
+						valid_until: VALID_UNTIL_SECS,
+						member: EVM_DOMAIN_ADDRESS.address(),
+					}
 				}
 			);
 			Ok(())
@@ -912,7 +943,7 @@ mod add_currency {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::AddCurrency {
+					Message::AddAsset {
 						currency: util::currency_index(CURRENCY_ID),
 						evm_address: CONTRACT_ACCOUNT,
 					}
@@ -998,7 +1029,7 @@ mod allow_investment_currency {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::AllowInvestmentCurrency {
+					Message::AllowAsset {
 						pool_id: POOL_ID,
 						currency: util::currency_index(CURRENCY_ID),
 					}
@@ -1138,7 +1169,7 @@ mod disallow_investment_currency {
 				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::DisallowInvestmentCurrency {
+					Message::DisallowAsset {
 						pool_id: POOL_ID,
 						currency: util::currency_index(CURRENCY_ID),
 					}

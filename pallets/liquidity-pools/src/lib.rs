@@ -33,9 +33,9 @@
 //!   completion.
 //! - The pallet's associated `TreasuryAccount` holds sufficient balance for the
 //!   corresponding fee currencies of all possible recipient domains for the
-//!   following outgoing messages: [`Message::ExecutedDecreaseInvestOrder`],
-//!   [`Message::ExecutedDecreaseRedeemOrder`],
-//!   [`Message::ExecutedCollectInvest`], [`Message::ExecutedCollectRedeem`],
+//!   following outgoing messages: [`Message::FulfilledCancelDepositRequest`],
+//!   [`Message::FulfilledCancelRedeemRequest`],
+//!   [`Message::FulfilledDepositRequest`], [`Message::FulfilledRedeemRequest`],
 //!   [`Message::ScheduleUpgrade`].
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -58,7 +58,10 @@ use frame_support::{
 	},
 	transactional,
 };
-use orml_traits::asset_registry::{self, Inspect as _};
+use orml_traits::{
+	asset_registry::{self, Inspect as _},
+	GetByKey,
+};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
@@ -69,6 +72,8 @@ use staging_xcm::{
 	v4::{Junction::*, NetworkId},
 	VersionedLocation,
 };
+
+use crate::message::UpdateRestrictionMessage;
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
@@ -81,6 +86,8 @@ mod gmpf {
 	mod ser;
 
 	pub use de::from_slice;
+	#[cfg(test)]
+	pub use error::Error;
 	pub use ser::to_vec;
 }
 
@@ -211,7 +218,6 @@ pub mod pallet {
 			Amount = Self::Balance,
 			TrancheAmount = Self::Balance,
 			CurrencyId = Self::CurrencyId,
-			Error = DispatchError,
 			InvestmentId = (Self::PoolId, Self::TrancheId),
 		>;
 
@@ -243,19 +249,17 @@ pub mod pallet {
 		/// The converter from a Domain and a 32 byte array to DomainAddress.
 		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
 
-		/// The type for processing outgoing messages.
-		type OutboundQueue: OutboundQueue<
-			Sender = Self::AccountId,
-			Message = Message,
-			Destination = Domain,
-		>;
+		/// The type for processing outgoing messages and retrieving the domain
+		/// hook address.
+		type OutboundQueue: OutboundQueue<Sender = Self::AccountId, Message = Message, Destination = Domain>
+			+ GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
 		/// The type for paying the transaction fees for the dispatch of
-		/// `Executed*` and `ScheduleUpgrade` messages.
+		/// `Fulfilled*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
@@ -334,6 +338,8 @@ pub mod pallet {
 		InvestorDomainAddressNotAMember,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
+		/// The domain hook address could not be found.
+		DomainHookAddressNotFound,
 	}
 
 	#[pallet::call]
@@ -402,6 +408,17 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
+			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
+			let hook_bytes =
+				T::OutboundQueue::get(&domain).ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let evm_chain_id = match domain {
+				Domain::EVM(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+			let hook =
+				T::DomainAddressToAccountId::convert(DomainAddress::EVM(evm_chain_id, hook_bytes))
+					.into();
+
 			// Send the message to the domain
 			T::OutboundQueue::submit(
 				who,
@@ -412,10 +429,7 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
-					// only available option. We will design a dynamic approach going forward where
-					// this value can be set on a per-tranche-token basis on storage.
-					restriction_set: 1,
+					hook,
 				},
 			)?;
 
@@ -460,7 +474,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				destination,
-				Message::UpdateTrancheTokenPrice {
+				Message::UpdateTranchePrice {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					currency,
@@ -511,11 +525,13 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain_address.domain(),
-				Message::UpdateMember {
+				Message::UpdateRestriction {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
-					valid_until,
-					member: domain_address.address(),
+					update: UpdateRestrictionMessage::UpdateMember {
+						member: domain_address.address(),
+						valid_until,
+					},
 				},
 			)?;
 
@@ -572,7 +588,6 @@ pub mod pallet {
 					tranche_id: tranche_id.into(),
 					amount: amount.into(),
 					domain: domain_address.domain().into(),
-					sender: who.into(),
 					receiver: domain_address.address(),
 				},
 			)?;
@@ -641,10 +656,9 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who.clone(),
 				receiver.domain(),
-				Message::Transfer {
+				Message::TransferAssets {
 					amount: amount.into(),
 					currency,
-					sender: who.into(),
 					receiver: receiver.address(),
 				},
 			)?;
@@ -666,7 +680,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AddCurrency {
+				Message::AddAsset {
 					currency,
 					evm_address,
 				},
@@ -703,7 +717,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AllowInvestmentCurrency {
+				Message::AllowAsset {
 					pool_id: pool_id.into(),
 					currency,
 				},
@@ -770,7 +784,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				domain,
-				Message::UpdateTrancheTokenMetadata {
+				Message::UpdateTrancheMetadata {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					token_name,
@@ -804,7 +818,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::DisallowInvestmentCurrency {
+				Message::DisallowAsset {
 					pool_id: pool_id.into(),
 					currency,
 				},
@@ -946,7 +960,7 @@ pub mod pallet {
 			});
 
 			match msg {
-				Message::Transfer {
+				Message::TransferAssets {
 					currency,
 					receiver,
 					amount,
@@ -966,39 +980,26 @@ pub mod pallet {
 					T::DomainAccountToDomainAddress::convert((domain.try_into()?, receiver)),
 					amount.into(),
 				),
-				Message::IncreaseInvestOrder {
+				Message::DepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
 					amount,
-				} => Self::handle_increase_invest_order(
+				} => Self::handle_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 					amount.into(),
 				),
-				Message::DecreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::handle_decrease_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-					amount.into(),
-				),
-				Message::IncreaseRedeemOrder {
+				Message::RedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					amount,
 					currency,
-				} => Self::handle_increase_redeem_order(
+				} => Self::handle_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
@@ -1006,59 +1007,23 @@ pub mod pallet {
 					currency.into(),
 					sender,
 				),
-				Message::DecreaseRedeemOrder {
+				Message::CancelDepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
-					amount,
-				} => Self::handle_decrease_redeem_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount.into(),
-					currency.into(),
-					sender,
-				),
-				Message::CollectInvest {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_investment(
+				} => Self::handle_cancel_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),
 					currency.into(),
 				),
-				Message::CollectRedeem {
+				Message::CancelRedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
-				} => Self::handle_collect_redemption(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_redeem_order(
+				} => Self::handle_cancel_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
 					Self::domain_account_to_account_id((sender.domain(), investor)),

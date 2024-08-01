@@ -23,6 +23,7 @@ members = [
   "pallets/liquidity-pools-gateway",
   "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
   "pallets/liquidity-pools-gateway/routers",
+  "pallets/liquidity-pools-gateway/queue",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -35,7 +36,6 @@ members = [
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
   "pallets/rewards",
-  "pallets/swaps",
   "pallets/token-mux",
   "pallets/transfer-allowlist",
   "runtime/altair",
@@ -53,7 +53,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
-version = "0.13.0"
+version = "0.14.0"
 
 [workspace.dependencies]
 hex-literal = { version = "0.4.1" }
@@ -237,6 +237,7 @@ pallet-investments = { path = "pallets/investments", default-features = false }
 pallet-keystore = { path = "pallets/keystore", default-features = false }
 pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = false }
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
+pallet-liquidity-pools-gateway-queue = { path = "pallets/liquidity-pools-gateway/queue", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
@@ -249,7 +250,6 @@ pallet-pool-system = { path = "pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-features = false }
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
-pallet-swaps = { path = "pallets/swaps", default-features = false }
 pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 

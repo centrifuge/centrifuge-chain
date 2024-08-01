@@ -27,6 +27,7 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, OutboundMessageNonce, PalletIndex,
 		PoolEpochId, PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
+	LPGatewayQueueMessageNonce,
 };
 use cfg_traits::{
 	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
@@ -80,9 +81,6 @@ use pallet_evm::{
 	Runner,
 };
 use pallet_investments::OrderType;
-use pallet_liquidity_pools::hooks::{
-	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
-};
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
 use pallet_pool_system::{
@@ -169,7 +167,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1300,
+	spec_version: 1400,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1748,7 +1746,7 @@ impl pallet_order_book::Config for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type FulfilledOrderHook = Swaps;
+	type FulfilledOrderHook = ForeignInvestments;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type NativeDecimals = NativeDecimals;
 	type OrderIdNonce = u64;
@@ -1762,29 +1760,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
-impl pallet_swaps::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type FulfilledSwap = pallet_foreign_investments::FulfilledSwapHook<Runtime>;
-	type OrderBook = OrderBook;
-	type OrderId = OrderId;
-	type SwapId = pallet_foreign_investments::SwapId<Runtime>;
-}
-
 impl pallet_foreign_investments::Config for Runtime {
-	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
-	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
 	type ForeignBalance = Balance;
+	type Hooks = LiquidityPools;
 	type Investment = Investments;
 	type InvestmentId = InvestmentId;
+	type OrderBook = OrderBook;
+	type OrderId = OrderId;
 	type PoolBalance = Balance;
 	type PoolInspect = PoolSystem;
 	type RuntimeEvent = RuntimeEvent;
 	type SwapBalance = Balance;
 	type SwapRatio = Ratio;
-	type Swaps = Swaps;
 	type TrancheBalance = Balance;
 }
 
@@ -1834,6 +1822,14 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type WeightInfo = ();
+}
+
+impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
+	type Message = pallet_liquidity_pools::Message;
+	type MessageNonce = LPGatewayQueueMessageNonce;
+	type MessageProcessor = LiquidityPoolsGateway;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2065,7 +2061,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1300,
+	migrations::UpgradeAltair1400,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2169,8 +2165,9 @@ construct_runtime!(
 
 		// Our pallets (part 2)
 		// Removed: Migration = 199
-		Swaps: pallet_swaps::{Pallet, Storage} = 200,
+		// Removed: Swaps = 200
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
+		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 202,
 	}
 );
 
@@ -2875,6 +2872,7 @@ mod benches {
 		[pallet_membership, TechnicalCommitteeMembership]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 

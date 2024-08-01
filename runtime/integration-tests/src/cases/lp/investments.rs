@@ -30,7 +30,7 @@ use crate::{
 const DEFAULT_INVESTMENT_AMOUNT: Balance = 100 * DECIMALS_6;
 
 mod utils {
-	use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId, TrancheId};
+	use cfg_primitives::{AccountId, InvestmentId, PoolId, TrancheId};
 	use cfg_traits::HasLocalAssetRepresentation;
 	use ethabi::Token;
 	use pallet_foreign_investments::Action;
@@ -48,7 +48,7 @@ mod utils {
 		Decoder::<GeneralCurrencyIndexType>::decode(&evm.view(
 			Keyring::Alice,
 			names::POOL_MANAGER,
-			"currencyAddressToId",
+			"assetToId",
 			Some(&[Token::Address(evm.deployed(name).address)]),
 		))
 	}
@@ -80,29 +80,18 @@ mod utils {
 				Token::Uint(DEFAULT_INVESTMENT_AMOUNT.into()),
 				Token::Address(who.into()),
 				Token::Address(who.into()),
-				Token::Bytes(Default::default()),
 			]),
 		)
 		.unwrap();
 	}
 
 	pub fn cancel<T: Runtime>(evm: &mut impl EvmEnv<T>, who: Keyring, lp_pool: &str) {
-		evm.call(who, U256::zero(), lp_pool, "cancelDepositRequest", None)
-			.unwrap();
-	}
-
-	pub fn decrease<T: Runtime>(
-		evm: &mut impl EvmEnv<T>,
-		who: Keyring,
-		lp_pool: &str,
-		amount: Balance,
-	) {
 		evm.call(
 			who,
-			U256::zero(),
+			Default::default(),
 			lp_pool,
-			"decreaseDepositRequest",
-			Some(&[Token::Uint(amount.into())]),
+			"cancelDepositRequest",
+			Some(&[Token::Uint(U256::from(0)), Token::Address(who.into())]),
 		)
 		.unwrap();
 	}
@@ -125,10 +114,11 @@ mod utils {
 		amount: Option<<T as pallet_order_book::Config>::BalanceOut>,
 	) {
 		let order = pallet_order_book::Orders::<T>::get(
-			pallet_swaps::SwapIdToOrderId::<T>::get((
-				investor,
-				(investment_id::<T>(pool, tranche), action),
-			))
+			pallet_foreign_investments::Pallet::<T>::order_id(
+				&investor,
+				investment_id::<T>(pool, tranche),
+				action,
+			)
 			.expect("Nothing to match"),
 		)
 		.unwrap();
@@ -165,7 +155,7 @@ mod with_pool_currency {
 	use super::{utils, *};
 	use crate::cases::lp::utils as lp_utils;
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_invest<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -199,7 +189,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn currency_collect<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -239,6 +229,7 @@ mod with_pool_currency {
 						Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
 					))),
 					Token::Address(Keyring::TrancheInvestor(1).into()),
+					Token::Address(Keyring::TrancheInvestor(1).into()),
 				]),
 			)
 			.unwrap();
@@ -266,7 +257,7 @@ mod with_pool_currency {
 		});
 	}
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -344,7 +335,7 @@ mod with_foreign_currency {
 		POOL_A,
 	};
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_before_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		env.state_mut(|evm| {
@@ -355,7 +346,7 @@ mod with_foreign_currency {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
-					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None,
 			);
@@ -380,7 +371,7 @@ mod with_foreign_currency {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
-					utils::investment_id::<T>(POOL_A, pool_c_tranche_1_id::<T>())
+					utils::investment_id::<T>(POOL_A, pool_a_tranche_1_id::<T>())
 				),
 				None
 			);
@@ -402,9 +393,11 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap<T: Runtime>() {
 		let mut env = setup_full::<T>();
+
+		// Invest and swap all foreign to pool currency
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 			utils::fulfill_swap::<T>(
@@ -412,6 +405,7 @@ mod with_foreign_currency {
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
 				Action::Investment,
+				// Fulfill entire order
 				None,
 			);
 		});
@@ -464,7 +458,7 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					Message::ExecutedDecreaseInvestOrder {
+					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -472,7 +466,7 @@ mod with_foreign_currency {
 						)),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
-						remaining_invest_amount: 0,
+						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
 					}
 				)
 			});
@@ -492,7 +486,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 2).unwrap();
@@ -567,7 +561,7 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					Message::ExecutedDecreaseInvestOrder {
+					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -575,7 +569,7 @@ mod with_foreign_currency {
 						)),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
-						remaining_invest_amount: 0,
+						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
 					}
 				)
 			});
@@ -595,7 +589,7 @@ mod with_foreign_currency {
 		});
 	}
 
-	#[test_runtimes(all)]
+	#[test_runtimes([centrifuge, development])]
 	fn invest_cancel_full_after_swap_partially_inter_epoch_close<T: Runtime>() {
 		let mut env = setup_full::<T>();
 		let part = Quantity::checked_from_rational(1, 3).unwrap();
@@ -659,7 +653,7 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					Message::ExecutedCollectInvest {
+					Message::FulfilledDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -668,7 +662,6 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
-						remaining_invest_amount: remaining_amount,
 					}
 				)
 			});
@@ -686,6 +679,7 @@ mod with_foreign_currency {
 				remaining_amount
 			);
 
+			// FIXME: Fails because cannot cancel
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 
 			assert_eq!(
@@ -712,15 +706,15 @@ mod with_foreign_currency {
 			lp_utils::process_outbound::<T>(|msg| {
 				assert_eq!(
 					msg,
-					Message::ExecutedDecreaseInvestOrder {
+					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
 							Keyring::TrancheInvestor(1)
 						)),
 						currency: utils::index_lp(evm, names::USDC),
-						currency_payout: remaining_amount,
-						remaining_invest_amount: 0,
+						currency_payout: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
+						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
 					}
 				)
 			});

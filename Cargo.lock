@@ -121,7 +121,7 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "altair-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -183,6 +183,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -205,7 +206,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -1377,7 +1377,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1470,7 +1470,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1530,6 +1530,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -1551,7 +1552,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -3100,7 +3100,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -3163,6 +3163,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -3185,7 +3186,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -8107,7 +8107,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-swaps",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -8294,10 +8293,32 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "rand",
+ "runtime-common",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "pallet-liquidity-pools-gateway-queue"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -9019,21 +9040,6 @@ source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot
 dependencies = [
  "docify",
  "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
-]
-
-[[package]]
-name = "pallet-swaps"
-version = "1.0.0"
-dependencies = [
- "cfg-mocks",
- "cfg-traits",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -11820,6 +11826,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -11839,7 +11846,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",

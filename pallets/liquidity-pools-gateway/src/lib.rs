@@ -29,15 +29,22 @@
 use core::fmt::Debug;
 
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, LPEncoding, OutboundQueue, Router as DomainRouter},
+	liquidity_pools::{
+		InboundQueue, LPEncoding, MessageProcessor, OutboundQueue, Router as DomainRouter,
+	},
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
+use frame_support::{
+	dispatch::{DispatchResult, PostDispatchInfo},
+	pallet_prelude::*,
+	PalletError,
+};
 use frame_system::{
 	ensure_signed,
 	pallet_prelude::{BlockNumberFor, OriginFor},
 };
+use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
 use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
@@ -92,7 +99,6 @@ pub mod pallet {
 	};
 
 	#[pallet::pallet]
-
 	pub struct Pallet<T>(_);
 
 	#[pallet::origin]
@@ -204,6 +210,12 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		},
+
+		/// The domain hook address was initialized or updated.
+		DomainHookAddressSet {
+			domain: Domain,
+			hook_address: [u8; 20],
+		},
 	}
 
 	/// Storage for domain routers.
@@ -256,6 +268,15 @@ pub mod pallet {
 		T::OutboundMessageNonce,
 		(Domain, T::AccountId, T::Message, DispatchError),
 	>;
+
+	/// Stores the hook address of a domain required for particular LP messages.
+	///
+	/// Lifetime: Indefinitely.
+	///
+	/// NOTE: Must only be changeable via root or `AdminOrigin`.
+	#[pallet::storage]
+	pub type DomainHookAddress<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -600,6 +621,29 @@ pub mod pallet {
 				}
 			}
 		}
+
+		/// Set the address of the domain hook
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		#[pallet::call_index(8)]
+		pub fn set_domain_hook_address(
+			origin: OriginFor<T>,
+			domain: Domain,
+			hook_address: [u8; 20],
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			DomainHookAddress::<T>::insert(domain.clone(), hook_address);
+
+			Self::deposit_event(Event::DomainHookAddressSet {
+				domain,
+				hook_address,
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -819,5 +863,19 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> GetByKey<Domain, Option<[u8; 20]>> for Pallet<T> {
+	fn get(domain: &Domain) -> Option<[u8; 20]> {
+		DomainHookAddress::<T>::get(domain)
+	}
+}
+
+impl<T: Config> MessageProcessor for Pallet<T> {
+	type Message = T::Message;
+
+	fn process(_: Self::Message) -> DispatchResultWithPostInfo {
+		Ok(PostDispatchInfo::default())
 	}
 }

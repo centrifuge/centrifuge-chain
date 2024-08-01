@@ -33,9 +33,8 @@ mod handle_transfer {
 
 			assert_ok!(LiquidityPools::submit(
 				EVM_DOMAIN_ADDRESS,
-				Message::Transfer {
+				Message::TransferAssets {
 					currency: util::currency_index(CURRENCY_ID),
-					sender: EVM_DOMAIN_ADDRESS.address(),
 					receiver: ALICE.into(),
 					amount: AMOUNT,
 				},
@@ -54,9 +53,8 @@ mod handle_transfer {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::Transfer {
+						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							receiver: ALICE.into(),
 							amount: 0,
 						},
@@ -73,9 +71,8 @@ mod handle_transfer {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::Transfer {
+						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
 						},
@@ -124,7 +121,6 @@ mod handle_tranche_tokens_transfer {
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					sender: EVM_DOMAIN_ADDRESS.address(),
 					domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 					receiver: ALICE.into(),
 					amount: AMOUNT
@@ -151,7 +147,6 @@ mod handle_tranche_tokens_transfer {
 					Message::TransferTrancheTokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						sender: ALICE.into(),
 						domain: ALICE_EVM_DOMAIN_ADDRESS.domain().into(),
 						receiver: ALICE_EVM_DOMAIN_ADDRESS.address().into(),
 						amount: AMOUNT
@@ -172,7 +167,6 @@ mod handle_tranche_tokens_transfer {
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					sender: EVM_DOMAIN_ADDRESS.address(),
 					domain: ALICE_EVM_DOMAIN_ADDRESS.domain().into(),
 					receiver: ALICE.into(),
 					amount: AMOUNT
@@ -201,7 +195,6 @@ mod handle_tranche_tokens_transfer {
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 							receiver: ALICE.into(),
 							amount: 0,
@@ -224,7 +217,6 @@ mod handle_tranche_tokens_transfer {
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
@@ -247,7 +239,6 @@ mod handle_tranche_tokens_transfer {
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
@@ -270,7 +261,6 @@ mod handle_tranche_tokens_transfer {
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
@@ -292,7 +282,6 @@ mod handle_tranche_tokens_transfer {
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
-							sender: EVM_DOMAIN_ADDRESS.address(),
 							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
@@ -332,7 +321,7 @@ mod handle_increase_invest_order {
 
 			assert_ok!(LiquidityPools::submit(
 				EVM_DOMAIN_ADDRESS,
-				Message::IncreaseInvestOrder {
+				Message::DepositRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					investor: ALICE.into(),
@@ -355,7 +344,7 @@ mod handle_increase_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseInvestOrder {
+						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -377,7 +366,7 @@ mod handle_increase_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseInvestOrder {
+						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -399,7 +388,7 @@ mod handle_increase_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseInvestOrder {
+						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -420,15 +409,13 @@ mod handle_cancel_invest_order {
 	fn config_mocks() {
 		DomainAccountToDomainAddress::mock_convert(|_| CENTRIFUGE_DOMAIN_ADDRESS);
 		DomainAddressToAccountId::mock_convert(|_| ALICE);
-		ForeignInvestment::mock_investment(|_, _| Ok(AMOUNT));
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		ForeignInvestment::mock_decrease_foreign_investment(
-			|who, investment_id, amount, foreign_currency| {
+		ForeignInvestment::mock_cancel_foreign_investment(
+			|who, investment_id, foreign_currency| {
 				assert_eq!(*who, ALICE);
 				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(amount, AMOUNT);
 				assert_eq!(foreign_currency, CURRENCY_ID);
 				Ok(())
 			},
@@ -442,7 +429,7 @@ mod handle_cancel_invest_order {
 
 			assert_ok!(LiquidityPools::submit(
 				EVM_DOMAIN_ADDRESS,
-				Message::CancelInvestOrder {
+				Message::CancelDepositRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					investor: ALICE.into(),
@@ -464,7 +451,7 @@ mod handle_cancel_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelInvestOrder {
+						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -485,7 +472,7 @@ mod handle_cancel_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelInvestOrder {
+						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -506,7 +493,7 @@ mod handle_cancel_invest_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelInvestOrder {
+						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -554,7 +541,7 @@ mod handle_increase_redeem_order {
 
 			assert_ok!(LiquidityPools::submit(
 				EVM_DOMAIN_ADDRESS,
-				Message::IncreaseRedeemOrder {
+				Message::RedeemRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					investor: ALICE.into(),
@@ -581,7 +568,7 @@ mod handle_increase_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseRedeemOrder {
+						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -603,7 +590,7 @@ mod handle_increase_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseRedeemOrder {
+						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -625,7 +612,7 @@ mod handle_increase_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseRedeemOrder {
+						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -646,7 +633,7 @@ mod handle_increase_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::IncreaseRedeemOrder {
+						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -667,21 +654,18 @@ mod handle_cancel_redeem_order {
 	fn config_mocks() {
 		DomainAccountToDomainAddress::mock_convert(|_| CENTRIFUGE_DOMAIN_ADDRESS);
 		DomainAddressToAccountId::mock_convert(|_| ALICE);
-		ForeignInvestment::mock_redemption(|_, _| Ok(AMOUNT));
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
-		ForeignInvestment::mock_decrease_foreign_redemption(
-			|who, investment_id, amount, foreign_currency| {
+		ForeignInvestment::mock_cancel_foreign_redemption(
+			|who, investment_id, foreign_currency| {
 				assert_eq!(*who, ALICE);
 				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(amount, AMOUNT);
 				assert_eq!(foreign_currency, CURRENCY_ID);
 
 				// Side effects of this call
-				ForeignInvestment::mock_redemption(|_, _| Ok(0));
 				Tokens::mint_into(TRANCHE_CURRENCY, &ALICE, AMOUNT).unwrap();
-				Ok(())
+				Ok(AMOUNT)
 			},
 		);
 		Gateway::mock_submit(|sender, destination, msg| {
@@ -689,13 +673,12 @@ mod handle_cancel_redeem_order {
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
-				Message::ExecutedDecreaseRedeemOrder {
+				Message::FulfilledCancelRedeemRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					investor: ALICE.into(),
 					currency: util::currency_index(CURRENCY_ID),
 					tranche_tokens_payout: AMOUNT,
-					remaining_redeem_amount: 0,
 				}
 			);
 			Ok(())
@@ -709,7 +692,7 @@ mod handle_cancel_redeem_order {
 
 			assert_ok!(LiquidityPools::submit(
 				EVM_DOMAIN_ADDRESS,
-				Message::CancelRedeemOrder {
+				Message::CancelRedeemRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					investor: ALICE.into(),
@@ -735,7 +718,7 @@ mod handle_cancel_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelRedeemOrder {
+						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -756,7 +739,7 @@ mod handle_cancel_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelRedeemOrder {
+						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
@@ -777,7 +760,7 @@ mod handle_cancel_redeem_order {
 				assert_noop!(
 					LiquidityPools::submit(
 						EVM_DOMAIN_ADDRESS,
-						Message::CancelRedeemOrder {
+						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
 							investor: ALICE.into(),
