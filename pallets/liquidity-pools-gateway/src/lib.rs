@@ -85,8 +85,7 @@ pub mod pallet {
 	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
 	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
 
-	use frame_support::dispatch::PostDispatchInfo;
-	use sp_runtime::DispatchErrorWithPostInfo;
+	use std::ops::AddAssign;
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -566,18 +565,12 @@ pub mod pallet {
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
-		) -> DispatchResultWithPostInfo {
-			let post_info = PostDispatchInfo {
-				actual_weight: Some(Weight::from_parts(0, T::Message::max_encoded_len() as u64)),
-				pays_fee: Pays::Yes,
-			};
+		) -> (DispatchResult, Weight) {
+			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64);
 
 			match T::InboundMessageHandler::handle(domain_address, message) {
-				Ok(_) => Ok(post_info),
-				Err(e) => Err(DispatchErrorWithPostInfo {
-					post_info,
-					error: e,
-				}),
+				Ok(_) => (Ok(()), weight),
+				Err(e) => (Err(e), weight),
 			}
 		}
 
@@ -588,53 +581,42 @@ pub mod pallet {
 			sender: T::AccountId,
 			domain: Domain,
 			message: T::Message,
-		) -> DispatchResultWithPostInfo {
-			let mut post_info = PostDispatchInfo {
-				actual_weight: Some(T::DbWeight::get().reads(1)),
-				pays_fee: Pays::Yes,
-			};
+		) -> (DispatchResult, Weight) {
+			let mut weight = T::DbWeight::get().reads(1);
 
-			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
-				post_info,
-				error: Error::<T>::RouterNotFound.into(),
-			})?;
+			let router = match DomainRouters::<T>::get(domain) {
+				Some(r) => r,
+				None => return (Err(Error::<T>::RouterNotFound.into()), weight),
+			};
 
 			match router.send(sender.clone(), message.serialize()) {
 				Ok(dispatch_info) => Self::update_total_post_dispatch_info_weight(
-					&mut post_info,
+					&mut weight,
 					dispatch_info.actual_weight,
 				),
 				Err(e) => {
 					Self::update_total_post_dispatch_info_weight(
-						&mut post_info,
+						&mut weight,
 						e.post_info.actual_weight,
 					);
 
-					return Err(DispatchErrorWithPostInfo {
-						post_info,
-						error: e.error,
-					});
+					return (Err(e.error), weight);
 				}
 			}
 
-			Ok(post_info)
+			(Ok(()), weight)
 		}
 
 		/// Updates the provided `PostDispatchInfo` with the weight required to
 		/// process an outbound message.
 		pub(crate) fn update_total_post_dispatch_info_weight(
-			post_dispatch_info: &mut PostDispatchInfo,
+			weight: &mut Weight,
 			router_call_weight: Option<Weight>,
 		) {
 			let router_call_weight =
 				Self::get_outbound_message_processing_weight(router_call_weight);
 
-			post_dispatch_info.actual_weight = Some(
-				post_dispatch_info
-					.actual_weight
-					.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
-					.saturating_add(router_call_weight),
-			);
+			weight.add_assign(router_call_weight);
 		}
 
 		/// Calculates the weight used by a router when processing an outbound
@@ -692,7 +674,7 @@ pub mod pallet {
 	impl<T: Config> MessageProcessor for Pallet<T> {
 		type Message = GatewayMessage<T::AccountId, T::Message>;
 
-		fn process(msg: Self::Message) -> DispatchResultWithPostInfo {
+		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,

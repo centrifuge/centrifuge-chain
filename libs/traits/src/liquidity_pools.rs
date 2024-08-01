@@ -11,7 +11,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
+use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	weights::Weight,
+};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -73,7 +76,7 @@ pub trait MessageProcessor {
 	type Message;
 
 	/// Process a message.
-	fn process(msg: Self::Message) -> DispatchResultWithPostInfo;
+	fn process(msg: Self::Message) -> (DispatchResult, Weight);
 }
 
 /// The trait required for handling outbound LP messages.

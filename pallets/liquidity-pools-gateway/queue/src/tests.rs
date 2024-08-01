@@ -2,13 +2,10 @@ use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_traits::liquidity_pools::{
 	test_util::Message as LPTestMessage, MessageQueue as MessageQueueT,
 };
-use frame_support::{
-	assert_noop, assert_ok,
-	dispatch::{PostDispatchInfo, RawOrigin},
-};
+use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin};
 use sp_runtime::{
 	traits::{BadOrigin, One, Zero},
-	DispatchError, DispatchErrorWithPostInfo,
+	DispatchError,
 };
 
 use crate::{
@@ -47,7 +44,7 @@ mod process_message {
 			LPGatewayMock::mock_process(move |msg| {
 				assert_eq!(msg, msg_clone);
 
-				Ok(PostDispatchInfo::default())
+				(Ok(()), Default::default())
 			});
 
 			assert_ok!(LPGatewayQueue::process_message(
@@ -101,10 +98,7 @@ mod process_message {
 			LPGatewayMock::mock_process(move |msg| {
 				assert_eq!(msg, msg_clone);
 
-				Err(DispatchErrorWithPostInfo {
-					post_info: PostDispatchInfo::default(),
-					error,
-				})
+				(Err(error), Default::default())
 			});
 
 			assert_ok!(LPGatewayQueue::process_message(
@@ -142,7 +136,7 @@ mod process_failed_message {
 			LPGatewayMock::mock_process(move |msg| {
 				assert_eq!(msg, msg_clone);
 
-				Ok(PostDispatchInfo::default())
+				(Ok(()), Default::default())
 			});
 
 			assert_ok!(LPGatewayQueue::process_failed_message(
@@ -196,10 +190,7 @@ mod process_failed_message {
 			LPGatewayMock::mock_process(move |msg| {
 				assert_eq!(msg, msg_clone);
 
-				Err(DispatchErrorWithPostInfo {
-					post_info: PostDispatchInfo::default(),
-					error,
-				})
+				(Err(error), Default::default())
 			});
 
 			assert_ok!(LPGatewayQueue::process_failed_message(
