@@ -272,12 +272,14 @@ pub type LocationToAccountId<RelayNetwork> = (
 
 #[cfg(test)]
 mod test {
-	use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, RouterMock};
-	use cfg_primitives::OutboundMessageNonce;
+	use cfg_mocks::{
+		pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue,
+		pallet_mock_routers, RouterMock,
+	};
 	use cfg_traits::liquidity_pools::test_util::Message;
 	use frame_support::{assert_ok, derive_impl, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
-	use pallet_liquidity_pools_gateway::{EnsureLocal, GatewayOrigin};
+	use pallet_liquidity_pools_gateway::{message::GatewayMessage, EnsureLocal, GatewayOrigin};
 	use sp_core::{ConstU32, ConstU64};
 	use sp_runtime::DispatchError;
 	use staging_xcm_executor::traits::ConvertOrigin;
@@ -292,6 +294,7 @@ mod test {
 			System: frame_system,
 			Gateway: pallet_liquidity_pools_gateway,
 			MockLP: pallet_mock_liquidity_pools,
+			MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
 			MockParaAsEvmChain: cfg_mocks::converter::pallet::<Instance1>,
 			MockOriginRecovery: cfg_mocks::converter::pallet::<Instance2>,
 		}
@@ -319,14 +322,18 @@ mod test {
 
 	impl pallet_mock_routers::Config for Runtime {}
 
+	impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
+		type Message = GatewayMessage<AccountId, Message>;
+	}
+
 	impl pallet_liquidity_pools_gateway::Config for Runtime {
 		type AdminOrigin = EnsureRoot<AccountId>;
-		type InboundQueue = MockLP;
+		type InboundMessageHandler = MockLP;
 		type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 		type MaxIncomingMessageSize = ConstU32<1024>;
 		type Message = Message;
+		type MessageQueue = MockLiquidityPoolsGatewayQueue;
 		type OriginRecovery = MockOriginRecovery;
-		type OutboundMessageNonce = OutboundMessageNonce;
 		type Router = RouterMock<Runtime>;
 		type RuntimeEvent = RuntimeEvent;
 		type RuntimeOrigin = RuntimeOrigin;
