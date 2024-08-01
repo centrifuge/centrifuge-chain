@@ -111,7 +111,7 @@ impl<T: pallet_aura::Config<AuthorityId = AuraId>> FindAuthor<H160> for FindAuth
 }
 
 /// Passthrough router deployed bytecode as of this state
-/// https://github.com/centrifuge/liquidity-pools/blob/3000a5d0db8dd5f502545914447abe50d5f6d2ba/test/integration/PassthroughAdapter.sol
+/// <https://github.com/centrifuge/liquidity-pools/blob/3000a5d0db8dd5f502545914447abe50d5f6d2ba/test/integration/PassthroughAdapter.sol>
 //
 // NOTE: If the above file changes, this code needs to be adapted as follows:
 //  1. Update the `liquidity-pools` submodule to the latest desired state
