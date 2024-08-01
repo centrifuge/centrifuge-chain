@@ -1,5 +1,5 @@
 use cfg_primitives::Balance;
-use cfg_traits::liquidity_pools::OutboundMessageHandler;
+use cfg_traits::liquidity_pools::MessageProcessor;
 use cfg_types::{
 	domain_address::Domain,
 	tokens::{AssetMetadata, CurrencyId},
@@ -14,15 +14,12 @@ use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::gateway::get_gateway_h160_account;
 use sp_core::{Get, H160, U256};
-use sp_runtime::{
-	traits::{Hash, One},
-	BoundedVec,
-};
+use sp_runtime::{traits::Hash, BoundedVec};
 use staging_xcm::v4::{Junction::*, Location};
 
 use crate::{
 	config::Runtime,
-	env::{Blocks, Env},
+	env::Env,
 	envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
 	utils::{
 		self,
@@ -100,7 +97,7 @@ fn environment_for_xcm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
 }
 
 fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRouter<T>) {
-	let expected_event = env.parachain_state_mut(|| {
+	env.parachain_state_mut(|| {
 		assert_ok!(
 			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
 				RawOrigin::Root.into(),
@@ -115,27 +112,17 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 			amount: 1_000,
 		};
 
+		let gateway_message = GatewayMessage::Outbound {
+			sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+			destination: TEST_DOMAIN,
+			message: msg.clone(),
+		};
+
 		assert_ok!(
-			<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundMessageHandler>::handle(
-				Keyring::Alice.into(),
-				TEST_DOMAIN,
-				msg.clone(),
+			<pallet_liquidity_pools_gateway::Pallet::<T> as MessageProcessor>::process(
+				gateway_message
 			)
 		);
-
-		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
-			message: GatewayMessage::Outbound {
-				sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-				destination: TEST_DOMAIN,
-				message: msg,
-			},
-			nonce: T::MessageNonce::one(),
-		}
-	});
-
-	env.pass(Blocks::UntilEvent {
-		event: expected_event.into(),
-		limit: 3,
 	});
 }
 
