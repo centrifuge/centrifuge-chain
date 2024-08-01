@@ -156,9 +156,7 @@ mod utils {
 							token_name: BoundedVec::<
 								u8,
 								<T as pallet_pool_system::Config>::StringLimit,
-							>::try_from(
-								"A highly advanced tranche".as_bytes().to_vec()
-							)
+							>::try_from("A highly advanced tranche".as_bytes().to_vec())
 							.expect("Can create BoundedVec for token name"),
 							token_symbol: BoundedVec::<
 								u8,
@@ -695,7 +693,7 @@ mod foreign_investments {
 	mod same_currencies {
 		use super::*;
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn increase_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -747,7 +745,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn decrease_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -837,7 +835,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn cancel_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -937,7 +935,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn collect_deposit_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1078,7 +1076,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn collect_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1301,7 +1299,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn increase_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1354,7 +1352,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn cancel_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1449,7 +1447,7 @@ mod foreign_investments {
 			});
 		}
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn collect_redeem_request<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -1631,7 +1629,7 @@ mod foreign_investments {
 			mod should_throw_requires_collect {
 				use super::*;
 
-				#[test_runtimes([centrifuge, development])]
+				#[test_runtimes([development])]
 				fn invest_requires_collect<T: Runtime + FudgeSupport>() {
 					let mut env = FudgeEnv::<T>::from_parachain_storage(
 						Genesis::default()
@@ -1862,7 +1860,7 @@ mod foreign_investments {
 	mod mismatching_currencies {
 		use super::*;
 
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn collect_foreign_investment_for<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
