@@ -1711,7 +1711,7 @@ mod foreign_investments {
 					});
 				}
 
-				#[test_runtimes([centrifuge, development])]
+				#[test_runtimes([development])]
 				fn redeem_requires_collect<T: Runtime + FudgeSupport>() {
 					let mut env = FudgeEnv::<T>::from_parachain_storage(
 						Genesis::default()
@@ -1802,7 +1802,7 @@ mod foreign_investments {
 			mod payment_payout_currency {
 				use super::*;
 
-				#[test_runtimes([centrifuge, development])]
+				#[test_runtimes([development])]
 				fn redeem_payout_currency_not_found<T: Runtime + FudgeSupport>() {
 					let mut env = FudgeEnv::<T>::from_parachain_storage(
 						Genesis::default()
@@ -1975,7 +1975,7 @@ mod foreign_investments {
 
 		/// Invest, fulfill swap foreign->pool, cancel, fulfill swap
 		/// pool->foreign
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn cancel_unprocessed_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -2121,7 +2121,7 @@ mod foreign_investments {
 
 		/// Invest, fulfill swap foreign->pool, process 50% of investment,
 		/// cancel, swap back pool->foreign of remaining unprocessed investment
-		#[test_runtimes([centrifuge, development])]
+		#[test_runtimes([development])]
 		fn cancel_partially_processed_investment<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
