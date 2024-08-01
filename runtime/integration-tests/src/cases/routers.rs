@@ -20,7 +20,10 @@ use staging_xcm::v4::{Junction::*, Location};
 use crate::{
 	config::Runtime,
 	env::Env,
-	envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
+	envs::{
+		fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
+		runtime_env::RuntimeEnv,
+	},
 	utils::{
 		self,
 		accounts::Keyring,
@@ -62,8 +65,8 @@ fn xcm_router<T: Runtime>() -> XCMRouter<T> {
 	}
 }
 
-fn environment_for_evm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
-	let mut env = FudgeEnv::<T>::from_parachain_storage(
+fn environment_for_evm<T: Runtime>() -> RuntimeEnv<T> {
+	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(genesis::balances::<T>(cfg(1_000)))
 			.storage(),
@@ -127,7 +130,7 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 }
 
 #[test_runtimes(all)]
-fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
+fn submit_by_axelar_evm<T: Runtime>() {
 	let router = DomainRouter::AxelarEVM(AxelarEVMRouter::<T> {
 		router: EVMRouter {
 			evm_domain: EVMDomain {
