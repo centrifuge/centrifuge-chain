@@ -121,11 +121,10 @@ fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRoute
 			message: msg.clone(),
 		};
 
-		assert_ok!(
-			<pallet_liquidity_pools_gateway::Pallet::<T> as MessageProcessor>::process(
-				gateway_message
-			)
+		let (res, _) = <pallet_liquidity_pools_gateway::Pallet<T> as MessageProcessor>::process(
+			gateway_message,
 		);
+		assert_ok!(res);
 	});
 }
 

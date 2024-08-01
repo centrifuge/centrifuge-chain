@@ -18,7 +18,7 @@ pub mod pallet {
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_process(f: impl Fn(T::Message) -> DispatchResultWithPostInfo + 'static) {
+		pub fn mock_process(f: impl Fn(T::Message) -> (DispatchResult, Weight) + 'static) {
 			register_call!(f);
 		}
 
@@ -36,7 +36,7 @@ pub mod pallet {
 	impl<T: Config> MessageProcessor for Pallet<T> {
 		type Message = T::Message;
 
-		fn process(msg: Self::Message) -> DispatchResultWithPostInfo {
+		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			execute_call!(msg)
 		}
 	}

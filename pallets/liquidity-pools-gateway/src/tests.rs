@@ -1062,7 +1062,8 @@ mod message_processor_impl {
 					Ok(())
 				});
 
-				assert_ok!(LiquidityPoolsGateway::process(gateway_message));
+				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
+				assert_ok!(res);
 			});
 		}
 
@@ -1085,21 +1086,11 @@ mod message_processor_impl {
 					Err(err)
 				});
 
-				let expected_error = DispatchErrorWithPostInfo {
-					post_info: PostDispatchInfo {
-						actual_weight: Some(Weight::from_parts(
-							0,
-							Message::max_encoded_len() as u64,
-						)),
-						pays_fee: Pays::Yes,
-					},
-					error: err,
-				};
+				let expected_weight = Weight::from_parts(0, Message::max_encoded_len() as u64);
 
-				assert_noop!(
-					LiquidityPoolsGateway::process(gateway_message),
-					expected_error
-				);
+				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
+				assert_noop!(res, err);
+				assert_eq!(weight, expected_weight);
 			});
 		}
 	}
@@ -1132,15 +1123,11 @@ mod message_processor_impl {
 
 				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
-				let mut expected_post_info = PostDispatchInfo {
-					actual_weight: Some(
-						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
-					),
-					pays_fee: Pays::Yes,
-				};
+				let mut expected_weight =
+					<Runtime as frame_system::Config>::DbWeight::get().reads(1);
 
 				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
-					&mut expected_post_info,
+					&mut expected_weight,
 					router_post_info.actual_weight,
 				);
 
@@ -1150,9 +1137,9 @@ mod message_processor_impl {
 					message,
 				};
 
-				let res = LiquidityPoolsGateway::process(gateway_message);
-				assert!(res.is_ok());
-				assert_eq!(res.unwrap(), expected_post_info);
+				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
+				assert_ok!(res);
+				assert_eq!(weight, expected_weight);
 			});
 		}
 
@@ -1163,12 +1150,7 @@ mod message_processor_impl {
 				let domain = Domain::EVM(1);
 				let message = Message;
 
-				let expected_post_info = PostDispatchInfo {
-					actual_weight: Some(
-						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
-					),
-					pays_fee: Pays::Yes,
-				};
+				let expected_weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 
 				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
 					sender,
@@ -1176,12 +1158,9 @@ mod message_processor_impl {
 					message,
 				};
 
-				let res = LiquidityPoolsGateway::process(gateway_message);
-				assert!(res.is_err());
-
-				let err = res.err().unwrap();
-				assert_eq!(err.post_info, expected_post_info);
-				assert_eq!(err.error, Error::<Runtime>::RouterNotFound.into());
+				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
+				assert_noop!(res, Error::<Runtime>::RouterNotFound);
+				assert_eq!(weight, expected_weight);
 			});
 		}
 
@@ -1215,15 +1194,11 @@ mod message_processor_impl {
 
 				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
-				let mut expected_post_info = PostDispatchInfo {
-					actual_weight: Some(
-						<Runtime as frame_system::Config>::DbWeight::get().reads(1),
-					),
-					pays_fee: Pays::Yes,
-				};
+				let mut expected_weight =
+					<Runtime as frame_system::Config>::DbWeight::get().reads(1);
 
 				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
-					&mut expected_post_info,
+					&mut expected_weight,
 					router_post_info.actual_weight,
 				);
 
@@ -1233,12 +1208,9 @@ mod message_processor_impl {
 					message,
 				};
 
-				let res = LiquidityPoolsGateway::process(gateway_message);
-				assert!(res.is_err());
-
-				let err = res.err().unwrap();
-				assert_eq!(err.post_info, expected_post_info);
-				assert_eq!(err.error, router_err);
+				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
+				assert_noop!(res, router_err);
+				assert_eq!(weight, expected_weight);
 			});
 		}
 	}
