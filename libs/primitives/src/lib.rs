@@ -282,13 +282,13 @@ pub mod constants {
 	/// The index of the referendum killer OpenGov track
 	pub const TRACK_INDEX_REF_KILLER: u16 = 21;
 
-	/// Defensive weight for processing LP messages;
-	pub const LP_DEFENSIVE_WEIGHT: Weight =
-		Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV);
-
 	/// Defensive weight parts that are used in LP related pallets.
 	pub const LP_DEFENSIVE_WEIGHT_REF_TIME: u64 = 5_000_000_000;
 	pub const LP_DEFENSIVE_WEIGHT_POV: u64 = 4096;
+
+	/// Defensive weight for processing LP messages;
+	pub const LP_DEFENSIVE_WEIGHT: Weight =
+		Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV);
 }
 
 /// Listing of parachains we integrate with.

@@ -1930,7 +1930,7 @@ impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -2814,7 +2814,6 @@ mod benches {
 		[pallet_remarks, Remarks]
 		[pallet_pool_fees, PoolFees]
 		[pallet_token_mux, TokenMux]
-		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 

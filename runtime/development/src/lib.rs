@@ -1936,7 +1936,7 @@ impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_liquidity_pools_gateway_queue::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -2983,7 +2983,6 @@ mod benches {
 		[pallet_membership, TechnicalCommitteeMembership]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
-		[pallet_liquidity_pools_gateway_queue, LiquidityPoolsGatewayQueue]
 	);
 }
 

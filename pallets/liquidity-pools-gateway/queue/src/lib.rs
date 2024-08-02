@@ -14,7 +14,6 @@
 
 use core::fmt::Debug;
 
-use cfg_primitives::constants::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -25,8 +24,6 @@ use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::traits::{EnsureAddAssign, One};
 use sp_std::vec::Vec;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -131,7 +128,7 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_message().saturating_add(LP_DEFENSIVE_WEIGHT))]
+		#[pallet::weight(T::WeightInfo::process_message())]
 		#[pallet::call_index(0)]
 		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -159,7 +156,7 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_failed_message().saturating_add(LP_DEFENSIVE_WEIGHT))]
+		#[pallet::weight(T::WeightInfo::process_failed_message())]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
