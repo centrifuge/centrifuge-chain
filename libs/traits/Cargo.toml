@@ -25,9 +25,9 @@ sp-std = { workspace = true }
 strum = { workspace = true }
 
 [dev-dependencies]
-cfg-mocks = { workspace = true, default_features = true }
-frame-system = { workspace = true, default_features = true }
-mock-builder = { workspace = true, default_features = true }
+cfg-mocks = { workspace = true, default-features = true }
+frame-system = { workspace = true, default-features = true }
+mock-builder = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
