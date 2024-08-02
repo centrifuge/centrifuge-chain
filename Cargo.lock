@@ -6679,7 +6679,7 @@ dependencies = [
 [[package]]
 name = "mock-builder"
 version = "0.3.0"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=mock-builder/method-handler#b709b333d092e69eaf59ff01e7e2707754b4f04f"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.7.2#818b74dea62974d23da75206105b97dc82df66f8"
 
 [[package]]
 name = "mockall"
