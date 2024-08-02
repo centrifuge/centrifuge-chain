@@ -20,10 +20,7 @@ use cfg_types::domain_address::Domain;
 use frame_support::{derive_impl, pallet_prelude::Weight};
 use sp_runtime::traits::ConstU128;
 
-use crate::{
-	self as pallet_liquidity_pools_gateway_queue, Config, DEFENSIVE_WEIGHT_REF_POV,
-	DEFENSIVE_WEIGHT_REF_TIME,
-};
+use crate::{self as pallet_liquidity_pools_gateway_queue, Config};
 
 frame_support::construct_runtime!(
 	pub enum Runtime {

@@ -14,6 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
+cfg-primitives = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -26,7 +27,6 @@ cfg-traits = { workspace = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
-cfg-primitives = { workspace = true, default-features = true }
 cfg-types = { workspace = true, default-features = true }
 
 pallet-balances = { workspace = true, default-features = true }

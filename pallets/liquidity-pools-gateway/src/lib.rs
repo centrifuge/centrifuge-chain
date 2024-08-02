@@ -28,6 +28,7 @@
 
 use core::fmt::Debug;
 
+use cfg_primitives::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
 use cfg_traits::{
 	liquidity_pools::{
 		InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
@@ -78,8 +79,6 @@ impl<T: Config> From<RelayerMessageDecodingError> for Error<T> {
 pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
-
-	use cfg_primitives::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
