@@ -535,7 +535,8 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::Message,
 		) -> (DispatchResult, Weight) {
-			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64);
+			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64)
+				.saturating_add(Weight::from_parts(200_000_000, 4096));
 
 			match T::InboundMessageHandler::handle(domain_address, message) {
 				Ok(_) => (Ok(()), weight),
