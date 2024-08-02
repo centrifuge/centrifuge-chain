@@ -2,7 +2,7 @@
 pub mod pallet {
 	use cfg_traits::investments::ForeignInvestmentHooks;
 	use frame_support::pallet_prelude::*;
-	use mock_builder::{execute_call, register_call};
+	use mock_builder::{execute_call, register_call, CallHandler};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -28,8 +28,8 @@ pub mod pallet {
 					T::Amount,
 				) -> DispatchResult
 				+ 'static,
-		) {
-			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
+		) -> CallHandler {
+			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e))
 		}
 
 		pub fn mock_fulfill_collect_investment(
@@ -41,8 +41,8 @@ pub mod pallet {
 					T::TrancheAmount,
 				) -> DispatchResult
 				+ 'static,
-		) {
-			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
+		) -> CallHandler {
+			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e))
 		}
 
 		pub fn mock_fulfill_collect_redemption(
@@ -54,8 +54,8 @@ pub mod pallet {
 					T::Amount,
 				) -> DispatchResult
 				+ 'static,
-		) {
-			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
+		) -> CallHandler {
+			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e))
 		}
 	}
 

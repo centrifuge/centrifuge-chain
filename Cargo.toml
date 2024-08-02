@@ -282,7 +282,7 @@ fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v1.7.2" }
 
 # Foss3
-mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.7.2" }
+mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "mock-builder/method-handler" }
 pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v1.7.2", default-features = false }
 
 # Moonbeam fork of polkadot-evm/frontier
