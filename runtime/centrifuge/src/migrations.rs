@@ -10,6 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use crate::Runtime;
+
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1400 = ();
+pub type UpgradeCentrifuge1401 =
+	runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>;

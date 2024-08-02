@@ -10,4 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeDevelopment1400 = ();
+use crate::Runtime;
+
+pub type UpgradeDevelopment1401 =
+	runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>;
