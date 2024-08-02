@@ -1086,7 +1086,8 @@ mod message_processor_impl {
 					Err(err)
 				});
 
-				let expected_weight = Weight::from_parts(0, Message::max_encoded_len() as u64);
+				let expected_weight = Weight::from_parts(0, Message::max_encoded_len() as u64)
+					.saturating_add(Weight::from_parts(200_000_000, 4096));
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_noop!(res, err);
