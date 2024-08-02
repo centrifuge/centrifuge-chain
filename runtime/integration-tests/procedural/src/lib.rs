@@ -61,7 +61,7 @@ use syn::{parse_macro_input, punctuated::Punctuated, Expr, ItemFn, Token};
 /// - The world `all`.
 #[proc_macro_attribute]
 pub fn test_runtimes(args: TokenStream, input: TokenStream) -> TokenStream {
-	let mut args: Punctuated<Expr, Token![,]> =
+	let args: Punctuated<Expr, Token![,]> =
 		parse_macro_input!(args with Punctuated::parse_terminated);
 
 	let runtimes = args
