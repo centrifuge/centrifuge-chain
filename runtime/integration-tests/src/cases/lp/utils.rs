@@ -119,9 +119,9 @@ pub fn verify_gateway_message_success<T: Runtime>(
 		  ..
 	   } if {
 		  match &processed_message {
-			 GatewayMessage::Inbound{ message, .. } => *message == lp_message,
-			 GatewayMessage::Outbound{ message, .. } => *message == lp_message,
-		  }
+				 GatewayMessage::Inbound{ message, .. }
+				| GatewayMessage::Outbound{ message, .. } => *message == lp_message,
+			  }
 	   }
 	));
 }

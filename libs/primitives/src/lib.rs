@@ -281,6 +281,10 @@ pub mod constants {
 	pub const TRACK_INDEX_REF_CANCELLER: u16 = 20;
 	/// The index of the referendum killer OpenGov track
 	pub const TRACK_INDEX_REF_KILLER: u16 = 21;
+
+	/// Defensive weight parts that are used in LP related pallets.
+	pub const LP_DEFENSIVE_WEIGHT_REF_TIME: u64 = 5_000_000_000;
+	pub const LP_DEFENSIVE_WEIGHT_POV: u64 = 4096;
 }
 
 /// Listing of parachains we integrate with.

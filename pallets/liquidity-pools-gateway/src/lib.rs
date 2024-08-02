@@ -79,11 +79,7 @@ pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
 
-	/// Some gateway routers do not return an actual weight when sending a
-	/// message, thus, this default is required, and it's based on:
-	///
-	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
-	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
+	use cfg_primitives::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -535,8 +531,10 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::Message,
 		) -> (DispatchResult, Weight) {
-			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64)
-				.saturating_add(Weight::from_parts(200_000_000, 4096));
+			let weight =
+				Weight::from_parts(0, T::Message::max_encoded_len() as u64).saturating_add(
+					Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV),
+				);
 
 			match T::InboundMessageHandler::handle(domain_address, message) {
 				Ok(_) => (Ok(()), weight),
@@ -599,7 +597,7 @@ pub mod pallet {
 			.expect("can calculate outbound message POV weight");
 
 			router_call_weight
-				.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
+				.unwrap_or(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, 0))
 				.saturating_add(Weight::from_parts(0, pov_weight))
 		}
 	}

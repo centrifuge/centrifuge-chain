@@ -14,6 +14,7 @@
 
 use core::fmt::Debug;
 
+use cfg_primitives::constants::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
 use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -130,7 +131,7 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_message().saturating_add(Weight::from_parts(200_000_000, 4096)))]
+		#[pallet::weight(T::WeightInfo::process_message().saturating_add(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV)))]
 		#[pallet::call_index(0)]
 		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -158,7 +159,7 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_failed_message().saturating_add(Weight::from_parts(200_000_000, 4096)))]
+		#[pallet::weight(T::WeightInfo::process_failed_message().saturating_add(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV)))]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
