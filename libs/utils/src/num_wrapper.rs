@@ -42,9 +42,16 @@ impl<T, I> NumWrapper<T, I> {
 	}
 }
 
+impl<T: Copy, I> NumWrapper<T, I> {
+	pub const fn get(self) -> T {
+		self.inner
+	}
+}
+
 macro_rules! const_methods {
 	($t:ty) => {
 		impl<I> NumWrapper<$t, I> {
+			pub const BITS: u32 = <$t>::BITS;
 			pub const MAX: Self = Self::from(<$t>::MAX);
 			pub const MIN: Self = Self::from(<$t>::MIN);
 
@@ -96,8 +103,52 @@ macro_rules! const_methods {
 				Self::from(self.inner / other)
 			}
 
-			pub const fn get(self) -> $t {
-				self.inner
+			pub const fn leading_zeros(self) -> u32 {
+				self.inner.leading_zeros()
+			}
+		}
+	};
+}
+
+macro_rules! impl_from {
+	($from:ty, $to:ty) => {
+		impl<I> From<$from> for NumWrapper<$to, I> {
+			fn from(other: $from) -> Self {
+				Self::from(other as $to)
+			}
+		}
+	};
+}
+
+macro_rules! impl_try_from {
+	($from:ty, $to:ty) => {
+		impl<I> TryFrom<$from> for NumWrapper<$to, I> {
+			type Error = <$to as TryFrom<$from>>::Error;
+
+			fn try_from(other: $from) -> Result<Self, Self::Error> {
+				Ok(Self::from(<$to>::try_from(other)?))
+			}
+		}
+	};
+}
+
+macro_rules! impl_into {
+	($from:ty, $to:ty) => {
+		impl<I> Into<$to> for NumWrapper<$from, I> {
+			fn into(self) -> $to {
+				self.inner.into()
+			}
+		}
+	};
+}
+
+macro_rules! impl_try_into {
+	($from:ty, $to:ty) => {
+		impl<I> TryInto<$to> for NumWrapper<$from, I> {
+			type Error = <$from as TryInto<$to>>::Error;
+
+			fn try_into(self) -> Result<$to, Self::Error> {
+				Ok(self.inner.try_into()?)
 			}
 		}
 	};
@@ -109,249 +160,89 @@ const_methods!(u32);
 const_methods!(u64);
 const_methods!(u128);
 
-impl<T, I> From<T> for NumWrapper<T, I> {
-	fn from(other: T) -> Self {
-		Self::from((other).into())
-	}
-}
+impl_from!(u8, u8);
+impl_try_from!(u16, u8);
+impl_try_from!(u32, u8);
+impl_try_from!(u64, u8);
+impl_try_from!(u128, u8);
+impl_try_from!(usize, u8);
 
-///  ------------------ From u8 -----------------------
+impl_from!(u8, u16);
+impl_from!(u16, u16);
+impl_try_from!(u32, u16);
+impl_try_from!(u64, u16);
+impl_try_from!(u128, u16);
+impl_try_from!(usize, u16);
 
-impl<I> TryFrom<u16> for NumWrapper<u8, I> {
-	type Error = <u8 as TryFrom<u16>>::Error;
+impl_from!(u8, u32);
+impl_from!(u16, u32);
+impl_from!(u32, u32);
+impl_try_from!(u64, u32);
+impl_try_from!(u128, u32);
+impl_try_from!(usize, u32);
 
-	fn try_from(other: u16) -> Result<NumWrapper<u8, I>, Self::Error> {
-		Ok(Self::from(u8::try_from(other)?))
-	}
-}
+impl_from!(u8, u64);
+impl_from!(u16, u64);
+impl_from!(u32, u64);
+impl_from!(u64, u64);
+impl_try_from!(u128, u64);
+impl_from!(usize, u64);
 
-impl<I> TryFrom<u32> for NumWrapper<u8, I> {
-	type Error = <u8 as TryFrom<u32>>::Error;
+impl_from!(u8, u128);
+impl_from!(u16, u128);
+impl_from!(u32, u128);
+impl_from!(u64, u128);
+impl_from!(u128, u128);
+impl_from!(usize, u128);
 
-	fn try_from(other: u32) -> Result<NumWrapper<u8, I>, Self::Error> {
-		Ok(Self::from(u8::try_from(other)?))
-	}
-}
+impl_from!(u8, usize);
+impl_from!(u16, usize);
+impl_from!(u32, usize);
+impl_from!(u64, usize);
+impl_from!(u128, usize);
+impl_from!(usize, usize);
 
-impl<I> TryFrom<u64> for NumWrapper<u8, I> {
-	type Error = <u8 as TryFrom<u64>>::Error;
+impl_into!(u8, u8);
+impl_try_into!(u16, u8);
+impl_try_into!(u32, u8);
+impl_try_into!(u64, u8);
+impl_try_into!(u128, u8);
+impl_try_into!(usize, u8);
 
-	fn try_from(other: u64) -> Result<NumWrapper<u8, I>, Self::Error> {
-		Ok(Self::from(u8::try_from(other)?))
-	}
-}
+impl_into!(u8, u16);
+impl_into!(u16, u16);
+impl_try_into!(u32, u16);
+impl_try_into!(u64, u16);
+impl_try_into!(u128, u16);
+impl_try_into!(usize, u16);
 
-impl<I> TryFrom<u128> for NumWrapper<u8, I> {
-	type Error = <u8 as TryFrom<u128>>::Error;
+impl_into!(u8, u32);
+impl_into!(u16, u32);
+impl_into!(u32, u32);
+impl_try_into!(u64, u32);
+impl_try_into!(u128, u32);
+impl_try_into!(usize, u32);
 
-	fn try_from(other: u128) -> Result<NumWrapper<u8, I>, Self::Error> {
-		Ok(Self::from(u8::try_from(other)?))
-	}
-}
+impl_into!(u8, u64);
+impl_into!(u16, u64);
+impl_into!(u32, u64);
+impl_into!(u64, u64);
+impl_try_into!(u128, u64);
+impl_try_into!(usize, u64);
 
-impl<I> TryFrom<usize> for NumWrapper<u8, I> {
-	type Error = <u8 as TryFrom<usize>>::Error;
+impl_into!(u8, u128);
+impl_into!(u16, u128);
+impl_into!(u32, u128);
+impl_into!(u64, u128);
+impl_into!(u128, u128);
+impl_try_into!(usize, u128);
 
-	fn try_from(other: usize) -> Result<NumWrapper<u8, I>, Self::Error> {
-		Ok(Self::from(u8::try_from(other)?))
-	}
-}
-
-///  ------------------ From u16 -----------------------
-
-impl<I> From<u8> for NumWrapper<u16, I> {
-	fn from(other: u8) -> NumWrapper<u16, I> {
-		Self::from(other as u16)
-	}
-}
-
-impl<I> TryFrom<u32> for NumWrapper<u16, I> {
-	type Error = <u16 as TryFrom<u32>>::Error;
-
-	fn try_from(other: u32) -> Result<NumWrapper<u16, I>, Self::Error> {
-		Ok(Self::from(u16::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<u64> for NumWrapper<u16, I> {
-	type Error = <u16 as TryFrom<u64>>::Error;
-
-	fn try_from(other: u64) -> Result<NumWrapper<u16, I>, Self::Error> {
-		Ok(Self::from(u16::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<u128> for NumWrapper<u16, I> {
-	type Error = <u16 as TryFrom<u128>>::Error;
-
-	fn try_from(other: u128) -> Result<NumWrapper<u16, I>, Self::Error> {
-		Ok(Self::from(u16::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<usize> for NumWrapper<u16, I> {
-	type Error = <u16 as TryFrom<usize>>::Error;
-
-	fn try_from(other: usize) -> Result<NumWrapper<u16, I>, Self::Error> {
-		Ok(Self::from(u16::try_from(other)?))
-	}
-}
-
-///  ------------------ From u32 -----------------------
-
-impl<I> From<u8> for NumWrapper<u32, I> {
-	fn from(other: u8) -> NumWrapper<u32, I> {
-		Self::from(other as u32)
-	}
-}
-
-impl<I> From<u16> for NumWrapper<u32, I> {
-	fn from(other: u16) -> NumWrapper<u32, I> {
-		Self::from(other as u32)
-	}
-}
-
-impl<I> TryFrom<u64> for NumWrapper<u32, I> {
-	type Error = <u32 as TryFrom<u64>>::Error;
-
-	fn try_from(other: u64) -> Result<NumWrapper<u32, I>, Self::Error> {
-		Ok(Self::from(u32::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<u128> for NumWrapper<u32, I> {
-	type Error = <u32 as TryFrom<u128>>::Error;
-
-	fn try_from(other: u128) -> Result<NumWrapper<u32, I>, Self::Error> {
-		Ok(Self::from(u32::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<usize> for NumWrapper<u32, I> {
-	type Error = <u32 as TryFrom<usize>>::Error;
-
-	fn try_from(other: usize) -> Result<NumWrapper<u32, I>, Self::Error> {
-		Ok(Self::from(u32::try_from(other)?))
-	}
-}
-
-///  ------------------ From u64 -----------------------
-
-impl<I> From<u8> for NumWrapper<u64, I> {
-	fn from(other: u8) -> NumWrapper<u64, I> {
-		Self::from(other as u64)
-	}
-}
-
-impl<I> From<u16> for NumWrapper<u64, I> {
-	fn from(other: u16) -> NumWrapper<u64, I> {
-		Self::from(other as u64)
-	}
-}
-
-impl<I> From<u32> for NumWrapper<u64, I> {
-	fn from(other: u32) -> NumWrapper<u64, I> {
-		Self::from(other as u64)
-	}
-}
-
-impl<I> TryFrom<u128> for NumWrapper<u64, I> {
-	type Error = <u64 as TryFrom<u128>>::Error;
-
-	fn try_from(other: u128) -> Result<NumWrapper<u64, I>, Self::Error> {
-		Ok(Self::from(u64::try_from(other)?))
-	}
-}
-
-impl<I> TryFrom<usize> for NumWrapper<u64, I> {
-	type Error = <u64 as TryFrom<usize>>::Error;
-
-	fn try_from(other: usize) -> Result<NumWrapper<u64, I>, Self::Error> {
-		Ok(Self::from(u64::try_from(other)?))
-	}
-}
-
-///  ------------------ From u128 -----------------------
-
-impl<I> From<u8> for NumWrapper<u128, I> {
-	fn from(other: u8) -> NumWrapper<u128, I> {
-		Self::from(other as u128)
-	}
-}
-
-impl<I> From<u16> for NumWrapper<u128, I> {
-	fn from(other: u16) -> NumWrapper<u128, I> {
-		Self::from(other as u128)
-	}
-}
-
-impl<I> From<u32> for NumWrapper<u128, I> {
-	fn from(other: u32) -> NumWrapper<u128, I> {
-		Self::from(other as u128)
-	}
-}
-
-impl<I> From<u64> for NumWrapper<u128, I> {
-	fn from(other: u64) -> NumWrapper<u128, I> {
-		Self::from(other as u128)
-	}
-}
-
-impl<I> TryFrom<usize> for NumWrapper<u128, I> {
-	type Error = <u128 as TryFrom<usize>>::Error;
-
-	fn try_from(other: usize) -> Result<NumWrapper<u128, I>, Self::Error> {
-		Ok(Self::from(u128::try_from(other)?))
-	}
-}
-
-/// -------------------  Into T -----------------------
-
-impl<T: TryInto<u8>, I> TryInto<u8> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<u8, Self::Error> {
-		Ok(self.inner.try_into()?)
-	}
-}
-
-impl<T: TryInto<u16>, I> TryInto<u16> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<u16, Self::Error> {
-		Ok(self.inner.try_into()?)
-	}
-}
-
-impl<T: TryInto<u32>, I> TryInto<u32> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<u32, Self::Error> {
-		Ok(self.inner.try_into()?)
-	}
-}
-
-impl<T: TryInto<u64>, I> TryInto<u64> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<u64, Self::Error> {
-		Ok(self.inner.try_into()?)
-	}
-}
-
-impl<T: Into<u128>, I> Into<u128> for NumWrapper<T, I> {
-	fn into(self) -> u128 {
-		self.inner.into()
-	}
-}
-
-impl<T: TryInto<usize>, I> TryInto<usize> for NumWrapper<T, I> {
-	type Error = T::Error;
-
-	fn try_into(self) -> Result<usize, Self::Error> {
-		Ok(self.inner.try_into()?)
-	}
-}
+impl_into!(u8, usize);
+impl_into!(u16, usize);
+impl_try_into!(u32, usize);
+impl_try_into!(u64, usize);
+impl_try_into!(u128, usize);
+impl_into!(usize, usize);
 
 /// -----------------------------------------------------
 

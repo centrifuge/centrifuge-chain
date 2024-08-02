@@ -1,5 +1,6 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
+	use cfg_primitives::{Millis, Seconds};
 	use frame_support::{pallet_prelude::*, traits::Time};
 	use mock_builder::{execute_call, register_call};
 	use sp_runtime::traits::AtLeast32Bit;
@@ -29,12 +30,15 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> frame_support::traits::UnixTime for Pallet<T>
-	where
-		T::Moment: Into<u64>,
-	{
+	impl<T: Config<Moment = Millis>> frame_support::traits::UnixTime for Pallet<T> {
 		fn now() -> std::time::Duration {
 			core::time::Duration::from_millis(<Pallet<T> as Time>::now().into())
+		}
+	}
+
+	impl<T: Config<Moment = Seconds>> frame_support::traits::UnixTime for Pallet<T> {
+		fn now() -> std::time::Duration {
+			core::time::Duration::from_seconds(<Pallet<T> as Time>::now().into())
 		}
 	}
 }
