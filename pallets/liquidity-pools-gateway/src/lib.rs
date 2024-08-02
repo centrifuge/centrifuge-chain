@@ -28,7 +28,7 @@
 
 use core::fmt::Debug;
 
-use cfg_primitives::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
+use cfg_primitives::{LP_DEFENSIVE_WEIGHT, LP_DEFENSIVE_WEIGHT_REF_TIME};
 use cfg_traits::{
 	liquidity_pools::{
 		InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
@@ -530,10 +530,8 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::Message,
 		) -> (DispatchResult, Weight) {
-			let weight =
-				Weight::from_parts(0, T::Message::max_encoded_len() as u64).saturating_add(
-					Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV),
-				);
+			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64)
+				.saturating_add(LP_DEFENSIVE_WEIGHT);
 
 			match T::InboundMessageHandler::handle(domain_address, message) {
 				Ok(_) => (Ok(()), weight),

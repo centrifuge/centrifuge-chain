@@ -1,4 +1,5 @@
 use cfg_mocks::*;
+use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	test_util::Message, LPEncoding, MessageProcessor, OutboundMessageHandler,
 };
@@ -1043,8 +1044,6 @@ mod message_processor_impl {
 	use super::*;
 
 	mod inbound {
-		use cfg_primitives::{LP_DEFENSIVE_WEIGHT_POV, LP_DEFENSIVE_WEIGHT_REF_TIME};
-
 		use super::*;
 
 		#[test]
@@ -1088,10 +1087,8 @@ mod message_processor_impl {
 					Err(err)
 				});
 
-				let expected_weight =
-					Weight::from_parts(0, Message::max_encoded_len() as u64).saturating_add(
-						Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV),
-					);
+				let expected_weight = Weight::from_parts(0, Message::max_encoded_len() as u64)
+					.saturating_add(LP_DEFENSIVE_WEIGHT);
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_noop!(res, err);
