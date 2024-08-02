@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Seconds;
-use cfg_traits::{Properties, TimeAsSecs};
+use cfg_traits::{Properties, UnixTimeSecs};
 use frame_support::{traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -137,7 +137,7 @@ pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
 
 impl<Now, MinDelay> Default for PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 {
 	fn default() -> Self {
@@ -151,7 +151,7 @@ where
 impl<Now, MinDelay, TrancheId, MaxTranches> Default
 	for TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -167,7 +167,7 @@ where
 impl<Now, MinDelay, TrancheId, MaxTranches> Default
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -191,7 +191,7 @@ pub const UNION: Seconds = Seconds::from(0);
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -310,7 +310,7 @@ where
 
 impl<Now, MinDelay> PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 {
 	pub fn empty() -> Self {
@@ -322,7 +322,7 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
+		let now = Now::now_secs();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -335,7 +335,7 @@ where
 
 	pub fn contains(&self) -> bool {
 		if let Some(info) = &self.info {
-			info.permissioned_till >= <Now as TimeAsSecs>::now()
+			info.permissioned_till >= Now::now_secs()
 		} else {
 			false
 		}
@@ -345,7 +345,7 @@ where
 	pub fn remove(&mut self, delta: Seconds) -> Result<(), ()> {
 		if let Some(info) = &self.info {
 			let valid_till = &info.permissioned_till;
-			let now = <Now as TimeAsSecs>::now();
+			let now = Now::now_secs();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -380,7 +380,7 @@ where
 
 impl<Now, MinDelay, TrancheId, MaxTranches> TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -394,7 +394,7 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
+		let now = Now::now_secs();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -406,16 +406,16 @@ where
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
-		self.info.iter().any(|info| {
-			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
-		})
+		self.info
+			.iter()
+			.any(|info| info.tranche_id == tranche && info.permissioned_till >= Now::now_secs())
 	}
 
 	#[allow(clippy::result_unit_err)]
 	pub fn remove(&mut self, tranche: TrancheId, delta: Seconds) -> Result<(), ()> {
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
-			let now = <Now as TimeAsSecs>::now();
+			let now = Now::now_secs();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period

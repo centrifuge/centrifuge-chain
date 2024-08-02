@@ -23,7 +23,6 @@ sp-arithmetic = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 strum = { workspace = true }
-cfg-utils = { workspace = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
@@ -42,7 +41,6 @@ std = [
   "scale-info/std",
   "strum/std",
   "orml-traits/std",
-  "cfg-utils/std",
 ]
 runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
@@ -50,7 +48,6 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
-  "cfg-utils/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",

@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Seconds;
-use cfg_traits::TimeAsSecs;
+use cfg_traits::UnixTimeSecs;
 use frame_support::{pallet_prelude::RuntimeDebug, traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -154,11 +154,11 @@ impl<Balance, ElemId, MaxElems, Timer> Get<PortfolioValuation<Balance, ElemId, M
 where
 	Balance: Zero + EnsureAdd + EnsureSub + Ord + Copy,
 	MaxElems: Get<u32>,
-	Timer: TimeAsSecs,
+	Timer: UnixTimeSecs,
 	ElemId: Eq,
 {
 	fn get() -> PortfolioValuation<Balance, ElemId, MaxElems> {
-		PortfolioValuation::new(<Timer as TimeAsSecs>::now())
+		PortfolioValuation::new(<Timer as UnixTimeSecs>::now())
 	}
 }
 

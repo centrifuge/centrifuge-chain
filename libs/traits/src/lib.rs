@@ -56,8 +56,6 @@ pub mod swaps;
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
 
-pub use cfg_utils::time::{IntoMillis, IntoSeconds};
-
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
@@ -383,14 +381,20 @@ pub trait TryConvert<A, B> {
 	fn try_convert(a: A) -> Result<B, Self::Error>;
 }
 
-/// Trait to obtain the time as seconds
-pub trait TimeAsSecs: UnixTime {
+/// Trait to obtain the unix time as seconds
+pub trait UnixTimeSecs: UnixTime {
 	fn now() -> Seconds {
 		<Self as UnixTime>::now().as_secs().into()
 	}
+
+	/// Same as now(), shortcut for cases where `now()` conflicts with
+	/// `UnixTime::now()`
+	fn now_secs() -> Seconds {
+		<Self as UnixTimeSecs>::now()
+	}
 }
 
-impl<T: UnixTime> TimeAsSecs for T {}
+impl<T: UnixTime> UnixTimeSecs for T {}
 
 pub trait ValueProvider<Source, Key> {
 	type Value;
