@@ -124,10 +124,13 @@ pub mod pallet {
 		/// If the execution fails, the message gets moved to the
 		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing
+		/// NOTES:
+		///   - this extrinsic does not error out during message processing
 		/// to ensure that any storage changes (i.e. to the message queues)
 		/// are not reverted.
-		#[pallet::weight(T::WeightInfo::process_message())]
+		///   - an extra defensive weight is added in order to cover the weight
+		/// used when processing the message.
+		#[pallet::weight(T::WeightInfo::process_message().saturating_add(Weight::from_parts(200_000_000, 4096)))]
 		#[pallet::call_index(0)]
 		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -149,10 +152,13 @@ pub mod pallet {
 		/// If the execution is successful, the message gets removed from the
 		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing
+		/// NOTES:
+		///   - this extrinsic does not error out during message processing
 		/// to ensure that any storage changes (i.e. to the message queues)
 		/// are not reverted.
-		#[pallet::weight(T::WeightInfo::process_failed_message())]
+		///   - an extra defensive weight is added in order to cover the weight
+		/// used when processing the message.
+		#[pallet::weight(T::WeightInfo::process_failed_message().saturating_add(Weight::from_parts(200_000_000, 4096)))]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
