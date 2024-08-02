@@ -31,26 +31,17 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{traits::Member, DispatchError};
 use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
 
-/// Traits related to checked changes.
 pub mod changes;
-/// Traits related to data registry and collection.
 pub mod data;
-/// Traits related to Ethereum/EVM.
 pub mod ethereum;
-/// Traits related to pool fees.
 pub mod fee;
-/// Traits related to fees payment.
 pub mod fees;
-/// Traits related to interest rates.
 pub mod interest;
-/// Traits related to investments.
 pub mod investments;
-/// Traits related to liquidity pools.
 pub mod liquidity_pools;
-/// Traits related to rewards.
 pub mod rewards;
-/// Traits related to swaps.
 pub mod swaps;
+pub mod time;
 
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
@@ -380,21 +371,6 @@ pub trait TryConvert<A, B> {
 	/// always be `a`.
 	fn try_convert(a: A) -> Result<B, Self::Error>;
 }
-
-/// Trait to obtain the unix time as seconds
-pub trait UnixTimeSecs: UnixTime {
-	fn now() -> Seconds {
-		<Self as UnixTime>::now().as_secs().into()
-	}
-
-	/// Same as now(), shortcut for cases where `now()` conflicts with
-	/// `UnixTime::now()`
-	fn now_secs() -> Seconds {
-		<Self as UnixTimeSecs>::now()
-	}
-}
-
-impl<T: UnixTime> UnixTimeSecs for T {}
 
 pub trait ValueProvider<Source, Key> {
 	type Value;
