@@ -831,19 +831,19 @@ mod freeze {
 
 	fn config_mocks(receiver: DomainAddress) {
 		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
-		DomainAddressToAccountId::mock_convert(move |_| ALICE);
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has unfrozen investor
 					false
@@ -853,6 +853,17 @@ mod freeze {
 					true
 				}
 				_ => false,
+			}
+		});
+		Permissions::mock_add(|scope, who, role| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			match role {
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(tranche_id, TRANCHE_ID);
+					Ok(())
+				}
+				_ => Err(DispatchError::Other("Must only add FrozenTrancheInvestor")),
 			}
 		});
 		Pools::mock_pool_exists(|_| true);
@@ -1029,19 +1040,19 @@ mod unfreeze {
 
 	fn config_mocks(receiver: DomainAddress) {
 		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
-		DomainAddressToAccountId::mock_convert(move |_| ALICE);
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has frozen investor
 					true
@@ -1057,7 +1068,7 @@ mod unfreeze {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
 					Ok(())
 				}
@@ -1220,7 +1231,7 @@ mod unfreeze {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
 						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.address().into());
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 							assert_eq!(tranche_id, TRANCHE_ID);
 							false
 						}

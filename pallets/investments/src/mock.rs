@@ -20,7 +20,6 @@ use cfg_types::{
 	fixed_point::Quantity,
 	investments::{InvestmentAccount, InvestmentInfo},
 	orders::{FulfillmentWithPrice, TotalOrder},
-	permissions::PoolRole::PoolAdmin,
 	tokens::CurrencyId,
 };
 use frame_support::{
@@ -143,7 +142,7 @@ impl pallet_investments::Config for Runtime {
 }
 
 pub struct AlwaysWithOneException;
-impl<T> PreConditions<T> for Always
+impl<T> PreConditions<T> for AlwaysWithOneException
 where
 	T: Into<OrderType<AccountId, InvestmentId, Balance>> + Clone,
 {

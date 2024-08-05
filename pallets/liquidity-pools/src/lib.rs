@@ -841,6 +841,7 @@ pub mod pallet {
 			domain_address: DomainAddress,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
+			let local_address = T::DomainAddressToAccountId::convert(domain_address.clone());
 
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
@@ -860,10 +861,17 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 			Self::validate_investor_status(
-				domain_address.address().into(),
+				local_address.clone(),
 				pool_id,
 				tranche_id,
+				T::Time::now(),
 				false,
+			)?;
+
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				local_address,
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
 			)?;
 
 			T::OutboundMessageHandler::handle(
@@ -891,6 +899,7 @@ pub mod pallet {
 			domain_address: DomainAddress,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
+			let local_address = T::DomainAddressToAccountId::convert(domain_address.clone());
 
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
@@ -910,15 +919,16 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 			Self::validate_investor_status(
-				domain_address.address().into(),
+				local_address.clone(),
 				pool_id,
 				tranche_id,
+				T::Time::now(),
 				true,
 			)?;
 
 			T::Permission::remove(
 				PermissionScope::Pool(pool_id),
-				domain_address.address().into(),
+				local_address,
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
 			)?;
 
@@ -1058,13 +1068,14 @@ pub mod pallet {
 			investor: T::AccountId,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
+			valid_until: Seconds,
 			is_frozen: bool,
 		) -> DispatchResult {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					investor.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
