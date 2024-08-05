@@ -627,6 +627,13 @@ impl<T: Config> Pallet<T> {
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
+		// Frozen investors must not be able to collect tranche tokens
+		T::PreConditions::check(OrderType::Investment {
+			who: who.clone(),
+			investment_id,
+			amount: Default::default(),
+		})?;
+
 		let _ = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let (collected_investment, post_dispatch_info) = InvestOrders::<T>::try_mutate(
 			&who,
