@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, Seconds};
+use cfg_primitives::Seconds;
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CustomMetadata},

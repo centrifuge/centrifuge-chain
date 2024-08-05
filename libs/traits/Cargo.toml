@@ -55,5 +55,4 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "sp-runtime/try-runtime",
   "cfg-mocks/try-runtime",
-  "cfg-utils/try-runtime",
 ]

@@ -13,7 +13,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::or_fun_call)]
 
-use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, Seconds, TimeAsSecs};
+use cfg_primitives::Seconds;
+use cfg_traits::{time::UnixTimeSecs, Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -320,7 +321,7 @@ pub mod pallet {
 			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
 		>;
 
-		type Time: TimeAsSecs;
+		type Time: UnixTimeSecs;
 
 		/// Add pool fees
 		type PoolFees: PoolFeesMutate<
