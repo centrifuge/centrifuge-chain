@@ -1,7 +1,8 @@
+use cfg_primitives::Seconds;
 use cfg_traits::{
 	self,
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	Seconds, TimeAsSecs,
+	time::UnixTimeSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
@@ -598,7 +599,8 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 
 /// Adds `with_linear_pricing` to ExternalPricing struct for migration to v4
 pub mod v3 {
-	use cfg_traits::{interest::InterestRate, Seconds};
+	use cfg_primitives::Seconds;
+	use cfg_traits::interest::InterestRate;
 	use parity_scale_codec::{Decode, Encode};
 
 	use crate::{

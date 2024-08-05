@@ -190,7 +190,7 @@ pub mod constants {
 	pub const SLOT_DURATION: Millis = MILLISECS_PER_BLOCK;
 
 	// Time is measured by number of blocks.
-	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK.get() as BlockNumber);
+	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK.inner as BlockNumber);
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
 
@@ -203,7 +203,7 @@ pub mod constants {
 	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul_int(365);
 
 	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: Millis = Millis::from(SECONDS_PER_DAY.get() * 1000);
+	pub const MILLISECS_PER_DAY: Millis = Millis::from(SECONDS_PER_DAY.inner * 1000);
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`
 	/// handlers. This is used to limit the maximal weight of a single

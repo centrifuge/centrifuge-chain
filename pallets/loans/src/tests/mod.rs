@@ -1,7 +1,5 @@
-use std::time::Duration;
-
 use cfg_mocks::pallet_mock_data::util::MockDataCollection;
-use cfg_primitives::{SECONDS_PER_DAY, SECONDS_PER_YEAR};
+use cfg_primitives::{Seconds, SECONDS_PER_DAY, SECONDS_PER_YEAR};
 use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok, storage::bounded_vec::BoundedVec};

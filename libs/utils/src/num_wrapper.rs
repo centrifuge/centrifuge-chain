@@ -29,7 +29,7 @@ use sp_std::{
 #[derive(TypeInfo, Serialize, Deserialize, Encode, Decode, MaxEncodedLen)]
 #[scale_info(skip_type_params(T, I))]
 pub struct NumWrapper<T, I> {
-	inner: T,
+	pub inner: T,
 	_instance: PhantomData<I>,
 }
 
@@ -39,12 +39,6 @@ impl<T, I> NumWrapper<T, I> {
 			inner: value,
 			_instance: PhantomData,
 		}
-	}
-}
-
-impl<T: Copy, I> NumWrapper<T, I> {
-	pub const fn get(self) -> T {
-		self.inner
 	}
 }
 
