@@ -150,13 +150,13 @@ fn with_price_outdated() {
 			CHANGE_ID
 		));
 
-		advance_time(Seconds::from(9));
+		advance_time(Seconds::new(9));
 		assert_noop!(
 			Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
 			Error::<Runtime>::NoValidWriteOffRule
 		);
 
-		advance_time(Seconds::from(9));
+		advance_time(Seconds::new(9));
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
 			POOL_A,

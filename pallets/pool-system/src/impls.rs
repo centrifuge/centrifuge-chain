@@ -431,7 +431,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			allowed &= match requirement {
 				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
 				Requirement::DelayTime(secs) => {
-					T::Time::now().saturating_sub(submitted_time) >= Seconds::from(secs.into())
+					T::Time::now().saturating_sub(submitted_time) >= Seconds::new(secs.into())
 				}
 				Requirement::BlockedByLockedRedemptions => true, // TODO: #1407
 			}

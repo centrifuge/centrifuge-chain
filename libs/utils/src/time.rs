@@ -12,12 +12,12 @@ pub type Millis<T> = NumWrapper<T, MillisId>;
 impl<M: Div<Output = M> + From<u32> + Copy> Millis<M> {
 	pub fn into_seconds<S: TryFrom<M> + Bounded>(self) -> Seconds<S> {
 		let inner = self.inner / M::from(1000);
-		Seconds::from(S::try_from(inner).unwrap_or(Bounded::max_value()))
+		Seconds::new(S::try_from(inner).unwrap_or(Bounded::max_value()))
 	}
 
 	pub fn into_days<D: TryFrom<M> + Bounded>(self) -> Days<D> {
 		let inner = self.inner / M::from(1000 * 24 * 3600);
-		Days::from(D::try_from(inner).unwrap_or(Bounded::max_value()))
+		Days::new(D::try_from(inner).unwrap_or(Bounded::max_value()))
 	}
 }
 
@@ -32,14 +32,14 @@ impl<S: Copy> Seconds<S> {
 		let inner = M::try_from(self.inner)
 			.unwrap_or(Bounded::max_value())
 			.saturating_mul(M::from(1000));
-		Millis::from(inner)
+		Millis::new(inner)
 	}
 }
 
 impl<S: Div<Output = S> + From<u32> + Copy> Seconds<S> {
 	pub fn into_days<D: TryFrom<S> + Bounded>(self) -> Days<D> {
 		let inner = self.inner / S::from(24 * 3600);
-		Days::from(D::try_from(inner).unwrap_or(Bounded::max_value()))
+		Days::new(D::try_from(inner).unwrap_or(Bounded::max_value()))
 	}
 }
 
@@ -54,14 +54,14 @@ impl<D: Copy> Days<D> {
 		let inner = M::try_from(self.inner)
 			.unwrap_or(Bounded::max_value())
 			.saturating_mul(M::from(1000 * 24 * 3600));
-		Millis::from(inner)
+		Millis::new(inner)
 	}
 
 	pub fn into_seconds<S: TryFrom<D> + From<u32> + Saturating + Bounded>(self) -> Seconds<S> {
 		let inner = S::try_from(self.inner)
 			.unwrap_or(Bounded::max_value())
 			.saturating_mul(S::from(24 * 3600));
-		Seconds::from(inner)
+		Seconds::new(inner)
 	}
 }
 

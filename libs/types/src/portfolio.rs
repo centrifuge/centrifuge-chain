@@ -180,7 +180,7 @@ mod tests {
 
 	#[test]
 	fn general_usage() {
-		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(Seconds::from(10));
+		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(Seconds::new(10));
 
 		assert_ok!(portfolio.insert_elem(1, 100));
 		assert_ok!(portfolio.insert_elem(2, 200));

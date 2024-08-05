@@ -33,7 +33,7 @@ use sp_runtime::{DispatchError, FixedU128};
 
 use crate::{entities::changes::Change, pallet as pallet_loans};
 
-pub const INITIAL_TIME: Seconds = Seconds::from(10);
+pub const INITIAL_TIME: Seconds = Seconds::new(10);
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -70,7 +70,7 @@ pub const PRICE_VALUE: Balance = 980;
 pub const NOTIONAL: Balance = 1000;
 pub const QUANTITY: Quantity = Quantity::from_rational(12, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
-pub const PRICE_TIMESTAMP: Millis = Millis::from(10000);
+pub const PRICE_TIMESTAMP: Millis = Millis::new(10000);
 pub const MAX_PRICE_VARIATION: Rate = Rate::from_rational(1, 100);
 
 pub const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");

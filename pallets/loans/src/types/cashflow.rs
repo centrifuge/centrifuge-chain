@@ -43,7 +43,7 @@ impl Maturity {
 	pub fn fixed(date: Seconds) -> Self {
 		Self::Fixed {
 			date,
-			extension: Seconds::from(0),
+			extension: Seconds::new(0),
 		}
 	}
 

@@ -267,7 +267,7 @@ mod tests {
 			assert_eq!(
 				saturated_rate_proration::<Rate>(
 					Rate::from_integer(SECONDS_PER_YEAR.into()),
-					Seconds::from(0)
+					Seconds::new(0)
 				),
 				Rate::zero()
 			);
@@ -278,7 +278,7 @@ mod tests {
 			assert!(
 				saturated_rate_proration::<Rate>(
 					Rate::from_integer((SECONDS_PER_YEAR - 1).into()),
-					Seconds::from(1)
+					Seconds::new(1)
 				) > Rate::zero()
 			);
 			assert!(
@@ -291,7 +291,7 @@ mod tests {
 			assert_eq!(
 				saturated_rate_proration::<Rate>(
 					Rate::from_integer(SECONDS_PER_YEAR.into()),
-					Seconds::from(1)
+					Seconds::new(1)
 				),
 				Rate::one()
 			);
@@ -307,7 +307,7 @@ mod tests {
 
 			let rate = saturated_rate_proration::<Rate>(
 				Rate::from_integer(u128::from(u128::MAX / 10u128.pow(27))),
-				Seconds::from(1),
+				Seconds::new(1),
 			);
 			assert!(left_bound < rate);
 			assert!(rate < right_bound);

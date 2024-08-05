@@ -186,7 +186,7 @@ pub mod constants {
 	/// slot_duration()`.
 	///
 	/// Change this to adjust the block time.
-	pub const MILLISECS_PER_BLOCK: Millis = Millis::from(12000);
+	pub const MILLISECS_PER_BLOCK: Millis = Millis::new(12000);
 	pub const SLOT_DURATION: Millis = MILLISECS_PER_BLOCK;
 
 	// Time is measured by number of blocks.
@@ -195,7 +195,7 @@ pub mod constants {
 	pub const DAYS: BlockNumber = HOURS * 24;
 
 	// Seconds units
-	pub const SECONDS_PER_MINUTE: Seconds = Seconds::from(60);
+	pub const SECONDS_PER_MINUTE: Seconds = Seconds::new(60);
 	pub const SECONDS_PER_HOUR: Seconds = SECONDS_PER_MINUTE.mul_int(60);
 	pub const SECONDS_PER_DAY: Seconds = SECONDS_PER_HOUR.mul_int(24);
 	pub const SECONDS_PER_WEEK: Seconds = SECONDS_PER_DAY.mul_int(7);
@@ -203,7 +203,7 @@ pub mod constants {
 	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul_int(365);
 
 	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: Millis = Millis::from(SECONDS_PER_DAY.inner * 1000);
+	pub const MILLISECS_PER_DAY: Millis = Millis::new(SECONDS_PER_DAY.inner * 1000);
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`
 	/// handlers. This is used to limit the maximal weight of a single

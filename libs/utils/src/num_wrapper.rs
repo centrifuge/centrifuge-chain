@@ -34,7 +34,7 @@ pub struct NumWrapper<T, I> {
 }
 
 impl<T, I> NumWrapper<T, I> {
-	pub const fn from(value: T) -> Self {
+	pub const fn new(value: T) -> Self {
 		NumWrapper {
 			inner: value,
 			_instance: PhantomData,
@@ -46,55 +46,55 @@ macro_rules! const_methods {
 	($t:ty) => {
 		impl<I> NumWrapper<$t, I> {
 			pub const BITS: u32 = <$t>::BITS;
-			pub const MAX: Self = Self::from(<$t>::MAX);
-			pub const MIN: Self = Self::from(<$t>::MIN);
+			pub const MAX: Self = Self::new(<$t>::MAX);
+			pub const MIN: Self = Self::new(<$t>::MIN);
 
 			pub const fn add(self, other: Self) -> Self {
-				Self::from(self.inner + other.inner)
+				Self::new(self.inner + other.inner)
 			}
 
 			pub const fn sub(self, other: Self) -> Self {
-				Self::from(self.inner - other.inner)
+				Self::new(self.inner - other.inner)
 			}
 
 			pub const fn mul(self, other: Self) -> Self {
-				Self::from(self.inner * other.inner)
+				Self::new(self.inner * other.inner)
 			}
 
 			pub const fn div(self, other: Self) -> Self {
-				Self::from(self.inner / other.inner)
+				Self::new(self.inner / other.inner)
 			}
 
 			pub const fn saturating_add(self, other: Self) -> Self {
-				Self::from(self.inner.saturating_add(other.inner))
+				Self::new(self.inner.saturating_add(other.inner))
 			}
 
 			pub const fn saturating_sub(self, other: Self) -> Self {
-				Self::from(self.inner.saturating_sub(other.inner))
+				Self::new(self.inner.saturating_sub(other.inner))
 			}
 
 			pub const fn saturating_mul(self, other: Self) -> Self {
-				Self::from(self.inner.saturating_mul(other.inner))
+				Self::new(self.inner.saturating_mul(other.inner))
 			}
 
 			pub const fn saturating_div(self, other: Self) -> Self {
-				Self::from(self.inner.saturating_div(other.inner))
+				Self::new(self.inner.saturating_div(other.inner))
 			}
 
 			pub const fn add_int(self, other: $t) -> Self {
-				Self::from(self.inner + other)
+				Self::new(self.inner + other)
 			}
 
 			pub const fn sub_int(self, other: $t) -> Self {
-				Self::from(self.inner - other)
+				Self::new(self.inner - other)
 			}
 
 			pub const fn mul_int(self, other: $t) -> Self {
-				Self::from(self.inner * other)
+				Self::new(self.inner * other)
 			}
 
 			pub const fn div_int(self, other: $t) -> Self {
-				Self::from(self.inner / other)
+				Self::new(self.inner / other)
 			}
 
 			pub const fn leading_zeros(self) -> u32 {
@@ -108,7 +108,7 @@ macro_rules! impl_from {
 	($from:ty, $to:ty) => {
 		impl<I> From<$from> for NumWrapper<$to, I> {
 			fn from(other: $from) -> Self {
-				Self::from(other as $to)
+				Self::new(other as $to)
 			}
 		}
 	};
@@ -120,7 +120,7 @@ macro_rules! impl_try_from {
 			type Error = <$to as TryFrom<$from>>::Error;
 
 			fn try_from(other: $from) -> Result<Self, Self::Error> {
-				Ok(Self::from(<$to>::try_from(other)?))
+				Ok(Self::new(<$to>::try_from(other)?))
 			}
 		}
 	};
@@ -242,13 +242,13 @@ impl_into!(usize, usize);
 
 impl<T: Default, I> Default for NumWrapper<T, I> {
 	fn default() -> Self {
-		Self::from(T::default())
+		Self::new(T::default())
 	}
 }
 
 impl<T: Clone, I> Clone for NumWrapper<T, I> {
 	fn clone(&self) -> Self {
-		Self::from(self.inner.clone())
+		Self::new(self.inner.clone())
 	}
 }
 
@@ -284,7 +284,7 @@ impl<T: Add<Output = T>, I> Add for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn add(self, rhs: Self) -> Self {
-		Self::from(self.inner.add(rhs.inner))
+		Self::new(self.inner.add(rhs.inner))
 	}
 }
 
@@ -292,7 +292,7 @@ impl<T: Sub<Output = T>, I> Sub for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self {
-		Self::from(self.inner.sub(rhs.inner))
+		Self::new(self.inner.sub(rhs.inner))
 	}
 }
 
@@ -300,7 +300,7 @@ impl<T: Mul<Output = T>, I> Mul for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self {
-		Self::from(self.inner.mul(rhs.inner))
+		Self::new(self.inner.mul(rhs.inner))
 	}
 }
 
@@ -308,7 +308,7 @@ impl<T: Div<Output = T>, I> Div for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self {
-		Self::from(self.inner.div(rhs.inner))
+		Self::new(self.inner.div(rhs.inner))
 	}
 }
 
@@ -316,7 +316,7 @@ impl<T: Rem<Output = T>, I> Rem for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn rem(self, rhs: Self) -> Self {
-		Self::from(self.inner.rem(rhs.inner))
+		Self::new(self.inner.rem(rhs.inner))
 	}
 }
 
@@ -324,7 +324,7 @@ impl<T: Shl<u32, Output = T>, I> Shl<u32> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn shl(self, rhs: u32) -> Self {
-		Self::from(self.inner.shl(rhs))
+		Self::new(self.inner.shl(rhs))
 	}
 }
 
@@ -332,7 +332,7 @@ impl<T: Shr<u32, Output = T>, I> Shr<u32> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn shr(self, rhs: u32) -> Self {
-		Self::from(self.inner.shr(rhs))
+		Self::new(self.inner.shr(rhs))
 	}
 }
 
@@ -340,7 +340,7 @@ impl<T: Add<Output = T>, I> Add<T> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn add(self, rhs: T) -> Self {
-		Self::from(self.inner.add(rhs))
+		Self::new(self.inner.add(rhs))
 	}
 }
 
@@ -348,7 +348,7 @@ impl<T: Sub<Output = T>, I> Sub<T> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn sub(self, rhs: T) -> Self {
-		Self::from(self.inner.sub(rhs))
+		Self::new(self.inner.sub(rhs))
 	}
 }
 
@@ -356,7 +356,7 @@ impl<T: Mul<Output = T>, I> Mul<T> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn mul(self, rhs: T) -> Self {
-		Self::from(self.inner.mul(rhs))
+		Self::new(self.inner.mul(rhs))
 	}
 }
 
@@ -364,7 +364,7 @@ impl<T: Div<Output = T>, I> Div<T> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn div(self, rhs: T) -> Self {
-		Self::from(self.inner.div(rhs))
+		Self::new(self.inner.div(rhs))
 	}
 }
 
@@ -372,7 +372,7 @@ impl<T: Rem<Output = T>, I> Rem<T> for NumWrapper<T, I> {
 	type Output = Self;
 
 	fn rem(self, rhs: T) -> Self {
-		Self::from(self.inner.rem(rhs))
+		Self::new(self.inner.rem(rhs))
 	}
 }
 
@@ -438,73 +438,73 @@ impl<T: RemAssign, I> RemAssign<T> for NumWrapper<T, I> {
 
 impl<T: CheckedAdd, I> CheckedAdd for NumWrapper<T, I> {
 	fn checked_add(&self, rhs: &Self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_add(&rhs.inner)?))
+		Some(Self::new(self.inner.checked_add(&rhs.inner)?))
 	}
 }
 
 impl<T: CheckedSub, I> CheckedSub for NumWrapper<T, I> {
 	fn checked_sub(&self, rhs: &Self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_sub(&rhs.inner)?))
+		Some(Self::new(self.inner.checked_sub(&rhs.inner)?))
 	}
 }
 
 impl<T: CheckedMul, I> CheckedMul for NumWrapper<T, I> {
 	fn checked_mul(&self, rhs: &Self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_mul(&rhs.inner)?))
+		Some(Self::new(self.inner.checked_mul(&rhs.inner)?))
 	}
 }
 
 impl<T: CheckedDiv, I> CheckedDiv for NumWrapper<T, I> {
 	fn checked_div(&self, rhs: &Self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_div(&rhs.inner)?))
+		Some(Self::new(self.inner.checked_div(&rhs.inner)?))
 	}
 }
 
 impl<T: CheckedRem, I> CheckedRem for NumWrapper<T, I> {
 	fn checked_rem(&self, rhs: &Self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_rem(&rhs.inner)?))
+		Some(Self::new(self.inner.checked_rem(&rhs.inner)?))
 	}
 }
 
 impl<T: CheckedShl, I> CheckedShl for NumWrapper<T, I> {
 	fn checked_shl(&self, rhs: u32) -> Option<Self> {
-		Some(Self::from(self.inner.checked_shl(rhs)?))
+		Some(Self::new(self.inner.checked_shl(rhs)?))
 	}
 }
 
 impl<T: CheckedShr, I> CheckedShr for NumWrapper<T, I> {
 	fn checked_shr(&self, rhs: u32) -> Option<Self> {
-		Some(Self::from(self.inner.checked_shr(rhs)?))
+		Some(Self::new(self.inner.checked_shr(rhs)?))
 	}
 }
 
 impl<T: CheckedNeg, I> CheckedNeg for NumWrapper<T, I> {
 	fn checked_neg(&self) -> Option<Self> {
-		Some(Self::from(self.inner.checked_neg()?))
+		Some(Self::new(self.inner.checked_neg()?))
 	}
 }
 
 impl<T: Saturating, I> Saturating for NumWrapper<T, I> {
 	fn saturating_add(self, rhs: Self) -> Self {
-		Self::from(self.inner.saturating_add(rhs.inner))
+		Self::new(self.inner.saturating_add(rhs.inner))
 	}
 
 	fn saturating_sub(self, rhs: Self) -> Self {
-		Self::from(self.inner.saturating_sub(rhs.inner))
+		Self::new(self.inner.saturating_sub(rhs.inner))
 	}
 
 	fn saturating_mul(self, rhs: Self) -> Self {
-		Self::from(self.inner.saturating_mul(rhs.inner))
+		Self::new(self.inner.saturating_mul(rhs.inner))
 	}
 
 	fn saturating_pow(self, exp: usize) -> Self {
-		Self::from(self.inner.saturating_pow(exp))
+		Self::new(self.inner.saturating_pow(exp))
 	}
 }
 
 impl<T: Zero, I> Zero for NumWrapper<T, I> {
 	fn zero() -> Self {
-		Self::from(T::zero())
+		Self::new(T::zero())
 	}
 
 	fn is_zero(&self) -> bool {
@@ -514,7 +514,7 @@ impl<T: Zero, I> Zero for NumWrapper<T, I> {
 
 impl<T: One + PartialEq, I> One for NumWrapper<T, I> {
 	fn one() -> Self {
-		Self::from(T::one())
+		Self::new(T::one())
 	}
 
 	fn is_one(&self) -> bool {
@@ -524,17 +524,17 @@ impl<T: One + PartialEq, I> One for NumWrapper<T, I> {
 
 impl<T: IntegerSquareRoot, I> IntegerSquareRoot for NumWrapper<T, I> {
 	fn integer_sqrt_checked(&self) -> Option<Self> {
-		Some(Self::from(self.inner.integer_sqrt_checked()?))
+		Some(Self::new(self.inner.integer_sqrt_checked()?))
 	}
 }
 
 impl<T: Bounded, I> Bounded for NumWrapper<T, I> {
 	fn min_value() -> Self {
-		Self::from(T::min_value())
+		Self::new(T::min_value())
 	}
 
 	fn max_value() -> Self {
-		Self::from(T::max_value())
+		Self::new(T::max_value())
 	}
 }
 
@@ -552,7 +552,7 @@ impl<T, I> CompactAs for NumWrapper<T, I> {
 	}
 
 	fn decode_from(x: Self::As) -> Result<Self, parity_scale_codec::Error> {
-		Ok(Self::from(x))
+		Ok(Self::new(x))
 	}
 }
 
