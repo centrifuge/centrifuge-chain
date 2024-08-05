@@ -18,10 +18,10 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::Seconds;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
-	traits::UnixTime,
 	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
@@ -30,26 +30,17 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{traits::Member, DispatchError};
 use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
 
-/// Traits related to checked changes.
 pub mod changes;
-/// Traits related to data registry and collection.
 pub mod data;
-/// Traits related to Ethereum/EVM.
 pub mod ethereum;
-/// Traits related to pool fees.
 pub mod fee;
-/// Traits related to fees payment.
 pub mod fees;
-/// Traits related to interest rates.
 pub mod interest;
-/// Traits related to investments.
 pub mod investments;
-/// Traits related to liquidity pools.
 pub mod liquidity_pools;
-/// Traits related to rewards.
 pub mod rewards;
-/// Traits related to swaps.
 pub mod swaps;
+pub mod time;
 
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
@@ -60,7 +51,7 @@ pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
 	type RuntimeOrigin;
 	// nav returns the nav and the last time it was calculated
-	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
+	fn nav(pool_id: PoolId) -> Option<(Amount, Seconds)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 	fn initialise(
 		origin: Self::RuntimeOrigin,
@@ -378,35 +369,6 @@ pub trait TryConvert<A, B> {
 	/// Attempt to make conversion. If returning [Result::Err], the inner must
 	/// always be `a`.
 	fn try_convert(a: A) -> Result<B, Self::Error>;
-}
-
-// TODO: Probably these should be in a future cfg-utils.
-// Issue: https://github.com/centrifuge/centrifuge-chain/issues/1380
-
-/// Type to represent milliseconds
-pub type Millis = u64;
-
-/// Type to represent seconds
-pub type Seconds = u64;
-
-/// Trait to obtain the time as seconds
-pub trait TimeAsSecs: UnixTime {
-	fn now() -> Seconds {
-		<Self as UnixTime>::now().as_secs()
-	}
-}
-
-impl<T: UnixTime> TimeAsSecs for T {}
-
-/// Trait to convert into seconds
-pub trait IntoSeconds {
-	fn into_seconds(self) -> Seconds;
-}
-
-impl IntoSeconds for Millis {
-	fn into_seconds(self) -> Seconds {
-		self / 1000
-	}
 }
 
 pub trait ValueProvider<Source, Key> {

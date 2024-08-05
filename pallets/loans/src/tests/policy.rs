@@ -10,7 +10,7 @@ fn config_mocks(pool_id: PoolId, policy: &BoundedVec<WriteOffRule<Rate>, MaxWrit
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		assert_eq!(*id, REGISTER_PRICE_ID);
-		Ok((PRICE_VALUE, BLOCK_TIME_MS))
+		Ok((PRICE_VALUE, PRICE_TIMESTAMP))
 	});
 	MockChangeGuard::mock_note({
 		let policy = policy.clone();
@@ -98,7 +98,7 @@ fn with_wrong_loan_mutation_change() {
 fn with_successful_overwriting() {
 	new_test_ext().execute_with(|| {
 		let policy: BoundedVec<_, _> = vec![WriteOffRule::new(
-			[WriteOffTrigger::PrincipalOverdue(1)],
+			[WriteOffTrigger::PrincipalOverdue(1u32.into())],
 			Rate::from_float(POLICY_PERCENTAGE),
 			Rate::from_float(POLICY_PENALTY),
 		)]
@@ -131,7 +131,7 @@ fn with_price_outdated() {
 		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
 		let policy: BoundedVec<_, _> = vec![WriteOffRule::new(
-			[WriteOffTrigger::PriceOutdated(10)],
+			[WriteOffTrigger::PriceOutdated(10u32.into())],
 			Rate::from_float(POLICY_PERCENTAGE),
 			Rate::from_float(POLICY_PENALTY),
 		)]
@@ -150,13 +150,13 @@ fn with_price_outdated() {
 			CHANGE_ID
 		));
 
-		advance_time(Duration::from_secs(9));
+		advance_time(Seconds::new(9));
 		assert_noop!(
 			Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
 			Error::<Runtime>::NoValidWriteOffRule
 		);
 
-		advance_time(Duration::from_secs(1));
+		advance_time(Seconds::new(9));
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
 			POOL_A,
@@ -181,25 +181,25 @@ fn with_success() {
 
 		let policy: BoundedVec<_, _> = vec![
 			WriteOffRule::new(
-				[WriteOffTrigger::PriceOutdated(10)],
+				[WriteOffTrigger::PriceOutdated(10u32.into())],
 				Rate::from_float(0.8),
 				Rate::from_float(0.8),
 			),
 			WriteOffRule::new(
 				[
-					WriteOffTrigger::PrincipalOverdue(1),
-					WriteOffTrigger::PriceOutdated(0),
+					WriteOffTrigger::PrincipalOverdue(1u32.into()),
+					WriteOffTrigger::PriceOutdated(0u32.into()),
 				],
 				Rate::from_float(0.2),
 				Rate::from_float(0.2),
 			),
 			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdue(4)],
+				[WriteOffTrigger::PrincipalOverdue(4u32.into())],
 				Rate::from_float(0.5),
 				Rate::from_float(0.5),
 			),
 			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdue(9)],
+				[WriteOffTrigger::PrincipalOverdue(9u32.into())],
 				Rate::from_float(0.3),
 				Rate::from_float(0.9),
 			),
@@ -216,7 +216,7 @@ fn with_success() {
 		));
 
 		// Check if a loan is correctly writen off
-		advance_time(YEAR + DAY * 10);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY * 10);
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
 			POOL_A,

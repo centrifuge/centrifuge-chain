@@ -12,8 +12,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler, Permissions,
-	TimeAsSecs,
+	investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler, time::UnixTimeSecs,
+	Permissions,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},

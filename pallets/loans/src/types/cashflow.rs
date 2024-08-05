@@ -11,7 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{interest::InterestRate, Seconds};
+use cfg_primitives::Seconds;
+use cfg_traits::interest::InterestRate;
 use frame_support::pallet_prelude::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -40,7 +41,10 @@ pub enum Maturity {
 
 impl Maturity {
 	pub fn fixed(date: Seconds) -> Self {
-		Self::Fixed { date, extension: 0 }
+		Self::Fixed {
+			date,
+			extension: Seconds::new(0),
+		}
 	}
 
 	pub fn date(&self) -> Option<Seconds> {
@@ -207,11 +211,13 @@ pub mod tests {
 		min: u32,
 		sec: u32,
 	) -> Seconds {
-		from_ymd(year, month, day)
-			.and_hms_opt(hour, min, sec)
-			.unwrap()
-			.and_utc()
-			.timestamp() as Seconds
+		Seconds::from(
+			from_ymd(year, month, day)
+				.and_hms_opt(hour, min, sec)
+				.unwrap()
+				.and_utc()
+				.timestamp() as u64,
+		)
 	}
 
 	pub fn last_secs_from_ymd(year: i32, month: u32, day: u32) -> Seconds {

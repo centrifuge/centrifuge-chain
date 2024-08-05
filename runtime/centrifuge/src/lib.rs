@@ -27,11 +27,10 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
-	LPGatewayQueueMessageNonce,
+	LPGatewayQueueMessageNonce, Millis, Seconds,
 };
 use cfg_traits::{
-	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
-	Seconds,
+	investments::OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 };
 use cfg_types::{
 	fee_keys::{Fee, FeeKey},

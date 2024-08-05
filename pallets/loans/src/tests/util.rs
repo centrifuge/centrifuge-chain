@@ -50,8 +50,8 @@ pub fn current_loan_pv(loan_id: LoanId) -> Balance {
 	get_loan(loan_id).present_value(POOL_A).unwrap()
 }
 
-pub fn interest_for(rate: f64, elapsed: Duration) -> f64 {
-	(1.0 + rate / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32)
+pub fn interest_for(rate: f64, elapsed: Seconds) -> f64 {
+	(1.0 + rate / SECONDS_PER_YEAR.inner as f64).powi(elapsed.inner as i32)
 }
 
 pub fn current_debt_for(interest: f64, balance: Balance) -> Balance {
@@ -121,8 +121,8 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
 			maturity: Maturity::Fixed {
-				date: (now() + YEAR).as_secs(),
-				extension: (YEAR / 2).as_secs(),
+				date: now() + SECONDS_PER_YEAR,
+				extension: SECONDS_PER_YEAR / 2,
 			},
 			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
@@ -150,7 +150,7 @@ pub fn base_external_pricing() -> ExternalPricing<Runtime> {
 pub fn base_external_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::fixed((now() + YEAR).as_secs()),
+			maturity: Maturity::fixed(now() + SECONDS_PER_YEAR),
 			interest_payments: InterestPayments::OnceAtMaturity,
 			pay_down_schedule: PayDownSchedule::None,
 		},
@@ -172,7 +172,7 @@ pub fn create_loan_by(loan: LoanInfo<Runtime>, borrower: AccountId) -> LoanId {
 	MockPermissions::mock_has(|_, _, _| true);
 	MockPools::mock_pool_exists(|_| true);
 	MockPools::mock_account_for(|_| POOL_A_ACCOUNT);
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, PRICE_TIMESTAMP)));
 
 	Loans::create(RuntimeOrigin::signed(borrower), POOL_A, loan).expect("successful creation");
 
@@ -186,7 +186,7 @@ pub fn create_loan_by(loan: LoanInfo<Runtime>, borrower: AccountId) -> LoanId {
 
 pub fn borrow_loan(loan_id: LoanId, borrow_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, PRICE_TIMESTAMP)));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 
 	Loans::borrow(
@@ -204,7 +204,7 @@ pub fn borrow_loan(loan_id: LoanId, borrow_amount: PrincipalInput<Runtime>) {
 
 pub fn repay_loan(loan_id: LoanId, repay_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, PRICE_TIMESTAMP)));
 
 	Loans::repay(
 		RuntimeOrigin::signed(borrower(loan_id)),
@@ -224,7 +224,7 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: PrincipalInput<Runtime>) {
 
 pub fn write_off_loan(loan_id: LoanId) {
 	set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, PRICE_TIMESTAMP)));
 
 	Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id).expect("successful write off");
 

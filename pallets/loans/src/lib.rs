@@ -70,13 +70,14 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_primitives::{Millis, Seconds};
 	use cfg_traits::{
 		self,
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
 		interest::InterestAccrual,
-		IntoSeconds, Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
-		Seconds, TimeAsSecs,
+		time::UnixTimeSecs,
+		Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -117,7 +118,7 @@ pub mod pallet {
 
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
+	pub type PriceOf<T> = (<T as Config>::Balance, Millis);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
@@ -167,10 +168,7 @@ pub mod pallet {
 		type PerThing: Parameter + Member + PerThing + TypeInfo + MaxEncodedLen;
 
 		/// Fetching method for the time of the current block
-		type Time: TimeAsSecs;
-
-		/// Generic time type
-		type Moment: Parameter + Member + Copy + IntoSeconds;
+		type Time: UnixTimeSecs;
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
@@ -1300,7 +1298,7 @@ pub mod pallet {
 
 			vec![
 				WriteOffRule::new(
-					[WriteOffTrigger::PrincipalOverdue(0)],
+					[WriteOffTrigger::PrincipalOverdue(0u32.into())],
 					T::Rate::zero(),
 					T::Rate::zero(),
 				);
