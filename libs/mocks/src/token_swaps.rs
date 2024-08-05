@@ -74,7 +74,7 @@ pub mod pallet {
 		pub fn mock_fill_order(
 			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
 		) {
-			register_call!(move |(a, b, c)| f(a, b, c))
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 	}
 

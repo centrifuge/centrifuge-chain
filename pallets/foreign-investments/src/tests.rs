@@ -378,7 +378,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockHooks::mock_fulfill_cancel_investment(
+			let handler = MockHooks::mock_fulfill_cancel_investment(
 				|who, investment_id, curr, amount_cancelled, fulfilled| {
 					assert_eq!(*who, USER);
 					assert_eq!(investment_id, INVESTMENT_ID);
@@ -394,6 +394,7 @@ mod investment {
 				INVESTMENT_ID,
 				FOREIGN_CURR
 			));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -416,13 +417,14 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockHooks::mock_fulfill_cancel_investment(|_, _, _, _, _| Ok(()));
+			let handler = MockHooks::mock_fulfill_cancel_investment(|_, _, _, _, _| Ok(()));
 
 			assert_ok!(ForeignInvestment::cancel_foreign_investment(
 				&USER,
 				INVESTMENT_ID,
 				FOREIGN_CURR
 			));
+			assert_eq!(handler.times(), 1);
 
 			assert_ok!(ForeignInvestment::increase_foreign_investment(
 				&USER,
@@ -687,13 +689,16 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
-				assert_eq!(amount_cancelled, AMOUNT);
-				assert_eq!(fulfilled, AMOUNT);
-				Ok(())
-			});
+			let handler = MockHooks::mock_fulfill_cancel_investment(
+				|_, _, _, amount_cancelled, fulfilled| {
+					assert_eq!(amount_cancelled, AMOUNT);
+					assert_eq!(fulfilled, AMOUNT);
+					Ok(())
+				},
+			);
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -724,13 +729,16 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
-				assert_eq!(amount_cancelled, AMOUNT);
-				assert_eq!(fulfilled, AMOUNT);
-				Ok(())
-			});
+			let handler = MockHooks::mock_fulfill_cancel_investment(
+				|_, _, _, amount_cancelled, fulfilled| {
+					assert_eq!(amount_cancelled, AMOUNT);
+					assert_eq!(fulfilled, AMOUNT);
+					Ok(())
+				},
+			);
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -811,13 +819,16 @@ mod investment {
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 2));
 
-			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
-				assert_eq!(amount_cancelled, AMOUNT);
-				assert_eq!(fulfilled, AMOUNT);
-				Ok(())
-			});
+			let handler = MockHooks::mock_fulfill_cancel_investment(
+				|_, _, _, amount_cancelled, fulfilled| {
+					assert_eq!(amount_cancelled, AMOUNT);
+					assert_eq!(fulfilled, AMOUNT);
+					Ok(())
+				},
+			);
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 2));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -843,7 +854,7 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
 			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
-			MockHooks::mock_fulfill_collect_investment(
+			let handler = MockHooks::mock_fulfill_collect_investment(
 				|who, investment_id, currency, amount_collected, tranche_tokens_payout| {
 					assert_eq!(*who, USER);
 					assert_eq!(investment_id, INVESTMENT_ID);
@@ -858,6 +869,7 @@ mod investment {
 			);
 
 			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -896,15 +908,10 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
 			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
-			MockHooks::mock_fulfill_collect_investment(|_, _, _, _, _| Ok(()));
+			let handler = MockHooks::mock_fulfill_collect_investment(|_, _, _, _, _| Ok(()));
 
 			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
-
-			MockHooks::mock_fulfill_cancel_investment(|_, _, _, amount_cancelled, fulfilled| {
-				assert_eq!(amount_cancelled, 3 * AMOUNT / 4);
-				assert_eq!(fulfilled, 3 * AMOUNT / 4);
-				Ok(())
-			});
+			assert_eq!(handler.times(), 1);
 
 			assert_ok!(ForeignInvestment::cancel_foreign_investment(
 				&USER,
@@ -912,7 +919,16 @@ mod investment {
 				FOREIGN_CURR
 			));
 
+			let handler = MockHooks::mock_fulfill_cancel_investment(
+				|_, _, _, amount_cancelled, fulfilled| {
+					assert_eq!(amount_cancelled, 3 * AMOUNT / 4);
+					assert_eq!(fulfilled, 3 * AMOUNT / 4);
+					Ok(())
+				},
+			);
+
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 4));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -938,7 +954,7 @@ mod investment {
 			util::fulfill_last_swap(Action::Investment, AMOUNT);
 			util::process_investment(foreign_to_pool(AMOUNT));
 
-			MockHooks::mock_fulfill_collect_investment(
+			let handler = MockHooks::mock_fulfill_collect_investment(
 				|_, _, _, amount_collected, tranche_tokens_payout| {
 					assert_eq!(amount_collected, AMOUNT);
 					assert_eq!(
@@ -949,7 +965,8 @@ mod investment {
 				},
 			);
 
-			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID,));
+			assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -982,23 +999,25 @@ mod investment {
 
 			let total_foreign_collected = Arc::new(Mutex::new(0));
 
-			for _ in 0..foreign_to_pool(AMOUNT) {
+			let handler = MockHooks::mock_fulfill_collect_investment({
+				let total_foreign_collected = total_foreign_collected.clone();
+				move |_, _, _, amount_collected, _| {
+					// First messages returns nothing, until last messages fix the expected
+					// returned value.
+
+					*total_foreign_collected.lock().unwrap() += amount_collected;
+					Ok(())
+				}
+			});
+
+			const TIMES: u32 = foreign_to_pool(AMOUNT) as u32;
+			for _ in 0..TIMES {
 				util::process_investment(1 /* pool_amount */);
-
-				MockHooks::mock_fulfill_collect_investment({
-					let total_foreign_collected = total_foreign_collected.clone();
-					move |_, _, _, amount_collected, _| {
-						// First messages returns nothing, until last messages fix the expected
-						// returned value.
-
-						*total_foreign_collected.lock().unwrap() += amount_collected;
-						Ok(())
-					}
-				});
 
 				assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
 			}
 
+			assert_eq!(handler.times(), TIMES);
 			assert_eq!(*total_foreign_collected.lock().unwrap(), AMOUNT);
 		});
 	}
@@ -1025,22 +1044,24 @@ mod investment {
 
 			let foreign_fulfilled = Arc::new(Mutex::new(0));
 
+			let handler = MockHooks::mock_fulfill_collect_investment({
+				let foreign_fulfilled = foreign_fulfilled.clone();
+				move |_, _, _, amount_collected, _| {
+					*foreign_fulfilled.lock().unwrap() += amount_collected;
+					Ok(())
+				}
+			});
+
 			// Iterate all expect 1 iteration to later be able to cancel
 			const REMAINDER: Balance = 1;
-			for _ in 0..foreign_to_pool(AMOUNT) - REMAINDER {
+			const TIMES: u32 = (foreign_to_pool(AMOUNT) - REMAINDER) as u32;
+			for _ in 0..TIMES {
 				util::process_investment(1 /* pool_amount */);
-
-				MockHooks::mock_fulfill_collect_investment({
-					let foreign_fulfilled = foreign_fulfilled.clone();
-					move |_, _, _, amount_collected, _| {
-						*foreign_fulfilled.lock().unwrap() += amount_collected;
-						Ok(())
-					}
-				});
 
 				assert_ok!(MockInvestment::collect_investment(USER, INVESTMENT_ID));
 			}
 
+			assert_eq!(handler.times(), TIMES);
 			assert_eq!(*foreign_fulfilled.lock().unwrap(), AMOUNT - REMAINDER);
 
 			assert_eq!(
@@ -1059,7 +1080,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockHooks::mock_fulfill_cancel_investment({
+			let handler = MockHooks::mock_fulfill_cancel_investment({
 				let foreign_fulfilled = foreign_fulfilled.clone();
 				move |_, _, _, _, fulfilled| {
 					*foreign_fulfilled.lock().unwrap() += fulfilled;
@@ -1068,6 +1089,7 @@ mod investment {
 			});
 
 			util::fulfill_last_swap(Action::Investment, REMAINDER);
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(*foreign_fulfilled.lock().unwrap(), AMOUNT);
 		});
@@ -1123,7 +1145,7 @@ mod investment {
 					POOL_CURR
 				));
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, foreign_to_pool(AMOUNT));
 						assert_eq!(fulfilled, foreign_to_pool(AMOUNT));
@@ -1137,6 +1159,7 @@ mod investment {
 					INVESTMENT_ID,
 					POOL_CURR
 				));
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1181,7 +1204,7 @@ mod investment {
 					})
 				});
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, AMOUNT / RATIO_CHANGE); // Receive less
 						assert_eq!(fulfilled, AMOUNT); // The original increased amount
@@ -1190,6 +1213,7 @@ mod investment {
 				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1228,7 +1252,7 @@ mod investment {
 					})
 				});
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, AMOUNT * RATIO_CHANGE); // Receive more
 						assert_eq!(fulfilled, AMOUNT); // The original increased amount
@@ -1237,6 +1261,7 @@ mod investment {
 				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1278,7 +1303,7 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4);
 						assert_eq!(fulfilled, AMOUNT);
@@ -1287,6 +1312,7 @@ mod investment {
 				);
 
 				util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1328,7 +1354,7 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, (3 * AMOUNT / 4) * MULTIPLIER + AMOUNT / 4);
 						assert_eq!(fulfilled, AMOUNT);
@@ -1340,6 +1366,7 @@ mod investment {
 					Action::Investment,
 					foreign_to_pool(3 * AMOUNT / 4) * MULTIPLIER,
 				);
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1386,7 +1413,7 @@ mod investment {
 					FOREIGN_CURR
 				));
 
-				MockHooks::mock_fulfill_cancel_investment(
+				let handler = MockHooks::mock_fulfill_cancel_investment(
 					|_, _, _, amount_cancelled, fulfilled| {
 						assert_eq!(amount_cancelled, FOREIGN_AMOUNT + 1);
 						assert_eq!(fulfilled, FOREIGN_AMOUNT);
@@ -1395,6 +1422,7 @@ mod investment {
 				);
 
 				util::fulfill_last_swap(Action::Investment, FOREIGN_AMOUNT * 3);
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1604,7 +1632,7 @@ mod redemption {
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
-			MockHooks::mock_fulfill_collect_redemption(
+			let handler = MockHooks::mock_fulfill_collect_redemption(
 				|who, investment_id, currency, tranche_tokens_collected, amount_payout| {
 					assert_eq!(*who, USER);
 					assert_eq!(investment_id, INVESTMENT_ID);
@@ -1619,6 +1647,7 @@ mod redemption {
 			);
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 4));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1653,7 +1682,7 @@ mod redemption {
 
 			assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
 
-			MockHooks::mock_fulfill_collect_redemption(
+			let handler = MockHooks::mock_fulfill_collect_redemption(
 				|_, _, _, tranche_tokens_collected, amount_payout| {
 					assert_eq!(
 						amount_payout,
@@ -1665,6 +1694,7 @@ mod redemption {
 			);
 
 			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT));
+			assert_eq!(handler.times(), 1);
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1692,7 +1722,7 @@ mod redemption {
 
 				util::process_redemption(TRANCHE_AMOUNT);
 
-				MockHooks::mock_fulfill_collect_redemption(
+				let handler = MockHooks::mock_fulfill_collect_redemption(
 					|_, _, _, tranche_tokens_collected, amount_payout| {
 						assert_eq!(amount_payout, tranche_to_pool(TRANCHE_AMOUNT));
 						assert_eq!(tranche_tokens_collected, TRANCHE_AMOUNT);
@@ -1702,6 +1732,7 @@ mod redemption {
 
 				// Automatically "fulfills" because there no need of swapping
 				assert_ok!(MockInvestment::collect_redemption(USER, INVESTMENT_ID));
+				assert_eq!(handler.times(), 1);
 
 				assert_eq!(
 					ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
