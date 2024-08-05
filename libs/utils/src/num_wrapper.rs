@@ -5,6 +5,7 @@ use sp_arithmetic::traits::{
 	Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedRem, CheckedShl, CheckedShr,
 	CheckedSub, IntegerSquareRoot, One, Saturating, Zero,
 };
+use sp_runtime::traits::Scale;
 use sp_std::{
 	cmp::Ordering,
 	fmt::{self, Debug},
@@ -128,9 +129,11 @@ macro_rules! impl_try_from {
 
 macro_rules! impl_into {
 	($from:ty, $to:ty) => {
-		impl<I> Into<$to> for NumWrapper<$from, I> {
-			fn into(self) -> $to {
-				self.inner.into()
+		// Implemented as an opposite From to have
+		// the inverse Into automatically implemented
+		impl<I> From<NumWrapper<$from, I>> for $to {
+			fn from(other: NumWrapper<$from, I>) -> Self {
+				other.inner.into()
 			}
 		}
 	};
@@ -138,11 +141,13 @@ macro_rules! impl_into {
 
 macro_rules! impl_try_into {
 	($from:ty, $to:ty) => {
-		impl<I> TryInto<$to> for NumWrapper<$from, I> {
-			type Error = <$from as TryInto<$to>>::Error;
+		// Implemented as an opposite TryFrom to have
+		// the inverse TryInto automatically implemented
+		impl<I> TryFrom<NumWrapper<$from, I>> for $to {
+			type Error = <$to as TryFrom<$from>>::Error;
 
-			fn try_into(self) -> Result<$to, Self::Error> {
-				Ok(self.inner.try_into()?)
+			fn try_from(other: NumWrapper<$from, I>) -> Result<$to, Self::Error> {
+				other.inner.try_into()
 			}
 		}
 	};
@@ -556,6 +561,22 @@ impl<T, I> CompactAs for NumWrapper<T, I> {
 	}
 }
 
+impl<T: Scale<S, Output = T>, S, I> Scale<S> for NumWrapper<T, I> {
+	type Output = Self;
+
+	fn mul(self, other: S) -> Self::Output {
+		Self::new(self.inner.mul(other))
+	}
+
+	fn div(self, other: S) -> Self::Output {
+		Self::new(self.inner.div(other))
+	}
+
+	fn rem(self, other: S) -> Self::Output {
+		Self::new(self.inner.rem(other))
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use frame_support::Parameter;
@@ -573,6 +594,7 @@ mod tests {
 	fn is_type_info<T: TypeInfo>() {}
 	fn is_encode_like<T: EncodeLike>() {}
 	fn is_fixed_point_operand<T: FixedPointOperand>() {}
+	fn is_scale<T: Scale<S>, S>() {}
 
 	// Id does not require any implementation
 	struct Id;
@@ -600,8 +622,36 @@ mod tests {
 	}
 
 	check_wrapper!(u8_type, u8);
-	check_wrapper!(u16_type, u8);
-	check_wrapper!(u32_type, u8);
-	check_wrapper!(u64_type, u8);
-	check_wrapper!(u128_type, u8);
+	check_wrapper!(u16_type, u16);
+	check_wrapper!(u32_type, u32);
+	check_wrapper!(u64_type, u64);
+	check_wrapper!(u128_type, u128);
+
+	#[test]
+	fn check_scale() {
+		type U8 = NumWrapper<u8, Id>;
+		is_scale::<U8, u8>();
+
+		type U16 = NumWrapper<u16, Id>;
+		is_scale::<U8, u8>();
+		is_scale::<U16, u16>();
+
+		type U32 = NumWrapper<u32, Id>;
+		is_scale::<U32, u8>();
+		is_scale::<U32, u16>();
+		is_scale::<U32, u32>();
+
+		type U64 = NumWrapper<u64, Id>;
+		is_scale::<U64, u8>();
+		is_scale::<U64, u16>();
+		is_scale::<U64, u32>();
+		is_scale::<U64, u64>();
+
+		type U128 = NumWrapper<u128, Id>;
+		is_scale::<U128, u8>();
+		is_scale::<U128, u16>();
+		is_scale::<U128, u32>();
+		is_scale::<U128, u64>();
+		is_scale::<U128, u128>();
+	}
 }
