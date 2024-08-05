@@ -22,7 +22,6 @@ use cfg_primitives::Seconds;
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
-	traits::UnixTime,
 	Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;

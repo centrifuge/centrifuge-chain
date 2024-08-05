@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Seconds;
-use cfg_traits::UnixTimeSecs;
+use cfg_traits::time::UnixTimeSecs;
 use frame_support::{pallet_prelude::RuntimeDebug, traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

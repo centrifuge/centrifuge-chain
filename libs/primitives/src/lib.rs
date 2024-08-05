@@ -167,6 +167,9 @@ pub mod types {
 
 	/// The type to represent seconds
 	pub type Seconds = cfg_utils::time::Seconds<u64>;
+
+	/// The type to represent days
+	pub type Days = cfg_utils::time::Days<u32>;
 }
 
 /// Common constants for all runtimes
@@ -200,7 +203,7 @@ pub mod constants {
 	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul_int(365);
 
 	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: Millis = SECONDS_PER_DAY.into_millis();
+	pub const MILLISECS_PER_DAY: Millis = Millis::from(SECONDS_PER_DAY.get() * 1000);
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`
 	/// handlers. This is used to limit the maximal weight of a single

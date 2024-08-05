@@ -1,9 +1,10 @@
-use cfg_primitives::{Millis, Seconds};
+use cfg_primitives::{Days, Millis, Seconds};
+use frame_support::traits::UnixTime;
 
 /// Trait to obtain the unix time as seconds
 pub trait UnixTimeSecs: UnixTime {
 	fn now() -> Seconds {
-		<Self as UnixTime>::now().as_secs().into()
+		Seconds::from(<Self as UnixTime>::now().as_secs())
 	}
 
 	/// Same as now(), shortcut for cases where `now()` conflicts with
@@ -15,37 +16,51 @@ pub trait UnixTimeSecs: UnixTime {
 
 impl<T: UnixTime> UnixTimeSecs for T {}
 
-/// Trait to handle a time unit transparetly
+/// Trait to handle an unknown time unit type
 pub trait TimeUnit {
-	type Millis;
-	type Seconds;
-
-	fn into_millis(self) -> Self::Millis;
-	fn into_seconds(self) -> Self::Seconds;
+	fn as_millis(self) -> Millis;
+	fn as_seconds(self) -> Seconds;
+	fn as_days(self) -> Days;
 }
 
 impl TimeUnit for Millis {
-	type Millis = Millis;
-	type Seconds = Seconds;
-
-	fn into_millis(self) -> Self::Millis {
+	fn as_millis(self) -> Millis {
 		self
 	}
 
-	fn into_seconds(self) -> Self::Seconds {
+	fn as_seconds(self) -> Seconds {
 		self.into_seconds()
+	}
+
+	fn as_days(self) -> Days {
+		self.into_days()
 	}
 }
 
 impl TimeUnit for Seconds {
-	type Millis = Millis;
-	type Seconds = Seconds;
-
-	fn into_millis(self) -> Self::Millis {
+	fn as_millis(self) -> Millis {
 		self.into_millis()
 	}
 
-	fn into_seconds(self) -> Self::Seconds {
+	fn as_seconds(self) -> Seconds {
+		self
+	}
+
+	fn as_days(self) -> Days {
+		self.into_days()
+	}
+}
+
+impl TimeUnit for Days {
+	fn as_millis(self) -> Millis {
+		self.into_millis()
+	}
+
+	fn as_seconds(self) -> Seconds {
+		self.into_seconds()
+	}
+
+	fn as_days(self) -> Days {
 		self
 	}
 }
