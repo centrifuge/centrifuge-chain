@@ -36,6 +36,7 @@ pub enum PoolRole<TrancheId = [u8; 16]> {
 	LoanAdmin,
 	TrancheInvestor(TrancheId, Seconds),
 	PODReadAccess,
+	FrozenTrancheInvestor(TrancheId),
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -110,6 +111,12 @@ pub struct PermissionedCurrencyHolderInfo {
 pub struct TrancheInvestorInfo<TrancheId> {
 	tranche_id: TrancheId,
 	permissioned_till: Seconds,
+	is_frozen: bool,
+}
+
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
+pub struct FrozenTrancheInvestorInfo<TrancheId> {
+	tranche_id: TrancheId,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
@@ -214,6 +221,7 @@ where
 				PoolRole::PODReadAccess => {
 					self.pool_admin.contains(PoolAdminRoles::POD_READ_ACCESS)
 				}
+				PoolRole::FrozenTrancheInvestor(id) => self.tranche_investor.contains_frozen(id),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -255,6 +263,7 @@ where
 				PoolRole::PODReadAccess => {
 					Ok(self.pool_admin.remove(PoolAdminRoles::POD_READ_ACCESS))
 				}
+				PoolRole::FrozenTrancheInvestor(id) => self.tranche_investor.unfreeze(id),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -289,6 +298,7 @@ where
 				PoolRole::PODReadAccess => {
 					Ok(self.pool_admin.insert(PoolAdminRoles::POD_READ_ACCESS))
 				}
+				PoolRole::FrozenTrancheInvestor(id) => self.tranche_investor.freeze(id),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -410,6 +420,12 @@ where
 		})
 	}
 
+	pub fn contains_frozen(&self, tranche: TrancheId) -> bool {
+		self.info
+			.iter()
+			.any(|info| info.tranche_id == tranche && info.is_frozen)
+	}
+
 	#[allow(clippy::result_unit_err)]
 	pub fn remove(&mut self, tranche: TrancheId, delta: Seconds) -> Result<(), ()> {
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
@@ -443,9 +459,26 @@ where
 				.try_push(TrancheInvestorInfo {
 					tranche_id: tranche,
 					permissioned_till: validity,
+					is_frozen: false,
 				})
 				.map_err(|_| ())
 		}
+	}
+
+	#[allow(clippy::result_unit_err)]
+	pub fn freeze(&mut self, tranche: TrancheId) -> Result<(), ()> {
+		if let Some(investor) = self.info.iter_mut().find(|t| t.tranche_id == tranche) {
+			investor.is_frozen = true;
+		}
+		Ok(())
+	}
+
+	#[allow(clippy::result_unit_err)]
+	pub fn unfreeze(&mut self, tranche: TrancheId) -> Result<(), ()> {
+		if let Some(investor) = self.info.iter_mut().find(|t| t.tranche_id == tranche) {
+			investor.is_frozen = false;
+		}
+		Ok(())
 	}
 }
 
