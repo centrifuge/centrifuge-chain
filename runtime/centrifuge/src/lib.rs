@@ -1630,12 +1630,13 @@ parameter_types! {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancheInvestor` for the given pool.
-pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
+/// of a `TrancheInvestor` without having `FrozenInvestor` for the given pool
+/// and tranche.
+pub struct IsUnfrozenTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		T: UnixTime,
-	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsTrancheInvestor<P, T>
+	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P, T>
 {
 	type Result = DispatchResult;
 
@@ -1645,20 +1646,38 @@ impl<
 				who,
 				investment_id: (pool_id, tranche_id),
 				..
-			} => P::has(
-				PermissionScope::Pool(pool_id),
-				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-			),
+			} => {
+				P::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						tranche_id.clone(),
+						T::now().as_secs(),
+					)),
+				) && !P::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
+				)
+			}
 			OrderType::Redemption {
 				who,
 				investment_id: (pool_id, tranche_id),
 				..
-			} => P::has(
-				PermissionScope::Pool(pool_id),
-				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-			),
+			} => {
+				P::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						tranche_id.clone(),
+						T::now().as_secs(),
+					)),
+				) && !P::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
+				)
+			}
 		};
 
 		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
@@ -1682,7 +1701,7 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;

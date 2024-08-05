@@ -11,14 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler, Permissions,
-	TimeAsSecs,
-};
-use cfg_types::{
-	domain_address::{Domain, DomainAddress},
-	permissions::{PermissionScope, PoolRole, Role},
-};
+use cfg_traits::{investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler};
+use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	ensure,
 	traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
@@ -69,14 +63,11 @@ where
 		let local_representation_of_receiver =
 			T::DomainAddressToAccountId::convert(receiver.clone());
 
-		ensure!(
-			T::Permission::has(
-				PermissionScope::Pool(pool_id),
-				local_representation_of_receiver.clone(),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now())),
-			),
-			Error::<T>::UnauthorizedTransfer
-		);
+		Self::validate_investor_can_transfer(
+			local_representation_of_receiver.clone(),
+			pool_id,
+			tranche_id,
+		)?;
 
 		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 

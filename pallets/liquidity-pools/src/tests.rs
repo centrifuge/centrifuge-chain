@@ -213,13 +213,21 @@ mod transfer_tranche_tokens {
 		DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, CONTRACT_ACCOUNT_ID);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert!(matches!(
-				role,
-				Role::PoolRole(PoolRole::TrancheInvestor(TRANCHE_ID, NOW_SECS))
-			));
-			true
+			assert_eq!(who, CONTRACT_ACCOUNT_ID);
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					assert_eq!(validity, NOW_SECS);
+					true
+				}
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					// Default mock has unfrozen investor
+					false
+				}
+				_ => false,
+			}
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
