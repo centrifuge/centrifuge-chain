@@ -5,7 +5,8 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
+use cfg_primitives::Seconds;
+use cfg_traits::liquidity_pools::LPEncoding;
 use cfg_types::domain_address::Domain;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
