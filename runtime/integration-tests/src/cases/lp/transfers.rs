@@ -82,7 +82,7 @@ mod utils {
 				AMOUNT,
 			)
 			.unwrap();
-			lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+			lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 		});
 
 		env.state(|evm| {
@@ -135,7 +135,11 @@ mod utils {
 				]),
 			)
 			.unwrap();
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state(|_| {
 			assert_eq!(
 				orml_tokens::Accounts::<T>::get(Keyring::Ferdie.id(), USDC.id()).free,
 				AMOUNT
@@ -157,7 +161,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 			AMOUNT,
 		)
 		.unwrap();
-		lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+		lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -215,7 +219,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 			AMOUNT,
 		)
 		.unwrap();
-		lp::utils::process_outbound::<T>(lp::utils::verify_outbound_success::<T>);
+		lp::utils::process_gateway_message::<T>(lp::utils::verify_gateway_message_success::<T>);
 	});
 
 	env.state(|evm| {
@@ -282,7 +286,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 	});
 
 	env.state_mut(|_evm| {
-		lp::utils::process_outbound::<T>(|msg| {
+		lp::utils::process_gateway_message::<T>(|msg| {
 			assert_eq!(
 				msg,
 				Message::TransferTrancheTokens {
@@ -291,10 +295,12 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 					domain: Domain::EVM(EVM_DOMAIN_CHAIN_ID).into(),
 					receiver: as_h160_32bytes(Keyring::TrancheInvestor(2)),
 					amount: AMOUNT,
-				}
+				},
 			);
 		});
 	});
+
+	env.pass(Blocks::ByNumber(1));
 
 	env.state(|evm| {
 		assert_eq!(
@@ -355,6 +361,8 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 		)
 		.unwrap();
 	});
+
+	env.pass(Blocks::ByNumber(1));
 
 	env.state(|_evm| {
 		assert_eq!(

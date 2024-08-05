@@ -24,8 +24,6 @@ use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::traits::{EnsureAddAssign, One};
 use sp_std::vec::Vec;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -37,12 +35,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	/// Some gateway routers do not return an actual weight when sending a
-	/// message, thus, this default is required, and it's based on:
-	///
-	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
-	pub(crate) const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
-
 	use super::*;
 
 	#[pallet::config]
@@ -130,9 +122,12 @@ pub mod pallet {
 		/// If the execution fails, the message gets moved to the
 		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing
+		/// NOTES:
+		///   - this extrinsic does not error out during message processing
 		/// to ensure that any storage changes (i.e. to the message queues)
 		/// are not reverted.
+		///   - an extra defensive weight is added in order to cover the weight
+		/// used when processing the message.
 		#[pallet::weight(T::WeightInfo::process_message())]
 		#[pallet::call_index(0)]
 		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
@@ -141,9 +136,9 @@ pub mod pallet {
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
 			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				Ok(_) => Ok(()),
-				Err(e) => {
-					FailedMessageQueue::<T>::insert(nonce, (message, e.error));
+				(Ok(_), _) => Ok(()),
+				(Err(e), _) => {
+					FailedMessageQueue::<T>::insert(nonce, (message, e));
 
 					Ok(())
 				}
@@ -155,9 +150,12 @@ pub mod pallet {
 		/// If the execution is successful, the message gets removed from the
 		/// `FailedMessageQueue` storage.
 		///
-		/// NOTE - this extrinsic does not error out during message processing
+		/// NOTES:
+		///   - this extrinsic does not error out during message processing
 		/// to ensure that any storage changes (i.e. to the message queues)
 		/// are not reverted.
+		///   - an extra defensive weight is added in order to cover the weight
+		/// used when processing the message.
 		#[pallet::weight(T::WeightInfo::process_failed_message())]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
@@ -170,12 +168,12 @@ pub mod pallet {
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
 			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				Ok(_) => {
+				(Ok(_), _) => {
 					FailedMessageQueue::<T>::remove(nonce);
 
 					Ok(())
 				}
-				Err(_) => Ok(()),
+				(Err(_), _) => Ok(()),
 			}
 		}
 	}
@@ -184,21 +182,21 @@ pub mod pallet {
 		fn process_message_and_deposit_event(
 			nonce: T::MessageNonce,
 			message: T::Message,
-		) -> DispatchResultWithPostInfo {
+		) -> (DispatchResult, Weight) {
 			match T::MessageProcessor::process(message.clone()) {
-				Ok(post_dispatch_info) => {
+				(Ok(()), weight) => {
 					Self::deposit_event(Event::<T>::MessageExecutionSuccess { nonce, message });
 
-					Ok(post_dispatch_info)
+					(Ok(()), weight)
 				}
-				Err(e) => {
+				(Err(error), weight) => {
 					Self::deposit_event(Event::<T>::MessageExecutionFailure {
 						nonce,
 						message,
-						error: e.error,
+						error,
 					});
 
-					Err(e)
+					(Err(error), weight)
 				}
 			}
 		}
@@ -212,30 +210,22 @@ pub mod pallet {
 				processed_entries.push(nonce);
 
 				let weight = match Self::process_message_and_deposit_event(nonce, message.clone()) {
-					Ok(post_info) => {
-						post_info
-							.actual_weight
-							.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
-							// Extra weight breakdown:
-							//
-							// 1 read for the message
-							// 1 write for the event
-							// 1 write for the message removal
-							.saturating_add(T::DbWeight::get().reads_writes(1, 2))
+					(Ok(()), weight) => {
+						// Extra weight breakdown:
+						//
+						// 1 read for the message
+						// 1 write for the message removal
+						weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
 					}
-					Err(e) => {
-						FailedMessageQueue::<T>::insert(nonce, (message, e.error));
+					(Err(e), weight) => {
+						FailedMessageQueue::<T>::insert(nonce, (message, e));
 
-						e.post_info
-							.actual_weight
-							.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
-							// Extra weight breakdown:
-							//
-							// 1 read for the message
-							// 1 write for the event
-							// 1 write for the failed message
-							// 1 write for the message removal
-							.saturating_add(T::DbWeight::get().reads_writes(1, 3))
+						// Extra weight breakdown:
+						//
+						// 1 read for the message
+						// 1 write for the failed message
+						// 1 write for the message removal
+						weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))
 					}
 				};
 

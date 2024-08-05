@@ -13,12 +13,13 @@
 use std::{cmp::min, fmt::Debug};
 
 use cfg_primitives::{Balance, TrancheId};
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use ethabi::ethereum_types::{H160, H256, U256};
 use fp_evm::CallInfo;
 use frame_support::traits::{OriginTrait, PalletInfo};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::ExecutionInfo;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use sp_core::{ByteArray, Get};
 use sp_runtime::{
 	traits::{Convert, EnsureAdd},
@@ -103,41 +104,62 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
 	assert!(matches!(
-		last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionFailure { .. }
+		last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
+		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure { .. }
 	));
 }
 
-pub fn verify_outbound_success<T: Runtime>(
-	message: <T as pallet_liquidity_pools_gateway::Config>::Message,
+pub fn verify_gateway_message_success<T: Runtime>(
+	lp_message: <T as pallet_liquidity_pools_gateway::Config>::Message,
 ) {
 	assert!(matches!(
-		last_event::<T, pallet_liquidity_pools_gateway::Event::<T>>(),
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
-			message: processed_message,
-			..
-		} if processed_message == message
+	   last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
+	   pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionSuccess {
+		  message: processed_message,
+		  ..
+	   } if {
+		  match &processed_message {
+				 GatewayMessage::Inbound{ message, .. }
+				| GatewayMessage::Outbound{ message, .. } => *message == lp_message,
+			  }
+	   }
 	));
 }
 
-pub fn process_outbound<T: Runtime>(
+pub fn process_gateway_message<T: Runtime>(
 	mut verifier: impl FnMut(<T as pallet_liquidity_pools_gateway::Config>::Message),
 ) {
-	let msgs = pallet_liquidity_pools_gateway::OutboundMessageQueue::<T>::iter()
-		.map(|(nonce, (_, _, msg))| (nonce, msg))
+	let msgs = pallet_liquidity_pools_gateway_queue::MessageQueue::<T>::iter()
+		.map(|(nonce, msg)| (nonce, msg))
 		.collect::<Vec<_>>();
 
 	// The function should panic if there is nothing to be processed.
-	assert!(msgs.len() > 0);
+	assert!(msgs.len() > 0, "No messages in the queue");
 
 	msgs.into_iter().for_each(|(nonce, msg)| {
-		pallet_liquidity_pools_gateway::Pallet::<T>::process_outbound_message(
+		pallet_liquidity_pools_gateway_queue::Pallet::<T>::process_message(
 			OriginFor::<T>::signed(Keyring::Alice.into()),
 			nonce,
 		)
 		.unwrap();
 
-		verifier(msg);
+		let _events = frame_system::Pallet::<T>::events();
+
+		match msg {
+			GatewayMessage::Inbound { message, .. } => verifier(message),
+			GatewayMessage::Outbound {
+				sender,
+				destination,
+				message,
+			} => {
+				assert_eq!(
+					sender,
+					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
+				);
+				assert_eq!(destination, Domain::EVM(EVM_DOMAIN_CHAIN_ID));
+				verifier(message)
+			}
+		}
 	});
 }
 

@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
@@ -20,10 +21,10 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
 	fn process_message() -> Weight {
-		Weight::zero()
+		LP_DEFENSIVE_WEIGHT
 	}
 
 	fn process_failed_message() -> Weight {
-		Weight::zero()
+		LP_DEFENSIVE_WEIGHT
 	}
 }

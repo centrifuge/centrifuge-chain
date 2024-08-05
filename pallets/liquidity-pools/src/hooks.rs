@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundQueue};
+use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundMessageHandler};
 use cfg_types::domain_address::DomainAddress;
 use frame_support::traits::{
 	fungibles::Mutate,
@@ -59,7 +59,11 @@ where
 			fulfilled_invest_amount: fulfilled.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)
+		T::OutboundMessageHandler::handle(
+			T::TreasuryAccount::get(),
+			domain_address.domain(),
+			message,
+		)
 	}
 
 	fn fulfill_collect_investment(
@@ -90,7 +94,11 @@ where
 			tranche_tokens_payout: tranche_tokens_payout.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)
+		T::OutboundMessageHandler::handle(
+			T::TreasuryAccount::get(),
+			domain_address.domain(),
+			message,
+		)
 	}
 
 	fn fulfill_collect_redemption(
@@ -121,6 +129,10 @@ where
 			tranche_tokens_payout: tranche_tokens_collected.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)
+		T::OutboundMessageHandler::handle(
+			T::TreasuryAccount::get(),
+			domain_address.domain(),
+			message,
+		)
 	}
 }

@@ -21,6 +21,7 @@ use cfg_types::{
 };
 use cumulus_primitives_core::WeightLimit;
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
+use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
 use runtime_common::remarks::Remark;
 use sp_runtime::traits::Zero;
 use staging_xcm::{
@@ -357,6 +358,7 @@ mod xcm {
 
 mod eth_address {
 	use super::*;
+	use crate::utils::last_event;
 
 	const TRANSFER: u32 = 10;
 	const CHAIN_ID: u64 = 1;
@@ -417,17 +419,28 @@ mod eth_address {
 				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
 			);
 
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
+				RawOrigin::Signed(Keyring::Alice.into()).into(),
+				curr.id(),
+				curr_contract,
+				curr.val(TRANSFER),
+			));
+
+			assert_ok!(
+				pallet_liquidity_pools_gateway_queue::Pallet::<T>::process_message(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					curr.id(),
-					curr_contract,
-					curr.val(TRANSFER),
-				),
-				// But it's ok, we do not care about the router transaction in this context.
-				// Is already checked at `liquidity_pools.rs`
-				pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
+					MessageNonceStore::<T>::get(),
+				)
 			);
+
+			let last_event = last_event::<T, pallet_liquidity_pools_gateway_queue::Event<T>>();
+			assert!(matches!(
+				last_event,
+				pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
+					error,
+					..
+				} if error == pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound.into()
+			));
 		});
 	}
 }

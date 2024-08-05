@@ -162,6 +162,8 @@ mod with_pool_currency {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
 		});
 
+		env.pass(Blocks::ByNumber(1));
+
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
@@ -204,7 +206,7 @@ mod with_pool_currency {
 				pool_c_tranche_1_id::<T>(),
 			);
 
-			lp_utils::process_outbound::<T>(lp_utils::verify_outbound_success::<T>);
+			lp_utils::process_gateway_message::<T>(lp_utils::verify_gateway_message_success::<T>);
 		});
 
 		env.state_mut(|evm| {
@@ -264,6 +266,8 @@ mod with_pool_currency {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
 		});
 
+		env.pass(Blocks::ByNumber(1));
+
 		env.state(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
@@ -292,7 +296,11 @@ mod with_pool_currency {
 
 		env.state_mut(|evm| {
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
@@ -300,8 +308,6 @@ mod with_pool_currency {
 				),
 				None
 			);
-
-			lp_utils::process_outbound::<T>(lp_utils::verify_outbound_success::<T>);
 
 			assert_eq!(
 				Decoder::<Balance>::decode(&evm.view(
@@ -331,7 +337,9 @@ mod with_foreign_currency {
 
 	use super::{utils, *};
 	use crate::cases::lp::{
-		investments::utils::close_and_collect, utils as lp_utils, utils::pool_a_tranche_1_id,
+		investments::utils::close_and_collect,
+		utils as lp_utils,
+		utils::{as_h160_32bytes, pool_a_tranche_1_id},
 		POOL_A,
 	};
 
@@ -341,6 +349,8 @@ mod with_foreign_currency {
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 		});
+
+		env.pass(Blocks::ByNumber(1));
 
 		env.state(|evm| {
 			assert_eq!(
@@ -376,8 +386,12 @@ mod with_foreign_currency {
 				None
 			);
 
-			lp_utils::process_outbound::<T>(lp_utils::verify_outbound_success::<T>);
+			lp_utils::process_gateway_message::<T>(lp_utils::verify_gateway_message_success::<T>);
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state(|evm| {
 			assert_eq!(
 				Decoder::<Balance>::decode(&evm.view(
 					Keyring::TrancheInvestor(1),
@@ -400,6 +414,11 @@ mod with_foreign_currency {
 		// Invest and swap all foreign to pool currency
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|_| {
 			utils::fulfill_swap::<T>(
 				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
@@ -438,7 +457,11 @@ mod with_foreign_currency {
 
 		env.state_mut(|evm| {
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
@@ -455,10 +478,10 @@ mod with_foreign_currency {
 				None,
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
+			lp_utils::process_gateway_message::<T>(|msg| {
 				assert_eq!(
 					msg,
-					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
+					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -467,7 +490,7 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
-					}
+					},
 				)
 			});
 
@@ -494,6 +517,11 @@ mod with_foreign_currency {
 
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|_| {
 			utils::fulfill_swap::<T>(
 				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
@@ -528,7 +556,11 @@ mod with_foreign_currency {
 
 		env.state_mut(|evm| {
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
 
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|evm| {
 			assert_eq!(
 				pallet_investments::InvestOrders::<T>::get(
 					lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
@@ -558,10 +590,10 @@ mod with_foreign_currency {
 				None,
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
+			lp_utils::process_gateway_message::<T>(|msg| {
 				assert_eq!(
 					msg,
-					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
+					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -570,7 +602,7 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
-					}
+					},
 				)
 			});
 
@@ -601,6 +633,11 @@ mod with_foreign_currency {
 
 		env.state_mut(|evm| {
 			utils::invest(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
+		});
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.state_mut(|_| {
 			utils::fulfill_swap::<T>(
 				lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1)),
 				POOL_A,
@@ -650,7 +687,7 @@ mod with_foreign_currency {
 				None
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
+			lp_utils::process_gateway_message::<T>(|msg| {
 				assert_eq!(
 					msg,
 					Message::FulfilledDepositRequest {
@@ -662,7 +699,7 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
-					}
+					},
 				)
 			});
 
@@ -678,8 +715,9 @@ mod with_foreign_currency {
 				)),
 				remaining_amount
 			);
+		});
 
-			// FIXME: Fails because cannot cancel
+		env.state_mut(|evm| {
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_A_T_1_USDC);
 
 			assert_eq!(
@@ -703,10 +741,22 @@ mod with_foreign_currency {
 				remaining_amount
 			);
 
-			lp_utils::process_outbound::<T>(|msg| {
+			lp_utils::process_gateway_message::<T>(|msg| {
 				assert_eq!(
 					msg,
-					pallet_liquidity_pools::Message::FulfilledCancelDepositRequest {
+					Message::CancelDepositRequest {
+						pool_id: POOL_A,
+						tranche_id: pool_a_tranche_1_id::<T>(),
+						investor: as_h160_32bytes(Keyring::TrancheInvestor(1)),
+						currency: utils::index_lp(evm, names::USDC),
+					}
+				);
+			});
+
+			lp_utils::process_gateway_message::<T>(|msg| {
+				assert_eq!(
+					msg,
+					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
 						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
@@ -715,7 +765,7 @@ mod with_foreign_currency {
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
-					}
+					},
 				)
 			});
 

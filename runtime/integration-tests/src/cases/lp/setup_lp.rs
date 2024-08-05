@@ -138,7 +138,7 @@ pub fn setup_investment_currencies<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 			);
 		}
 	}
-	utils::process_outbound::<T>(utils::verify_outbound_success::<T>)
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>)
 }
 
 /// Deploys both Liquidity Pools for USDC, DAI and FRAX by calling
@@ -250,7 +250,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		tranche_id
 	};
@@ -293,7 +293,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		tranche_id
 	};
@@ -336,7 +336,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		tranche_id
 	};
@@ -379,7 +379,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		tranche_id
 	};
@@ -425,7 +425,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
-	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 	crate::utils::pool::create_two_tranched::<T>(Keyring::Admin.into(), POOL_B, LocalUSDC.id());
 
@@ -443,7 +443,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
 	));
 
-	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
 /// Create 3x ERC-20 currencies as Stablecoins on EVM, register them on
@@ -669,7 +669,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		FRAX.id()
 	));
 
-	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
 /// Sets up investors for all tranches in Pool A and B on
@@ -924,5 +924,5 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		.unwrap();
 	});
 
-	utils::process_outbound::<T>(utils::verify_outbound_success::<T>);
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
