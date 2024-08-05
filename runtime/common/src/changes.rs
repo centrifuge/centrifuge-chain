@@ -40,7 +40,7 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 		use sp_std::vec;
 
 		let epoch = Requirement::NextEpoch;
-		let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
+		let week = Requirement::DelayTime(SECONDS_PER_WEEK.inner as u32);
 		let blocked = Requirement::BlockedByLockedRedemptions;
 
 		match self {
