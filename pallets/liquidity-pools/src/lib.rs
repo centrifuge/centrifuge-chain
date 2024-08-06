@@ -352,7 +352,9 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
-		/// Add a pool to a given domain
+		/// Add a pool to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
 		pub fn add_pool(
@@ -386,7 +388,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a tranche to a given domain
+		/// Add a tranche to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_tranche())]
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
@@ -491,7 +495,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update a member
+		/// Inform the recipient domain about a new or changed investor
+		/// validity.
 		#[pallet::weight(T::WeightInfo::update_member())]
 		#[pallet::call_index(5)]
 		pub fn update_member(
@@ -669,8 +674,9 @@ pub mod pallet {
 
 		/// Add a currency to the set of known currencies on the domain derived
 		/// from the given currency.
-		// TODO: Fix weights
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		///
+		/// Origin: Anyone because transmitted data is queried from chain.
+		#[pallet::weight(T::WeightInfo::add_currency())]
 		#[pallet::call_index(8)]
 		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -693,6 +699,10 @@ pub mod pallet {
 
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin for now
+		/// NOTE: In the future should be permissioned by new trait, see spec
+		/// <https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency>
 		#[pallet::call_index(9)]
 		// TODO: Fix weights
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
@@ -701,9 +711,6 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
-			// TODO(future): In the future, should be permissioned by trait which
-			// does not exist yet.
-			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
 			ensure!(
@@ -729,8 +736,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(<T as Config>::WeightInfo::schedule_upgrade())]
+		/// Schedule an upgrade of an EVM-based liquidity pool contract
+		/// instance.
+		///
+		/// Origin: root
+		#[pallet::weight(T::WeightInfo::schedule_upgrade())]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
@@ -747,6 +757,8 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		///
+		/// Origin: root
 		#[pallet::weight(T::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
 		pub fn cancel_upgrade(
@@ -767,7 +779,7 @@ pub mod pallet {
 		///
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
-		/// beforehand.
+		/// beforehand. Therefore, no restrictions on calling origin.
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
 		pub fn update_tranche_token_metadata(
@@ -798,6 +810,8 @@ pub mod pallet {
 
 		/// Disallow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin
 		#[pallet::call_index(13)]
 		// TODO: Add to weights
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
@@ -831,7 +845,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// TODO: Add to weights
+		/// Block a remote investor from performing investment tasks until lock
+		/// is removed.
+		///
+		/// Origin: Pool admin
 		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		pub fn freeze_investor(
@@ -889,7 +906,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// TODO: Add to weights
+		/// Unblock a previously locked remote investor from performing
+		/// investment tasks.
+		///
+		/// Origin: Pool admin
 		#[pallet::call_index(15)]
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		pub fn unfreeze_investor(
