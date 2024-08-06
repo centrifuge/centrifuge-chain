@@ -126,7 +126,7 @@ staging-parachain-info = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-mocks = { workspace = true }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -172,7 +172,6 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "cfg-utils/std",
-  "cfg-mocks/std",
   # Pallet exporting list
   "axelar-gateway-precompile/std",
   "chainbridge/std",

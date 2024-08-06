@@ -25,9 +25,9 @@ sp-std = { workspace = true }
 strum = { workspace = true }
 
 [dev-dependencies]
-cfg-mocks = { workspace = true, default_features = true }
-frame-system = { workspace = true, default_features = true }
-mock-builder = { workspace = true, default_features = true }
+cfg-mocks = { workspace = true, default-features = true }
+frame-system = { workspace = true, default-features = true }
+mock-builder = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -45,11 +45,14 @@ std = [
 runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
+  "frame-system/try-runtime",
   "cfg-primitives/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-mocks/try-runtime",
 ]
