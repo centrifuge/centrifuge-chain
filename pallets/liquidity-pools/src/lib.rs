@@ -704,8 +704,7 @@ pub mod pallet {
 		/// NOTE: In the future should be permissioned by new trait, see spec
 		/// <https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency>
 		#[pallet::call_index(9)]
-		// TODO: Fix weights
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(T::WeightInfo::allow_investment_currency())]
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -813,8 +812,7 @@ pub mod pallet {
 		///
 		/// Origin: Pool admin
 		#[pallet::call_index(13)]
-		// TODO: Add to weights
-		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
+		#[pallet::weight(T::WeightInfo::disallow_investment_currency())]
 		pub fn disallow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -850,7 +848,7 @@ pub mod pallet {
 		///
 		/// Origin: Pool admin
 		#[pallet::call_index(14)]
-		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
+		#[pallet::weight(T::WeightInfo::freeze_investor())]
 		pub fn freeze_investor(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -911,7 +909,7 @@ pub mod pallet {
 		///
 		/// Origin: Pool admin
 		#[pallet::call_index(15)]
-		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
+		#[pallet::weight(T::WeightInfo::unfreeze_investor())]
 		pub fn unfreeze_investor(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -1084,6 +1082,9 @@ pub mod pallet {
 			T::DomainAddressToAccountId::convert(domain_address)
 		}
 
+		/// Checks whether the given address has investor permissions with at
+		/// least the given validity timestamp. Moreover, checks whether the
+		/// investor is frozen or not.
 		pub fn validate_investor_status(
 			investor: T::AccountId,
 			pool_id: T::PoolId,
@@ -1112,6 +1113,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Checks whether the given address has investor permissions at least
+		/// to the current timestamp and whether it is not frozen.
 		pub fn validate_investor_can_transfer(
 			investor: T::AccountId,
 			pool_id: T::PoolId,

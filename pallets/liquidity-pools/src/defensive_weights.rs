@@ -19,9 +19,14 @@ pub trait WeightInfo {
 	fn update_member() -> Weight;
 	fn transfer() -> Weight;
 	fn set_domain_router() -> Weight;
+	fn add_currency() -> Weight;
+	fn allow_investment_currency() -> Weight;
+	fn disallow_investment_currency() -> Weight;
 	fn schedule_upgrade() -> Weight;
 	fn cancel_upgrade() -> Weight;
 	fn update_tranche_token_metadata() -> Weight;
+	fn freeze_investor() -> Weight;
+	fn unfreeze_investor() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -29,112 +34,79 @@ pub trait WeightInfo {
 //       should be enough.
 const N: u64 = 4;
 
+/// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
+/// be replaced with real benchmark soon.
+
+fn default_defensive_weight() -> Weight {
+	Weight::from_parts(124_979_771, 19974)
+		.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
+		.saturating_add(RocksDbWeight::get().reads(8))
+		.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+		.saturating_add(RocksDbWeight::get().writes(8))
+		.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+		.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+}
+
 impl WeightInfo for () {
 	fn set_domain_router() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn add_pool() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn add_tranche() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn update_token_price() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn update_member() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn transfer() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn schedule_upgrade() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn cancel_upgrade() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
 	}
 
 	fn update_tranche_token_metadata() -> Weight {
-		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
-		// be replaced with real benchmark soon.
-		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
-			.saturating_add(RocksDbWeight::get().reads(8))
-			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
-			.saturating_add(RocksDbWeight::get().writes(8))
-			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+		default_defensive_weight()
+	}
+
+	fn freeze_investor() -> Weight {
+		default_defensive_weight()
+	}
+
+	fn unfreeze_investor() -> Weight {
+		default_defensive_weight()
+	}
+
+	fn add_currency() -> Weight {
+		// Reads: 2x AssetRegistry
+		// Writes: MessageNonceStore, MessageQueue
+		RocksDbWeight::get().reads_writes(2, 2)
+	}
+
+	fn allow_investment_currency() -> Weight {
+		// Reads: 2x AssetRegistry
+		// Writes: MessageNonceStore, MessageQueue
+		RocksDbWeight::get().reads_writes(2, 2)
+	}
+
+	fn disallow_investment_currency() -> Weight {
+		// Reads: 2x AssetRegistry
+		// Writes: MessageNonceStore, MessageQueue
+		RocksDbWeight::get().reads_writes(2, 2)
 	}
 }
