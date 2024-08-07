@@ -529,9 +529,19 @@ pub enum Message<BatchContent = BatchMessages> {
 	},
 }
 
-impl Message {
+impl LPEncoding for Message {
+	const MAX_PACKED_MESSAGES: u32 = MAX_BATCH_MESSAGES;
+
+	fn serialize(&self) -> Vec<u8> {
+		gmpf::to_vec(self).unwrap_or_default()
+	}
+
+	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
+		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
+	}
+
 	/// Compose this message with a new one
-	pub fn pack(&self, other: Self) -> Result<Self, DispatchError> {
+	fn pack(&self, other: Self) -> Result<Self, DispatchError> {
 		Ok(match self.clone() {
 			Message::Batch(content) => {
 				let mut content = content.clone();
@@ -543,21 +553,15 @@ impl Message {
 	}
 
 	/// Decompose the message into a list of messages
-	pub fn unpack(&self) -> Vec<Self> {
+	fn unpack(&self) -> Vec<Self> {
 		match self {
 			Message::Batch(content) => content.clone().into_iter().collect(),
 			message => vec![message.clone()],
 		}
 	}
-}
 
-impl LPEncoding for Message {
-	fn serialize(&self) -> Vec<u8> {
-		gmpf::to_vec(self).unwrap_or_default()
-	}
-
-	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
-		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
+	fn empty() -> Message {
+		Message::Batch(BatchMessages::default())
 	}
 }
 

@@ -21,8 +21,21 @@ use sp_std::vec::Vec;
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait LPEncoding: Sized {
+	const MAX_PACKED_MESSAGES: u32;
+
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
+
+	/// Compose this message with a new one
+	fn pack(&self, other: Self) -> Result<Self, DispatchError>;
+
+	/// Decompose the message into a list of messages
+	/// If the message is not decomposable, it returns the own message.
+	fn unpack(&self) -> Vec<Self>;
+
+	/// Creates an empty message.
+	/// It's the identity message for composing messages
+	fn empty() -> Self;
 }
 
 #[cfg(any(test, feature = "std"))]
@@ -32,9 +45,14 @@ pub mod test_util {
 
 	use super::*;
 
+	pub const DECODING_ERR_MSG: &str = "decoding message error";
+	pub const EMPTY_ERR_MSG: &str = "empty message error error";
+
 	#[derive(Default, Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
 	pub struct Message;
 	impl LPEncoding for Message {
+		const MAX_PACKED_MESSAGES: u32 = 1;
+
 		fn serialize(&self) -> Vec<u8> {
 			vec![0x42]
 		}
@@ -42,9 +60,21 @@ pub mod test_util {
 		fn deserialize(input: &[u8]) -> Result<Self, DispatchError> {
 			match input.first() {
 				Some(0x42) => Ok(Self),
-				Some(_) => Err("unsupported message".into()),
-				None => Err("empty message".into()),
+				Some(_) => Err(DECODING_ERR_MSG.into()),
+				None => Err(EMPTY_ERR_MSG.into()),
 			}
+		}
+
+		fn pack(&self, _: Self) -> Result<Self, DispatchError> {
+			unimplemented!()
+		}
+
+		fn unpack(&self) -> Vec<Self> {
+			vec![Self]
+		}
+
+		fn empty() -> Self {
+			unimplemented!()
 		}
 	}
 }

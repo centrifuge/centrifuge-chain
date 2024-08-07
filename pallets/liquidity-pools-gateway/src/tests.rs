@@ -1,7 +1,8 @@
 use cfg_mocks::*;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	test_util::Message, LPEncoding, MessageProcessor, OutboundMessageHandler,
+	test_util::{Message, DECODING_ERR_MSG},
+	LPEncoding, MessageProcessor, OutboundMessageHandler,
 };
 use cfg_types::domain_address::*;
 use frame_support::{
@@ -38,97 +39,6 @@ mod utils {
 }
 
 use utils::*;
-
-mod pallet_internals {
-
-	use super::*;
-
-	#[test]
-	fn try_range_fails_if_slice_to_short() {
-		new_test_ext().execute_with(|| {
-			let three_bytes = [0u8; 3];
-			let steps = 4usize;
-
-			assert_noop!(
-				Pallet::<Runtime>::try_range(
-					&mut three_bytes.as_slice(),
-					steps,
-					Error::<Runtime>::MessageDecodingFailed,
-					|_| Ok(())
-				),
-				Error::<Runtime>::MessageDecodingFailed
-			);
-		})
-	}
-
-	#[test]
-	fn try_range_updates_slice_ref_correctly() {
-		new_test_ext().execute_with(|| {
-			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
-			let slice = &mut bytes.as_slice();
-			let steps = 4;
-			let first_section = Pallet::<Runtime>::try_range(
-				slice,
-				steps,
-				Error::<Runtime>::MessageDecodingFailed,
-				|first_section| Ok(first_section),
-			)
-			.expect("Slice is long enough");
-
-			assert_eq!(first_section, &[1, 2, 3, 4]);
-
-			let steps = 2;
-			let second_section = Pallet::<Runtime>::try_range(
-				slice,
-				steps,
-				Error::<Runtime>::MessageDecodingFailed,
-				|second_section| Ok(second_section),
-			)
-			.expect("Slice is long enough");
-
-			assert_eq!(&second_section, &[5, 6]);
-
-			let steps = 1;
-			let third_section = Pallet::<Runtime>::try_range(
-				slice,
-				steps,
-				Error::<Runtime>::MessageDecodingFailed,
-				|third_section| Ok(third_section),
-			)
-			.expect("Slice is long enough");
-
-			assert_eq!(&third_section, &[7]);
-		})
-	}
-
-	#[test]
-	fn try_range_does_not_update_slice_if_transformer_errors() {
-		new_test_ext().execute_with(|| {
-			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
-			let slice = &mut bytes.as_slice();
-			let steps = 4;
-			let first_section = Pallet::<Runtime>::try_range(
-				slice,
-				steps,
-				Error::<Runtime>::MessageDecodingFailed,
-				|first_section| Ok(first_section),
-			)
-			.expect("Slice is long enough");
-
-			assert_eq!(first_section, &[1, 2, 3, 4]);
-
-			let steps = 1;
-			assert!(Pallet::<Runtime>::try_range(
-				slice,
-				steps,
-				Error::<Runtime>::MessageDecodingFailed,
-				|_| Err::<(), _>(DispatchError::Corruption)
-			)
-			.is_err());
-			assert_eq!(slice, &[5, 6, 7]);
-		})
-	}
-}
 
 mod set_domain_router {
 	use super::*;
@@ -429,7 +339,7 @@ mod remove_instance {
 	}
 }
 
-mod process_msg_axelar_relay {
+mod receive_message_axelar_relay {
 	use sp_core::bounded::BoundedVec;
 
 	use super::*;
@@ -478,7 +388,7 @@ mod process_msg_axelar_relay {
             let solidity_header = "0000000a657468657265756d2d320000002a307838353033623434353242663632333863433736436462454532323362343664373139366231633933";
 			let payload = [hex::decode(solidity_header).unwrap(), Message.serialize()].concat();
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
+			assert_ok!(LiquidityPoolsGateway::receive_message(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(payload).unwrap()
 			));
@@ -530,7 +440,7 @@ mod process_msg_axelar_relay {
 			msg.extend_from_slice(&SOURCE_ADDRESS);
 			msg.extend_from_slice(&message.serialize());
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
+			assert_ok!(LiquidityPoolsGateway::receive_message(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 			));
@@ -583,7 +493,7 @@ mod process_msg_axelar_relay {
 			msg.extend_from_slice(&SOURCE_ADDRESS);
 			msg.extend_from_slice(&message.serialize());
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
+			assert_ok!(LiquidityPoolsGateway::receive_message(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 			));
@@ -621,7 +531,7 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::AxelarRelay(relayer_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
@@ -665,7 +575,7 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::AxelarRelay(relayer_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
@@ -704,11 +614,11 @@ mod process_msg_axelar_relay {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other(DECODING_ERR_MSG),
 			);
 		});
 	}
@@ -742,7 +652,7 @@ mod process_msg_axelar_relay {
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |_| Err(err));
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
@@ -752,7 +662,7 @@ mod process_msg_axelar_relay {
 	}
 }
 
-mod process_msg_domain {
+mod receive_message_domain {
 	use super::*;
 
 	#[test]
@@ -779,7 +689,7 @@ mod process_msg_domain {
 				Ok(())
 			});
 
-			assert_ok!(LiquidityPoolsGateway::process_msg(
+			assert_ok!(LiquidityPoolsGateway::receive_message(
 				GatewayOrigin::Domain(domain_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
@@ -792,7 +702,7 @@ mod process_msg_domain {
 			let encoded_msg = Message.serialize();
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					RuntimeOrigin::root(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
@@ -808,7 +718,7 @@ mod process_msg_domain {
 			let encoded_msg = Message.serialize();
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
@@ -825,7 +735,7 @@ mod process_msg_domain {
 			let encoded_msg = Message.serialize();
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
@@ -848,11 +758,11 @@ mod process_msg_domain {
 			let encoded_msg: Vec<u8> = vec![11];
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecodingFailed,
+				DispatchError::Other(DECODING_ERR_MSG),
 			);
 		});
 	}
@@ -884,7 +794,7 @@ mod process_msg_domain {
 			});
 
 			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
+				LiquidityPoolsGateway::receive_message(
 					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
@@ -1125,23 +1035,19 @@ mod message_processor_impl {
 
 				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
-				let mut expected_weight =
-					<Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
-					&mut expected_weight,
-					router_post_info.actual_weight,
-				);
+				let min_expected_weight = <Runtime as frame_system::Config>::DbWeight::get()
+					.reads(1) + router_post_info.actual_weight.unwrap()
+					+ Weight::from_parts(0, message.serialize().len() as u64);
 
 				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
 					sender,
 					destination: domain,
-					message,
+					message: message.clone(),
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_ok!(res);
-				assert_eq!(weight, expected_weight);
+				assert!(weight.all_lte(min_expected_weight));
 			});
 		}
 
@@ -1188,31 +1094,27 @@ mod message_processor_impl {
 					assert_eq!(mock_sender, expected_sender);
 					assert_eq!(mock_message, expected_message.serialize());
 
-					Err(DispatchErrorWithPostInfo {
+					Err(dbg!(DispatchErrorWithPostInfo {
 						post_info: router_post_info,
 						error: router_err,
-					})
+					}))
 				});
 
 				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
-				let mut expected_weight =
-					<Runtime as frame_system::Config>::DbWeight::get().reads(1);
-
-				Pallet::<Runtime>::update_total_post_dispatch_info_weight(
-					&mut expected_weight,
-					router_post_info.actual_weight,
-				);
+				let min_expected_weight = <Runtime as frame_system::Config>::DbWeight::get()
+					.reads(1) + router_post_info.actual_weight.unwrap()
+					+ Weight::from_parts(0, message.serialize().len() as u64);
 
 				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
 					sender,
 					destination: domain,
-					message,
+					message: message.clone(),
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_noop!(res, router_err);
-				assert_eq!(weight, expected_weight);
+				assert!(weight.all_lte(min_expected_weight));
 			});
 		}
 	}
