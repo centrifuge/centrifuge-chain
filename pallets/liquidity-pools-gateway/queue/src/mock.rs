@@ -53,7 +53,6 @@ impl Config for Runtime {
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LPGatewayMock;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

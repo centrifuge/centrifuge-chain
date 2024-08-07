@@ -28,7 +28,7 @@
 
 use core::fmt::Debug;
 
-use cfg_primitives::{LP_DEFENSIVE_WEIGHT, LP_DEFENSIVE_WEIGHT_REF_TIME};
+use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::{
 	liquidity_pools::{
 		InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
@@ -539,23 +539,12 @@ pub mod pallet {
 				return (Err(Error::<T>::RouterNotFound.into()), read_weight);
 			};
 
-			let serialized = message.serialize();
-			let serialized_len = serialized.len() as u64;
-
-			// TODO: do we really need to return the weights in send() if later we use the
-			// defensive ones?
-			let (result, router_weight) = match router.send(sender, serialized) {
+			let (result, router_weight) = match router.send(sender, message.serialize()) {
 				Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
 				Err(e) => (Err(e.error), e.post_info.actual_weight),
 			};
 
-			(
-				result,
-				router_weight
-					.unwrap_or(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, 0))
-					.saturating_add(read_weight)
-					.saturating_add(Weight::from_parts(0, serialized_len)),
-			)
+			(result, router_weight.unwrap_or(read_weight))
 		}
 
 		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
@@ -613,6 +602,16 @@ pub mod pallet {
 					destination,
 					message,
 				} => Self::process_outbound_message(sender, destination, message),
+			}
+		}
+
+		/// Process a message.
+		fn max_processing_weight(msg: &Self::Message) -> Weight {
+			match msg {
+				GatewayMessage::Inbound { message, .. } => {
+					LP_DEFENSIVE_WEIGHT.saturating_mul(message.unpack().len() as u64)
+				}
+				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
 			}
 		}
 	}

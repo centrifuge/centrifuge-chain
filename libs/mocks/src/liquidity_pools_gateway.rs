@@ -22,6 +22,10 @@ pub mod pallet {
 			register_call!(f);
 		}
 
+		pub fn mock_max_processing_weight(f: impl Fn(&T::Message) -> Weight + 'static) {
+			register_call!(f);
+		}
+
 		pub fn mock_get(f: impl Fn(&T::Destination) -> Option<[u8; 20]> + 'static) {
 			register_call!(f);
 		}
@@ -37,6 +41,10 @@ pub mod pallet {
 		type Message = T::Message;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
+			execute_call!(msg)
+		}
+
+		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			execute_call!(msg)
 		}
 	}
