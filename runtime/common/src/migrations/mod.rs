@@ -15,7 +15,6 @@
 pub mod hold_reason;
 pub mod increase_storage_version;
 pub mod liquidity_pools_gateway;
-pub mod loans;
 pub mod nuke;
 pub mod precompile_account_codes;
 pub mod restricted_location;
