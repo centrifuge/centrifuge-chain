@@ -14,5 +14,21 @@ use crate::Runtime;
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1401 =
-	runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>;
+pub type UpgradeCentrifuge1401 = (
+	// Clear OutboundMessageNonceStore
+	frame_support::migrations::VersionedMigration<
+		0,
+		1,
+		runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>,
+		pallet_liquidity_pools_gateway::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
+	// Remove undecodable ForeignInvestmentInfo v0 entries
+	runtime_common::migrations::foreign_investments_v2::Migration<Runtime>,
+	// Bump to v1
+	runtime_common::migrations::increase_storage_version::Migration<
+		pallet_foreign_investments::Pallet<Runtime>,
+		1,
+		2,
+	>,
+);
