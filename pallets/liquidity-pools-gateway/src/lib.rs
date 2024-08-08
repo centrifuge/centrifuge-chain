@@ -40,6 +40,7 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
+use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::traits::EnsureAddAssign;
 use sp_std::{cmp::Ordering, convert::TryInto, vec::Vec};
 
@@ -125,6 +126,16 @@ pub mod pallet {
 		/// Number of routers for a domain.
 		#[pallet::constant]
 		type MultiRouterCount: Get<u32>;
+
+		/// Type for identifying sessions of inbound routers.
+		type SessionId: Parameter
+			+ Member
+			+ BaseArithmetic
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
 	}
 
 	#[pallet::event]
@@ -142,10 +153,15 @@ pub mod pallet {
 			hook_address: [u8; 20],
 		},
 
-		/// The routers for a given domain were set.
-		DomainMultiRouterSet {
+		/// The outbound routers for a given domain were set.
+		OutboundRoutersSet {
 			domain: Domain,
 			routers: BoundedVec<T::Router, T::MultiRouterCount>,
+		},
+
+		/// Inbound routers were set.
+		InboundRoutersSet {
+			router_hashes: BoundedVec<T::Hash, T::MultiRouterCount>,
 		},
 	}
 
@@ -201,6 +217,14 @@ pub mod pallet {
 	#[pallet::getter(fn inbound_messages)]
 	pub type InboundMessages<T: Config> =
 		StorageMap<_, Blake2_128Concat, Proof, (DomainAddress, T::Message, u32)>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn inbound_routers)]
+	pub type InboundRouters<T: Config> =
+		StorageValue<_, BoundedVec<T::Hash, T::MultiRouterCount>, ValueQuery>;
+
+	#[pallet::storage]
+	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -359,10 +383,10 @@ pub mod pallet {
 			}
 		}
 
-		/// Set routers for a particular domain.
-		#[pallet::weight(T::WeightInfo::set_domain_multi_router())]
+		/// Set outbound routers for a particular domain.
+		#[pallet::weight(T::WeightInfo::set_outbound_routers())]
 		#[pallet::call_index(11)]
-		pub fn set_domain_multi_router(
+		pub fn set_outbound_routers(
 			origin: OriginFor<T>,
 			domain: Domain,
 			routers: BoundedVec<T::Router, T::MultiRouterCount>,
@@ -392,9 +416,33 @@ pub mod pallet {
 				BoundedVec::try_from(router_hashes).map_err(|_| Error::<T>::InvalidMultiRouter)?,
 			);
 
-			Self::clear_storages_for_inbound_messages();
+			Self::deposit_event(Event::OutboundRoutersSet { domain, routers });
 
-			Self::deposit_event(Event::DomainMultiRouterSet { domain, routers });
+			Ok(())
+		}
+
+		/// Set inbound routers.
+		#[pallet::weight(T::WeightInfo::set_inbound_routers())]
+		#[pallet::call_index(12)]
+		pub fn set_inbound_routers(
+			origin: OriginFor<T>,
+			router_hashes: BoundedVec<T::Hash, T::MultiRouterCount>,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(
+				router_hashes.len() == T::MultiRouterCount::get() as usize,
+				Error::<T>::InvalidMultiRouter
+			);
+
+			SessionIdStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
+				Ok::<(), DispatchError>(())
+			})?;
+
+			InboundRouters::<T>::set(router_hashes.clone());
+
+			Self::deposit_event(Event::InboundRoutersSet { router_hashes });
 
 			Ok(())
 		}
@@ -404,7 +452,7 @@ pub mod pallet {
 		///
 		/// Can only be called by `AdminOrigin`.
 		#[pallet::weight(T::WeightInfo::execute_message_recovery())]
-		#[pallet::call_index(12)]
+		#[pallet::call_index(13)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
 			message_proof: Proof,
@@ -492,6 +540,7 @@ pub mod pallet {
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
+			router_hash: T::Hash,
 		) -> (DispatchResult, Weight) {
 			let mut count = 0;
 
@@ -666,7 +715,8 @@ pub mod pallet {
 				GatewayMessage::Inbound {
 					domain_address,
 					message,
-				} => Self::process_inbound_message(domain_address, message),
+					router_hash,
+				} => Self::process_inbound_message(domain_address, message, router_hash),
 				GatewayMessage::Outbound {
 					sender,
 					message,
