@@ -27,6 +27,7 @@ pub trait WeightInfo {
 	fn update_tranche_token_metadata() -> Weight;
 	fn freeze_investor() -> Weight;
 	fn unfreeze_investor() -> Weight;
+	fn update_tranche_hook() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -108,5 +109,11 @@ impl WeightInfo for () {
 		// Reads: 2x AssetRegistry
 		// Writes: MessageNonceStore, MessageQueue
 		RocksDbWeight::get().reads_writes(2, 2)
+	}
+
+	fn update_tranche_hook() -> Weight {
+		// Reads: Pool, Tranche, Permissions
+		// Writes: MessageNonceStore, MessageQueue
+		RocksDbWeight::get().reads_writes(3, 2)
 	}
 }
