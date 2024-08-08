@@ -1716,10 +1716,7 @@ impl<
 				P::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						tranche_id.clone(),
-						T::now().as_secs(),
-					)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
 				) && !P::has(
 					PermissionScope::Pool(pool_id),
 					who,
@@ -1734,10 +1731,7 @@ impl<
 				P::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						tranche_id.clone(),
-						T::now().as_secs(),
-					)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
 				) && !P::has(
 					PermissionScope::Pool(pool_id),
 					who,

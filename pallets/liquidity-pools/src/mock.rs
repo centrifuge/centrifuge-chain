@@ -27,6 +27,7 @@ pub const ALICE_32: [u8; 32] = [2; 32];
 pub const ALICE: AccountId = AccountId::new(ALICE_32);
 pub const ALICE_ETH: [u8; 20] = [2; 20];
 pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(42, ALICE_ETH);
+// TODO(future): Can be removed after domain conversion refactor
 pub const ALICE_EVM_LOCAL_ACCOUNT: AccountId = {
 	let mut arr = [0u8; 32];
 	let mut i = 0;

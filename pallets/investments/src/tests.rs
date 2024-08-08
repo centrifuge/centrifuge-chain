@@ -2961,7 +2961,7 @@ fn collecting_investment_without_preconditions_fails() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		assert_noop!(
 			Investments::collect_investments(RuntimeOrigin::signed(NOT_INVESTOR), INVESTMENT_0_0),
-			DispatchError::Other("PreCondition mock fails on u64::MAX account on purpose")
+			ERR_PRE_CONDITION
 		);
 	})
 }

@@ -141,6 +141,9 @@ impl pallet_investments::Config for Runtime {
 	type WeightInfo = ();
 }
 
+pub(crate) const ERR_PRE_CONDITION: DispatchError =
+	DispatchError::Other("PreCondition mock fails on u64::MAX account on purpose");
+
 pub struct AlwaysWithOneException;
 impl<T> PreConditions<T> for AlwaysWithOneException
 where
@@ -153,9 +156,7 @@ where
 			OrderType::Investment { who, .. } | OrderType::Redemption { who, .. }
 				if who == NOT_INVESTOR =>
 			{
-				Err(DispatchError::Other(
-					"PreCondition mock fails on u64::MAX account on purpose",
-				))
+				Err(ERR_PRE_CONDITION)
 			}
 			_ => Ok(()),
 		}
