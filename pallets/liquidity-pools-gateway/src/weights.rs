@@ -24,8 +24,9 @@ pub trait WeightInfo {
 	fn start_batch_message() -> Weight;
 	fn end_batch_message() -> Weight;
 	fn set_domain_hook_address() -> Weight;
-	fn set_domain_multi_router() -> Weight;
+	fn set_outbound_routers() -> Weight;
 	fn execute_message_recovery() -> Weight;
+	fn set_inbound_routers() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -161,7 +162,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2))
 	}
 
-	fn set_domain_multi_router() -> Weight {
+	fn set_outbound_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
@@ -173,6 +174,17 @@ impl WeightInfo for () {
 	}
 
 	fn execute_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn set_inbound_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
