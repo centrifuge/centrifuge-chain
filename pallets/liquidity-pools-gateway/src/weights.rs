@@ -21,8 +21,8 @@ pub trait WeightInfo {
 	fn receive_message() -> Weight;
 	fn process_outbound_message() -> Weight;
 	fn process_failed_outbound_message() -> Weight;
-	fn start_pack_messages() -> Weight;
-	fn end_pack_messages() -> Weight;
+	fn start_batch_message() -> Weight;
+	fn end_batch_message() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -125,7 +125,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn start_pack_messages() -> Weight {
+	fn start_batch_message() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
@@ -136,7 +136,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn end_pack_messages() -> Weight {
+	fn end_batch_message() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`

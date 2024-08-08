@@ -212,7 +212,7 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
 	/// Stores a batch message, not ready yet to be enqueue.
-	/// Lifetime handled by `start_pack_messages()` and `end_pack_messages()`
+	/// Lifetime handled by `start_batch_message()` and `end_batch_message()`
 	/// extrinsics.
 	#[pallet::storage]
 	pub(crate) type PackedMessage<T: Config> =
@@ -254,12 +254,12 @@ pub mod pallet {
 		/// signals malforming of the wrapping information.
 		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
 
-		/// Emitted when you call `start_pack_messages()` but that was already
-		/// called. You should finalize the message with `end_pack_messages()`
+		/// Emitted when you call `start_batch_message()` but that was already
+		/// called. You should finalize the message with `end_batch_message()`
 		MessagePackingAlreadyStarted,
 
-		/// Emitted when you can `end_pack_messages()` but the packing process
-		/// was not started by `start_pack_messages()`.
+		/// Emitted when you can `end_batch_message()` but the packing process
+		/// was not started by `start_batch_message()`.
 		MessagePackingNotStarted,
 	}
 
@@ -471,8 +471,8 @@ pub mod pallet {
 
 		/// Start packing messages in a single message instead of enqueue
 		/// messages.
-		/// The message will be enqueued once `end_pack_messages()` is called.
-		#[pallet::weight(T::WeightInfo::start_pack_messages())]
+		/// The message will be enqueued once `end_batch_messages()` is called.
+		#[pallet::weight(T::WeightInfo::start_batch_message())]
 		#[pallet::call_index(9)]
 		pub fn start_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -489,7 +489,7 @@ pub mod pallet {
 		/// End packing messages.
 		/// If exists any batch message it will be enqueued.
 		/// Empty batches are no-op
-		#[pallet::weight(T::WeightInfo::end_pack_messages())]
+		#[pallet::weight(T::WeightInfo::end_batch_message())]
 		#[pallet::call_index(10)]
 		pub fn end_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -609,7 +609,7 @@ pub mod pallet {
 		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			match msg {
 				GatewayMessage::Inbound { message, .. } => {
-					LP_DEFENSIVE_WEIGHT.saturating_mul(message.unpack().len() as u64)
+					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len() as u64)
 				}
 				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
 			}
