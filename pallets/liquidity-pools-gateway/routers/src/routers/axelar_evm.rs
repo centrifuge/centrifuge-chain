@@ -21,7 +21,8 @@ use scale_info::{
 	prelude::{format, string::String},
 	TypeInfo,
 };
-use sp_core::{bounded::BoundedVec, ConstU32, H160};
+use sp_core::{bounded::BoundedVec, ConstU32, Hasher, H160};
+use sp_runtime::traits::BlakeTwo256;
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use crate::{
@@ -76,6 +77,10 @@ where
 		.map_err(DispatchError::Other)?;
 
 		self.router.do_send(sender, eth_msg)
+	}
+
+	pub fn hash(&self) -> T::Hash {
+		BlakeTwo256::hash(self.evm_chain.encode().as_slice())
 	}
 }
 

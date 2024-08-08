@@ -18,6 +18,8 @@ use frame_support::{
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
+pub type Proof = [u8; 32];
+
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait LPEncoding: Sized {
@@ -34,6 +36,9 @@ pub trait LPEncoding: Sized {
 	/// Creates an empty message.
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
+
+	fn get_message_proof(&self) -> Option<Proof>;
+	fn to_message_proof(&self) -> Self;
 }
 
 /// The trait required for sending outbound messages.
@@ -41,11 +46,17 @@ pub trait Router {
 	/// The sender type of the outbound message.
 	type Sender;
 
+	/// The router hash type.
+	type Hash;
+
 	/// Initialize the router.
 	fn init(&self) -> DispatchResult;
 
 	/// Send the message to the router's destination.
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+
+	/// Generate a hash for this router.
+	fn hash(&self) -> Self::Hash;
 }
 
 /// The trait required for queueing messages.

@@ -1,12 +1,16 @@
+use std::collections::HashMap;
+
 use cfg_mocks::*;
-use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
+use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler, Proof};
 use cfg_types::domain_address::*;
 use frame_support::{
 	assert_err, assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays,
 	weights::Weight,
 };
-use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
+use itertools::Itertools;
+use lazy_static::lazy_static;
+use parity_scale_codec::MaxEncodedLen;
+use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160, H256};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin, DispatchErrorWithPostInfo};
 use sp_std::sync::{
 	atomic::{AtomicU32, Ordering},
@@ -289,7 +293,7 @@ mod receive_message_domain {
 
 			let encoded_msg = message.serialize();
 
-			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
 			};
@@ -370,7 +374,7 @@ mod receive_message_domain {
 
 			let err = sp_runtime::DispatchError::from("liquidity_pools error");
 
-			let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
 			};
@@ -400,24 +404,47 @@ mod outbound_message_handler_impl {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
 			let msg = Message::Simple;
+			let message_proof = msg.to_message_proof().get_message_proof().unwrap();
 
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
+			let router_hash_1 = H256::from_low_u64_be(1);
+			let router_hash_2 = H256::from_low_u64_be(2);
+			let router_hash_3 = H256::from_low_u64_be(3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+			let router_mock_1 = RouterMock::<Runtime>::default();
+			let router_mock_2 = RouterMock::<Runtime>::default();
+			let router_mock_3 = RouterMock::<Runtime>::default();
+
+			router_mock_1.mock_init(move || Ok(()));
+			router_mock_1.mock_hash(move || router_hash_1);
+			router_mock_2.mock_init(move || Ok(()));
+			router_mock_2.mock_hash(move || router_hash_2);
+			router_mock_3.mock_init(move || Ok(()));
+			router_mock_3.mock_hash(move || router_hash_3);
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_router(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				router.clone(),
+				BoundedVec::try_from(vec![router_mock_1, router_mock_2, router_mock_3]).unwrap(),
 			));
 
-			let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
-				sender: <Runtime as Config>::Sender::get(),
-				destination: domain.clone(),
-				message: msg.clone(),
-			};
-
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
-				assert_eq!(mock_msg, gateway_message);
+				match mock_msg {
+					GatewayMessage::Inbound { .. } => {
+						assert!(false, "expected outbound message")
+					}
+					GatewayMessage::Outbound {
+						sender, message, ..
+					} => {
+						assert_eq!(sender, <Runtime as Config>::Sender::get());
+
+						match message {
+							Message::Proof(p) => {
+								assert_eq!(p, message_proof);
+							}
+							_ => {}
+						}
+					}
+				}
 
 				Ok(())
 			});
@@ -447,19 +474,31 @@ mod outbound_message_handler_impl {
 			let sender = get_test_account_id();
 			let msg = Message::Simple;
 
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
+			let router_hash_1 = H256::from_low_u64_be(1);
+			let router_hash_2 = H256::from_low_u64_be(2);
+			let router_hash_3 = H256::from_low_u64_be(3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
+			let router_mock_1 = RouterMock::<Runtime>::default();
+			let router_mock_2 = RouterMock::<Runtime>::default();
+			let router_mock_3 = RouterMock::<Runtime>::default();
+
+			router_mock_1.mock_init(move || Ok(()));
+			router_mock_1.mock_hash(move || router_hash_1);
+			router_mock_2.mock_init(move || Ok(()));
+			router_mock_2.mock_hash(move || router_hash_2);
+			router_mock_3.mock_init(move || Ok(()));
+			router_mock_3.mock_hash(move || router_hash_3);
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_multi_router(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				router.clone(),
+				BoundedVec::try_from(vec![router_mock_1, router_mock_2, router_mock_3]).unwrap(),
 			));
 
-			let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+			let gateway_message = GatewayMessage::Outbound {
 				sender: <Runtime as Config>::Sender::get(),
-				destination: domain.clone(),
 				message: msg.clone(),
+				router_hash: router_hash_3,
 			};
 
 			let err = DispatchError::Unavailable;
@@ -530,34 +569,634 @@ mod message_processor_impl {
 	mod inbound {
 		use super::*;
 
-		#[test]
-		fn success() {
-			new_test_ext().execute_with(|| {
-				let domain_address = DomainAddress::EVM(1, [1; 20]);
-				let message = Message::Simple;
-				let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
-					domain_address: domain_address.clone(),
-					message: message.clone(),
+		#[macro_use]
+		mod util {
+			use super::*;
+
+			macro_rules! run_tests {
+				($tests:expr) => {
+					// $tests = Vec<(Vec<Message>, &ExpectedTestResult)>
+					for test in $tests {
+						new_test_ext().execute_with(|| {
+							println!("Executing test for - {:?}", test.0);
+
+							let handler = MockLiquidityPools::mock_handle(move |_, _| Ok(()));
+
+							// test.0 = Vec<Message>
+							for test_message in test.0 {
+								let domain_address = DomainAddress::EVM(1, [1; 20]);
+								let gateway_message = GatewayMessage::Inbound {
+									domain_address: domain_address.clone(),
+									message: test_message.clone(),
+								};
+
+								let (res, _) = LiquidityPoolsGateway::process(gateway_message);
+								assert_ok!(res);
+							}
+
+							assert_eq!(handler.times(), test.1.mock_called_times);
+
+							assert_eq!(
+								InboundMessages::<Runtime>::get(MESSAGE_PROOF),
+								// test.1 = &ExpectedTestResult
+								test.1.inbound_message,
+							);
+							assert_eq!(
+								InboundMessageProofCount::<Runtime>::get(MESSAGE_PROOF),
+								// test.1 = &ExpectedTestResult
+								test.1.proof_count,
+							);
+						});
+					}
 				};
+			}
 
-				MockLiquidityPools::mock_handle(move |mock_domain_address, mock_mesage| {
-					assert_eq!(mock_domain_address, domain_address);
-					assert_eq!(mock_mesage, message);
+			lazy_static! {
+				static ref TEST_MESSAGES: Vec<Message> =
+					vec![Message::Simple, Message::Proof(MESSAGE_PROOF),];
+			}
 
-					Ok(())
-				});
+			/// Generate all `Message` combinations for a specific
+			/// number of messages, like:
+			///
+			/// vec![
+			///		Message::Simple,
+			/// 	Message::Simple,
+			/// ]
+			/// vec![
+			/// 	Message::Simple,
+			/// 	Message::Proof(MESSAGE_PROOF),
+			/// ]
+			/// vec![
+			///     Message::Proof(MESSAGE_PROOF),
+			/// 	Message::Simple,
+			/// ]
+			/// vec![
+			/// 	Message::Proof(MESSAGE_PROOF),
+			/// 	Message::Proof(MESSAGE_PROOF),
+			/// ]
+			pub fn generate_test_combinations(count: usize) -> Vec<Vec<Message>> {
+				std::iter::repeat(TEST_MESSAGES.clone().into_iter())
+					.take(count)
+					.multi_cartesian_product()
+					.collect::<Vec<_>>()
+			}
 
-				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
-				assert_ok!(res);
-			});
+			pub struct ExpectedTestResult {
+				pub inbound_message: Option<(DomainAddress, Message, u32)>,
+				pub proof_count: u32,
+				pub mock_called_times: u32,
+			}
+		}
+
+		use util::*;
+
+		mod combined_messages {
+			use super::*;
+
+			mod two_messages {
+				use super::*;
+
+				lazy_static! {
+					static ref TEST_MAP: HashMap<Vec<Message>, ExpectedTestResult> =
+						HashMap::from([
+							(
+								vec![Message::Simple, Message::Simple],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										4
+									)),
+									proof_count: 0,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![Message::Proof(MESSAGE_PROOF), Message::Proof(MESSAGE_PROOF)],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 2,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![Message::Simple, Message::Proof(MESSAGE_PROOF)],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![Message::Proof(MESSAGE_PROOF), Message::Simple],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+						]);
+				}
+
+				#[test]
+				fn two_messages() {
+					let tests = generate_test_combinations(2)
+						.iter()
+						.map(|x| {
+							(
+								x.clone(),
+								TEST_MAP
+									.get(x)
+									.expect(format!("test for {x:?} should be covered").as_str()),
+							)
+						})
+						.collect::<Vec<_>>();
+
+					run_tests!(tests);
+				}
+			}
+
+			mod three_messages {
+				use super::*;
+
+				lazy_static! {
+					static ref TEST_MAP: HashMap<Vec<Message>, ExpectedTestResult> =
+						HashMap::from([
+							(
+								vec![Message::Simple, Message::Simple, Message::Simple,],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										6
+									)),
+									proof_count: 0,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 3,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										4
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										4
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										4
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							)
+						]);
+				}
+
+				#[test]
+				fn three_messages() {
+					let tests = generate_test_combinations(3)
+						.iter()
+						.map(|x| {
+							(
+								x.clone(),
+								TEST_MAP
+									.get(x)
+									.expect(format!("test for {x:?} should be covered").as_str()),
+							)
+						})
+						.collect::<Vec<_>>();
+
+					run_tests!(tests);
+				}
+			}
+
+			mod four_messages {
+				use super::*;
+
+				lazy_static! {
+					static ref TEST_MAP: HashMap<Vec<Message>, ExpectedTestResult> =
+						HashMap::from([
+							(
+								vec![
+									Message::Simple,
+									Message::Simple,
+									Message::Simple,
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										8
+									)),
+									proof_count: 0,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 4,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 1,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 1,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 1,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: None,
+									proof_count: 1,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										2
+									)),
+									proof_count: 0,
+									mock_called_times: 1,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Simple,
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										6
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										6
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Simple,
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										6
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+							(
+								vec![
+									Message::Proof(MESSAGE_PROOF),
+									Message::Simple,
+									Message::Simple,
+									Message::Simple,
+								],
+								ExpectedTestResult {
+									inbound_message: Some((
+										DomainAddress::EVM(1, [1; 20]),
+										Message::Simple,
+										6
+									)),
+									proof_count: 1,
+									mock_called_times: 0,
+								}
+							),
+						]);
+				}
+
+				#[test]
+				fn four_messages() {
+					let tests = generate_test_combinations(4)
+						.iter()
+						.filter(|x| TEST_MAP.get(x.clone()).is_some())
+						.map(|x| {
+							(
+								x.clone(),
+								TEST_MAP
+									.get(x)
+									.expect(format!("test for {x:?} should be covered").as_str()),
+							)
+						})
+						.collect::<Vec<_>>();
+
+					run_tests!(tests);
+				}
+			}
+		}
+
+		#[test]
+		fn two_non_proof_and_four_proofs() {
+			let tests = generate_test_combinations(6)
+				.into_iter()
+				.filter(|x| {
+					let r = x.iter().counts_by(|c| c.clone());
+					let non_proof_count = r.get(&Message::Simple);
+					let proof_count = r.get(&Message::Proof(MESSAGE_PROOF));
+
+					match (non_proof_count, proof_count) {
+						(Some(non_proof_count), Some(proof_count)) => {
+							*non_proof_count == 2 && *proof_count == 4
+						}
+						_ => false,
+					}
+				})
+				.map(|x| {
+					(
+						x,
+						ExpectedTestResult {
+							inbound_message: None,
+							proof_count: 0,
+							mock_called_times: 2,
+						},
+					)
+				})
+				.collect::<Vec<_>>();
+
+			run_tests!(tests);
 		}
 
 		#[test]
 		fn inbound_message_handler_error() {
 			new_test_ext().execute_with(|| {
 				let domain_address = DomainAddress::EVM(1, [1; 20]);
+
+				let message = Message::Proof(MESSAGE_PROOF);
+				let gateway_message = GatewayMessage::Inbound {
+					domain_address: domain_address.clone(),
+					message: message.clone(),
+				};
+
+				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
+				assert_ok!(res);
+
+				let message = Message::Proof(MESSAGE_PROOF);
+				let gateway_message = GatewayMessage::Inbound {
+					domain_address: domain_address.clone(),
+					message: message.clone(),
+				};
+
+				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
+				assert_ok!(res);
+
 				let message = Message::Simple;
-				let gateway_message = GatewayMessage::<AccountId32, Message>::Inbound {
+				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
 				};
@@ -596,6 +1235,8 @@ mod message_processor_impl {
 					pays_fee: Pays::Yes,
 				};
 
+				let router_hash = H256::from_low_u64_be(1);
+
 				let router_mock = RouterMock::<Runtime>::default();
 				router_mock.mock_send(move |mock_sender, mock_message| {
 					assert_eq!(mock_sender, expected_sender);
@@ -603,6 +1244,7 @@ mod message_processor_impl {
 
 					Ok(router_post_info)
 				});
+				router_mock.mock_hash(move || router_hash);
 
 				DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
@@ -610,10 +1252,10 @@ mod message_processor_impl {
 					.reads(1) + router_post_info.actual_weight.unwrap()
 					+ Weight::from_parts(0, message.serialize().len() as u64);
 
-				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+				let gateway_message = GatewayMessage::Outbound {
 					sender,
-					destination: domain,
 					message: message.clone(),
+					router_hash,
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
@@ -626,15 +1268,14 @@ mod message_processor_impl {
 		fn router_not_found() {
 			new_test_ext().execute_with(|| {
 				let sender = get_test_account_id();
-				let domain = Domain::EVM(1);
 				let message = Message::Simple;
 
 				let expected_weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 
-				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+				let gateway_message = GatewayMessage::Outbound {
 					sender,
-					destination: domain,
 					message,
+					router_hash: H256::from_low_u64_be(1),
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
@@ -677,10 +1318,10 @@ mod message_processor_impl {
 					.reads(1) + router_post_info.actual_weight.unwrap()
 					+ Weight::from_parts(0, message.serialize().len() as u64);
 
-				let gateway_message = GatewayMessage::<AccountId32, Message>::Outbound {
+				let gateway_message = GatewayMessage::Outbound {
 					sender,
-					destination: domain,
 					message: message.clone(),
+					router_hash: H256::from_low_u64_be(1),
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
