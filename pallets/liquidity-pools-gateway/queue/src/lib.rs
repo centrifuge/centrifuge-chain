@@ -208,8 +208,8 @@ pub mod pallet {
 				let remaining_weight = max_weight.saturating_sub(weight_used);
 				let next_weight = T::MessageProcessor::max_processing_weight(&message);
 
-				// We ensure we have still capacity in the block to process the message
-				if remaining_weight.all_gte(next_weight) {
+				// We ensure we have still capacity in the block before processing the message
+				if remaining_weight.any_lt(next_weight) {
 					break;
 				}
 
