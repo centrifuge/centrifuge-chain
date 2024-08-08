@@ -9,7 +9,7 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use runtime_common::origin::EnsureAccountOrRoot;
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{traits::IdentityLookup, DispatchError};
+use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
@@ -32,6 +32,7 @@ pub enum Message {
 	Pack(Vec<Message>),
 }
 
+/// Avoiding automatic infinity loop with the MaxEncodedLen derive
 impl MaxEncodedLen for Message {
 	fn max_encoded_len() -> usize {
 		4 + MAX_PACKED_MESSAGES
@@ -54,21 +55,23 @@ impl LPEncoding for Message {
 		})
 	}
 
-	fn pack(&self, other: Self) -> Result<Self, DispatchError> {
+	fn pack_with(&mut self, other: Self) -> DispatchResult {
 		match self {
-			Self::Simple => Ok(Self::Pack(vec![Self::Simple, other])),
+			Self::Simple => {
+				*self = Self::Pack(vec![Self::Simple, other]);
+				Ok(())
+			}
 			Self::Pack(list) if list.len() == MAX_PACKED_MESSAGES => {
 				Err(MAX_PACKED_MESSAGES_ERR.into())
 			}
 			Self::Pack(list) => {
-				let mut new_list = list.clone();
-				new_list.push(other);
-				Ok(Self::Pack(new_list))
+				list.push(other);
+				Ok(())
 			}
 		}
 	}
 
-	fn unpack(&self) -> Vec<Self> {
+	fn submessages(&self) -> Vec<Self> {
 		match self {
 			Self::Simple => vec![Self::Simple],
 			Self::Pack(list) => list.clone(),

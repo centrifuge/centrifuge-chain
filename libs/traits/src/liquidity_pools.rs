@@ -24,15 +24,15 @@ pub trait LPEncoding: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
-	/// Compose this message with a new one
-	fn pack(&self, other: Self) -> Result<Self, DispatchError>;
+	/// Extend this message with a new one
+	fn pack_with(&mut self, other: Self) -> DispatchResult;
 
 	/// Decompose the message into a list of messages
 	/// If the message is not decomposable, it returns the own message.
-	fn unpack(&self) -> Vec<Self>;
+	fn submessages(&self) -> Vec<Self>;
 
 	/// Creates an empty message.
-	/// It's the identity message for composing messages
+	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
 }
 

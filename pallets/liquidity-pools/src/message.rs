@@ -538,20 +538,17 @@ impl LPEncoding for Message {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
 	}
 
-	/// Compose this message with a new one
-	fn pack(&self, other: Self) -> Result<Self, DispatchError> {
-		Ok(match self.clone() {
-			Message::Batch(content) => {
-				let mut content = content.clone();
-				content.try_add(other)?;
-				Message::Batch(content)
+	fn pack_with(&mut self, other: Self) -> Result<(), DispatchError> {
+		match self {
+			Message::Batch(content) => content.try_add(other),
+			this => {
+				*this = Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?);
+				Ok(())
 			}
-			this => Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?),
-		})
+		}
 	}
 
-	/// Decompose the message into a list of messages
-	fn unpack(&self) -> Vec<Self> {
+	fn submessages(&self) -> Vec<Self> {
 		match self {
 			Message::Batch(content) => content.clone().into_iter().collect(),
 			message => vec![message.clone()],

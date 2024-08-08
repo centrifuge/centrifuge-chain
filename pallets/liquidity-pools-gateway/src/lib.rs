@@ -208,7 +208,7 @@ pub mod pallet {
 	pub type DomainHookAddress<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
-	/// Stores a packed message, not ready yet to be enqueue.
+	/// Stores a batch message, not ready yet to be enqueue.
 	/// Lifetime handled by `start_pack_messages()` and `end_pack_messages()`
 	/// extrinsics.
 	#[pallet::storage]
@@ -471,7 +471,7 @@ pub mod pallet {
 		/// The message will be enqueued once `end_pack_messages()` is called.
 		#[pallet::weight(T::WeightInfo::start_pack_messages())]
 		#[pallet::call_index(9)]
-		pub fn start_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+		pub fn start_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			PackedMessage::<T>::mutate((&sender, &destination), |msg| match msg {
@@ -484,30 +484,23 @@ pub mod pallet {
 		}
 
 		/// End packing messages.
-		/// If exists any packed message it will be enqueued.
+		/// If exists any batch message it will be enqueued.
+		/// Empty batches are no-op
 		#[pallet::weight(T::WeightInfo::end_pack_messages())]
 		#[pallet::call_index(10)]
-		pub fn end_pack_messages(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+		pub fn end_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			match PackedMessage::<T>::take((&sender, &destination)) {
-				Some(msg) if msg.unpack().is_empty() => Ok(()), //No-op
-				Some(message) => {
-					let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
-						sender: T::Sender::get(),
-						destination,
-						message,
-					};
-
-					T::MessageQueue::submit(gateway_message)
-				}
+				Some(msg) if msg.submessages().is_empty() => Ok(()), //No-op
+				Some(message) => Self::queue_message(destination, message),
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Sends the message to the `InboundMessageHandler`.
+		/// Give the message to the `InboundMessageHandler` to be processed.
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
@@ -516,11 +509,12 @@ pub mod pallet {
 				.saturating_add(LP_DEFENSIVE_WEIGHT);
 
 			let mut count = 0;
-			for submessage in message.unpack() {
+			for submessage in message.submessages() {
 				count += 1;
 
 				if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), submessage)
 				{
+					// We only consume the processed weight if error during the batch
 					return (Err(e), weight.saturating_mul(count));
 				}
 			}
@@ -560,14 +554,20 @@ pub mod pallet {
 					.saturating_add(Weight::from_parts(0, serialized_len)),
 			)
 		}
+
+		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
+			// We are using the sender specified in the pallet config so that we can
+			// ensure that the account is funded
+			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
+				sender: T::Sender::get(),
+				destination,
+				message,
+			};
+
+			T::MessageQueue::submit(gateway_message)
+		}
 	}
 
-	/// The `OutboundMessageHandler` implementation ensures that outbound
-	/// messages are queued accordingly.
-	///
-	/// NOTE - the sender provided as an argument is not used at the moment, we
-	/// are using the sender specified in the pallet config so that we can
-	/// ensure that the account is funded.
 	impl<T: Config> OutboundMessageHandler for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;
@@ -583,27 +583,10 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			ensure!(
-				DomainRouters::<T>::contains_key(destination.clone()),
-				Error::<T>::RouterNotFound
-			);
-
-			match PackedMessage::<T>::get((&from, &destination)) {
-				Some(packed) => {
-					PackedMessage::<T>::insert((from, destination), packed.pack(message)?);
-					Ok(())
-				}
-				None => {
-					// Ok, we use the gateway sender.
-					let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
-						sender: T::Sender::get(),
-						destination,
-						message,
-					};
-
-					T::MessageQueue::submit(gateway_message)
-				}
-			}
+			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
+				Some(batch) => batch.pack_with(message),
+				None => Self::queue_message(destination, message),
+			})
 		}
 	}
 
