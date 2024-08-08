@@ -76,6 +76,7 @@ where
 	OriginFor<T>:
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
+	type Hash = T::Hash;
 	type Sender = T::AccountId;
 
 	fn init(&self) -> DispatchResult {
@@ -87,6 +88,14 @@ where
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 		match self {
 			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
+		}
+	}
+
+	fn hash(&self) -> Self::Hash {
+		match self {
+			DomainRouter::EthereumXCM(r) => r.hash(),
+			DomainRouter::AxelarEVM(r) => r.hash(),
+			DomainRouter::AxelarXCM(r) => r.hash(),
 		}
 	}
 }
