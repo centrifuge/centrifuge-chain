@@ -13,7 +13,6 @@
 
 use cfg_mocks::pallet_mock_liquidity_pools_gateway;
 use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_traits::liquidity_pools::test_util::Message as LPTestMessage;
 use cfg_types::domain_address::Domain;
 use frame_support::derive_impl;
 use sp_runtime::traits::ConstU128;
@@ -46,11 +45,11 @@ impl pallet_balances::Config for Runtime {
 
 impl pallet_mock_liquidity_pools_gateway::Config for Runtime {
 	type Destination = Domain;
-	type Message = LPTestMessage;
+	type Message = ();
 }
 
 impl Config for Runtime {
-	type Message = LPTestMessage;
+	type Message = ();
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LPGatewayMock;
 	type RuntimeEvent = RuntimeEvent;

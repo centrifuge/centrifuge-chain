@@ -529,28 +529,6 @@ pub enum Message<BatchContent = BatchMessages> {
 	},
 }
 
-impl Message {
-	/// Compose this message with a new one
-	pub fn pack(&self, other: Self) -> Result<Self, DispatchError> {
-		Ok(match self.clone() {
-			Message::Batch(content) => {
-				let mut content = content.clone();
-				content.try_add(other)?;
-				Message::Batch(content)
-			}
-			this => Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?),
-		})
-	}
-
-	/// Decompose the message into a list of messages
-	pub fn unpack(&self) -> Vec<Self> {
-		match self {
-			Message::Batch(content) => content.clone().into_iter().collect(),
-			message => vec![message.clone()],
-		}
-	}
-}
-
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
@@ -558,6 +536,27 @@ impl LPEncoding for Message {
 
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
+	}
+
+	fn pack_with(&mut self, other: Self) -> Result<(), DispatchError> {
+		match self {
+			Message::Batch(content) => content.try_add(other),
+			this => {
+				*this = Message::Batch(BatchMessages::try_from(vec![this.clone(), other])?);
+				Ok(())
+			}
+		}
+	}
+
+	fn submessages(&self) -> Vec<Self> {
+		match self {
+			Message::Batch(content) => content.clone().into_iter().collect(),
+			message => vec![message.clone()],
+		}
+	}
+
+	fn empty() -> Message {
+		Message::Batch(BatchMessages::default())
 	}
 }
 

@@ -18,9 +18,11 @@ pub trait WeightInfo {
 	fn remove_instance() -> Weight;
 	fn add_relayer() -> Weight;
 	fn remove_relayer() -> Weight;
-	fn process_msg() -> Weight;
+	fn receive_message() -> Weight;
 	fn process_outbound_message() -> Weight;
 	fn process_failed_outbound_message() -> Weight;
+	fn start_pack_messages() -> Weight;
+	fn end_pack_messages() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -84,7 +86,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn process_msg() -> Weight {
+	fn receive_message() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		//
@@ -121,5 +123,27 @@ impl WeightInfo for () {
 		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	fn start_pack_messages() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	fn end_pack_messages() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
 	}
 }
