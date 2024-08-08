@@ -139,7 +139,7 @@ pub mod pallet {
 				FailedMessageQueue::<T>::insert(nonce, (message, e));
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight))).into()
+			Ok(PostDispatchInfo::from(Some(weight)))
 		}
 
 		/// Convenience method for manually processing a failed message.
@@ -172,7 +172,7 @@ pub mod pallet {
 				FailedMessageQueue::<T>::remove(nonce);
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight))).into()
+			Ok(PostDispatchInfo::from(Some(weight)))
 		}
 	}
 
