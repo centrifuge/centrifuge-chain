@@ -5,20 +5,13 @@ use cfg_mocks::{
 use cfg_traits::liquidity_pools::LPEncoding;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
+use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use runtime_common::origin::EnsureAccountOrRoot;
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
-
-pub const LENGTH_SOURCE_CHAIN: usize = 10;
-pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";
-pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
-
-pub const LENGTH_SOURCE_ADDRESS: usize = 20;
-pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
 pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 
@@ -89,7 +82,6 @@ frame_support::construct_runtime!(
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
 		MockRouters: pallet_mock_routers,
-		MockOriginRecovery: cfg_mocks::converter::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
 );
@@ -109,11 +101,6 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 
 impl pallet_mock_routers::Config for Runtime {}
 
-impl cfg_mocks::converter::pallet::Config for Runtime {
-	type From = (Vec<u8>, Vec<u8>);
-	type To = DomainAddress;
-}
-
 impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
 	type Message = GatewayMessage<AccountId32, Message>;
 }
@@ -125,13 +112,12 @@ frame_support::parameter_types! {
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureAccountOrRoot<LpAdminAccount>;
+	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundMessageHandler = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
-	type OriginRecovery = MockOriginRecovery;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

@@ -29,21 +29,18 @@
 use core::fmt::Debug;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::{
-	liquidity_pools::{
-		InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
-		Router as DomainRouter,
-	},
-	TryConvert,
+use cfg_traits::liquidity_pools::{
+	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
+	Router as DomainRouter,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::convert::TryInto;
 
 use crate::weights::WeightInfo;
 
@@ -60,31 +57,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[derive(Encode, Decode, TypeInfo, PalletError)]
-pub enum RelayerMessageDecodingError {
-	MalformedSourceAddress,
-	MalformedSourceAddressLength,
-	MalformedSourceChain,
-	MalformedSourceChainLength,
-	MalformedMessage,
-}
-
-impl<T: Config> From<RelayerMessageDecodingError> for Error<T> {
-	fn from(value: RelayerMessageDecodingError) -> Self {
-		Error::RelayerMessageDecodingFailed { reason: value }
-	}
-}
-
 #[frame_support::pallet]
 pub mod pallet {
-	const BYTES_U32: usize = 4;
-	const BYTES_ACCOUNT_20: usize = 20;
-
 	use super::*;
-	use crate::RelayerMessageDecodingError::{
-		MalformedMessage, MalformedSourceAddress, MalformedSourceAddressLength,
-		MalformedSourceChain, MalformedSourceChainLength,
-	};
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -134,9 +109,6 @@ pub mod pallet {
 			Message = Self::Message,
 		>;
 
-		/// A way to recover a domain address from two byte slices
-		type OriginRecovery: TryConvert<(Vec<u8>, Vec<u8>), DomainAddress, Error = DispatchError>;
-
 		type WeightInfo: WeightInfo;
 
 		/// Maximum size of an incoming message.
@@ -164,12 +136,6 @@ pub mod pallet {
 		/// An instance was removed from a domain.
 		InstanceRemoved { instance: DomainAddress },
 
-		/// A relayer was added.
-		RelayerAdded { relayer: DomainAddress },
-
-		/// A relayer was removed.
-		RelayerRemoved { relayer: DomainAddress },
-
 		/// The domain hook address was initialized or updated.
 		DomainHookAddressSet {
 			domain: Domain,
@@ -193,20 +159,11 @@ pub mod pallet {
 	pub type Allowlist<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
-	/// Storage that contains a limited number of whitelisted instances of
-	/// deployed liquidity pools for a particular domain.
-	///
-	/// This can only be modified by an admin.
-	#[pallet::storage]
-	#[pallet::getter(fn relayer)]
-	pub type RelayerList<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
-
 	/// Stores the hook address of a domain required for particular LP messages.
 	///
 	/// Lifetime: Indefinitely.
 	///
-	/// NOTE: Must only be changeable via root or `AdminOrigin`.
+	/// NOTE: Must only be changeable via `AdminOrigin`.
 	#[pallet::storage]
 	pub type DomainHookAddress<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
@@ -232,30 +189,17 @@ pub mod pallet {
 		/// Instance was already added to the domain.
 		InstanceAlreadyAdded,
 
-		/// Relayer was already added to the domain
-		RelayerAlreadyAdded,
-
 		/// Maximum number of instances for a domain was reached.
 		MaxDomainInstances,
 
 		/// Unknown instance.
 		UnknownInstance,
 
-		/// Unknown relayer
-		UnknownRelayer,
-
 		/// Router not found.
 		RouterNotFound,
 
-		/// Relayer messages need to prepend the with
-		/// the original source chain and source address
-		/// that triggered the message.
-		/// Decoding that is essential and this error
-		/// signals malforming of the wrapping information.
-		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
-
-		/// Emitted when you call `start_batch_message()` but that was already
-		/// called. You should finalize the message with `end_batch_message()`
+		/// Emitted when you call `start_batch_messages()` but that was already
+		/// called. You should finalize the message with `end_batch_messages()`
 		MessagePackingAlreadyStarted,
 
 		/// Emitted when you can `end_batch_message()` but the packing process
@@ -328,48 +272,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a known instance of a deployed liquidity pools integration for a
-		/// specific domain.
-		#[pallet::weight(T::WeightInfo::add_relayer())]
-		#[pallet::call_index(3)]
-		pub fn add_relayer(origin: OriginFor<T>, relayer: DomainAddress) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			ensure!(
-				relayer.domain() != Domain::Centrifuge,
-				Error::<T>::DomainNotSupported
-			);
-
-			ensure!(
-				!RelayerList::<T>::contains_key(relayer.domain(), relayer.clone()),
-				Error::<T>::RelayerAlreadyAdded,
-			);
-
-			RelayerList::<T>::insert(relayer.domain(), relayer.clone(), ());
-
-			Self::deposit_event(Event::RelayerAdded { relayer });
-
-			Ok(())
-		}
-
-		/// Remove an instance from a specific domain.
-		#[pallet::weight(T::WeightInfo::remove_relayer())]
-		#[pallet::call_index(4)]
-		pub fn remove_relayer(origin: OriginFor<T>, relayer: DomainAddress) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
-
-			ensure!(
-				RelayerList::<T>::contains_key(relayer.domain(), relayer.clone()),
-				Error::<T>::UnknownRelayer,
-			);
-
-			RelayerList::<T>::remove(relayer.domain(), relayer.clone());
-
-			Self::deposit_event(Event::RelayerRemoved { relayer });
-
-			Ok(())
-		}
-
 		/// Process an inbound message.
 		#[pallet::weight(T::WeightInfo::receive_message())]
 		#[pallet::call_index(5)]
@@ -377,57 +279,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let (origin_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
-				GatewayOrigin::Domain(domain_address) => (domain_address, msg),
-				GatewayOrigin::AxelarRelay(domain_address) => {
-					// Every axelar relay address has a separate storage
-					ensure!(
-						RelayerList::<T>::contains_key(domain_address.domain(), domain_address),
-						Error::<T>::UnknownRelayer
-					);
-
-					// Every axelar relay will prepend the (sourceChain,
-					// sourceAddress) from actual origination chain to the
-					// message bytes, with a length identifier
-					let mut input = cfg_utils::BufferReader(msg.as_slice());
-
-					let length_source_chain = match input.read_array::<BYTES_U32>() {
-						Some(bytes) => u32::from_be_bytes(*bytes),
-						None => Err(Error::<T>::from(MalformedSourceChainLength))?,
-					};
-
-					let source_chain = match input.read_bytes(length_source_chain as usize) {
-						Some(bytes) => bytes.to_vec(),
-						None => Err(Error::<T>::from(MalformedSourceChain))?,
-					};
-
-					let length_source_address = match input.read_array::<BYTES_U32>() {
-						Some(bytes) => u32::from_be_bytes(*bytes),
-						None => Err(Error::<T>::from(MalformedSourceAddressLength))?,
-					};
-
-					let source_address = match input.read_bytes(length_source_address as usize) {
-						Some(bytes) => {
-							// NOTE: Axelar simply provides the hexadecimal string of an EVM
-							//       address as the `sourceAddress` argument. Solidity does on
-							// the       other side recognize the hex-encoding and
-							// encode the hex bytes       to utf-8 bytes.
-							//
-							//       Hence, we are reverting this process here.
-							cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(bytes)
-								.ok_or(Error::<T>::from(MalformedSourceAddress))?
-								.to_vec()
-						}
-						None => Err(Error::<T>::from(MalformedSourceAddress))?,
-					};
-
-					(
-						T::OriginRecovery::try_convert((source_chain, source_address))?,
-						BoundedVec::try_from(input.0.to_vec())
-							.map_err(|_| Error::<T>::from(MalformedMessage))?,
-					)
-				}
-			};
+			let GatewayOrigin::Domain(origin_address) = T::LocalEVMOrigin::ensure_origin(origin)?;
 
 			if let DomainAddress::Centrifuge(_) = origin_address {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
@@ -440,7 +292,7 @@ pub mod pallet {
 
 			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Inbound {
 				domain_address: origin_address,
-				message: T::Message::deserialize(&incoming_msg)?,
+				message: T::Message::deserialize(&msg)?,
 			};
 
 			T::MessageQueue::submit(gateway_message)
