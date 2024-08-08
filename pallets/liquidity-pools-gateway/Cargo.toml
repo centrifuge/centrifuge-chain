@@ -35,6 +35,9 @@ cfg-utils = { workspace = true }
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
+itertools = { workspace = true, default-features = true }
+lazy_static = { workspace = true, default-features = true }
+mock-builder = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

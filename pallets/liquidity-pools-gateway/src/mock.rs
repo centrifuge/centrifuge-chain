@@ -1,6 +1,11 @@
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LPEncoding, RouterSupport};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use std::fmt::{Debug, Formatter};
+
+use cfg_mocks::{
+	pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue, pallet_mock_routers,
+	RouterMock,
+};
+use cfg_traits::liquidity_pools::{LPEncoding, Proof};
+use cfg_types::domain_address::DomainAddress;
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -15,11 +20,24 @@ pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 pub const MAX_PACKED_MESSAGES_ERR: &str = "packed limit error";
 pub const MAX_PACKED_MESSAGES: usize = 10;
 
-#[derive(Default, Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo)]
+pub const MESSAGE_PROOF: [u8; 32] = [1; 32];
+
+#[derive(Default, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
 pub enum Message {
 	#[default]
 	Simple,
 	Pack(Vec<Message>),
+	Proof([u8; 32]),
+}
+
+impl Debug for Message {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Message::Simple => write!(f, "Simple"),
+			Message::Pack(p) => write!(f, "Pack - {:?}", p),
+			Message::Proof(_) => write!(f, "Proof"),
+		}
+	}
 }
 
 /// Avoiding automatic infinity loop with the MaxEncodedLen derive
@@ -32,8 +50,8 @@ impl MaxEncodedLen for Message {
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
-			Self::Simple => vec![0x42],
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
+			_ => vec![0x42],
 		}
 	}
 
@@ -47,10 +65,6 @@ impl LPEncoding for Message {
 
 	fn pack_with(&mut self, other: Self) -> DispatchResult {
 		match self {
-			Self::Simple => {
-				*self = Self::Pack(vec![Self::Simple, other]);
-				Ok(())
-			}
 			Self::Pack(list) if list.len() == MAX_PACKED_MESSAGES => {
 				Err(MAX_PACKED_MESSAGES_ERR.into())
 			}
@@ -58,18 +72,36 @@ impl LPEncoding for Message {
 				list.push(other);
 				Ok(())
 			}
+			_ => {
+				*self = Self::Pack(vec![self.clone(), other]);
+				Ok(())
+			}
 		}
 	}
 
 	fn submessages(&self) -> Vec<Self> {
 		match self {
-			Self::Simple => vec![Self::Simple],
 			Self::Pack(list) => list.clone(),
+			_ => vec![self.clone()],
 		}
 	}
 
 	fn empty() -> Self {
 		Self::Pack(vec![])
+	}
+
+	fn get_message_proof(&self) -> Option<Proof> {
+		match self {
+			Message::Proof(p) => Some(p.clone()),
+			_ => None,
+		}
+	}
+
+	fn to_message_proof(&self) -> Self {
+		match self {
+			Message::Proof(_) => self.clone(),
+			_ => Message::Proof(MESSAGE_PROOF),
+		}
 	}
 }
 
@@ -118,6 +150,7 @@ frame_support::parameter_types! {
 	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes()).into());
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
+	pub const MultiRouterCount: u32 = 3;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -127,6 +160,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
+	type MultiRouterCount = MultiRouterCount;
+	type Router = RouterMock<Runtime>;
 	type MessageSender = MockMessageSender;
 	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;

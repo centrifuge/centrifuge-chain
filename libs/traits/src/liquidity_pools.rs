@@ -15,6 +15,8 @@ use frame_support::{dispatch::DispatchResult, weights::Weight};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
+pub type Proof = [u8; 32];
+
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait LPEncoding: Sized {
@@ -31,6 +33,9 @@ pub trait LPEncoding: Sized {
 	/// Creates an empty message.
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
+
+	fn get_message_proof(&self) -> Option<Proof>;
+	fn to_message_proof(&self) -> Self;
 }
 
 pub trait RouterSupport<Domain>: Sized {
