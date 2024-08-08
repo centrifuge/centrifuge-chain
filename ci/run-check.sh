@@ -46,18 +46,19 @@ case $TARGET in
 
   try-runtime)
     cargo build -p centrifuge-chain --release --features try-runtime
+     cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0 --locked
     if [ "$1" == "altair" ]; then
       echo "Running try-runtime for altair"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
       try-runtime \
       --runtime target/release/wbuild/altair-runtime/altair_runtime.wasm \
-      on-runtime-upgrade live --uri wss://fullnode.altair.centrifuge.io:443
+      on-runtime-upgrade --disable-spec-version-check --checks=all live --uri wss://fullnode.altair.centrifuge.io:443
     elif [ "$1" == "centrifuge" ]; then
       echo "Running try-runtime for centrifuge"
       RUST_LOG=runtime=trace,try-runtime::cli=trace,executor=trace \
       try-runtime \
       --runtime target/release/wbuild/centrifuge-runtime/centrifuge_runtime.wasm \
-      on-runtime-upgrade live --uri wss://fullnode.centrifuge.io:443
+      on-runtime-upgrade --disable-spec-version-check --checks=all live --uri wss://fullnode.centrifuge.io:443
     else
       echo "Invalid argument. Please specify 'altair' or 'centrifuge'."
       exit 1
