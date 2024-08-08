@@ -167,6 +167,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
+	type SessionId = u64;
 	type WeightInfo = ();
 }
 
