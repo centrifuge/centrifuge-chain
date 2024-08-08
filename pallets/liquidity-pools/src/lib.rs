@@ -846,6 +846,9 @@ pub mod pallet {
 		/// Block a remote investor from performing investment tasks until lock
 		/// is removed.
 		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect frozenness beforehand.
+		///
 		/// Origin: Pool admin
 		#[pallet::call_index(14)]
 		#[pallet::weight(T::WeightInfo::freeze_investor())]
@@ -880,13 +883,7 @@ pub mod pallet {
 				pool_id,
 				tranche_id,
 				T::Time::now(),
-				false,
-			)?;
-
-			T::Permission::add(
-				PermissionScope::Pool(pool_id),
-				local_address,
-				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
+				true,
 			)?;
 
 			T::OutboundMessageHandler::handle(
@@ -906,6 +903,9 @@ pub mod pallet {
 
 		/// Unblock a previously locked remote investor from performing
 		/// investment tasks.
+		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect an unfrozen state beforehand.
 		///
 		/// Origin: Pool admin
 		#[pallet::call_index(15)]
@@ -941,13 +941,7 @@ pub mod pallet {
 				pool_id,
 				tranche_id,
 				T::Time::now(),
-				true,
-			)?;
-
-			T::Permission::remove(
-				PermissionScope::Pool(pool_id),
-				local_address,
-				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
+				false,
 			)?;
 
 			T::OutboundMessageHandler::handle(

@@ -46,6 +46,17 @@ pub fn give_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
 	.unwrap();
 }
 
+pub fn remove_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
+	pallet_permissions::Pallet::<T>::remove(
+		RawOrigin::Root.into(),
+		Role::PoolRole(role),
+		dest,
+		PermissionScope::Pool(pool_id),
+		Role::PoolRole(role),
+	)
+	.unwrap();
+}
+
 pub fn create_empty<T: Runtime>(admin: AccountId, pool_id: PoolId, currency_id: CurrencyId) {
 	create::<T>(
 		admin,

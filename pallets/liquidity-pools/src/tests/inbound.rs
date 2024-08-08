@@ -845,25 +845,14 @@ mod freeze {
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
-					// Default mock has unfrozen investor
-					false
+					// Default mock has frozen investor
+					true
 				}
 				Role::PoolRole(PoolRole::PoolAdmin) => {
 					assert_eq!(who, ALICE);
 					true
 				}
 				_ => false,
-			}
-		});
-		Permissions::mock_add(|scope, who, role| {
-			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			match role {
-				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Ok(())
-				}
-				_ => Err(DispatchError::Other("Must only add FrozenTrancheInvestor")),
 			}
 		});
 		Pools::mock_pool_exists(|_| true);
@@ -1016,7 +1005,27 @@ mod freeze {
 		fn with_investor_frozen() {
 			System::externalities().execute_with(|| {
 				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
-				Permissions::mock_has(move |_, _, _| true);
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					match role {
+						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(tranche_id, TRANCHE_ID);
+							assert_eq!(validity, NOW_SECS);
+							true
+						}
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(tranche_id, TRANCHE_ID);
+							false
+						}
+						Role::PoolRole(PoolRole::PoolAdmin) => {
+							assert_eq!(who, ALICE);
+							true
+						}
+						_ => false,
+					}
+				});
 
 				assert_noop!(
 					LiquidityPools::freeze_investor(
@@ -1054,27 +1063,14 @@ mod unfreeze {
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 					assert_eq!(tranche_id, TRANCHE_ID);
-					// Default mock has frozen investor
-					true
+					// Default mock has unfrozen investor
+					false
 				}
 				Role::PoolRole(PoolRole::PoolAdmin) => {
 					assert_eq!(who, ALICE);
 					true
 				}
 				_ => false,
-			}
-		});
-		Permissions::mock_remove(|scope, who, role| {
-			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			match role {
-				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Ok(())
-				}
-				_ => Err(DispatchError::Other(
-					"Must only remove FrozenTrancheInvestor",
-				)),
 			}
 		});
 		Pools::mock_pool_exists(|_| true);
@@ -1233,7 +1229,7 @@ mod unfreeze {
 						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
 							assert_eq!(tranche_id, TRANCHE_ID);
-							false
+							true
 						}
 						_ => true,
 					}

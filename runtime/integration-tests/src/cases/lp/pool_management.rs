@@ -35,6 +35,7 @@ use crate::{
 	utils::{
 		accounts::Keyring,
 		currency::{register_currency, CurrencyInfo},
+		pool::{give_role, remove_role},
 	},
 };
 
@@ -649,6 +650,14 @@ fn freeze_member<T: Runtime>() {
 	});
 
 	env.state_mut(|_| {
+		give_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::freeze_investor(
 			Keyring::Admin.as_origin(),
 			POOL_A,
@@ -688,6 +697,14 @@ fn unfreeze_member<T: Runtime>() {
 	});
 
 	env.state_mut(|_| {
+		give_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::freeze_investor(
 			Keyring::Admin.as_origin(),
 			POOL_A,
@@ -714,6 +731,14 @@ fn unfreeze_member<T: Runtime>() {
 	});
 
 	env.state_mut(|_| {
+		remove_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::unfreeze_investor(
 			Keyring::Admin.as_origin(),
 			POOL_A,
