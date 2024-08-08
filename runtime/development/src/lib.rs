@@ -56,7 +56,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_config, create_default_config},
-	pallet_prelude::{DispatchError, DispatchResult, RuntimeDebug},
+	pallet_prelude::{DispatchError, RuntimeDebug},
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration,
@@ -83,7 +83,6 @@ use pallet_evm::{
 	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, GasWeightMapping,
 	Runner,
 };
-use pallet_investments::OrderType;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
@@ -122,7 +121,7 @@ use runtime_common::{
 		},
 		PoolAdmin, Treasurer,
 	},
-	permissions::PoolAdminCheck,
+	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
@@ -1687,64 +1686,6 @@ impl pallet_investments::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = ();
-}
-
-/// Checks whether the given `who` has the role
-/// of a `TrancheInvestor` without having `FrozenInvestor` for the given pool
-/// and tranche.
-pub struct IsUnfrozenTrancheInvestor<P, T>(PhantomData<(P, T)>);
-impl<
-		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-		T: UnixTime,
-	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P, T>
-{
-	type Result = DispatchResult;
-
-	fn check(order: OrderType<AccountId, InvestmentId, Balance>) -> Self::Result {
-		let is_tranche_investor = match order {
-			OrderType::Investment {
-				who,
-				investment_id: (pool_id, tranche_id),
-				..
-			} => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-				) && !P::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
-				)
-			}
-			OrderType::Redemption {
-				who,
-				investment_id: (pool_id, tranche_id),
-				..
-			} => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-				) && !P::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
-				)
-			}
-		};
-
-		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
-			Ok(())
-		} else {
-			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolean. This makes the redundant "does not have role" error,
-			// which downstream pallets always need to generate, not needed anymore.
-			Err(DispatchError::Other(
-				"Account does not have the TrancheInvestor permission.",
-			))
-		}
-	}
 }
 
 parameter_types! {

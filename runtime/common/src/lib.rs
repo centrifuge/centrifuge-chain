@@ -40,6 +40,7 @@ pub mod gateway;
 pub mod migrations;
 pub mod oracle;
 pub mod origins;
+pub mod permissions;
 pub mod pool;
 pub mod remarks;
 pub mod transfer_filter;
@@ -721,44 +722,6 @@ pub mod origin {
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
-		}
-	}
-}
-
-pub mod permissions {
-	use cfg_primitives::{AccountId, PoolId};
-	use cfg_traits::{Permissions, PreConditions};
-	use cfg_types::{
-		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CurrencyId,
-	};
-	use sp_std::marker::PhantomData;
-
-	/// Check if an account has a pool admin role
-	pub struct PoolAdminCheck<P>(PhantomData<P>);
-
-	impl<P> PreConditions<(AccountId, PoolId)> for PoolAdminCheck<P>
-	where
-		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-	{
-		type Result = bool;
-
-		fn check((account_id, pool_id): (AccountId, PoolId)) -> bool {
-			P::has(
-				PermissionScope::Pool(pool_id),
-				account_id,
-				Role::PoolRole(PoolRole::PoolAdmin),
-			)
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn satisfy((account_id, pool_id): (AccountId, PoolId)) {
-			P::add(
-				PermissionScope::Pool(pool_id),
-				account_id,
-				Role::PoolRole(PoolRole::PoolAdmin),
-			)
-			.unwrap();
 		}
 	}
 }
