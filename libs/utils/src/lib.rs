@@ -16,6 +16,26 @@
 use parity_scale_codec::Encode;
 use sp_std::cmp::min;
 
+pub struct BufferReader<'a>(pub &'a [u8]);
+
+impl<'a> BufferReader<'a> {
+	pub fn read_bytes(&mut self, bytes: usize) -> Option<&[u8]> {
+		if self.0.len() < bytes {
+			return None;
+		}
+
+		let (consumed, remaining) = self.0.split_at(bytes);
+		self.0 = remaining;
+		Some(consumed)
+	}
+
+	pub fn read_array<const N: usize>(&mut self) -> Option<&[u8; N]> {
+		let (consumed, remaining) = self.0.split_first_chunk::<N>()?;
+		self.0 = remaining;
+		Some(consumed)
+	}
+}
+
 /// Build a fixed-size array using as many elements from `src` as possible
 /// without overflowing and ensuring that the array is 0 padded in the case
 /// where `src.len()` is smaller than S.

@@ -1,7 +1,5 @@
 use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_traits::liquidity_pools::{
-	test_util::Message as LPTestMessage, MessageQueue as MessageQueueT,
-};
+use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin};
 use sp_runtime::{
 	traits::{BadOrigin, One, Zero},
@@ -35,7 +33,7 @@ mod process_message {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let message = LPTestMessage {};
+			let message = ();
 			let nonce = LPGatewayQueueMessageNonce::one();
 
 			MessageQueue::<Runtime>::insert(nonce, message.clone());
@@ -87,7 +85,7 @@ mod process_message {
 	#[test]
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
-			let message = LPTestMessage {};
+			let message = ();
 			let nonce = LPGatewayQueueMessageNonce::one();
 
 			MessageQueue::<Runtime>::insert(nonce, message.clone());
@@ -126,7 +124,7 @@ mod process_failed_message {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let message = LPTestMessage {};
+			let message = ();
 			let nonce = LPGatewayQueueMessageNonce::one();
 			let error = DispatchError::Unavailable;
 
@@ -179,7 +177,7 @@ mod process_failed_message {
 	#[test]
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
-			let message = LPTestMessage {};
+			let message = ();
 			let nonce = LPGatewayQueueMessageNonce::one();
 			let error = DispatchError::Unavailable;
 
@@ -218,7 +216,7 @@ mod message_queue_impl {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let message = LPTestMessage {};
+			let message = ();
 
 			assert_ok!(LPGatewayQueue::submit(message.clone()));
 

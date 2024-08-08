@@ -23,30 +23,17 @@ use sp_std::vec::Vec;
 pub trait LPEncoding: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
-}
 
-#[cfg(any(test, feature = "std"))]
-pub mod test_util {
-	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-	use scale_info::TypeInfo;
+	/// Extend this message with a new one
+	fn pack_with(&mut self, other: Self) -> DispatchResult;
 
-	use super::*;
+	/// Decompose the message into a list of messages
+	/// If the message is not decomposable, it returns the own message.
+	fn submessages(&self) -> Vec<Self>;
 
-	#[derive(Default, Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen)]
-	pub struct Message;
-	impl LPEncoding for Message {
-		fn serialize(&self) -> Vec<u8> {
-			vec![0x42]
-		}
-
-		fn deserialize(input: &[u8]) -> Result<Self, DispatchError> {
-			match input.first() {
-				Some(0x42) => Ok(Self),
-				Some(_) => Err("unsupported message".into()),
-				None => Err("empty message".into()),
-			}
-		}
-	}
+	/// Creates an empty message.
+	/// It's the identity message for composing messages with pack_with
+	fn empty() -> Self;
 }
 
 /// The trait required for sending outbound messages.

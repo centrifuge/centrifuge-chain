@@ -2,12 +2,14 @@ use cfg_mocks::{
 	pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue, pallet_mock_routers,
 	RouterMock,
 };
-use cfg_traits::liquidity_pools::test_util::Message;
+use cfg_traits::liquidity_pools::LPEncoding;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use runtime_common::origin::EnsureAccountOrRoot;
+use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::traits::IdentityLookup;
+use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
@@ -19,6 +21,67 @@ pub const LENGTH_SOURCE_ADDRESS: usize = 20;
 pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
 
 pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
+
+pub const MAX_PACKED_MESSAGES_ERR: &str = "packed limit error";
+pub const MAX_PACKED_MESSAGES: usize = 10;
+
+#[derive(Default, Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo)]
+pub enum Message {
+	#[default]
+	Simple,
+	Pack(Vec<Message>),
+}
+
+/// Avoiding automatic infinity loop with the MaxEncodedLen derive
+impl MaxEncodedLen for Message {
+	fn max_encoded_len() -> usize {
+		4 + MAX_PACKED_MESSAGES
+	}
+}
+
+impl LPEncoding for Message {
+	fn serialize(&self) -> Vec<u8> {
+		match self {
+			Self::Simple => vec![0x42],
+			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
+		}
+	}
+
+	fn deserialize(input: &[u8]) -> Result<Self, DispatchError> {
+		Ok(match input.len() {
+			0 => unimplemented!(),
+			1 => Self::Simple,
+			n => Self::Pack(sp_std::iter::repeat(Self::Simple).take(n).collect()),
+		})
+	}
+
+	fn pack_with(&mut self, other: Self) -> DispatchResult {
+		match self {
+			Self::Simple => {
+				*self = Self::Pack(vec![Self::Simple, other]);
+				Ok(())
+			}
+			Self::Pack(list) if list.len() == MAX_PACKED_MESSAGES => {
+				Err(MAX_PACKED_MESSAGES_ERR.into())
+			}
+			Self::Pack(list) => {
+				list.push(other);
+				Ok(())
+			}
+		}
+	}
+
+	fn submessages(&self) -> Vec<Self> {
+		match self {
+			Self::Simple => vec![Self::Simple],
+			Self::Pack(list) => list.clone(),
+		}
+	}
+
+	fn empty() -> Self {
+		Self::Pack(vec![])
+	}
+}
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
