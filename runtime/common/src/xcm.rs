@@ -276,9 +276,9 @@ mod test {
 		pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue,
 		pallet_mock_routers, RouterMock,
 	};
-	use cfg_traits::liquidity_pools::test_util::Message;
 	use frame_support::{assert_ok, derive_impl, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
+	use pallet_liquidity_pools::Message;
 	use pallet_liquidity_pools_gateway::{message::GatewayMessage, EnsureLocal, GatewayOrigin};
 	use sp_core::{ConstU32, ConstU64};
 	use sp_runtime::DispatchError;

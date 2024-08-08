@@ -38,7 +38,7 @@ use cfg_traits::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
-use frame_system::pallet_prelude::OriginFor;
+use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
@@ -208,6 +208,13 @@ pub mod pallet {
 	pub type DomainHookAddress<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
+	/// Stores a batch message, not ready yet to be enqueue.
+	/// Lifetime handled by `start_pack_messages()` and `end_pack_messages()`
+	/// extrinsics.
+	#[pallet::storage]
+	pub(crate) type PackedMessage<T: Config> =
+		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Router initialization failed.
@@ -218,9 +225,6 @@ pub mod pallet {
 
 		/// The domain is not supported.
 		DomainNotSupported,
-
-		/// Message decoding error.
-		MessageDecodingFailed,
 
 		/// Instance was already added to the domain.
 		InstanceAlreadyAdded,
@@ -246,6 +250,14 @@ pub mod pallet {
 		/// Decoding that is essential and this error
 		/// signals malforming of the wrapping information.
 		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
+
+		/// Emitted when you call `start_pack_messages()` but that was already
+		/// called. You should finalize the message with `end_pack_messages()`
+		MessagePackingAlreadyStarted,
+
+		/// Emitted when you can `end_pack_messages()` but the packing process
+		/// was not started by `start_pack_messages()`.
+		MessagePackingNotStarted,
 	}
 
 	#[pallet::call]
@@ -356,16 +368,14 @@ pub mod pallet {
 		}
 
 		/// Process an inbound message.
-		#[pallet::weight(T::WeightInfo::process_msg())]
+		#[pallet::weight(T::WeightInfo::receive_message())]
 		#[pallet::call_index(5)]
-		pub fn process_msg(
+		pub fn receive_message(
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
-				GatewayOrigin::Domain(domain_address) => {
-					Pallet::<T>::validate(domain_address, msg)?
-				}
+			let (origin_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
+				GatewayOrigin::Domain(domain_address) => (domain_address, msg),
 				GatewayOrigin::AxelarRelay(domain_address) => {
 					// Every axelar relay address has a separate storage
 					ensure!(
@@ -376,88 +386,58 @@ pub mod pallet {
 					// Every axelar relay will prepend the (sourceChain,
 					// sourceAddress) from actual origination chain to the
 					// message bytes, with a length identifier
-					let slice_ref = &mut msg.as_slice();
-					let length_source_chain: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceChainLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
+					let mut input = cfg_utils::BufferReader(msg.as_slice());
 
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
+					let length_source_chain = match input.read_array::<BYTES_U32>() {
+						Some(bytes) => u32::from_be_bytes(*bytes),
+						None => Err(Error::<T>::from(MalformedSourceChainLength))?,
+					};
 
-					let source_chain = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_chain,
-						Error::<T>::from(MalformedSourceChain),
-						|source_chain| Ok(source_chain.to_vec()),
-					)?;
+					let source_chain = match input.read_bytes(length_source_chain as usize) {
+						Some(bytes) => bytes.to_vec(),
+						None => Err(Error::<T>::from(MalformedSourceChain))?,
+					};
 
-					let length_source_address: usize = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32,
-						Error::<T>::from(MalformedSourceAddressLength),
-						|be_bytes_u32| {
-							let mut bytes = [0u8; BYTES_U32];
-							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(be_bytes_u32);
+					let length_source_address = match input.read_array::<BYTES_U32>() {
+						Some(bytes) => u32::from_be_bytes(*bytes),
+						None => Err(Error::<T>::from(MalformedSourceAddressLength))?,
+					};
 
-							u32::from_be_bytes(bytes).try_into().map_err(|_| {
-								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})
-						},
-					)?;
-
-					let source_address = Pallet::<T>::try_range(
-						slice_ref,
-						length_source_address,
-						Error::<T>::from(MalformedSourceAddress),
-						|source_address| {
+					let source_address = match input.read_bytes(length_source_address as usize) {
+						Some(bytes) => {
 							// NOTE: Axelar simply provides the hexadecimal string of an EVM
-							//       address as the `sourceAddress` argument. Solidity does on the
-							//       other side recognize the hex-encoding and encode the hex bytes
-							//       to utf-8 bytes.
+							//       address as the `sourceAddress` argument. Solidity does on
+							// the       other side recognize the hex-encoding and
+							// encode the hex bytes       to utf-8 bytes.
 							//
 							//       Hence, we are reverting this process here.
-							let source_address =
-								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
-									.ok_or(Error::<T>::from(MalformedSourceAddress))?;
+							cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(bytes)
+								.ok_or(Error::<T>::from(MalformedSourceAddress))?
+								.to_vec()
+						}
+						None => Err(Error::<T>::from(MalformedSourceAddress))?,
+					};
 
-							Ok(source_address.to_vec())
-						},
-					)?;
-
-					let origin_msg = Pallet::<T>::try_range(
-						slice_ref,
-						slice_ref.len(),
-						Error::<T>::from(MalformedMessage),
-						|msg| {
-							BoundedVec::try_from(msg.to_vec()).map_err(|_| {
-								DispatchError::Other(
-									"Remaining bytes smaller vector in the first place. qed.",
-								)
-							})
-						},
-					)?;
-
-					let origin_domain =
-						T::OriginRecovery::try_convert((source_chain, source_address))?;
-
-					Pallet::<T>::validate(origin_domain, origin_msg)?
+					(
+						T::OriginRecovery::try_convert((source_chain, source_address))?,
+						BoundedVec::try_from(input.0.to_vec())
+							.map_err(|_| Error::<T>::from(MalformedMessage))?,
+					)
 				}
 			};
 
+			if let DomainAddress::Centrifuge(_) = origin_address {
+				return Err(Error::<T>::InvalidMessageOrigin.into());
+			}
+
+			ensure!(
+				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
+				Error::<T>::UnknownInstance,
+			);
+
 			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Inbound {
-				domain_address,
-				message: incoming_msg,
+				domain_address: origin_address,
+				message: T::Message::deserialize(&incoming_msg)?,
 			};
 
 			T::MessageQueue::submit(gateway_message)
@@ -485,47 +465,42 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Start packing messages in a single message instead of enqueue
+		/// messages.
+		/// The message will be enqueued once `end_pack_messages()` is called.
+		#[pallet::weight(T::WeightInfo::start_pack_messages())]
+		#[pallet::call_index(9)]
+		pub fn start_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			PackedMessage::<T>::mutate((&sender, &destination), |msg| match msg {
+				Some(_) => Err(Error::<T>::MessagePackingAlreadyStarted.into()),
+				None => {
+					*msg = Some(T::Message::empty());
+					Ok(())
+				}
+			})
+		}
+
+		/// End packing messages.
+		/// If exists any batch message it will be enqueued.
+		/// Empty batches are no-op
+		#[pallet::weight(T::WeightInfo::end_pack_messages())]
+		#[pallet::call_index(10)]
+		pub fn end_batch_message(origin: OriginFor<T>, destination: Domain) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			match PackedMessage::<T>::take((&sender, &destination)) {
+				Some(msg) if msg.submessages().is_empty() => Ok(()), //No-op
+				Some(message) => Self::queue_message(destination, message),
+				None => Err(Error::<T>::MessagePackingNotStarted.into()),
+			}
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn try_range<'a, D, F>(
-			slice: &mut &'a [u8],
-			next_steps: usize,
-			error: Error<T>,
-			transformer: F,
-		) -> Result<D, DispatchError>
-		where
-			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
-		{
-			ensure!(slice.len() >= next_steps, error);
-
-			let (input, new_slice) = slice.split_at(next_steps);
-			let res = transformer(input)?;
-			*slice = new_slice;
-
-			Ok(res)
-		}
-
-		fn validate(
-			address: DomainAddress,
-			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
-		) -> Result<(DomainAddress, T::Message), DispatchError> {
-			if let DomainAddress::Centrifuge(_) = address {
-				return Err(Error::<T>::InvalidMessageOrigin.into());
-			}
-
-			ensure!(
-				Allowlist::<T>::contains_key(address.domain(), address.clone()),
-				Error::<T>::UnknownInstance,
-			);
-
-			let incoming_msg = T::Message::deserialize(msg.as_slice())
-				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
-
-			Ok((address, incoming_msg))
-		}
-
-		/// Sends the message to the `InboundMessageHandler`.
+		/// Give the message to the `InboundMessageHandler` to be processed.
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
@@ -533,10 +508,18 @@ pub mod pallet {
 			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64)
 				.saturating_add(LP_DEFENSIVE_WEIGHT);
 
-			match T::InboundMessageHandler::handle(domain_address, message) {
-				Ok(_) => (Ok(()), weight),
-				Err(e) => (Err(e), weight),
+			let mut count = 0;
+			for submessage in message.submessages() {
+				count += 1;
+
+				if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), submessage)
+				{
+					// We only consume the processed weight if error during the batch
+					return (Err(e), weight.saturating_mul(count));
+				}
 			}
+
+			(Ok(()), weight.saturating_mul(count))
 		}
 
 		/// Retrieves the router stored for the provided domain, sends the
@@ -547,71 +530,51 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		) -> (DispatchResult, Weight) {
-			let mut weight = T::DbWeight::get().reads(1);
+			let read_weight = T::DbWeight::get().reads(1);
 
-			let router = match DomainRouters::<T>::get(domain) {
-				Some(r) => r,
-				None => return (Err(Error::<T>::RouterNotFound.into()), weight),
+			let Some(router) = DomainRouters::<T>::get(domain) else {
+				return (Err(Error::<T>::RouterNotFound.into()), read_weight);
 			};
 
-			match router.send(sender.clone(), message.serialize()) {
-				Ok(dispatch_info) => Self::update_total_post_dispatch_info_weight(
-					&mut weight,
-					dispatch_info.actual_weight,
-				),
-				Err(e) => {
-					Self::update_total_post_dispatch_info_weight(
-						&mut weight,
-						e.post_info.actual_weight,
-					);
+			let serialized = message.serialize();
+			let serialized_len = serialized.len() as u64;
 
-					return (Err(e.error), weight);
-				}
-			}
+			// TODO: do we really need to return the weights in send() if later we use the
+			// defensive ones?
+			let (result, router_weight) = match router.send(sender, serialized) {
+				Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
+				Err(e) => (Err(e.error), e.post_info.actual_weight),
+			};
 
-			(Ok(()), weight)
+			(
+				result,
+				router_weight
+					.unwrap_or(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, 0))
+					.saturating_add(read_weight)
+					.saturating_add(Weight::from_parts(0, serialized_len)),
+			)
 		}
 
-		/// Updates the provided `PostDispatchInfo` with the weight required to
-		/// process an outbound message.
-		pub(crate) fn update_total_post_dispatch_info_weight(
-			weight: &mut Weight,
-			router_call_weight: Option<Weight>,
-		) {
-			let router_call_weight =
-				Self::get_outbound_message_processing_weight(router_call_weight);
+		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
+			// We are using the sender specified in the pallet config so that we can
+			// ensure that the account is funded
+			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
+				sender: T::Sender::get(),
+				destination,
+				message,
+			};
 
-			*weight = weight.saturating_add(router_call_weight);
-		}
-
-		/// Calculates the weight used by a router when processing an outbound
-		/// message.
-		fn get_outbound_message_processing_weight(router_call_weight: Option<Weight>) -> Weight {
-			let pov_weight: u64 = (Domain::max_encoded_len()
-				+ T::AccountId::max_encoded_len()
-				+ T::Message::max_encoded_len())
-			.try_into()
-			.expect("can calculate outbound message POV weight");
-
-			router_call_weight
-				.unwrap_or(Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, 0))
-				.saturating_add(Weight::from_parts(0, pov_weight))
+			T::MessageQueue::submit(gateway_message)
 		}
 	}
 
-	/// The `OutboundMessageHandler` implementation ensures that outbound
-	/// messages are queued accordingly.
-	///
-	/// NOTE - the sender provided as an argument is not used at the moment, we
-	/// are using the sender specified in the pallet config so that we can
-	/// ensure that the account is funded.
 	impl<T: Config> OutboundMessageHandler for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;
 		type Sender = T::AccountId;
 
 		fn handle(
-			_sender: Self::Sender,
+			from: Self::Sender,
 			destination: Self::Destination,
 			message: Self::Message,
 		) -> DispatchResult {
@@ -620,13 +583,10 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
-				sender: T::Sender::get(),
-				destination,
-				message,
-			};
-
-			T::MessageQueue::submit(gateway_message)
+			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
+				Some(batch) => batch.pack_with(message),
+				None => Self::queue_message(destination, message),
+			})
 		}
 	}
 
