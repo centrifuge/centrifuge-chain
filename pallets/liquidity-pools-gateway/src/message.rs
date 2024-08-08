@@ -7,6 +7,7 @@ pub enum GatewayMessage<AccountId, Message, Hash> {
 	Inbound {
 		domain_address: DomainAddress,
 		message: Message,
+		router_hash: Hash,
 	},
 	Outbound {
 		sender: AccountId,
@@ -15,11 +16,14 @@ pub enum GatewayMessage<AccountId, Message, Hash> {
 	},
 }
 
-impl<AccountId, Message: Default, Hash> Default for GatewayMessage<AccountId, Message, Hash> {
+impl<AccountId, Message: Default, Hash: Default> Default
+	for GatewayMessage<AccountId, Message, Hash>
+{
 	fn default() -> Self {
 		GatewayMessage::Inbound {
 			domain_address: Default::default(),
 			message: Default::default(),
+			router_hash: Default::default(),
 		}
 	}
 }

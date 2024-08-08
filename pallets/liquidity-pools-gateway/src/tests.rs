@@ -296,6 +296,7 @@ mod receive_message_domain {
 			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
+				router_hash: H256::from_low_u64_be(1),
 			};
 
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
@@ -377,6 +378,7 @@ mod receive_message_domain {
 			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
+				router_hash: H256::from_low_u64_be(1),
 			};
 
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
@@ -421,7 +423,7 @@ mod outbound_message_handler_impl {
 			router_mock_3.mock_init(move || Ok(()));
 			router_mock_3.mock_hash(move || router_hash_3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_multi_router(
+			assert_ok!(LiquidityPoolsGateway::set_outbound_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
 				BoundedVec::try_from(vec![router_mock_1, router_mock_2, router_mock_3]).unwrap(),
@@ -489,7 +491,7 @@ mod outbound_message_handler_impl {
 			router_mock_3.mock_init(move || Ok(()));
 			router_mock_3.mock_hash(move || router_hash_3);
 
-			assert_ok!(LiquidityPoolsGateway::set_domain_multi_router(
+			assert_ok!(LiquidityPoolsGateway::set_outbound_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
 				BoundedVec::try_from(vec![router_mock_1, router_mock_2, router_mock_3]).unwrap(),
@@ -588,6 +590,8 @@ mod message_processor_impl {
 								let gateway_message = GatewayMessage::Inbound {
 									domain_address: domain_address.clone(),
 									message: test_message.clone(),
+									//TODO(cdamian): Use test router hash.
+									router_hash: H256::from_low_u64_be(1),
 								};
 
 								let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1181,6 +1185,7 @@ mod message_processor_impl {
 				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
+					router_hash: H256::from_low_u64_be(1),
 				};
 
 				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1190,6 +1195,7 @@ mod message_processor_impl {
 				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
+					router_hash: H256::from_low_u64_be(1),
 				};
 
 				let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1199,6 +1205,7 @@ mod message_processor_impl {
 				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
+					router_hash: H256::from_low_u64_be(1),
 				};
 
 				let err = DispatchError::Unavailable;
