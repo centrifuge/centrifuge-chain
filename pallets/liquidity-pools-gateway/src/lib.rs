@@ -31,7 +31,7 @@ use core::fmt::Debug;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
-	Router as DomainRouter,
+	Proof, Router as DomainRouter,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -40,7 +40,7 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_arithmetic::traits::BaseArithmetic;
+use sp_arithmetic::traits::{BaseArithmetic, EnsureSub, One};
 use sp_runtime::traits::EnsureAddAssign;
 use sp_std::{cmp::Ordering, convert::TryInto, vec::Vec};
 
@@ -63,14 +63,14 @@ mod tests;
 #[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum InboundEntry<T: Config> {
-    Message {
-        domain_address: DomainAddress,
-        message: T::Message,
-        expected_proof_count: u32,
-    },
-    Proof {
-        current_count: u32,
-    },
+	Message {
+		domain_address: DomainAddress,
+		message: T::Message,
+		expected_proof_count: u32,
+	},
+	Proof {
+		current_count: u32,
+	},
 }
 
 #[derive(Clone)]
@@ -306,6 +306,27 @@ pub mod pallet {
 		/// Invalid multi router.
 		InvalidMultiRouter,
 
+		/// Inbound domain session not found.
+		InboundDomainSessionNotFound,
+
+		/// The router that sent the inbound message is unknown.
+		UnknownInboundMessageRouter,
+
+		/// The router that sent the message is not the first one.
+		MessageExpectedFromFirstRouter,
+
+		/// The router that sent the proof should not be the first one.
+		ProofNotExpectedFromFirstRouter,
+
+		/// A message was expected instead of a proof.
+		ExpectedMessageType,
+
+		/// A message proof was expected instead of a message.
+		ExpectedMessageProofType,
+
+		/// Pending inbound entry not found.
+		PendingInboundEntryNotFound,
+
 		/// Multi-router not found.
 		MultiRouterNotFound,
 
@@ -475,10 +496,6 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
-			ensure!(
-				routers.len() == T::MaxRouterCount::get() as usize,
-				Error::<T>::InvalidMultiRouter
-			);
 
 			let mut router_hashes = Vec::new();
 
@@ -511,11 +528,6 @@ pub mod pallet {
 			router_hashes: BoundedVec<T::Hash, T::MaxRouterCount>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-
-			ensure!(
-				router_hashes.len() == T::MaxRouterCount::get() as usize,
-				Error::<T>::InvalidMultiRouter
-			);
 
 			let session_id = SessionIdStore::<T>::try_mutate(|n| {
 				n.ensure_add_assign(One::one())?;
@@ -550,7 +562,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		//TODO(cdamian): Use safe math
 		fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
 			let routers =
 				InboundRouters::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
@@ -592,26 +603,23 @@ pub mod pallet {
 		/// - messages are only sent by the first inbound router.
 		/// - proofs are not sent by the first inbound router.
 		fn validate_inbound_entry(
-			domain: Domain,
+			inbound_processing_info: &InboundProcessingInfo<T>,
 			router_hash: T::Hash,
 			inbound_entry: &InboundEntry<T>,
 		) -> DispatchResult {
-			let inbound_routers =
-				//TODO(cdamian): Add new error
-				InboundRouters::<T>::get(domain).ok_or(Error::<T>::InvalidMultiRouter)?;
+			let inbound_routers = inbound_processing_info.inbound_routers.clone();
 
 			ensure!(
 				inbound_routers.iter().any(|x| x == &router_hash),
-				//TODO(cdamian): Add error
-				Error::<T>::InvalidMultiRouter
+				Error::<T>::UnknownInboundMessageRouter
 			);
 
+			//TODO(cdamian): Test with 2 routers
 			match inbound_entry {
 				InboundEntry::Message { .. } => {
 					ensure!(
 						inbound_routers.get(0) == Some(&router_hash),
-						//TODO(cdamian): Add error
-						Error::<T>::InvalidMultiRouter
+						Error::<T>::MessageExpectedFromFirstRouter
 					);
 
 					Ok(())
@@ -619,45 +627,11 @@ pub mod pallet {
 				InboundEntry::Proof { .. } => {
 					ensure!(
 						inbound_routers.get(0) != Some(&router_hash),
-						//TODO(cdamian): Add error
-						Error::<T>::InvalidMultiRouter
+						Error::<T>::ProofNotExpectedFromFirstRouter
 					);
 
 					Ok(())
 				}
-			}
-		}
-
-		fn update_storage_entry(
-			domain: Domain,
-			old: &mut InboundEntry<T>,
-			new: InboundEntry<T>,
-		) -> DispatchResult {
-			match old {
-				InboundEntry::Message {
-					expected_proof_count: stored_expected_proof_count,
-					..
-				} => match new {
-					InboundEntry::Message { .. } => {
-						let expected_message_proof_count = Self::get_expected_proof_count(&domain)?;
-
-						stored_expected_proof_count
-							.ensure_add_assign(expected_message_proof_count)?;
-
-						Ok(())
-					}
-					//TODO(cdamian): Update error
-					InboundEntry::Proof { .. } => Err(Error::<T>::InvalidMultiRouter.into()),
-				},
-				InboundEntry::Proof { current_count } => match new {
-					InboundEntry::Proof { .. } => {
-						current_count.ensure_add_assign(1)?;
-
-						Ok(())
-					}
-					//TODO(cdamian): Update error
-					InboundEntry::Message { .. } => Err(Error::<T>::InvalidMultiRouter.into()),
-				},
 			}
 		}
 
@@ -689,8 +663,8 @@ pub mod pallet {
 								..
 							} => old.ensure_add_assign(new).map_err(|e| e.into()),
 							InboundEntry::Proof { .. } => {
-								// TODO(cdamian): Add new error.
-								Err(Error::<T>::InvalidMultiRouter.into())
+								//TODO(cdamian): Test with 2 routers
+								Err(Error::<T>::ExpectedMessageType.into())
 							}
 						},
 						InboundEntry::Proof { current_count: old } => match inbound_entry {
@@ -698,8 +672,7 @@ pub mod pallet {
 								old.ensure_add_assign(new).map_err(|e| e.into())
 							}
 							InboundEntry::Message { .. } => {
-								// TODO(cdamian): Add new error.
-								Err(Error::<T>::InvalidMultiRouter.into())
+								Err(Error::<T>::ExpectedMessageProofType.into())
 							}
 						},
 					},
@@ -720,11 +693,7 @@ pub mod pallet {
 				inbound_processing_info.expected_proof_count_per_message,
 			);
 
-			Self::validate_inbound_entry(
-				inbound_processing_info.domain_address.domain(),
-				router_hash,
-				&inbound_entry,
-			)?;
+			Self::validate_inbound_entry(&inbound_processing_info, router_hash, &inbound_entry)?;
 
 			Self::update_pending_entry(
 				inbound_processing_info.current_session_id,
@@ -782,8 +751,7 @@ pub mod pallet {
 					inbound_processing_info.current_session_id,
 					(message_proof, inbound_router),
 					|storage_entry| match storage_entry {
-						// TODO(cdamian): Add new error
-						None => Err(Error::<T>::InvalidMultiRouter.into()),
+						None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
 						Some(stored_inbound_entry) => match stored_inbound_entry {
 							InboundEntry::Message {
 								expected_proof_count,
@@ -827,15 +795,13 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			weight: &mut Weight,
 		) -> Result<InboundProcessingInfo<T>, DispatchError> {
-			let inbound_routers =
-				//TODO(cdamian): Add new error
-				InboundRouters::<T>::get(domain_address.domain()).ok_or(Error::<T>::InvalidMultiRouter)?;
+			let inbound_routers = InboundRouters::<T>::get(domain_address.domain())
+				.ok_or(Error::<T>::MultiRouterNotFound)?;
 
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-			let current_session_id =
-				//TODO(cdamian): Add new error
-				InboundDomainSessions::<T>::get(domain_address.domain()).ok_or(Error::<T>::InvalidMultiRouter)?;
+			let current_session_id = InboundDomainSessions::<T>::get(domain_address.domain())
+				.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
 
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
