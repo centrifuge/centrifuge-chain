@@ -15,7 +15,7 @@
 use core::fmt::Debug;
 
 use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
-use frame_support::pallet_prelude::*;
+use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
@@ -28,10 +28,6 @@ use sp_std::vec::Vec;
 mod mock;
 #[cfg(test)]
 mod tests;
-
-pub mod weights;
-
-pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -56,9 +52,6 @@ pub mod pallet {
 
 		/// Type used for processing messages.
 		type MessageProcessor: MessageProcessor<Message = Self::Message>;
-
-		/// Weight information.
-		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -128,21 +121,25 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_message())]
+		#[pallet::weight(MessageQueue::<T>::get(nonce)
+            .map(|msg| T::MessageProcessor::max_processing_weight(&msg))
+            .unwrap_or(T::DbWeight::get().reads(1)))]
 		#[pallet::call_index(0)]
-		pub fn process_message(origin: OriginFor<T>, nonce: T::MessageNonce) -> DispatchResult {
+		pub fn process_message(
+			origin: OriginFor<T>,
+			nonce: T::MessageNonce,
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				(Ok(_), _) => Ok(()),
-				(Err(e), _) => {
-					FailedMessageQueue::<T>::insert(nonce, (message, e));
+			let (result, weight) = Self::process_message_and_deposit_event(nonce, message.clone());
 
-					Ok(())
-				}
+			if let Err(e) = result {
+				FailedMessageQueue::<T>::insert(nonce, (message, e));
 			}
+
+			Ok(PostDispatchInfo::from(Some(weight)))
 		}
 
 		/// Convenience method for manually processing a failed message.
@@ -156,25 +153,26 @@ pub mod pallet {
 		/// are not reverted.
 		///   - an extra defensive weight is added in order to cover the weight
 		/// used when processing the message.
-		#[pallet::weight(T::WeightInfo::process_failed_message())]
+		#[pallet::weight(FailedMessageQueue::<T>::get(nonce)
+            .map(|(msg, _)| T::MessageProcessor::max_processing_weight(&msg))
+            .unwrap_or(T::DbWeight::get().reads(1)))]
 		#[pallet::call_index(1)]
 		pub fn process_failed_message(
 			origin: OriginFor<T>,
 			nonce: T::MessageNonce,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			let (message, _) =
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			match Self::process_message_and_deposit_event(nonce, message.clone()) {
-				(Ok(_), _) => {
-					FailedMessageQueue::<T>::remove(nonce);
+			let (result, weight) = Self::process_message_and_deposit_event(nonce, message);
 
-					Ok(())
-				}
-				(Err(_), _) => Ok(()),
+			if result.is_ok() {
+				FailedMessageQueue::<T>::remove(nonce);
 			}
+
+			Ok(PostDispatchInfo::from(Some(weight)))
 		}
 	}
 
@@ -207,7 +205,13 @@ pub mod pallet {
 			let mut processed_entries = Vec::new();
 
 			for (nonce, message) in MessageQueue::<T>::iter() {
-				processed_entries.push(nonce);
+				let remaining_weight = max_weight.saturating_sub(weight_used);
+				let next_weight = T::MessageProcessor::max_processing_weight(&message);
+
+				// We ensure we have still capacity in the block before processing the message
+				if remaining_weight.any_lt(next_weight) {
+					break;
+				}
 
 				let weight = match Self::process_message_and_deposit_event(nonce, message.clone()) {
 					(Ok(()), weight) => {
@@ -228,6 +232,8 @@ pub mod pallet {
 						weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))
 					}
 				};
+
+				processed_entries.push(nonce);
 
 				weight_used = weight_used.saturating_add(weight);
 

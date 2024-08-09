@@ -2,7 +2,7 @@
 pub mod pallet {
 	use cfg_traits::liquidity_pools::{MessageProcessor, OutboundMessageHandler};
 	use frame_support::pallet_prelude::*;
-	use mock_builder::{execute_call, register_call};
+	use mock_builder::{execute_call, register_call, CallHandler};
 	use orml_traits::GetByKey;
 
 	#[pallet::config]
@@ -18,7 +18,13 @@ pub mod pallet {
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_process(f: impl Fn(T::Message) -> (DispatchResult, Weight) + 'static) {
+		pub fn mock_process(
+			f: impl Fn(T::Message) -> (DispatchResult, Weight) + 'static,
+		) -> CallHandler {
+			register_call!(f)
+		}
+
+		pub fn mock_max_processing_weight(f: impl Fn(&T::Message) -> Weight + 'static) {
 			register_call!(f);
 		}
 
@@ -37,6 +43,10 @@ pub mod pallet {
 		type Message = T::Message;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
+			execute_call!(msg)
+		}
+
+		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			execute_call!(msg)
 		}
 	}

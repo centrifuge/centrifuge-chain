@@ -64,6 +64,9 @@ pub trait MessageProcessor {
 
 	/// Process a message.
 	fn process(msg: Self::Message) -> (DispatchResult, Weight);
+
+	/// Process a message.
+	fn max_processing_weight(msg: &Self::Message) -> Weight;
 }
 
 /// The trait required for handling outbound LP messages.
