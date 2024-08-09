@@ -115,11 +115,6 @@ pub struct TrancheInvestorInfo<TrancheId> {
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
-pub struct FrozenTrancheInvestorInfo<TrancheId> {
-	tranche_id: TrancheId,
-}
-
-#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub struct PermissionedCurrencyHolders<Now, MinDelay> {
 	info: Option<PermissionedCurrencyHolderInfo>,
 	_phantom: PhantomData<(Now, MinDelay)>,
@@ -683,5 +678,62 @@ mod tests {
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+	}
+}
+
+pub mod v0 {
+	use super::*;
+
+	#[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug, MaxEncodedLen)]
+	pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
+		pool_admin: PoolAdminRoles,
+		currency_admin: CurrencyAdminRoles,
+		permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay>,
+		tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>,
+	}
+
+	#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
+	pub struct TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
+		info: BoundedVec<TrancheInvestorInfo<TrancheId>, MaxTranches>,
+		_phantom: PhantomData<(Now, MinDelay)>,
+	}
+
+	#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
+	pub struct TrancheInvestorInfo<TrancheId> {
+		tranche_id: TrancheId,
+		permissioned_till: Seconds,
+	}
+
+	impl<Now, MinDelay, TrancheId, MaxTranches: Get<u32>>
+		TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
+	{
+		fn migrate(self) -> super::TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches> {
+			super::TrancheInvestors::<Now, MinDelay, TrancheId, MaxTranches> {
+				info: BoundedVec::truncate_from(
+					self.info
+						.into_iter()
+						.map(|info| super::TrancheInvestorInfo {
+							tranche_id: info.tranche_id,
+							permissioned_till: info.permissioned_till,
+							is_frozen: false,
+						})
+						.collect(),
+				),
+				_phantom: self._phantom,
+			}
+		}
+	}
+
+	impl<Now, MinDelay, TrancheId: Clone, MaxTranches: Get<u32>>
+		PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
+	{
+		pub fn migrate(self) -> super::PermissionRoles<Now, MinDelay, TrancheId, MaxTranches> {
+			super::PermissionRoles {
+				pool_admin: self.pool_admin,
+				currency_admin: self.currency_admin,
+				permissioned_asset_holder: self.permissioned_asset_holder,
+				tranche_investor: self.tranche_investor.migrate(),
+			}
+		}
 	}
 }
