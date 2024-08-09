@@ -13,7 +13,9 @@
 
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	traits::Get,
 	weights::Weight,
+	BoundedVec,
 };
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -46,6 +48,37 @@ pub trait Router {
 
 	/// Send the message to the router's destination.
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+}
+
+/// The behavior of an entity that can send messages
+pub trait MessageSender {
+	/// The originator of the message to be sent
+	type Origin;
+
+	///The destination of the message
+	type Destination;
+
+	/// Sends a message for origin to destination
+	fn send(
+		origin: Self::Origin,
+		destination: Self::Destination,
+		message: Vec<u8>,
+	) -> DispatchResultWithPostInfo;
+}
+
+/// The behavior of an entity that can receive messages
+pub trait MessageReceiver {
+	/// The maximum lenght for a message the implementor is able to receive.
+	type MaxEncodedLen: Get<u32>;
+
+	/// The originator of the message to be sent
+	type Origin;
+
+	/// Sends a message for origin to destination
+	fn receive(
+		origin: Self::Origin,
+		message: BoundedVec<u8, Self::MaxEncodedLen>,
+	) -> DispatchResult;
 }
 
 /// The trait required for queueing messages.
