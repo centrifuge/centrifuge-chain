@@ -1,0 +1,78 @@
+[package]
+description = "Pallet to send and receive messages from axelar"
+name = "pallet-axelar-router"
+version = "1.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+hex = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+sp-core = { workspace = true }
+
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
+
+fp-evm = { workspace = true }
+precompile-utils = { workspace = true }
+ethabi = { workspace = true }
+
+# Optionals for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
+[dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+
+[features]
+default = ["std"]
+std = [
+  "parity-scale-codec/std",
+  "scale-info/std",
+  "hex/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking?/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-core/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-utils/std",
+  "fp-evm/std",
+  "precompile-utils/std",
+  "ethabi/std",
+]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks", # Optional enabled
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
+  "cfg-mocks/try-runtime",
+]

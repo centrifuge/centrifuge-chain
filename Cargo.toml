@@ -10,6 +10,7 @@ members = [
   "libs/utils",
   "pallets/anchors",
   "pallets/anchors-v2",
+  "pallets/axelar-router",
   "pallets/bridge",
   "pallets/block-rewards",
   "pallets/collator-allowlist",
