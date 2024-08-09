@@ -472,7 +472,7 @@ mod add_tranche {
 
 	fn config_mocks() {
 		let mut hook = [0; 32];
-		hook[0..20].copy_from_slice(&DOMAIN_HOOK_ADDRESS);
+		hook[0..20].copy_from_slice(&DOMAIN_HOOK_ADDRESS_20);
 		hook[20..28].copy_from_slice(&1u64.to_be_bytes());
 		hook[28..31].copy_from_slice(b"EVM");
 
@@ -487,10 +487,10 @@ mod add_tranche {
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 		Gateway::mock_get(move |domain| {
 			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
-			Some(DOMAIN_HOOK_ADDRESS)
+			Some(DOMAIN_HOOK_ADDRESS_20)
 		});
 		DomainAddressToAccountId::mock_convert(move |domain| {
-			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS));
+			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20));
 			hook.clone().into()
 		});
 		Gateway::mock_handle(move |sender, destination, msg| {
@@ -1843,6 +1843,166 @@ mod unfreeze {
 						ALICE_EVM_DOMAIN_ADDRESS
 					),
 					Error::<Runtime>::InvestorDomainAddressFrozen
+				);
+			});
+		}
+	}
+}
+
+mod update_tranche_hook {
+	use super::*;
+
+	fn config_mocks() {
+		DomainAddressToAccountId::mock_convert(move |_| DOMAIN_HOOK_ADDRESS_32.into());
+		Permissions::mock_has(move |scope, who, role| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			match role {
+				Role::PoolRole(PoolRole::PoolAdmin) => {
+					assert_eq!(who, ALICE);
+					true
+				}
+				_ => false,
+			}
+		});
+		Pools::mock_pool_exists(|_| true);
+		Pools::mock_tranche_exists(|_, _| true);
+		Gateway::mock_handle(|sender, destination, msg| {
+			assert_eq!(sender, ALICE);
+			assert_eq!(destination, EVM_DOMAIN);
+			assert_eq!(
+				msg,
+				Message::UpdateTrancheHook {
+					pool_id: POOL_ID,
+					tranche_id: TRANCHE_ID,
+					hook: DOMAIN_HOOK_ADDRESS_32
+				}
+			);
+			Ok(())
+		});
+	}
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			config_mocks();
+
+			assert_ok!(LiquidityPools::update_tranche_hook(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				EVM_DOMAIN,
+				DOMAIN_HOOK_ADDRESS_20
+			));
+		});
+	}
+
+	mod erroring_out {
+		use cfg_types::domain_address::Domain;
+
+		use super::*;
+
+		#[test]
+		fn with_bad_origin_unsigned_none() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::none(),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+		#[test]
+		fn with_bad_origin_unsigned_root() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::root(),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn with_pool_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					Error::<Runtime>::PoolNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_tranche_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+				Pools::mock_tranche_exists(|_, _| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					Error::<Runtime>::TrancheNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_origin_not_admin() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+				Permissions::mock_has(|_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			});
+		}
+
+		#[test]
+		fn with_invalid_domain() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+
+				assert_noop!(
+					LiquidityPools::update_tranche_hook(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						Domain::Centrifuge,
+						DOMAIN_HOOK_ADDRESS_20
+					),
+					Error::<Runtime>::InvalidDomain
 				);
 			});
 		}

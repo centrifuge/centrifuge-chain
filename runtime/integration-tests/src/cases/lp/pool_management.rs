@@ -26,9 +26,12 @@ use sp_runtime::FixedPointNumber;
 
 use crate::{
 	cases::lp::{
-		names, utils,
+		names,
+		names::POOL_A_T_1,
+		utils,
 		utils::{pool_a_tranche_1_id, Decoder},
-		LocalUSDC, EVM_DOMAIN_CHAIN_ID, LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A, USDC,
+		LocalUSDC, EVM_DOMAIN, EVM_DOMAIN_CHAIN_ID, LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A,
+		USDC,
 	},
 	config::Runtime,
 	env::{EnvEvmExtension, EvmEnv},
@@ -762,5 +765,53 @@ fn unfreeze_member<T: Runtime>() {
 			.unwrap()
 			.value
 		));
+	});
+}
+
+#[test_runtimes([centrifuge, development])]
+fn update_tranche_hook<T: Runtime>() {
+	let new_hook: [u8; 20] = [1u8; 20];
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+	});
+
+	env.state(|evm| {
+		let solidity = evm.deployed(names::RESTRICTION_MANAGER).address();
+		let rust = LOCAL_RESTRICTION_MANAGER_ADDRESS.into();
+		assert_eq!(
+			solidity, rust,
+			"Hook address changed, please change our stored value (right) to the new address (left)"
+		);
+		let hook_address = Decoder::<H160>::decode(
+			&evm.view(Keyring::Alice, POOL_A_T_1, "hook", None)
+				.unwrap()
+				.value,
+		);
+		assert_eq!(hook_address, solidity);
+	});
+
+	env.state_mut(|_| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_tranche_hook(
+			Keyring::Admin.as_origin(),
+			POOL_A,
+			pool_a_tranche_1_id::<T>(),
+			EVM_DOMAIN,
+			new_hook
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+
+	env.state(|evm| {
+		let hook_address = Decoder::<H160>::decode(
+			&evm.view(Keyring::Alice, POOL_A_T_1, "hook", None)
+				.unwrap()
+				.value,
+		);
+		assert_eq!(hook_address, H160::from(new_hook));
 	});
 }
