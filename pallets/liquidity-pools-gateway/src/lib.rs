@@ -508,21 +508,19 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message: T::Message,
 		) -> (DispatchResult, Weight) {
-			let weight = Weight::from_parts(0, T::Message::max_encoded_len() as u64)
-				.saturating_add(LP_DEFENSIVE_WEIGHT);
-
 			let mut count = 0;
+
 			for submessage in message.submessages() {
 				count += 1;
 
 				if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), submessage)
 				{
 					// We only consume the processed weight if error during the batch
-					return (Err(e), weight.saturating_mul(count));
+					return (Err(e), LP_DEFENSIVE_WEIGHT.saturating_mul(count));
 				}
 			}
 
-			(Ok(()), weight.saturating_mul(count))
+			(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
 		}
 
 		/// Retrieves the router stored for the provided domain, sends the
