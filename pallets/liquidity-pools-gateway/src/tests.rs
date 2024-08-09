@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_mocks::*;
+use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler, Proof};
 use cfg_types::domain_address::*;
 use frame_support::{
