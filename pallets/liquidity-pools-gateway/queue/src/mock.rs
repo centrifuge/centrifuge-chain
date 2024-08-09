@@ -15,14 +15,12 @@ use cfg_mocks::pallet_mock_liquidity_pools_gateway;
 use cfg_primitives::LPGatewayQueueMessageNonce;
 use cfg_types::domain_address::Domain;
 use frame_support::derive_impl;
-use sp_runtime::traits::ConstU128;
 
 use crate::{self as pallet_liquidity_pools_gateway_queue, Config};
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		Balances: pallet_balances,
 		LPGatewayMock: pallet_mock_liquidity_pools_gateway,
 		LPGatewayQueue: pallet_liquidity_pools_gateway_queue,
 	}
@@ -34,26 +32,16 @@ impl frame_system::Config for Runtime {
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = u128;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU128<1>;
-	type RuntimeHoldReason = ();
-}
-
 impl pallet_mock_liquidity_pools_gateway::Config for Runtime {
 	type Destination = Domain;
-	type Message = ();
+	type Message = u32;
 }
 
 impl Config for Runtime {
-	type Message = ();
+	type Message = u32;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LPGatewayMock;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

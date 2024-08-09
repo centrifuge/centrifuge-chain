@@ -3,11 +3,15 @@ use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{
-	assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays, weights::Weight,
+	assert_err, assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays,
+	weights::Weight,
 };
-use parity_scale_codec::MaxEncodedLen;
 use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin, DispatchErrorWithPostInfo};
+use sp_std::sync::{
+	atomic::{AtomicU32, Ordering},
+	Arc,
+};
 
 use super::{
 	mock::{RuntimeEvent as MockEvent, *},
@@ -932,12 +936,9 @@ mod message_processor_impl {
 					Err(err)
 				});
 
-				let expected_weight = Weight::from_parts(0, Message::max_encoded_len() as u64)
-					.saturating_add(LP_DEFENSIVE_WEIGHT);
-
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_noop!(res, err);
-				assert_eq!(weight, expected_weight);
+				assert_eq!(weight, LP_DEFENSIVE_WEIGHT);
 			});
 		}
 	}
@@ -1055,6 +1056,161 @@ mod message_processor_impl {
 	}
 }
 
-mod packed {
-	//TODO
+mod batches {
+	use super::*;
+
+	const USER: AccountId32 = AccountId32::new([1; 32]);
+	const OTHER: AccountId32 = AccountId32::new([2; 32]);
+	const DOMAIN: Domain = Domain::EVM(1);
+
+	#[test]
+	fn pack_empty() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(LiquidityPoolsGateway::start_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+			assert_ok!(LiquidityPoolsGateway::end_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+		});
+	}
+
+	#[test]
+	fn pack_several() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(LiquidityPoolsGateway::start_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+
+			let handle = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+
+			// Ok Batched
+			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+
+			// Not batched, it belong to OTHER
+			assert_ok!(LiquidityPoolsGateway::handle(
+				OTHER,
+				DOMAIN,
+				Message::Simple
+			));
+
+			// Not batched, it belong to EVM 2
+			assert_ok!(LiquidityPoolsGateway::handle(
+				USER,
+				Domain::EVM(2),
+				Message::Simple
+			));
+
+			// Ok Batched
+			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+
+			// Just the two non-packed messages
+			assert_eq!(handle.times(), 2);
+
+			assert_ok!(LiquidityPoolsGateway::end_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+
+			// Packed message queued
+			assert_eq!(handle.times(), 3);
+		});
+	}
+
+	#[test]
+	fn pack_over_limit() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(LiquidityPoolsGateway::start_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+
+			MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+
+			(0..MAX_PACKED_MESSAGES).for_each(|_| {
+				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+			});
+
+			assert_err!(
+				LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple),
+				DispatchError::Other(MAX_PACKED_MESSAGES_ERR)
+			);
+
+			assert_ok!(LiquidityPoolsGateway::end_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+		});
+	}
+
+	#[test]
+	fn end_before_start() {
+		new_test_ext().execute_with(|| {
+			assert_err!(
+				LiquidityPoolsGateway::end_batch_message(RuntimeOrigin::signed(USER), DOMAIN),
+				Error::<Runtime>::MessagePackingNotStarted
+			);
+		});
+	}
+
+	#[test]
+	fn start_before_end() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(LiquidityPoolsGateway::start_batch_message(
+				RuntimeOrigin::signed(USER),
+				DOMAIN
+			));
+
+			assert_err!(
+				LiquidityPoolsGateway::start_batch_message(RuntimeOrigin::signed(USER), DOMAIN),
+				Error::<Runtime>::MessagePackingAlreadyStarted
+			);
+		});
+	}
+
+	#[test]
+	fn process_inbound() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(0, address.into());
+
+			MockLiquidityPools::mock_handle(|_, _| Ok(()));
+
+			let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+				domain_address,
+				message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
+			});
+
+			assert_eq!(weight, LP_DEFENSIVE_WEIGHT * 5);
+			assert_ok!(result);
+		});
+	}
+
+	#[test]
+	fn process_inbound_with_errors() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(0, address.into());
+
+			let counter = Arc::new(AtomicU32::new(0));
+			MockLiquidityPools::mock_handle(move |_, _| {
+				match counter.fetch_add(1, Ordering::Relaxed) {
+					2 => Err(DispatchError::Unavailable),
+					_ => Ok(()),
+				}
+			});
+
+			let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+				domain_address,
+				message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
+			});
+
+			// 2 correct messages and 1 failed message processed.
+			assert_eq!(weight, LP_DEFENSIVE_WEIGHT * 3);
+			assert_err!(result, DispatchError::Unavailable);
+		});
+	}
 }
