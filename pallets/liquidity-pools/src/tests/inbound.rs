@@ -92,13 +92,21 @@ mod handle_tranche_tokens_transfer {
 		DomainAddressToAccountId::mock_convert(move |_| ALICE);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, ALICE);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert!(matches!(
-				role,
-				Role::PoolRole(PoolRole::TrancheInvestor(TRANCHE_ID, NOW_SECS))
-			));
-			true
+			assert_eq!(who, ALICE);
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					assert_eq!(validity, NOW_SECS);
+					true
+				}
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					// Default mock has unfrozen investor
+					false
+				}
+				_ => false,
+			}
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -206,7 +214,7 @@ mod handle_tranche_tokens_transfer {
 		}
 
 		#[test]
-		fn with_wrong_permissions() {
+		fn without_investor_permissions() {
 			System::externalities().execute_with(|| {
 				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
 				Permissions::mock_has(|_, _, _| false);
@@ -223,6 +231,28 @@ mod handle_tranche_tokens_transfer {
 						}
 					),
 					Error::<Runtime>::UnauthorizedTransfer,
+				);
+			})
+		}
+
+		#[test]
+		fn inbound_with_frozen_investor_permissions() {
+			System::externalities().execute_with(|| {
+				config_mocks(CENTRIFUGE_DOMAIN_ADDRESS);
+				Permissions::mock_has(|_, _, _| true);
+
+				assert_noop!(
+					LiquidityPools::handle(
+						EVM_DOMAIN_ADDRESS,
+						Message::TransferTrancheTokens {
+							pool_id: POOL_ID,
+							tranche_id: TRANCHE_ID,
+							domain: CENTRIFUGE_DOMAIN_ADDRESS.domain().into(),
+							receiver: ALICE.into(),
+							amount: AMOUNT,
+						}
+					),
+					Error::<Runtime>::InvestorDomainAddressFrozen,
 				);
 			})
 		}

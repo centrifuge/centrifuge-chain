@@ -213,13 +213,21 @@ mod transfer_tranche_tokens {
 		DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, CONTRACT_ACCOUNT_ID);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert!(matches!(
-				role,
-				Role::PoolRole(PoolRole::TrancheInvestor(TRANCHE_ID, NOW_SECS))
-			));
-			true
+			assert_eq!(who, CONTRACT_ACCOUNT_ID);
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					assert_eq!(validity, NOW_SECS);
+					true
+				}
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					// Default mock has unfrozen investor
+					false
+				}
+				_ => false,
+			}
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -282,7 +290,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn with_wrong_permissions() {
+		fn with_missing_investor_permissions() {
 			System::externalities().execute_with(|| {
 				config_mocks();
 				Permissions::mock_has(|_, _, _| false);
@@ -296,6 +304,40 @@ mod transfer_tranche_tokens {
 						AMOUNT
 					),
 					Error::<Runtime>::UnauthorizedTransfer,
+				);
+			})
+		}
+
+		#[test]
+		fn with_frozen_investor_permissions() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					assert_eq!(who, CONTRACT_ACCOUNT_ID);
+					match role {
+						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+							assert_eq!(tranche_id, TRANCHE_ID);
+							assert_eq!(validity, NOW_SECS);
+							true
+						}
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+							assert_eq!(tranche_id, TRANCHE_ID);
+							true
+						}
+						_ => false,
+					}
+				});
+
+				assert_noop!(
+					LiquidityPools::transfer_tranche_tokens(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						EVM_DOMAIN_ADDRESS,
+						AMOUNT
+					),
+					Error::<Runtime>::InvestorDomainAddressFrozen,
 				);
 			})
 		}
@@ -1377,6 +1419,432 @@ mod cancel_upgrade {
 					DispatchError::BadOrigin
 				);
 			})
+		}
+	}
+}
+
+mod freeze {
+	use sp_runtime::DispatchError;
+
+	use super::*;
+	use crate::message::UpdateRestrictionMessage;
+
+	fn config_mocks(receiver: DomainAddress) {
+		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
+		Time::mock_now(|| NOW);
+		Permissions::mock_has(move |scope, who, role| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(tranche_id, TRANCHE_ID);
+					assert_eq!(validity, NOW_SECS);
+					true
+				}
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(tranche_id, TRANCHE_ID);
+					// Default mock has frozen investor
+					true
+				}
+				Role::PoolRole(PoolRole::PoolAdmin) => {
+					assert_eq!(who, ALICE);
+					true
+				}
+				_ => false,
+			}
+		});
+		Pools::mock_pool_exists(|_| true);
+		Pools::mock_tranche_exists(|_, _| true);
+		Gateway::mock_handle(|sender, destination, msg| {
+			assert_eq!(sender, ALICE);
+			assert_eq!(destination, ALICE_EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(
+				msg,
+				Message::UpdateRestriction {
+					pool_id: POOL_ID,
+					tranche_id: TRANCHE_ID,
+					update: UpdateRestrictionMessage::Freeze {
+						address: ALICE_EVM_DOMAIN_ADDRESS.address().into()
+					}
+				}
+			);
+			Ok(())
+		});
+	}
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+
+			assert_ok!(LiquidityPools::freeze_investor(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				ALICE_EVM_DOMAIN_ADDRESS
+			));
+		});
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_bad_origin_unsigned_none() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::none(),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+		#[test]
+		fn with_bad_origin_unsigned_root() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::root(),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn with_pool_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::PoolNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_tranche_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Pools::mock_tranche_exists(|_, _| false);
+
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::TrancheNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_origin_not_admin() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(|_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			});
+		}
+
+		#[test]
+		fn with_investor_not_member() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					match role {
+						Role::PoolRole(PoolRole::PoolAdmin) => {
+							assert_eq!(who, ALICE);
+							true
+						}
+						_ => false,
+					}
+				});
+
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::InvestorDomainAddressNotAMember
+				);
+			});
+		}
+
+		#[test]
+		fn with_investor_frozen() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					match role {
+						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(tranche_id, TRANCHE_ID);
+							assert_eq!(validity, NOW_SECS);
+							true
+						}
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(tranche_id, TRANCHE_ID);
+							false
+						}
+						Role::PoolRole(PoolRole::PoolAdmin) => {
+							assert_eq!(who, ALICE);
+							true
+						}
+						_ => false,
+					}
+				});
+
+				assert_noop!(
+					LiquidityPools::freeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::InvestorDomainAddressFrozen
+				);
+			});
+		}
+	}
+}
+
+mod unfreeze {
+	use sp_runtime::DispatchError;
+
+	use super::*;
+	use crate::message::UpdateRestrictionMessage;
+
+	fn config_mocks(receiver: DomainAddress) {
+		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
+		Time::mock_now(|| NOW);
+		Permissions::mock_has(move |scope, who, role| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(tranche_id, TRANCHE_ID);
+					assert_eq!(validity, NOW_SECS);
+					true
+				}
+				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(tranche_id, TRANCHE_ID);
+					// Default mock has unfrozen investor
+					false
+				}
+				Role::PoolRole(PoolRole::PoolAdmin) => {
+					assert_eq!(who, ALICE);
+					true
+				}
+				_ => false,
+			}
+		});
+		Pools::mock_pool_exists(|_| true);
+		Pools::mock_tranche_exists(|_, _| true);
+		Gateway::mock_handle(|sender, destination, msg| {
+			assert_eq!(sender, ALICE);
+			assert_eq!(destination, ALICE_EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(
+				msg,
+				Message::UpdateRestriction {
+					pool_id: POOL_ID,
+					tranche_id: TRANCHE_ID,
+					update: UpdateRestrictionMessage::Unfreeze {
+						address: ALICE_EVM_DOMAIN_ADDRESS.address().into()
+					}
+				}
+			);
+			Ok(())
+		});
+	}
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+
+			assert_ok!(LiquidityPools::unfreeze_investor(
+				RuntimeOrigin::signed(ALICE),
+				POOL_ID,
+				TRANCHE_ID,
+				ALICE_EVM_DOMAIN_ADDRESS
+			));
+		});
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_bad_origin_unsigned_none() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::none(),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+		#[test]
+		fn with_bad_origin_unsigned_root() {
+			System::externalities().execute_with(|| {
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::root(),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn with_pool_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Pools::mock_pool_exists(|_| false);
+
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::PoolNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_tranche_dne() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Pools::mock_tranche_exists(|_, _| false);
+
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::TrancheNotFound
+				);
+			});
+		}
+
+		#[test]
+		fn with_origin_not_admin() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(|_, _, _| false);
+
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::NotPoolAdmin
+				);
+			});
+		}
+
+		#[test]
+		fn with_investor_not_member() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					match role {
+						Role::PoolRole(PoolRole::PoolAdmin) => {
+							assert_eq!(who, ALICE);
+							true
+						}
+						_ => false,
+					}
+				});
+
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::InvestorDomainAddressNotAMember
+				);
+			});
+		}
+
+		#[test]
+		fn with_investor_unfrozen() {
+			System::externalities().execute_with(|| {
+				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				Permissions::mock_has(move |scope, who, role| {
+					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+					match role {
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(tranche_id, TRANCHE_ID);
+							true
+						}
+						_ => true,
+					}
+				});
+
+				assert_noop!(
+					LiquidityPools::unfreeze_investor(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						ALICE_EVM_DOMAIN_ADDRESS
+					),
+					Error::<Runtime>::InvestorDomainAddressFrozen
+				);
+			});
 		}
 	}
 }

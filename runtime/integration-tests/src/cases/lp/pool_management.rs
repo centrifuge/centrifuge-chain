@@ -35,6 +35,7 @@ use crate::{
 	utils::{
 		accounts::Keyring,
 		currency::{register_currency, CurrencyInfo},
+		pool::{give_role, remove_role},
 	},
 };
 
@@ -618,5 +619,148 @@ fn update_tranche_token_price<T: Runtime>() {
 
 		assert_eq!(last_updated, computed_at_evm);
 		assert_eq!(price.into_inner(), price_evm);
+	});
+}
+
+#[test_runtimes([centrifuge, development])]
+fn freeze_member<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+		super::setup_investors(evm);
+	});
+
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RESTRICTION_MANAGER,
+				"isFrozen",
+				Some(&[
+					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+					Token::Address(Keyring::TrancheInvestor(2).into())
+				]),
+			)
+			.unwrap()
+			.value
+		));
+	});
+
+	env.state_mut(|_| {
+		give_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::freeze_investor(
+			Keyring::Admin.as_origin(),
+			POOL_A,
+			pool_a_tranche_1_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RESTRICTION_MANAGER,
+				"isFrozen",
+				Some(&[
+					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+					Token::Address(Keyring::TrancheInvestor(2).into())
+				]),
+			)
+			.unwrap()
+			.value
+		));
+	});
+}
+
+#[test_runtimes([centrifuge, development])]
+fn unfreeze_member<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+		super::setup_pools(evm);
+		super::setup_tranches(evm);
+		super::setup_investment_currencies(evm);
+		super::setup_deploy_lps(evm);
+		super::setup_investors(evm);
+	});
+
+	env.state_mut(|_| {
+		give_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::freeze_investor(
+			Keyring::Admin.as_origin(),
+			POOL_A,
+			pool_a_tranche_1_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+	env.state(|evm| {
+		assert!(Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RESTRICTION_MANAGER,
+				"isFrozen",
+				Some(&[
+					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+					Token::Address(Keyring::TrancheInvestor(2).into())
+				]),
+			)
+			.unwrap()
+			.value
+		));
+	});
+
+	env.state_mut(|_| {
+		remove_role::<T>(
+			AccountConverter::convert_evm_address(
+				EVM_DOMAIN_CHAIN_ID,
+				Keyring::TrancheInvestor(2).into(),
+			),
+			POOL_A,
+			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::unfreeze_investor(
+			Keyring::Admin.as_origin(),
+			POOL_A,
+			pool_a_tranche_1_id::<T>(),
+			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+	env.state(|evm| {
+		assert!(!Decoder::<bool>::decode(
+			&evm.view(
+				Keyring::Alice,
+				names::RESTRICTION_MANAGER,
+				"isFrozen",
+				Some(&[
+					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
+					Token::Address(Keyring::TrancheInvestor(2).into())
+				]),
+			)
+			.unwrap()
+			.value
+		));
 	});
 }

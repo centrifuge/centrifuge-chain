@@ -335,6 +335,12 @@ pub mod pallet {
 		/// The account derived from the [Domain] and [DomainAddress] has not
 		/// been whitelisted as a TrancheInvestor.
 		InvestorDomainAddressNotAMember,
+		/// The account derived from the [Domain] and [DomainAddress] is frozen
+		/// and cannot transfer tranche tokens therefore.
+		InvestorDomainAddressFrozen,
+		/// The account derived from the [Domain] and [DomainAddress] is not
+		/// frozen and cannot be unfrozen therefore.
+		InvestorDomainAddressNotFrozen,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
 		/// The domain hook address could not be found.
@@ -349,7 +355,9 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
-		/// Add a pool to a given domain
+		/// Add a pool to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
 		pub fn add_pool(
@@ -383,7 +391,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a tranche to a given domain
+		/// Add a tranche to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_tranche())]
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
@@ -488,7 +498,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update a member
+		/// Inform the recipient domain about a new or changed investor
+		/// validity.
 		#[pallet::weight(T::WeightInfo::update_member())]
 		#[pallet::call_index(5)]
 		pub fn update_member(
@@ -558,18 +569,14 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					T::DomainAddressToAccountId::convert(domain_address.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
-				),
-				Error::<T>::UnauthorizedTransfer
-			);
+			Self::validate_investor_can_transfer(
+				T::DomainAddressToAccountId::convert(domain_address.clone()),
+				pool_id,
+				tranche_id,
+			)?;
 
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-
 			T::PreTransferFilter::check((who.clone(), domain_address.clone(), invest_id.into()))?;
 
 			// Transfer to the domain account for bookkeeping
@@ -670,7 +677,9 @@ pub mod pallet {
 
 		/// Add a currency to the set of known currencies on the domain derived
 		/// from the given currency.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		///
+		/// Origin: Anyone because transmitted data is queried from chain.
+		#[pallet::weight(T::WeightInfo::add_currency())]
 		#[pallet::call_index(8)]
 		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -693,16 +702,17 @@ pub mod pallet {
 
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin for now
+		/// NOTE: In the future should be permissioned by new trait, see spec
+		/// <https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency>
 		#[pallet::call_index(9)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(T::WeightInfo::allow_investment_currency())]
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
-			// TODO(future): In the future, should be permissioned by trait which
-			// does not exist yet.
-			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
 			ensure!(
@@ -728,8 +738,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(<T as Config>::WeightInfo::schedule_upgrade())]
+		/// Schedule an upgrade of an EVM-based liquidity pool contract
+		/// instance.
+		///
+		/// Origin: root
+		#[pallet::weight(T::WeightInfo::schedule_upgrade())]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
@@ -746,6 +759,8 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		///
+		/// Origin: root
 		#[pallet::weight(T::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
 		pub fn cancel_upgrade(
@@ -766,7 +781,7 @@ pub mod pallet {
 		///
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
-		/// beforehand.
+		/// beforehand. Therefore, no restrictions on calling origin.
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
 		pub fn update_tranche_token_metadata(
@@ -797,8 +812,10 @@ pub mod pallet {
 
 		/// Disallow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin
 		#[pallet::call_index(13)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(T::WeightInfo::disallow_investment_currency())]
 		pub fn disallow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -823,6 +840,122 @@ pub mod pallet {
 				Message::DisallowAsset {
 					pool_id: pool_id.into(),
 					currency,
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Block a remote investor from performing investment tasks until lock
+		/// is removed.
+		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect frozenness beforehand.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(14)]
+		#[pallet::weight(T::WeightInfo::freeze_investor())]
+		pub fn freeze_investor(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+			let local_address = T::DomainAddressToAccountId::convert(domain_address.clone());
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+			Self::validate_investor_status(
+				local_address.clone(),
+				pool_id,
+				tranche_id,
+				T::Time::now(),
+				true,
+			)?;
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain_address.domain(),
+				Message::UpdateRestriction {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					update: UpdateRestrictionMessage::Freeze {
+						address: domain_address.address(),
+					},
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Unblock a previously locked remote investor from performing
+		/// investment tasks.
+		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect an unfrozen state beforehand.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(15)]
+		#[pallet::weight(T::WeightInfo::unfreeze_investor())]
+		pub fn unfreeze_investor(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+			let local_address = T::DomainAddressToAccountId::convert(domain_address.clone());
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+			Self::validate_investor_status(
+				local_address.clone(),
+				pool_id,
+				tranche_id,
+				T::Time::now(),
+				false,
+			)?;
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain_address.domain(),
+				Message::UpdateRestriction {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					update: UpdateRestrictionMessage::Unfreeze {
+						address: domain_address.address(),
+					},
 				},
 			)?;
 
@@ -944,6 +1077,64 @@ pub mod pallet {
 		fn domain_account_to_account_id(domain_account: (Domain, [u8; 32])) -> T::AccountId {
 			let domain_address = T::DomainAccountToDomainAddress::convert(domain_account);
 			T::DomainAddressToAccountId::convert(domain_address)
+		}
+
+		/// Checks whether the given address has investor permissions with at
+		/// least the given validity timestamp. Moreover, checks whether the
+		/// investor is frozen or not.
+		pub fn validate_investor_status(
+			investor: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			valid_until: Seconds,
+			is_frozen: bool,
+		) -> DispatchResult {
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
+				),
+				Error::<T>::InvestorDomainAddressNotAMember
+			);
+			ensure!(
+				is_frozen
+					== T::Permission::has(
+						PermissionScope::Pool(pool_id),
+						investor,
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id))
+					),
+				Error::<T>::InvestorDomainAddressFrozen
+			);
+
+			Ok(())
+		}
+
+		/// Checks whether the given address has investor permissions at least
+		/// to the current timestamp and whether it is not frozen.
+		pub fn validate_investor_can_transfer(
+			investor: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+		) -> DispatchResult {
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
+				),
+				Error::<T>::UnauthorizedTransfer
+			);
+			ensure!(
+				!T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor,
+					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id))
+				),
+				Error::<T>::InvestorDomainAddressFrozen
+			);
+
+			Ok(())
 		}
 	}
 

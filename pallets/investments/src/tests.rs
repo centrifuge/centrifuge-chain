@@ -2955,3 +2955,24 @@ fn collecting_over_max_works() {
 		}
 	})
 }
+
+#[test]
+fn collecting_investment_without_preconditions_fails() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		assert_noop!(
+			Investments::collect_investments(RuntimeOrigin::signed(NOT_INVESTOR), INVESTMENT_0_0),
+			ERR_PRE_CONDITION
+		);
+	})
+}
+
+/// NOTE: Collecting redemptions does not check pre-conditions
+#[test]
+fn collecting_redemption_without_preconditions_success() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		assert_ok!(Investments::collect_redemptions(
+			RuntimeOrigin::signed(NOT_INVESTOR),
+			INVESTMENT_0_0
+		),);
+	})
+}

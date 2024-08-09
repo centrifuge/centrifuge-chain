@@ -46,6 +46,7 @@ use sp_std::{
 };
 
 pub use crate as pallet_investments;
+use crate::OrderType;
 
 pub type AccountId = u64;
 
@@ -134,18 +135,31 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollect;
-	type PreConditions = Always;
+	type PreConditions = AlwaysWithOneException;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = OrmlTokens;
 	type WeightInfo = ();
 }
 
-pub struct Always;
-impl<T> PreConditions<T> for Always {
+pub(crate) const ERR_PRE_CONDITION: DispatchError =
+	DispatchError::Other("PreCondition mock fails on u64::MAX account on purpose");
+
+pub struct AlwaysWithOneException;
+impl<T> PreConditions<T> for AlwaysWithOneException
+where
+	T: Into<OrderType<AccountId, InvestmentId, Balance>> + Clone,
+{
 	type Result = DispatchResult;
 
-	fn check(_: T) -> Self::Result {
-		Ok(())
+	fn check(order: T) -> Self::Result {
+		match order.clone().into() {
+			OrderType::Investment { who, .. } | OrderType::Redemption { who, .. }
+				if who == NOT_INVESTOR =>
+			{
+				Err(ERR_PRE_CONDITION)
+			}
+			_ => Ok(()),
+		}
 	}
 }
 
@@ -187,6 +201,9 @@ pub const UNKNOWN_INVESTMENT: InvestmentId = (1, TRANCHE_ID_0);
 
 /// The currency id for the AUSD token
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
+/// The account for which the pre-condition mock fails
+pub(crate) const NOT_INVESTOR: u64 = u64::MAX;
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store

@@ -29,10 +29,7 @@ use cfg_primitives::{
 	},
 	LPGatewayQueueMessageNonce,
 };
-use cfg_traits::{
-	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
-	Seconds,
-};
+use cfg_traits::{investments::OrderManager, Millis, PoolUpdateGuard, Seconds};
 use cfg_types::{
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
@@ -80,7 +77,6 @@ use pallet_evm::{
 	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, GasWeightMapping,
 	Runner,
 };
-use pallet_investments::OrderType;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 pub use pallet_loans::entities::{input::PriceCollectionInput, loans::ActiveLoanInfo};
 use pallet_loans::types::cashflow::CashflowPayment;
@@ -117,7 +113,7 @@ use runtime_common::{
 		},
 		PoolAdmin, Treasurer,
 	},
-	permissions::PoolAdminCheck,
+	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
@@ -135,7 +131,7 @@ use sp_runtime::{
 		Dispatchable, IdentityLookup, PostDispatchInfoOf, UniqueSaturatedInto, Verify, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill, Perquintill,
+	ApplyExtrinsicResult, DispatchError, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::{marker::PhantomData, prelude::*, vec::Vec};
@@ -1666,55 +1662,10 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
-}
-
-/// Checks whether the given `who` has the role
-/// of a `TrancheInvestor` for the given pool.
-pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
-impl<
-		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-		T: UnixTime,
-	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsTrancheInvestor<P, T>
-{
-	type Result = DispatchResult;
-
-	fn check(order: OrderType<AccountId, InvestmentId, Balance>) -> Self::Result {
-		let is_tranche_investor = match order {
-			OrderType::Investment {
-				who,
-				investment_id: (pool_id, tranche_id),
-				..
-			} => P::has(
-				PermissionScope::Pool(pool_id),
-				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-			),
-			OrderType::Redemption {
-				who,
-				investment_id: (pool_id, tranche_id),
-				..
-			} => P::has(
-				PermissionScope::Pool(pool_id),
-				who,
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-			),
-		};
-
-		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
-			Ok(())
-		} else {
-			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolean. This makes the redundant "does not have role" error,
-			// which downstream pallets always need to generate, not needed anymore.
-			Err(DispatchError::Other(
-				"Account does not have the TrancheInvestor permission.",
-			))
-		}
-	}
 }
 
 parameter_types! {
