@@ -21,7 +21,6 @@ use sp_runtime::RuntimeDebug;
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub enum GatewayOrigin {
 	Domain(DomainAddress),
-	AxelarRelay(DomainAddress),
 }
 
 pub struct EnsureLocal;
