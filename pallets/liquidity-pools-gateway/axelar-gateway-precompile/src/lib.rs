@@ -21,11 +21,7 @@ use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
 use frame_support::ensure;
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
-use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
-	DispatchError,
-};
-use sp_std::vec::Vec;
+use sp_runtime::traits::{BlakeTwo256, Hash};
 
 pub use crate::weights::WeightInfo;
 
@@ -203,21 +199,6 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> cfg_traits::TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for Pallet<T> {
-	type Error = DispatchError;
-
-	fn try_convert(origin: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, DispatchError> {
-		let (source_chain, source_address) = origin;
-
-		let domain_converter = SourceConversion::<T>::get(BlakeTwo256::hash(&source_chain))
-			.ok_or(Error::<T>::NoConverterForSource)?;
-
-		domain_converter
-			.try_convert(&source_address)
-			.ok_or(Error::<T>::AccountBytesMismatchForDomain.into())
-	}
-}
-
 #[precompile_utils::precompile]
 impl<T: Config> Pallet<T>
 where
@@ -287,16 +268,13 @@ where
 				exit_status: ExitError::Other("account bytes mismatch for domain".into()),
 			})?;
 
-		match pallet_liquidity_pools_gateway::Pallet::<T>::receive_message(
+		pallet_liquidity_pools_gateway::Pallet::<T>::receive_message(
 			pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
 			msg,
 		)
 		.map(|_| ())
 		.map_err(TryDispatchError::Substrate)
-		{
-			Err(e) => Err(e.into()),
-			Ok(()) => Ok(()),
-		}
+		.map_err(Into::into)
 	}
 
 	// Mimics:
