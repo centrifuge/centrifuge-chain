@@ -138,7 +138,7 @@ frame_support::parameter_types! {
 	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
-	pub const MultiRouterCount: u32 = 3;
+	pub const MaxRouterCount: u32 = 8;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -146,6 +146,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundMessageHandler = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type MultiRouterCount = MultiRouterCount;
