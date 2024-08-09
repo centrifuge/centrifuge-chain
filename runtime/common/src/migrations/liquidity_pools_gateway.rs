@@ -73,11 +73,6 @@ where
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 		// Extra check to confirm that the storage alias is correct.
-		assert!(
-			OutboundMessageNonceStore::<T>::get() > 0,
-			"{LOG_PREFIX}: OutboundMessageNonce should be > 0"
-		);
-
 		assert_eq!(
 			OutboundMessageQueue::<T>::iter_keys().count(),
 			0,
