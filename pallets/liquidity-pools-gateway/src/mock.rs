@@ -149,7 +149,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
-	type MultiRouterCount = MultiRouterCount;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
