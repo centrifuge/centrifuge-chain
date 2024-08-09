@@ -79,6 +79,7 @@ where
 		>(|role| Some(role.migrate().into()));
 
 		log::info!("{LOG_PREFIX}: Migrated {writes} permissions!");
+
 		T::DbWeight::get().reads_writes(1, writes)
 	}
 
