@@ -33,16 +33,10 @@ pub type UpgradeDevelopment1401 = (
 	frame_support::migrations::VersionedMigration<
 		0,
 		1,
-		frame_support::migrations::VersionedMigration<
-			0,
-			1,
-			runtime_common::migrations::permissions_v1::Migration<
-				Runtime,
-				crate::MinDelay,
-				crate::MaxTranches,
-			>,
-			pallet_permissions::Pallet<Runtime>,
-			<Runtime as frame_system::Config>::DbWeight,
+		runtime_common::migrations::permissions_v1::Migration<
+			Runtime,
+			crate::MinDelay,
+			crate::MaxTranches,
 		>,
 		pallet_permissions::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,

@@ -76,7 +76,7 @@ where
 				MaxTranches,
 			>,
 			_,
-		>(|role| Some(role.migrate().into()));
+		>(|role| Some(role.migrate()));
 
 		log::info!("{LOG_PREFIX}: Migrated {writes} permissions!");
 
