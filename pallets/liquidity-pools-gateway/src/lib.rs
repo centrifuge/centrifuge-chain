@@ -31,7 +31,7 @@ use core::fmt::Debug;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
-	Router as DomainRouter,
+	Proof, Router as DomainRouter,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -40,7 +40,9 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_std::convert::TryInto;
+use sp_arithmetic::traits::{BaseArithmetic, EnsureSub, One};
+use sp_runtime::traits::EnsureAddAssign;
+use sp_std::{cmp::Ordering, convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
 
@@ -56,6 +58,28 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+/// Type that stores the information required when processing inbound messages.
+#[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub enum InboundEntry<T: Config> {
+	Message {
+		domain_address: DomainAddress,
+		message: T::Message,
+		expected_proof_count: u32,
+	},
+	Proof {
+		current_count: u32,
+	},
+}
+
+#[derive(Clone)]
+pub struct InboundProcessingInfo<T: Config> {
+	domain_address: DomainAddress,
+	inbound_routers: BoundedVec<T::Hash, T::MaxRouterCount>,
+	current_session_id: T::SessionId,
+	expected_proof_count_per_message: u32,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -94,7 +118,7 @@ pub mod pallet {
 		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// The message router type that is stored for each domain.
-		type Router: DomainRouter<Sender = Self::AccountId>
+		type Router: DomainRouter<Sender = Self::AccountId, Hash = Self::Hash>
 			+ Clone
 			+ Debug
 			+ MaxEncodedLen
@@ -121,7 +145,23 @@ pub mod pallet {
 		type Sender: Get<Self::AccountId>;
 
 		/// Type used for queueing messages.
-		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::AccountId, Self::Message>>;
+		type MessageQueue: MessageQueue<
+			Message = GatewayMessage<Self::AccountId, Self::Message, Self::Hash>,
+		>;
+
+		/// Maximum number of routers allowed for a domain.
+		#[pallet::constant]
+		type MaxRouterCount: Get<u32>;
+
+		/// Type for identifying sessions of inbound routers.
+		type SessionId: Parameter
+			+ Member
+			+ BaseArithmetic
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
 	}
 
 	#[pallet::event]
@@ -140,6 +180,18 @@ pub mod pallet {
 		DomainHookAddressSet {
 			domain: Domain,
 			hook_address: [u8; 20],
+		},
+
+		/// The outbound routers for a given domain were set.
+		OutboundRoutersSet {
+			domain: Domain,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
+		},
+
+		/// Inbound routers were set.
+		InboundRoutersSet {
+			domain: Domain,
+			router_hashes: BoundedVec<T::Hash, T::MaxRouterCount>,
 		},
 	}
 
@@ -175,6 +227,51 @@ pub mod pallet {
 	pub(crate) type PackedMessage<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
 
+	/// Storage for outbound routers.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn routers)]
+	pub type OutboundRouters<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::Router>;
+
+	/// Storage for outbound routers specific for a domain.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn outbound_domain_routers)]
+	pub type OutboundDomainRouters<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
+
+	/// Storage for pending inbound messages.
+	#[pallet::storage]
+	#[pallet::getter(fn pending_inbound_entries)]
+	pub type PendingInboundEntries<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::SessionId,
+		Blake2_128Concat,
+		(Proof, T::Hash),
+		InboundEntry<T>,
+	>;
+
+	/// Storage for inbound routers specific for a domain.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn inbound_routers)]
+	pub type InboundRouters<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
+
+	/// Storage for the session ID of an inbound domain.
+	#[pallet::storage]
+	#[pallet::getter(fn inbound_domain_sessions)]
+	pub type InboundDomainSessions<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, T::SessionId>;
+
+	/// Storage for inbound router session IDs.
+	#[pallet::storage]
+	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Router initialization failed.
@@ -205,6 +302,39 @@ pub mod pallet {
 		/// Emitted when you can `end_batch_message()` but the packing process
 		/// was not started by `start_batch_message()`.
 		MessagePackingNotStarted,
+
+		/// Invalid multi router.
+		InvalidMultiRouter,
+
+		/// Inbound domain session not found.
+		InboundDomainSessionNotFound,
+
+		/// The router that sent the inbound message is unknown.
+		UnknownInboundMessageRouter,
+
+		/// The router that sent the message is not the first one.
+		MessageExpectedFromFirstRouter,
+
+		/// The router that sent the proof should not be the first one.
+		ProofNotExpectedFromFirstRouter,
+
+		/// A message was expected instead of a proof.
+		ExpectedMessageType,
+
+		/// A message proof was expected instead of a message.
+		ExpectedMessageProofType,
+
+		/// Pending inbound entry not found.
+		PendingInboundEntryNotFound,
+
+		/// Multi-router not found.
+		MultiRouterNotFound,
+
+		/// Message proof cannot be retrieved.
+		MessageProofRetrieval,
+
+		/// Recovery message not found.
+		RecoveryMessageNotFound,
 	}
 
 	#[pallet::call]
@@ -290,9 +420,11 @@ pub mod pallet {
 				Error::<T>::UnknownInstance,
 			);
 
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Inbound {
+			let gateway_message = GatewayMessage::<T::AccountId, T::Message, T::Hash>::Inbound {
 				domain_address: origin_address,
 				message: T::Message::deserialize(&msg)?,
+				//TODO(cdamian): Use an actual router hash.
+				router_hash: T::Hash::default(),
 			};
 
 			T::MessageQueue::submit(gateway_message)
@@ -301,7 +433,7 @@ pub mod pallet {
 		/// Set the address of the domain hook
 		///
 		/// Can only be called by `AdminOrigin`.
-		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		#[pallet::weight(T::WeightInfo::set_domain_hook_address())]
 		#[pallet::call_index(8)]
 		pub fn set_domain_hook_address(
 			origin: OriginFor<T>,
@@ -352,23 +484,391 @@ pub mod pallet {
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
 		}
+
+		/// Set outbound routers for a particular domain.
+		#[pallet::weight(T::WeightInfo::set_outbound_routers())]
+		#[pallet::call_index(11)]
+		pub fn set_outbound_routers(
+			origin: OriginFor<T>,
+			domain: Domain,
+			routers: BoundedVec<T::Router, T::MaxRouterCount>,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+
+			let mut router_hashes = Vec::new();
+
+			for router in &routers {
+				router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
+
+				let router_hash = router.hash();
+
+				router_hashes.push(router_hash);
+
+				OutboundRouters::<T>::insert(router_hash, router);
+			}
+
+			<OutboundDomainRouters<T>>::insert(
+				domain.clone(),
+				BoundedVec::try_from(router_hashes).map_err(|_| Error::<T>::InvalidMultiRouter)?,
+			);
+
+			Self::deposit_event(Event::OutboundRoutersSet { domain, routers });
+
+			Ok(())
+		}
+
+		/// Set inbound routers.
+		#[pallet::weight(T::WeightInfo::set_inbound_routers())]
+		#[pallet::call_index(12)]
+		pub fn set_inbound_routers(
+			origin: OriginFor<T>,
+			domain: Domain,
+			router_hashes: BoundedVec<T::Hash, T::MaxRouterCount>,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let session_id = SessionIdStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
+				Ok::<T::SessionId, DispatchError>(*n)
+			})?;
+
+			InboundRouters::<T>::insert(domain.clone(), router_hashes.clone());
+			InboundDomainSessions::<T>::insert(domain.clone(), session_id);
+
+			Self::deposit_event(Event::InboundRoutersSet {
+				domain,
+				router_hashes,
+			});
+
+			Ok(())
+		}
+
+		/// Manually increase the proof count for a particular message and
+		/// executes it if the required count is reached.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::execute_message_recovery())]
+		#[pallet::call_index(13)]
+		pub fn execute_message_recovery(
+			origin: OriginFor<T>,
+			message_proof: Proof,
+			proof_count: u32,
+		) -> DispatchResult {
+			//TODO(cdamian): Implement this.
+			unimplemented!()
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
+			let routers =
+				InboundRouters::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
+
+			let expected_proof_count = routers.len().ensure_sub(1)?;
+
+			Ok(expected_proof_count as u32)
+		}
+
+		fn get_message_proof(message: T::Message) -> Proof {
+			match message.get_message_proof() {
+				None => message
+					.to_message_proof()
+					.get_message_proof()
+					.expect("message proof ensured by 'to_message_proof'"),
+				Some(proof) => proof,
+			}
+		}
+
+		fn create_inbound_entry(
+			domain_address: DomainAddress,
+			message: T::Message,
+			expected_proof_count: u32,
+		) -> InboundEntry<T> {
+			match message.get_message_proof() {
+				None => InboundEntry::Message {
+					domain_address,
+					message,
+					expected_proof_count,
+				},
+				Some(_) => InboundEntry::Proof { current_count: 1 },
+			}
+		}
+
+		/// Validation ensures that:
+		///
+		/// - the router that sent the inbound message is a valid router for the
+		///   specific domain.
+		/// - messages are only sent by the first inbound router.
+		/// - proofs are not sent by the first inbound router.
+		fn validate_inbound_entry(
+			inbound_processing_info: &InboundProcessingInfo<T>,
+			router_hash: T::Hash,
+			inbound_entry: &InboundEntry<T>,
+		) -> DispatchResult {
+			let inbound_routers = inbound_processing_info.inbound_routers.clone();
+
+			ensure!(
+				inbound_routers.iter().any(|x| x == &router_hash),
+				Error::<T>::UnknownInboundMessageRouter
+			);
+
+			//TODO(cdamian): Test with 2 routers
+			match inbound_entry {
+				InboundEntry::Message { .. } => {
+					ensure!(
+						inbound_routers.get(0) == Some(&router_hash),
+						Error::<T>::MessageExpectedFromFirstRouter
+					);
+
+					Ok(())
+				}
+				InboundEntry::Proof { .. } => {
+					ensure!(
+						inbound_routers.get(0) != Some(&router_hash),
+						Error::<T>::ProofNotExpectedFromFirstRouter
+					);
+
+					Ok(())
+				}
+			}
+		}
+
+		fn update_pending_entry(
+			session_id: T::SessionId,
+			message_proof: Proof,
+			router_hash: T::Hash,
+			inbound_entry: InboundEntry<T>,
+			weight: &mut Weight,
+		) -> DispatchResult {
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
+
+			PendingInboundEntries::<T>::try_mutate(
+				session_id,
+				(message_proof, router_hash),
+				|storage_entry| match storage_entry {
+					None => {
+						*storage_entry = Some(inbound_entry);
+
+						Ok::<(), DispatchError>(())
+					}
+					Some(stored_inbound_entry) => match stored_inbound_entry {
+						InboundEntry::Message {
+							expected_proof_count: old,
+							..
+						} => match inbound_entry {
+							InboundEntry::Message {
+								expected_proof_count: new,
+								..
+							} => old.ensure_add_assign(new).map_err(|e| e.into()),
+							InboundEntry::Proof { .. } => {
+								//TODO(cdamian): Test with 2 routers
+								Err(Error::<T>::ExpectedMessageType.into())
+							}
+						},
+						InboundEntry::Proof { current_count: old } => match inbound_entry {
+							InboundEntry::Proof { current_count: new } => {
+								old.ensure_add_assign(new).map_err(|e| e.into())
+							}
+							InboundEntry::Message { .. } => {
+								Err(Error::<T>::ExpectedMessageProofType.into())
+							}
+						},
+					},
+				},
+			)
+		}
+
+		fn validate_and_update_pending_entries(
+			inbound_processing_info: &InboundProcessingInfo<T>,
+			message: T::Message,
+			message_proof: Proof,
+			router_hash: T::Hash,
+			weight: &mut Weight,
+		) -> DispatchResult {
+			let inbound_entry = Self::create_inbound_entry(
+				inbound_processing_info.domain_address.clone(),
+				message,
+				inbound_processing_info.expected_proof_count_per_message,
+			);
+
+			Self::validate_inbound_entry(&inbound_processing_info, router_hash, &inbound_entry)?;
+
+			Self::update_pending_entry(
+				inbound_processing_info.current_session_id,
+				message_proof,
+				router_hash,
+				inbound_entry,
+				weight,
+			)?;
+
+			Ok(())
+		}
+
+		fn get_executable_message(
+			inbound_processing_info: &InboundProcessingInfo<T>,
+			message_proof: Proof,
+		) -> Option<T::Message> {
+			let mut message = None;
+			let mut votes = 0;
+
+			for inbound_router in &inbound_processing_info.inbound_routers {
+				match PendingInboundEntries::<T>::get(
+					inbound_processing_info.current_session_id,
+					(message_proof, inbound_router),
+				) {
+					// We expected one InboundEntry for each router, if that's not the case,
+					// we can return.
+					None => return None,
+					Some(inbound_entry) => match inbound_entry {
+						InboundEntry::Message {
+							message: stored_message,
+							..
+						} => message = Some(stored_message),
+						InboundEntry::Proof { current_count } => {
+							if current_count > 0 {
+								votes += 1;
+							}
+						}
+					},
+				};
+			}
+
+			if votes == inbound_processing_info.expected_proof_count_per_message {
+				return message;
+			}
+
+			None
+		}
+
+		fn decrease_pending_entries_counts(
+			inbound_processing_info: &InboundProcessingInfo<T>,
+			message_proof: Proof,
+		) -> DispatchResult {
+			for inbound_router in &inbound_processing_info.inbound_routers {
+				match PendingInboundEntries::<T>::try_mutate(
+					inbound_processing_info.current_session_id,
+					(message_proof, inbound_router),
+					|storage_entry| match storage_entry {
+						None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
+						Some(stored_inbound_entry) => match stored_inbound_entry {
+							InboundEntry::Message {
+								expected_proof_count,
+								..
+							} => {
+								let updated_count = (*expected_proof_count).ensure_sub(
+									inbound_processing_info.expected_proof_count_per_message,
+								)?;
+
+								if updated_count == 0 {
+									*storage_entry = None;
+								} else {
+									*expected_proof_count = updated_count;
+								}
+
+								Ok::<(), DispatchError>(())
+							}
+							InboundEntry::Proof { current_count } => {
+								let updated_count = (*current_count).ensure_sub(1)?;
+
+								if updated_count == 0 {
+									*storage_entry = None;
+								} else {
+									*current_count = updated_count;
+								}
+
+								Ok::<(), DispatchError>(())
+							}
+						},
+					},
+				) {
+					Ok(()) => {}
+					Err(e) => return Err(e),
+				}
+			}
+
+			Ok(())
+		}
+
+		fn get_inbound_processing_info(
+			domain_address: DomainAddress,
+			weight: &mut Weight,
+		) -> Result<InboundProcessingInfo<T>, DispatchError> {
+			let inbound_routers = InboundRouters::<T>::get(domain_address.domain())
+				.ok_or(Error::<T>::MultiRouterNotFound)?;
+
+			weight.saturating_accrue(T::DbWeight::get().reads(1));
+
+			let current_session_id = InboundDomainSessions::<T>::get(domain_address.domain())
+				.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
+
+			weight.saturating_accrue(T::DbWeight::get().reads(1));
+
+			let expected_proof_count = Self::get_expected_proof_count(&domain_address.domain())?;
+
+			weight.saturating_accrue(T::DbWeight::get().reads(1));
+
+			Ok(InboundProcessingInfo {
+				domain_address,
+				inbound_routers,
+				current_session_id,
+				expected_proof_count_per_message: expected_proof_count,
+			})
+		}
+
 		/// Give the message to the `InboundMessageHandler` to be processed.
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
+			router_hash: T::Hash,
 		) -> (DispatchResult, Weight) {
+			let mut weight = Default::default();
+
+			let inbound_processing_info =
+				match Self::get_inbound_processing_info(domain_address.clone(), &mut weight) {
+					Ok(i) => i,
+					Err(e) => return (Err(e), weight),
+				};
+
+			weight.saturating_accrue(
+				Weight::from_parts(0, T::Message::max_encoded_len() as u64)
+					.saturating_add(LP_DEFENSIVE_WEIGHT),
+			);
+
 			let mut count = 0;
 
 			for submessage in message.submessages() {
 				count += 1;
 
-				if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), submessage)
-				{
-					// We only consume the processed weight if error during the batch
-					return (Err(e), LP_DEFENSIVE_WEIGHT.saturating_mul(count));
+				let message_proof = Self::get_message_proof(message.clone());
+
+				if let Err(e) = Self::validate_and_update_pending_entries(
+					&inbound_processing_info,
+					submessage.clone(),
+					message_proof,
+					router_hash,
+					&mut weight,
+				) {
+					return (Err(e), weight);
+				}
+
+				match Self::get_executable_message(&inbound_processing_info, message_proof) {
+					Some(m) => {
+						if let Err(e) = Self::decrease_pending_entries_counts(
+							&inbound_processing_info,
+							message_proof,
+						) {
+							return (Err(e), weight.saturating_mul(count));
+						}
+
+						if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), m)
+						{
+							// We only consume the processed weight if error during the batch
+							return (Err(e), weight.saturating_mul(count));
+						}
+					}
+					None => continue,
 				}
 			}
 
@@ -380,12 +880,12 @@ pub mod pallet {
 		/// weight for these operations in the `DispatchResultWithPostInfo`.
 		fn process_outbound_message(
 			sender: T::AccountId,
-			domain: Domain,
 			message: T::Message,
+			router_hash: T::Hash,
 		) -> (DispatchResult, Weight) {
 			let read_weight = T::DbWeight::get().reads(1);
 
-			let Some(router) = DomainRouters::<T>::get(domain) else {
+			let Some(router) = OutboundRouters::<T>::get(router_hash) else {
 				return (Err(Error::<T>::RouterNotFound.into()), read_weight);
 			};
 
@@ -398,15 +898,33 @@ pub mod pallet {
 		}
 
 		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
-			// We are using the sender specified in the pallet config so that we can
-			// ensure that the account is funded
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
-				sender: T::Sender::get(),
-				destination,
-				message,
-			};
+			let router_hashes = OutboundDomainRouters::<T>::get(destination.clone())
+				.ok_or(Error::<T>::MultiRouterNotFound)?;
 
-			T::MessageQueue::submit(gateway_message)
+			let message_proof = message.to_message_proof();
+			let mut message_opt = Some(message);
+
+			for router_hash in router_hashes {
+				// Ensure that we only send the actual message once, using one router.
+				// The remaining routers will send the message proof.
+				let router_msg = match message_opt.take() {
+					Some(m) => m,
+					None => message_proof.clone(),
+				};
+
+				// We are using the sender specified in the pallet config so that we can
+				// ensure that the account is funded
+				let gateway_message =
+					GatewayMessage::<T::AccountId, T::Message, T::Hash>::Outbound {
+						sender: T::Sender::get(),
+						message: router_msg,
+						router_hash,
+					};
+
+				T::MessageQueue::submit(gateway_message)?;
+			}
+
+			Ok(())
 		}
 	}
 
@@ -439,19 +957,20 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageProcessor for Pallet<T> {
-		type Message = GatewayMessage<T::AccountId, T::Message>;
+		type Message = GatewayMessage<T::AccountId, T::Message, T::Hash>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,
 					message,
-				} => Self::process_inbound_message(domain_address, message),
+					router_hash,
+				} => Self::process_inbound_message(domain_address, message, router_hash),
 				GatewayMessage::Outbound {
 					sender,
-					destination,
 					message,
-				} => Self::process_outbound_message(sender, destination, message),
+					router_hash,
+				} => Self::process_outbound_message(sender, message, router_hash),
 			}
 		}
 

@@ -26,9 +26,14 @@ pub mod pallet {
 		) {
 			register_call!(move |(sender, message)| f(sender, message));
 		}
+
+		pub fn mock_hash(f: impl Fn() -> T::Hash + 'static) {
+			register_call!(move |()| f());
+		}
 	}
 
 	impl<T: Config> MockedRouter for Pallet<T> {
+		type Hash = T::Hash;
 		type Sender = T::AccountId;
 
 		fn init() -> DispatchResult {
@@ -37,6 +42,10 @@ pub mod pallet {
 
 		fn send(sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 			execute_call!((sender, message))
+		}
+
+		fn hash() -> Self::Hash {
+			execute_call!(())
 		}
 	}
 }
@@ -68,11 +77,16 @@ impl<T: pallet::Config> RouterMock<T> {
 	) {
 		pallet::Pallet::<T>::mock_send(f)
 	}
+
+	pub fn mock_hash(&self, f: impl Fn() -> <RouterMock<T> as Router>::Hash + 'static) {
+		pallet::Pallet::<T>::mock_hash(f)
+	}
 }
 
 /// Here we implement the actual Router trait for the `RouterMock` which in turn
 /// calls the `MockedRouter` trait implementation.
 impl<T: pallet::Config> Router for RouterMock<T> {
+	type Hash = T::Hash;
 	type Sender = T::AccountId;
 
 	fn init(&self) -> DispatchResult {
@@ -81,6 +95,10 @@ impl<T: pallet::Config> Router for RouterMock<T> {
 
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo {
 		pallet::Pallet::<T>::send(sender, message)
+	}
+
+	fn hash(&self) -> Self::Hash {
+		pallet::Pallet::<T>::hash()
 	}
 }
 
@@ -94,9 +112,13 @@ trait MockedRouter {
 	/// The sender type of the outbound message.
 	type Sender;
 
+	type Hash;
+
 	/// Initialize the router.
 	fn init() -> DispatchResult;
 
 	/// Send the message to the router's destination.
 	fn send(sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+
+	fn hash() -> Self::Hash;
 }
