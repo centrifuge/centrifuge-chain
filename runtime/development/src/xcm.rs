@@ -25,7 +25,7 @@ use runtime_common::{
 	transfer_filter::PreXcmTransfer,
 	xcm::{
 		AccountIdToLocation, Barrier, CanonicalNativePerSecond, FixedConversionRateProvider,
-		LocalOriginToLocation, LpInstanceRelayer, ToTreasury,
+		LocalOriginToLocation, ToTreasury,
 	},
 };
 use sp_core::ConstU32;
@@ -185,8 +185,6 @@ impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
 /// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
-	// A matcher that catches all Moonbeam relaying contracts to generate the right Origin
-	LpInstanceRelayer<ParaToEvm, Runtime>,
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.

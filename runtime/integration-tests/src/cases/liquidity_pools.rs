@@ -22,9 +22,6 @@ use frame_support::{
 		OriginTrait, PalletInfo,
 	},
 };
-use liquidity_pools_gateway_routers::{
-	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
-};
 use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
@@ -35,13 +32,13 @@ use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 	xcm::general_key,
 };
-use sp_core::{Get, H160};
+use sp_core::Get;
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 };
 use staging_xcm::{
-	v4::{Junction, Junction::*, Location, NetworkId},
+	v4::{Junction::*, Location, NetworkId},
 	VersionedLocation,
 };
 
@@ -85,7 +82,6 @@ pub type LiquidityPoolMessage = Message;
 
 mod utils {
 	use cfg_types::oracles::OracleKey;
-	use frame_support::weights::Weight;
 	use runtime_common::oracle::Feeder;
 
 	use super::*;
@@ -211,42 +207,6 @@ mod utils {
 		));
 	}
 
-	pub fn set_test_domain_router<T: Runtime>(
-		evm_chain_id: u64,
-		xcm_domain_location: VersionedLocation,
-		currency_id: CurrencyId,
-	) {
-		let ethereum_xcm_router = EthereumXCMRouter::<T> {
-			router: XCMRouter {
-				xcm_domain: XcmDomain {
-					location: Box::new(xcm_domain_location),
-					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
-					contract_address: H160::from(DEFAULT_EVM_ADDRESS_MOONBEAM),
-					max_gas_limit: 500_000,
-					transact_required_weight_at_most: Weight::from_parts(
-						12530000000,
-						DEFAULT_PROOF_SIZE.saturating_div(2),
-					),
-					overall_weight: Weight::from_parts(15530000000, DEFAULT_PROOF_SIZE),
-					fee_currency: currency_id,
-					// 0.2 token
-					fee_amount: 200000000000000000,
-				},
-			},
-		};
-
-		let domain_router = DomainRouter::EthereumXCM(ethereum_xcm_router);
-		let domain = Domain::EVM(evm_chain_id);
-
-		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				domain,
-				domain_router,
-			)
-		);
-	}
-
 	pub fn default_tranche_id<T: Runtime>(pool_id: u64) -> TrancheId {
 		let pool_details =
 			pallet_pool_system::pallet::Pool::<T>::get(pool_id).expect("Pool should exist");
@@ -325,12 +285,6 @@ mod utils {
 				DEFAULT_BALANCE_GLMR,
 				0,
 			));
-
-			set_test_domain_router::<T>(
-				MOONBEAM_EVM_CHAIN_ID,
-				Location::new(1, Junction::Parachain(SIBLING_ID)).into(),
-				GLMR_CURRENCY_ID,
-			);
 		});
 	}
 
@@ -341,11 +295,6 @@ mod utils {
 	pub fn general_currency_index<T: Runtime>(currency_id: CurrencyId) -> u128 {
 		pallet_liquidity_pools::Pallet::<T>::try_get_general_index(currency_id)
 			.expect("ForeignAsset should convert into u128")
-	}
-
-	/// Returns the investment_id of the given pool and tranche ids.
-	pub fn investment_id<T: Runtime>(pool_id: u64, tranche_id: TrancheId) -> InvestmentId {
-		(pool_id, tranche_id)
 	}
 
 	pub fn default_investment_id<T: Runtime>() -> InvestmentId {
@@ -578,7 +527,7 @@ mod utils {
 
 		// Verify order id is 0
 		assert_eq!(
-			pallet_investments::Pallet::<T>::redeem_order_id(investment_id::<T>(
+			pallet_investments::Pallet::<T>::redeem_order_id((
 				pool_id,
 				default_tranche_id::<T>(pool_id)
 			)),
