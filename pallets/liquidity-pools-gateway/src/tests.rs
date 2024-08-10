@@ -23,7 +23,7 @@ use super::{
 	origin::*,
 	pallet::*,
 };
-use crate::{GatewayMessage, InboundEntry};
+use crate::{message_processing::InboundEntry, GatewayMessage};
 
 pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(0, [1; 20]);
 
