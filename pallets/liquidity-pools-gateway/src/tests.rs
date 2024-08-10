@@ -597,7 +597,7 @@ mod message_processor_impl {
 							TEST_DOMAIN_ADDRESS.domain(),
 							BoundedVec::try_from(test_routers.clone()).unwrap(),
 						);
-						InboundDomainSessions::<Runtime>::insert(
+						InboundMessageSessions::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
 							session_id,
 						);
@@ -641,7 +641,7 @@ mod message_processor_impl {
 				}
 			}
 
-			/// Generate all `TestEntry` combinations like:
+			/// Used for generating all `RouterMessage` combinations like:
 			///
 			/// vec![
 			/// 	(*ROUTER_HASH_1, Message::Simple),
@@ -674,24 +674,33 @@ mod message_processor_impl {
 					.collect::<Vec<_>>()
 			}
 
+			/// Type used for mapping a message to a router hash.
 			pub type RouterMessage = (H256, Message);
 
+			/// Type used for aggregating tests for inbound messages.
 			pub struct InboundMessageTestSuite {
 				pub routers: Vec<H256>,
 				pub tests: Vec<InboundMessageTest>,
 			}
 
+			/// Type used for defining a test which contains a set of
+			/// `RouterMessage` combinations and the expected test result.
 			pub struct InboundMessageTest {
 				pub router_messages: Vec<RouterMessage>,
 				pub expected_test_result: ExpectedTestResult,
 			}
 
+			/// Type used for defining the number of expected inbound message
+			/// submission and the exected storage state.
 			#[derive(Clone, Debug)]
 			pub struct ExpectedTestResult {
 				pub message_submitted_times: u32,
 				pub expected_storage_entries: Vec<(H256, Option<InboundEntry<Runtime>>)>,
 			}
 
+			/// Generates the combinations of `RouterMessage` used when testing,
+			/// maps the `ExpectedTestResult` for each and creates the
+			/// `InboundMessageTestSuite`.
 			pub fn generate_test_suite(
 				routers: Vec<H256>,
 				test_data: Vec<RouterMessage>,
@@ -744,7 +753,7 @@ mod message_processor_impl {
 						domain_address.domain(),
 						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
 					);
-					InboundDomainSessions::<Runtime>::insert(domain_address.domain(), session_id);
+					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 
 					let handler = MockLiquidityPools::mock_handle(
 						move |mock_domain_address, mock_message| {
@@ -825,7 +834,7 @@ mod message_processor_impl {
 						domain_address.domain(),
 						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
 					);
-					InboundDomainSessions::<Runtime>::insert(domain_address.domain(), session_id);
+					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
 					assert_noop!(res, Error::<Runtime>::UnknownInboundMessageRouter);
@@ -850,7 +859,7 @@ mod message_processor_impl {
 						domain_address.domain(),
 						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
 					);
-					InboundDomainSessions::<Runtime>::insert(domain_address.domain(), session_id);
+					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 					PendingInboundEntries::<Runtime>::insert(
 						session_id,
 						(message_proof, router_hash),
@@ -1480,7 +1489,7 @@ mod message_processor_impl {
 							BoundedVec::<_, _>::try_from(vec![*ROUTER_HASH_1, *ROUTER_HASH_2])
 								.unwrap(),
 						);
-						InboundDomainSessions::<Runtime>::insert(
+						InboundMessageSessions::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
 							session_id,
 						);
@@ -1506,7 +1515,7 @@ mod message_processor_impl {
 							BoundedVec::<_, _>::try_from(vec![*ROUTER_HASH_1, *ROUTER_HASH_2])
 								.unwrap(),
 						);
-						InboundDomainSessions::<Runtime>::insert(
+						InboundMessageSessions::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
 							session_id,
 						);
