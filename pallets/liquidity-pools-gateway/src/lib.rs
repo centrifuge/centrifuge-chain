@@ -565,7 +565,6 @@ pub mod pallet {
 				Error::<T>::UnknownInboundMessageRouter
 			);
 
-			//TODO(cdamian): Test with 2 routers
 			match inbound_entry {
 				InboundEntry::Message { .. } => {
 					ensure!(
