@@ -961,6 +961,58 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Notify the specified destination domain about a tranche hook address
+		/// update.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(16)]
+		#[pallet::weight(T::WeightInfo::update_tranche_hook())]
+		pub fn update_tranche_hook(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain: Domain,
+			hook: [u8; 20],
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
+			let evm_chain_id = match domain {
+				Domain::EVM(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+			let hook_32 =
+				T::DomainAddressToAccountId::convert(DomainAddress::EVM(evm_chain_id, hook)).into();
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain,
+				Message::UpdateTrancheHook {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					hook: hook_32,
+				},
+			)?;
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
