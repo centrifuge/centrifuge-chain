@@ -34,7 +34,10 @@ pub trait LPEncoding: Sized {
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
 
+	/// Retrieves the message proof, if any.
 	fn get_message_proof(&self) -> Option<Proof>;
+
+	/// Converts the message into a message proof type.
 	fn to_message_proof(&self) -> Self;
 }
 

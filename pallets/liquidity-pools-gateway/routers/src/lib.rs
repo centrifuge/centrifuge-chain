@@ -93,9 +93,7 @@ where
 
 	fn hash(&self) -> Self::Hash {
 		match self {
-			DomainRouter::EthereumXCM(r) => r.hash(),
 			DomainRouter::AxelarEVM(r) => r.hash(),
-			DomainRouter::AxelarXCM(r) => r.hash(),
 		}
 	}
 }

@@ -59,7 +59,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// Type that stores the information required when processing inbound messages.
+/// Type used when storing inbound message information.
 #[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum InboundEntry<T: Config> {
@@ -73,6 +73,7 @@ pub enum InboundEntry<T: Config> {
 	},
 }
 
+/// Type used when processing inbound messages.
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	domain_address: DomainAddress,
@@ -83,6 +84,8 @@ pub struct InboundProcessingInfo<T: Config> {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use sp_arithmetic::traits::EnsureAdd;
+
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -248,13 +251,13 @@ pub mod pallet {
 	pub type InboundRouters<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
 
-	/// Storage for the session ID of an inbound domain.
+	/// Storage for the inbound message session IDs.
 	#[pallet::storage]
-	#[pallet::getter(fn inbound_domain_sessions)]
-	pub type InboundDomainSessions<T: Config> =
+	#[pallet::getter(fn inbound_message_sessions)]
+	pub type InboundMessageSessions<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, T::SessionId>;
 
-	/// Storage for inbound router session IDs.
+	/// Storage for inbound message session IDs.
 	#[pallet::storage]
 	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
 
@@ -480,13 +483,22 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let session_id = SessionIdStore::<T>::try_mutate(|n| {
-				n.ensure_add_assign(One::one())?;
-				Ok::<T::SessionId, DispatchError>(*n)
+			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
+				let old_session_id = *n;
+				let new_session_id = n.ensure_add(One::one())?;
+
+				*n = new_session_id;
+
+				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
 			})?;
 
 			InboundRouters::<T>::insert(domain.clone(), router_hashes.clone());
-			InboundDomainSessions::<T>::insert(domain.clone(), session_id);
+			InboundMessageSessions::<T>::insert(domain.clone(), new_session_id);
+
+			//TODO(cdamian): The storages are updated with the new session.
+			// We can process the removal of entries associated with the old entries
+			// `on_idle`.
+			let _ = PendingInboundEntries::<T>::clear_prefix(old_session_id, u32::MAX, None);
 
 			Self::deposit_event(Event::InboundRoutersSet {
 				domain,
@@ -513,6 +525,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Calculates and returns the proof count required for processing one
+		/// inbound message.
 		fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
 			let routers =
 				InboundRouters::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
@@ -522,6 +536,7 @@ pub mod pallet {
 			Ok(expected_proof_count as u32)
 		}
 
+		/// Gets the message proof for a message.
 		fn get_message_proof(message: T::Message) -> Proof {
 			match message.get_message_proof() {
 				None => message
@@ -532,6 +547,8 @@ pub mod pallet {
 			}
 		}
 
+		/// Creates an inbound entry based on whether the inbound message is a
+		/// proof or not.
 		fn create_inbound_entry(
 			domain_address: DomainAddress,
 			message: T::Message,
@@ -585,6 +602,8 @@ pub mod pallet {
 			}
 		}
 
+		/// Updates the inbound entry for a particular message, increasing the
+		/// counts accordingly.
 		fn update_pending_entry(
 			session_id: T::SessionId,
 			message_proof: Proof,
@@ -613,7 +632,6 @@ pub mod pallet {
 								..
 							} => old.ensure_add_assign(new).map_err(|e| e.into()),
 							InboundEntry::Proof { .. } => {
-								//TODO(cdamian): Test with 2 routers
 								Err(Error::<T>::ExpectedMessageType.into())
 							}
 						},
@@ -630,6 +648,7 @@ pub mod pallet {
 			)
 		}
 
+		/// Creates, validates and updates the inbound entry.
 		fn validate_and_update_pending_entries(
 			inbound_processing_info: &InboundProcessingInfo<T>,
 			message: T::Message,
@@ -656,6 +675,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Checks if the number of proofs required for executing one message
+		/// were received, and returns the message if so.
 		fn get_executable_message(
 			inbound_processing_info: &InboundProcessingInfo<T>,
 			message_proof: Proof,
@@ -692,6 +713,8 @@ pub mod pallet {
 			None
 		}
 
+		/// Decreases the counts for inbound entries and removes them if the
+		/// counts reach 0.
 		fn decrease_pending_entries_counts(
 			inbound_processing_info: &InboundProcessingInfo<T>,
 			message_proof: Proof,
@@ -741,6 +764,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Retrieves the information required for processing an inbound
+		/// message.
 		fn get_inbound_processing_info(
 			domain_address: DomainAddress,
 			weight: &mut Weight,
@@ -750,7 +775,7 @@ pub mod pallet {
 
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-			let current_session_id = InboundDomainSessions::<T>::get(domain_address.domain())
+			let current_session_id = InboundMessageSessions::<T>::get(domain_address.domain())
 				.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
 
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -767,7 +792,8 @@ pub mod pallet {
 			})
 		}
 
-		/// Give the message to the `InboundMessageHandler` to be processed.
+		/// Iterates over a batch of messages and checks if the requirements for
+		/// processing each message are met.
 		fn process_inbound_message(
 			domain_address: DomainAddress,
 			message: T::Message,
@@ -825,9 +851,8 @@ pub mod pallet {
 			(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
 		}
 
-		/// Retrieves the router stored for the provided domain, sends the
-		/// message using the router, and calculates and returns the required
-		/// weight for these operations in the `DispatchResultWithPostInfo`.
+		/// Retrieves the stored router, sends the message, and calculates and
+		/// returns the router operation result and the weight used.
 		fn process_outbound_message(
 			sender: T::AccountId,
 			message: T::Message,
@@ -853,6 +878,8 @@ pub mod pallet {
 			(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
 		}
 
+		/// Retrieves the hashes of the routers set for a domain and queues the
+		/// message and proofs accordingly.
 		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
 			let router_hashes = OutboundDomainRouters::<T>::get(destination.clone())
 				.ok_or(Error::<T>::MultiRouterNotFound)?;
@@ -930,7 +957,8 @@ pub mod pallet {
 			}
 		}
 
-		/// Process a message.
+		/// Returns the max processing weight for a message, based on its
+		/// direction.
 		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			match msg {
 				GatewayMessage::Inbound { message, .. } => {
