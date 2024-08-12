@@ -1,5 +1,5 @@
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{InboundMessageHandler, LPEncoding, MessageQueue, Proof, Router};
+use cfg_traits::liquidity_pools::{InboundMessageHandler, LPEncoding, MessageQueue, Proof};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -39,7 +39,7 @@ pub enum InboundEntry<T: Config> {
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	domain_address: DomainAddress,
-	routers: BoundedVec<T::Hash, T::MaxRouterCount>,
+	routers: BoundedVec<T::RouterId, T::MaxRouterCount>,
 	current_session_id: T::SessionId,
 	expected_proof_count_per_message: u32,
 }
@@ -91,20 +91,20 @@ impl<T: Config> Pallet<T> {
 	/// - proofs are not sent by the first inbound router.
 	fn validate_inbound_entry(
 		inbound_processing_info: &InboundProcessingInfo<T>,
-		router_hash: T::Hash,
+		router_id: &T::RouterId,
 		inbound_entry: &InboundEntry<T>,
 	) -> DispatchResult {
 		let routers = inbound_processing_info.routers.clone();
 
 		ensure!(
-			routers.iter().any(|x| x == &router_hash),
+			routers.iter().any(|x| x == router_id),
 			Error::<T>::UnknownInboundMessageRouter
 		);
 
 		match inbound_entry {
 			InboundEntry::Message { .. } => {
 				ensure!(
-					routers.get(0) == Some(&router_hash),
+					routers.get(0) == Some(&router_id),
 					Error::<T>::MessageExpectedFromFirstRouter
 				);
 
@@ -112,7 +112,7 @@ impl<T: Config> Pallet<T> {
 			}
 			InboundEntry::Proof { .. } => {
 				ensure!(
-					routers.get(0) != Some(&router_hash),
+					routers.get(0) != Some(&router_id),
 					Error::<T>::ProofNotExpectedFromFirstRouter
 				);
 
@@ -126,7 +126,7 @@ impl<T: Config> Pallet<T> {
 	fn upsert_pending_entry(
 		session_id: T::SessionId,
 		message_proof: Proof,
-		router_hash: T::Hash,
+		router_id: T::RouterId,
 		inbound_entry: InboundEntry<T>,
 		weight: &mut Weight,
 	) -> DispatchResult {
@@ -134,7 +134,7 @@ impl<T: Config> Pallet<T> {
 
 		PendingInboundEntries::<T>::try_mutate(
 			session_id,
-			(message_proof, router_hash),
+			(message_proof, router_id),
 			|storage_entry| match storage_entry {
 				None => {
 					*storage_entry = Some(inbound_entry);
@@ -170,7 +170,7 @@ impl<T: Config> Pallet<T> {
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message: T::Message,
 		message_proof: Proof,
-		router_hash: T::Hash,
+		router_id: T::RouterId,
 		weight: &mut Weight,
 	) -> DispatchResult {
 		let inbound_entry = Self::create_inbound_entry(
@@ -179,12 +179,12 @@ impl<T: Config> Pallet<T> {
 			inbound_processing_info.expected_proof_count_per_message,
 		);
 
-		Self::validate_inbound_entry(&inbound_processing_info, router_hash, &inbound_entry)?;
+		Self::validate_inbound_entry(&inbound_processing_info, &router_id, &inbound_entry)?;
 
 		Self::upsert_pending_entry(
 			inbound_processing_info.current_session_id,
 			message_proof,
-			router_hash,
+			router_id,
 			inbound_entry,
 			weight,
 		)?;
@@ -197,11 +197,14 @@ impl<T: Config> Pallet<T> {
 	fn get_executable_message(
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
+		weight: &mut Weight,
 	) -> Option<T::Message> {
 		let mut message = None;
 		let mut votes = 0;
 
 		for router in &inbound_processing_info.routers {
+			weight.saturating_accrue(T::DbWeight::get().reads(1));
+
 			match PendingInboundEntries::<T>::get(
 				inbound_processing_info.current_session_id,
 				(message_proof, router),
@@ -235,8 +238,11 @@ impl<T: Config> Pallet<T> {
 	fn decrease_pending_entries_counts(
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
+		weight: &mut Weight,
 	) -> DispatchResult {
 		for router in &inbound_processing_info.routers {
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
+
 			match PendingInboundEntries::<T>::try_mutate(
 				inbound_processing_info.current_session_id,
 				(message_proof, router),
@@ -314,7 +320,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn process_inbound_message(
 		domain_address: DomainAddress,
 		message: T::Message,
-		router_hash: T::Hash,
+		router_id: T::RouterId,
 	) -> (DispatchResult, Weight) {
 		let mut weight = Default::default();
 
@@ -340,17 +346,19 @@ impl<T: Config> Pallet<T> {
 				&inbound_processing_info,
 				submessage.clone(),
 				message_proof,
-				router_hash,
+				router_id.clone(),
 				&mut weight,
 			) {
 				return (Err(e), weight);
 			}
 
-			match Self::get_executable_message(&inbound_processing_info, message_proof) {
+			match Self::get_executable_message(&inbound_processing_info, message_proof, &mut weight)
+			{
 				Some(m) => {
 					if let Err(e) = Self::decrease_pending_entries_counts(
 						&inbound_processing_info,
 						message_proof,
+						&mut weight,
 					) {
 						return (Err(e), weight.saturating_mul(count));
 					}
@@ -364,7 +372,7 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
-		(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
+		(Ok(()), weight.saturating_mul(count))
 	}
 
 	/// Retrieves the stored router, sends the message, and calculates and
@@ -372,13 +380,13 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn process_outbound_message(
 		sender: T::AccountId,
 		message: T::Message,
-		router_hash: T::Hash,
+		router_id: T::RouterId,
 	) -> (DispatchResult, Weight) {
 		let read_weight = T::DbWeight::get().reads(1);
 
 		// TODO(cdamian): Update when the router refactor is done.
 
-		// let Some(router) = Routers::<T>::get(router_hash) else {
+		// let Some(router) = Routers::<T>::get(router_id) else {
 		// 	return (Err(Error::<T>::RouterNotFound.into()), read_weight);
 		// };
 		//
@@ -392,16 +400,16 @@ impl<T: Config> Pallet<T> {
 		(Ok(()), read_weight)
 	}
 
-	/// Retrieves the hashes of the routers set for a domain and queues the
+	/// Retrieves the IDs of the routers set for a domain and queues the
 	/// message and proofs accordingly.
 	pub(crate) fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
-		let router_hashes =
+		let router_ids =
 			Routers::<T>::get(destination.clone()).ok_or(Error::<T>::MultiRouterNotFound)?;
 
 		let message_proof = message.to_message_proof();
 		let mut message_opt = Some(message);
 
-		for router_hash in router_hashes {
+		for router_id in router_ids {
 			// Ensure that we only send the actual message once, using one router.
 			// The remaining routers will send the message proof.
 			let router_msg = match message_opt.take() {
@@ -411,11 +419,12 @@ impl<T: Config> Pallet<T> {
 
 			// We are using the sender specified in the pallet config so that we can
 			// ensure that the account is funded
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message, T::Hash>::Outbound {
-				sender: T::Sender::get(),
-				message: router_msg,
-				router_hash,
-			};
+			let gateway_message =
+				GatewayMessage::<T::AccountId, T::Message, T::RouterId>::Outbound {
+					sender: T::Sender::get(),
+					message: router_msg,
+					router_id,
+				};
 
 			T::MessageQueue::submit(gateway_message)?;
 		}
