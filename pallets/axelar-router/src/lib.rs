@@ -12,9 +12,9 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
+pub use pallet::*;
 use precompile_utils::prelude::*;
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::collections::btree_map::BTreeMap;
 
 /// Maximum size allowed for a byte representation of an Axelar EVM chain
@@ -28,24 +28,38 @@ const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
 const MAX_SOURCE_ADDRESS_BYTES: u32 = 42;
 const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
 const MAX_PAYLOAD_BYTES: u32 = 1024;
-const EXPECTED_SOURCE_ADDRESS_SIZE: usize = 20;
+const EVM_ADDRESS_LEN: usize = 20;
+
+pub type ChainName = BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>;
+
+/// Type to represent the kind of message received by Axelar
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+pub enum AxelarId {
+	Evm(EVMChainId),
+}
 
 /// Configuration for outbound messages though axelar
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarConfig {
-	/// Chain the router will reach by Axelar
-	pub target_evm_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
-
 	/// Address of liquidity pool contract in the target chain
 	pub liquidity_pools_contract_address: H160,
 
 	/// Configuration for executing the EVM call.
-	pub evm: EvmConfig,
+	pub domain: DomainConfig,
+}
+
+/// Specific domain configuration
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+pub enum DomainConfig {
+	Evm(EvmConfig),
 }
 
 /// Data for validating and executing the internal EVM call.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EvmConfig {
+	/// Associated chain id
+	pub chain_id: EVMChainId,
+
 	/// The address of the contract deployed in our EVM.
 	pub target_contract_address: H160,
 
@@ -159,7 +173,7 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The target of the messages comming from other chains
-		type Gateway: MessageReceiver<Origin = DomainAddress>;
+		type Gateway: MessageReceiver<Middleware = AxelarId, Origin = DomainAddress>;
 
 		/// The target of the messages comming from this chain
 		type Transactor: EthereumTransactor;
@@ -169,41 +183,24 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	pub type GatewayContract<T: Config> = StorageValue<_, H160, ValueQuery>;
+	pub type Configuration<T: Config> = StorageMap<_, Twox64Concat, ChainName, AxelarConfig>;
 
 	#[pallet::storage]
-	pub type SourceChain<T: Config> = StorageMap<_, Twox64Concat, H256, EVMChainId>;
-
-	#[pallet::storage]
-	pub type OutboundConfig<T: Config> = StorageMap<_, Twox64Concat, EVMChainId, AxelarConfig>;
-
-	//#[pallet::storage]
-	//pub type Configuration<T: Config> = StorageMap<_, Twox64Concat, H256,
-	// EVMChainId>;
+	pub type ChainNameById<T: Config> = StorageMap<_, Twox64Concat, AxelarId, ChainName>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		InboundGatewaySet {
-			address: H160,
-		},
-		InboundChainIdSet {
-			chain_id_hash: H256,
-			chain_id: EVMChainId,
-		},
-		OutboundConfigSet {
+		ConfigSet {
+			name: ChainName,
 			config: AxelarConfig,
 		},
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The given domain is not yet allowlisted, as we have no converter yet
-		NoConverterForSource,
-
-		/// A given domain expects a given structure for account bytes and it
-		/// was not given here.
-		AccountBytesMismatchForDomain,
+		/// Domain not found.
+		DomainNotFound,
 
 		/// Router not found.
 		RouterNotFound,
@@ -214,63 +211,44 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn weight_for_set_method() -> Weight {
-			Weight::from_parts(10_000_000, 128).saturating_add(RocksDbWeight::get().writes(1))
+			Weight::from_parts(50_000_000, 256).saturating_add(RocksDbWeight::get().writes(2))
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
-		#[pallet::call_index(0)]
-		pub fn set_inbound_gateway(origin: OriginFor<T>, address: H160) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			GatewayContract::<T>::set(address);
-
-			Self::deposit_event(Event::<T>::InboundGatewaySet { address });
-
-			Ok(())
-		}
-
-		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
-		#[pallet::call_index(1)]
-		pub fn set_inbound_chain(
-			origin: OriginFor<T>,
-			chain_id_hash: H256,
-			chain_id: EVMChainId,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			SourceChain::<T>::insert(chain_id_hash, chain_id);
-
-			Self::deposit_event(Event::<T>::InboundChainIdSet {
-				chain_id_hash,
-				chain_id,
-			});
-
-			Ok(())
-		}
-
-		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
 		#[pallet::call_index(2)]
-		pub fn set_outbound_config(
+		pub fn set_config(
 			origin: OriginFor<T>,
-			chain_id: EVMChainId,
+			chain_name: ChainName,
 			config: AxelarConfig,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			ensure!(
-				T::EvmAccountCodeChecker::check((
-					config.evm.target_contract_address,
-					config.evm.target_contract_hash,
-				)),
-				Error::<T>::ContractCodeNotMatch
-			);
+			match &config.domain {
+				DomainConfig::Evm(evm_config) => {
+					ensure!(
+						T::EvmAccountCodeChecker::check((
+							evm_config.target_contract_address,
+							evm_config.target_contract_hash,
+						)),
+						Error::<T>::ContractCodeNotMatch
+					);
 
-			OutboundConfig::<T>::insert(chain_id, config.clone());
+					ChainNameById::<T>::insert(
+						AxelarId::Evm(evm_config.chain_id),
+						chain_name.clone(),
+					);
+				}
+			}
 
-			Self::deposit_event(Event::<T>::OutboundConfigSet { config: config });
+			Configuration::<T>::insert(chain_name.clone(), config.clone());
+
+			Self::deposit_event(Event::<T>::ConfigSet {
+				name: chain_name,
+				config: config,
+			});
 
 			Ok(())
 		}
@@ -307,27 +285,19 @@ pub mod pallet {
 			source_address: BoundedString<ConstU32<MAX_SOURCE_ADDRESS_BYTES>>,
 			payload: BoundedBytes<ConstU32<MAX_PAYLOAD_BYTES>>,
 		) -> EvmResult {
+			let chain_name: ChainName = source_chain
+				.as_bytes()
+				.to_vec()
+				.try_into()
+				.map_err(|_| ExitError::Other("unexpected chain id".into()))?;
+
+			let config = Configuration::<T>::get(chain_name)
+				.ok_or(ExitError::Other("invalid source chain".into()))?;
+
 			ensure!(
-				handle.context().caller == GatewayContract::<T>::get(),
-				PrecompileFailure::Error {
-					exit_status: ExitError::Other("gateway contract address mismatch".into()),
-				}
+				handle.context().caller == config.liquidity_pools_contract_address,
+				ExitError::Other("gateway contract address mismatch".into()),
 			);
-
-			let source_chain_id = SourceChain::<T>::get(BlakeTwo256::hash(source_chain.as_bytes()))
-				.ok_or(PrecompileFailure::Error {
-					exit_status: ExitError::Other("converter for source not found".into()),
-				})?;
-
-			let source_address_bytes =
-				cfg_utils::decode_var_source::<EXPECTED_SOURCE_ADDRESS_SIZE>(
-					source_address.as_bytes(),
-				)
-				.ok_or(PrecompileFailure::Error {
-					exit_status: ExitError::Other("invalid source address".into()),
-				})?;
-
-			let origin = DomainAddress::EVM(source_chain_id, source_address_bytes);
 
 			let msg = BoundedVec::<u8, <T::Gateway as MessageReceiver>::MaxEncodedLen>::try_from(
 				payload.as_bytes().to_vec(),
@@ -336,7 +306,18 @@ pub mod pallet {
 				exit_status: ExitError::Other("payload conversion".into()),
 			})?;
 
-			T::Gateway::receive(origin, msg).map_err(|e| TryDispatchError::Substrate(e).into())
+			match config.domain {
+				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
+					let source_address_bytes =
+						cfg_utils::decode_var_source::<EVM_ADDRESS_LEN>(source_address.as_bytes())
+							.ok_or(ExitError::Other("invalid source address".into()))?;
+
+					let origin = DomainAddress::EVM(chain_id, source_address_bytes);
+
+					T::Gateway::receive(AxelarId::Evm(chain_id), origin, msg)
+						.map_err(|e| TryDispatchError::Substrate(e).into())
+				}
+			}
 		}
 
 		// Mimics:
@@ -364,39 +345,44 @@ pub mod pallet {
 			_amount: U256,
 		) -> EvmResult {
 			// TODO: Check whether this is enough or if we should error out
-			// TODO(luis): Could it be removed?
 			Ok(())
 		}
 	}
 
 	impl<T: Config> MessageSender for Pallet<T> {
-		type Destination = EVMChainId;
-		type Origin = [u8; 20];
+		type Middleware = AxelarId;
+		type Origin = DomainAddress;
 
 		fn send(
-			origin_address: Self::Origin,
-			chain_id: Self::Destination,
+			axelar_id: AxelarId,
+			origin: Self::Origin,
 			message: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
-			let config = OutboundConfig::<T>::get(chain_id).ok_or(Error::<T>::RouterNotFound)?;
+			let chain_name =
+				ChainNameById::<T>::get(axelar_id).ok_or(Error::<T>::DomainNotFound)?;
+			let config = Configuration::<T>::get(&chain_name).ok_or(Error::<T>::RouterNotFound)?;
 
-			let sender_evm_address = H160::from_slice(&origin_address);
+			match config.domain {
+				DomainConfig::Evm(evm_config) => {
+					let sender_evm_address = H160::from_slice(&origin.address());
 
-			let message = wrap_into_axelar_msg(
-				message,
-				config.target_evm_chain.into_inner(),
-				config.liquidity_pools_contract_address,
-			)
-			.map_err(DispatchError::Other)?;
+					let message = wrap_into_axelar_msg(
+						message,
+						chain_name.into_inner(),
+						config.liquidity_pools_contract_address,
+					)
+					.map_err(DispatchError::Other)?;
 
-			T::Transactor::call(
-				sender_evm_address,
-				config.evm.target_contract_address,
-				message.as_slice(),
-				config.evm.fee_values.value,
-				config.evm.fee_values.gas_price,
-				config.evm.fee_values.gas_limit,
-			)
+					T::Transactor::call(
+						sender_evm_address,
+						evm_config.target_contract_address,
+						message.as_slice(),
+						evm_config.fee_values.value,
+						evm_config.fee_values.gas_price,
+						evm_config.fee_values.gas_limit,
+					)
+				}
+			}
 		}
 	}
 }
