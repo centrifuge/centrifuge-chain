@@ -52,30 +52,34 @@ pub trait Router {
 
 /// The behavior of an entity that can send messages
 pub trait MessageSender {
+	/// The middleware by where this message is sent
+	type Middleware;
+
 	/// The originator of the message to be sent
 	type Origin;
 
-	///The destination of the message
-	type Destination;
-
 	/// Sends a message for origin to destination
 	fn send(
+		middleware: Self::Middleware,
 		origin: Self::Origin,
-		destination: Self::Destination,
 		message: Vec<u8>,
 	) -> DispatchResultWithPostInfo;
 }
 
 /// The behavior of an entity that can receive messages
 pub trait MessageReceiver {
+	/// The middleware by where this message is received
+	type Middleware;
+
+	/// The originator of the received message
+	type Origin;
+
 	/// The maximum lenght for a message the implementor is able to receive.
 	type MaxEncodedLen: Get<u32>;
 
-	/// The originator of the message to be sent
-	type Origin;
-
 	/// Sends a message for origin to destination
 	fn receive(
+		middleware: Self::Middleware,
 		origin: Self::Origin,
 		message: BoundedVec<u8, Self::MaxEncodedLen>,
 	) -> DispatchResult;
