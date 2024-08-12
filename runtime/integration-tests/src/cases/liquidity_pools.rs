@@ -80,7 +80,7 @@ pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 
 pub type LiquidityPoolMessage = Message;
 
-mod utils {
+pub mod utils {
 	use cfg_types::oracles::OracleKey;
 	use runtime_common::oracle::Feeder;
 
@@ -606,6 +606,28 @@ mod utils {
 		}
 
 		amount_foreign_denominated
+	}
+
+	/// Adds bidirectional trading pairs with conversion ratio one.
+	pub fn enable_symmetric_trading_pair<T: Runtime>(
+		currency_1: CurrencyId,
+		currency_2: CurrencyId,
+		pool_admin: AccountId,
+		pool_id: PoolId,
+	) {
+		assert_ok!(pallet_order_book::Pallet::<T>::set_market_feeder(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			Feeder::root(),
+		));
+		crate::utils::oracle::update_feeders::<T>(pool_admin, pool_id, [Feeder::root()]);
+		crate::utils::oracle::feed_from_root::<T>(
+			OracleKey::ConversionRatio(currency_1, currency_2),
+			Ratio::one(),
+		);
+		crate::utils::oracle::feed_from_root::<T>(
+			OracleKey::ConversionRatio(currency_2, currency_1),
+			Ratio::one(),
+		);
 	}
 
 	pub fn outbound_message_dispatched<T: Runtime>(f: impl Fn() -> ()) -> bool {

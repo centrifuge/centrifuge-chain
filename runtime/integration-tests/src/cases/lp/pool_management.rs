@@ -466,6 +466,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
+		super::setup_market_ratios::<T>();
 	});
 
 	let decimals_new = 42;
