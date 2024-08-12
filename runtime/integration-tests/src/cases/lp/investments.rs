@@ -296,6 +296,8 @@ mod with_pool_currency {
 
 		env.state_mut(|evm| {
 			utils::cancel(evm, Keyring::TrancheInvestor(1), names::POOL_C_T_1_USDC);
+
+			lp_utils::process_gateway_message::<T>(lp_utils::verify_gateway_message_success::<T>);
 		});
 
 		env.pass(Blocks::ByNumber(1));
