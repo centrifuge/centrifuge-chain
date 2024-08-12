@@ -13,7 +13,7 @@ use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
 use sp_runtime::DispatchError;
 
 use crate::{
-	message::GatewayMessage, Config, Error, InboundMessageSessions, InvalidSessionIds, Pallet,
+	message::GatewayMessage, Config, Error, InboundMessageSessions, InvalidMessageSessions, Pallet,
 	PendingInboundEntries, Routers,
 };
 
@@ -48,7 +48,7 @@ impl<T: Config> Pallet<T> {
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
 	fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
-		let routers = Routers::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
+		let routers = Routers::<T>::get(domain).ok_or(Error::<T>::RoutersNotFound)?;
 
 		let expected_proof_count = routers.len().ensure_sub(1)?;
 
@@ -294,7 +294,7 @@ impl<T: Config> Pallet<T> {
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
 		let routers =
-			Routers::<T>::get(domain_address.domain()).ok_or(Error::<T>::MultiRouterNotFound)?;
+			Routers::<T>::get(domain_address.domain()).ok_or(Error::<T>::RoutersNotFound)?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -404,7 +404,7 @@ impl<T: Config> Pallet<T> {
 	/// message and proofs accordingly.
 	pub(crate) fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
 		let router_ids =
-			Routers::<T>::get(destination.clone()).ok_or(Error::<T>::MultiRouterNotFound)?;
+			Routers::<T>::get(destination.clone()).ok_or(Error::<T>::RoutersNotFound)?;
 
 		let message_proof = message.to_message_proof();
 		let mut message_opt = Some(message);
@@ -438,7 +438,7 @@ impl<T: Config> Pallet<T> {
 	/// The invalid session IDs are removed from storage if all entries mapped
 	/// to them were cleared.
 	pub(crate) fn clear_invalid_session_ids(max_weight: Weight) -> Weight {
-		let invalid_session_ids = InvalidSessionIds::<T>::iter_keys().collect::<Vec<_>>();
+		let invalid_session_ids = InvalidMessageSessions::<T>::iter_keys().collect::<Vec<_>>();
 
 		let mut weight = T::DbWeight::get().reads(1);
 
@@ -462,7 +462,7 @@ impl<T: Config> Pallet<T> {
 
 				cursor = match res.maybe_cursor {
 					None => {
-						InvalidSessionIds::<T>::remove(invalid_session_id);
+						InvalidMessageSessions::<T>::remove(invalid_session_id);
 
 						weight.saturating_accrue(T::DbWeight::get().writes(1));
 

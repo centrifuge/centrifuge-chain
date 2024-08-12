@@ -62,7 +62,7 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_system::pallet_prelude::BlockNumberFor;
-	use sp_arithmetic::traits::EnsureAdd;
+	use sp_arithmetic::traits::{EnsureAdd, EnsureAddAssign};
 
 	use super::*;
 
@@ -155,6 +155,7 @@ pub mod pallet {
 		RoutersSet {
 			domain: Domain,
 			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
+			session_id: T::SessionId,
 		},
 
 		/// An instance was added to a domain.
@@ -167,6 +168,13 @@ pub mod pallet {
 		DomainHookAddressSet {
 			domain: Domain,
 			hook_address: [u8; 20],
+		},
+
+		/// Message recovery was executed.
+		MessageRecoveryExecuted {
+			domain: Domain,
+			proof: Proof,
+			router_id: T::RouterId,
 		},
 	}
 
@@ -239,8 +247,8 @@ pub mod pallet {
 	/// Any `PendingInboundEntries` mapped to the invalid IDs are removed from
 	/// storage during `on_idle`.
 	#[pallet::storage]
-	#[pallet::getter(fn invalid_session_ids)]
-	pub type InvalidSessionIds<T: Config> = StorageMap<_, Blake2_128Concat, T::SessionId, ()>;
+	#[pallet::getter(fn invalid_message_sessions)]
+	pub type InvalidMessageSessions<T: Config> = StorageMap<_, Blake2_128Concat, T::SessionId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -259,8 +267,8 @@ pub mod pallet {
 		/// Unknown instance.
 		UnknownInstance,
 
-		/// Router not found.
-		RouterConfigurationNotFound,
+		/// Routers not found.
+		RoutersNotFound,
 
 		/// Emitted when you call `start_batch_messages()` but that was already
 		/// called. You should finalize the message with `end_batch_messages()`
@@ -294,9 +302,6 @@ pub mod pallet {
 		/// Pending inbound entry not found.
 		PendingInboundEntryNotFound,
 
-		/// Multi-router not found.
-		MultiRouterNotFound,
-
 		/// Message proof cannot be retrieved.
 		MessageProofRetrieval,
 
@@ -322,19 +327,23 @@ pub mod pallet {
 
 			<Routers<T>>::insert(domain.clone(), router_ids.clone());
 
-			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
-				let old_session_id = *n;
-				let new_session_id = old_session_id.ensure_add(One::one())?;
+			if let Some(old_session_id) = InboundMessageSessions::<T>::get(domain.clone()) {
+				InvalidMessageSessions::<T>::insert(old_session_id, ());
+			}
 
-				*n = new_session_id;
+			let session_id = SessionIdStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
 
-				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
+				Ok::<T::SessionId, DispatchError>(*n)
 			})?;
 
-			InboundMessageSessions::<T>::insert(domain.clone(), new_session_id);
-			InvalidSessionIds::<T>::insert(old_session_id, ());
+			InboundMessageSessions::<T>::insert(domain.clone(), session_id);
 
-			Self::deposit_event(Event::RoutersSet { domain, router_ids });
+			Self::deposit_event(Event::RoutersSet {
+				domain,
+				router_ids,
+				session_id,
+			});
 
 			Ok(())
 		}
@@ -462,10 +471,48 @@ pub mod pallet {
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
 			domain: Domain,
-			message_proof: Proof,
+			proof: Proof,
+			router_id: T::RouterId,
 		) -> DispatchResult {
-			//TODO(cdamian): Implement this.
-			unimplemented!()
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let session_id = InboundMessageSessions::<T>::get(&domain)
+				.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
+
+			let routers = Routers::<T>::get(&domain).ok_or(Error::<T>::RoutersNotFound)?;
+
+			ensure!(
+				routers.iter().any(|x| x == &router_id),
+				Error::<T>::UnknownInboundMessageRouter
+			);
+
+			PendingInboundEntries::<T>::try_mutate(
+				session_id,
+				(proof, router_id.clone()),
+				|storage_entry| match storage_entry {
+					Some(entry) => match entry {
+						InboundEntry::Proof { current_count } => {
+							current_count.ensure_add_assign(1).map_err(|e| e.into())
+						}
+						InboundEntry::Message { .. } => {
+							Err(Error::<T>::ExpectedMessageProofType.into())
+						}
+					},
+					None => {
+						*storage_entry = Some(InboundEntry::<T>::Proof { current_count: 1 });
+
+						Ok::<(), DispatchError>(())
+					}
+				},
+			)?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
+				domain,
+				proof,
+				router_id,
+			});
+
+			Ok(())
 		}
 	}
 
