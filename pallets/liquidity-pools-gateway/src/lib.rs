@@ -340,13 +340,18 @@ pub mod pallet {
 
 			// TODO handle router ids logic
 
+			let mut count = 0;
+			let bytes = message.serialize();
+
 			for router_id in router_ids {
-				T::MessageSender::send(router_id, sender.clone(), message.serialize());
-				// TODO handle weights
-				// sum up the weights from all routers
+				count += 1;
+				if let Err(e) = T::MessageSender::send(router_id, sender.clone(), bytes.clone()) {
+					return (Err(e), LP_DEFENSIVE_WEIGHT.saturating_mul(count));
+				}
 			}
 
-			(Ok(()), 0.into()) //TODO
+			// TODO: Should we fix weights?
+			(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
 		}
 
 		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
@@ -423,7 +428,7 @@ pub mod pallet {
 		type Origin = DomainAddress;
 
 		fn receive(
-			router_id: T::RouterId,
+			_router_id: T::RouterId,
 			origin_address: DomainAddress,
 			message: Vec<u8>,
 		) -> DispatchResult {

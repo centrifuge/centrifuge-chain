@@ -1,6 +1,6 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::liquidity_pools::MessageReceiver;
+	use cfg_traits::liquidity_pools::{MessageReceiver, MessageSender};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -22,6 +22,12 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_send(
+			f: impl Fn(T::Middleware, T::Origin, Vec<u8>) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
 	}
 
 	impl<T: Config> MessageReceiver for Pallet<T> {
@@ -29,6 +35,15 @@ pub mod pallet {
 		type Origin = T::Origin;
 
 		fn receive(a: Self::Middleware, b: Self::Origin, c: Vec<u8>) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+	}
+
+	impl<T: Config> MessageSender for Pallet<T> {
+		type Middleware = T::Middleware;
+		type Origin = T::Origin;
+
+		fn send(a: Self::Middleware, b: Self::Origin, c: Vec<u8>) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

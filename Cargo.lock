@@ -1471,7 +1471,6 @@ dependencies = [
 name = "centrifuge-runtime"
 version = "0.14.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -1496,7 +1495,6 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal",
- "liquidity-pools-gateway-routers",
  "log",
  "orml-asset-registry",
  "orml-tokens",
@@ -11651,7 +11649,6 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",

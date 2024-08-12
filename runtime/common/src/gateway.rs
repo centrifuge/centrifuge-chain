@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::AccountId;
+use cfg_types::domain_address::DomainAddress;
 use polkadot_parachain_primitives::primitives::Sibling;
 use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::traits::AccountIdConversion;
@@ -24,6 +24,8 @@ pub fn get_gateway_h160_account<T: staging_parachain_info::Config>() -> H160 {
 }
 
 pub fn get_gateway_account<T: pallet_evm_chain_id::Config + staging_parachain_info::Config>(
-) -> AccountId {
-	AccountConverter::evm_address_to_account::<T>(get_gateway_h160_account::<T>())
+) -> DomainAddress {
+	DomainAddress::Centrifuge(
+		AccountConverter::evm_address_to_account::<T>(get_gateway_h160_account::<T>()).into(),
+	)
 }

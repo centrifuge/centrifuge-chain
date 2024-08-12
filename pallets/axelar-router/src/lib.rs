@@ -282,11 +282,7 @@ pub mod pallet {
 		type Middleware = AxelarId;
 		type Origin = DomainAddress;
 
-		fn send(
-			axelar_id: AxelarId,
-			origin: Self::Origin,
-			message: Vec<u8>,
-		) -> DispatchResultWithPostInfo {
+		fn send(axelar_id: AxelarId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
 			let chain_name =
 				ChainNameById::<T>::get(axelar_id).ok_or(Error::<T>::DomainNotFound)?;
 			let config = Configuration::<T>::get(&chain_name).ok_or(Error::<T>::RouterNotFound)?;
@@ -310,6 +306,8 @@ pub mod pallet {
 						evm_config.fee_values.gas_price,
 						evm_config.fee_values.gas_limit,
 					)
+					.map(|_| ())
+					.map_err(|e| e.error)
 				}
 			}
 		}

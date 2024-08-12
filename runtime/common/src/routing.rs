@@ -4,7 +4,7 @@ use cfg_traits::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
-	dispatch::DispatchResultWithPostInfo,
+	dispatch::DispatchResult,
 	pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
 };
 use pallet_axelar_router::AxelarId;
@@ -53,11 +53,7 @@ where
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 
-	fn send(
-		router_id: RouterId,
-		origin: Self::Origin,
-		message: Vec<u8>,
-	) -> DispatchResultWithPostInfo {
+	fn send(router_id: RouterId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
 		match router_id {
 			RouterId::Axelar(axelar_id) => {
 				pallet_axelar_router::Pallet::<Routers>::send(axelar_id, origin, message)
