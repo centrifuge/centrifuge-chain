@@ -150,6 +150,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type Router = RouterMock<Runtime>;
+	//TODO(cdamian): Change to some other type for tests?
+	type RouterId = H256;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
