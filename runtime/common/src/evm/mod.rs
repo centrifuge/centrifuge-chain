@@ -42,10 +42,9 @@ pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
 //	block_gas_limit.saturating_div(MAX_POV_SIZE)
 // };
 //
-// NOTE: The above results in a value of 2. AS this factor is a divisor
-// generating a       a storage limit we are conservative and use the value that
-// moonbeam is using       in their staging environment
-//       (https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408)
+// NOTE: The above results in a value of 2. As this factor is a divisor
+// generating a storage limit we are conservative and use the value that
+// moonbeam is using in their staging environment <https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408>
 pub const GAS_LIMIT_POV_SIZE_RATIO: u64 = 4;
 
 // pub const GasLimitStorageGrowthRatio: u64 =
