@@ -39,6 +39,7 @@ pub trait LPEncoding: Sized {
 }
 
 /// The trait required for sending outbound messages.
+/// TODO: remove this
 pub trait Router {
 	/// The sender type of the outbound message.
 	type Sender;
@@ -48,6 +49,11 @@ pub trait Router {
 
 	/// Send the message to the router's destination.
 	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+}
+
+pub trait RouterSupport<Domain>: Sized {
+	/// Returns a list of routers supported for the given domain.
+	fn for_domain(domain: Domain) -> Vec<Self>;
 }
 
 /// The behavior of an entity that can send messages
