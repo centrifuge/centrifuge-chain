@@ -13,20 +13,16 @@
 use frame_support::weights::{constants::RocksDbWeight, Weight};
 
 pub trait WeightInfo {
-	fn set_domain_router() -> Weight;
+	fn set_domain_routers() -> Weight;
 	fn add_instance() -> Weight;
 	fn remove_instance() -> Weight;
 	fn add_relayer() -> Weight;
 	fn remove_relayer() -> Weight;
 	fn receive_message() -> Weight;
-	fn process_outbound_message() -> Weight;
-	fn process_failed_outbound_message() -> Weight;
 	fn start_batch_message() -> Weight;
 	fn end_batch_message() -> Weight;
 	fn set_domain_hook_address() -> Weight;
-	fn set_outbound_routers() -> Weight;
 	fn execute_message_recovery() -> Weight;
-	fn set_inbound_routers() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -35,7 +31,7 @@ pub trait WeightInfo {
 const N: u64 = 4;
 
 impl WeightInfo for () {
-	fn set_domain_router() -> Weight {
+	fn set_domain_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
@@ -107,28 +103,6 @@ impl WeightInfo for () {
 			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
-	fn process_outbound_message() -> Weight {
-		// TODO: BENCHMARK CORRECTLY
-		//
-		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
-		//       This one has one read and one write for sure and possible one
-		//       read for `AdminOrigin`
-		Weight::from_parts(30_117_000, 5991)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-
-	fn process_failed_outbound_message() -> Weight {
-		// TODO: BENCHMARK CORRECTLY
-		//
-		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
-		//       This one has one read and one write for sure and possible one
-		//       read for `AdminOrigin`
-		Weight::from_parts(30_117_000, 5991)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-
 	fn start_batch_message() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
@@ -162,29 +136,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2))
 	}
 
-	fn set_outbound_routers() -> Weight {
-		// TODO: BENCHMARK CORRECTLY
-		//
-		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
-		//       This one has one read and one write for sure and possible one
-		//       read for `AdminOrigin`
-		Weight::from_parts(30_117_000, 5991)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(2))
-	}
-
 	fn execute_message_recovery() -> Weight {
-		// TODO: BENCHMARK CORRECTLY
-		//
-		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
-		//       This one has one read and one write for sure and possible one
-		//       read for `AdminOrigin`
-		Weight::from_parts(30_117_000, 5991)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(2))
-	}
-
-	fn set_inbound_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`

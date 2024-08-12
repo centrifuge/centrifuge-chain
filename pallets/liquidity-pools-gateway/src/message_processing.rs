@@ -13,9 +13,13 @@ use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
 use sp_runtime::DispatchError;
 
 use crate::{
-	message::GatewayMessage, Config, Error, InboundMessageSessions, InboundRouters,
-	OutboundDomainRouters, OutboundRouters, Pallet, PendingInboundEntries,
+	message::GatewayMessage, Config, Error, InboundMessageSessions, InvalidSessionIds, Pallet,
+	PendingInboundEntries, Routers,
 };
+
+/// The limit used when clearing the `PendingInboundEntries` for invalid
+/// session IDs.
+const INVALID_ID_REMOVAL_LIMIT: u32 = 100;
 
 /// Type used when storing inbound message information.
 #[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
@@ -35,7 +39,7 @@ pub enum InboundEntry<T: Config> {
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	domain_address: DomainAddress,
-	inbound_routers: BoundedVec<T::Hash, T::MaxRouterCount>,
+	routers: BoundedVec<T::Hash, T::MaxRouterCount>,
 	current_session_id: T::SessionId,
 	expected_proof_count_per_message: u32,
 }
@@ -44,7 +48,7 @@ impl<T: Config> Pallet<T> {
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
 	fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
-		let routers = InboundRouters::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
+		let routers = Routers::<T>::get(domain).ok_or(Error::<T>::MultiRouterNotFound)?;
 
 		let expected_proof_count = routers.len().ensure_sub(1)?;
 
@@ -90,17 +94,17 @@ impl<T: Config> Pallet<T> {
 		router_hash: T::Hash,
 		inbound_entry: &InboundEntry<T>,
 	) -> DispatchResult {
-		let inbound_routers = inbound_processing_info.inbound_routers.clone();
+		let routers = inbound_processing_info.routers.clone();
 
 		ensure!(
-			inbound_routers.iter().any(|x| x == &router_hash),
+			routers.iter().any(|x| x == &router_hash),
 			Error::<T>::UnknownInboundMessageRouter
 		);
 
 		match inbound_entry {
 			InboundEntry::Message { .. } => {
 				ensure!(
-					inbound_routers.get(0) == Some(&router_hash),
+					routers.get(0) == Some(&router_hash),
 					Error::<T>::MessageExpectedFromFirstRouter
 				);
 
@@ -108,7 +112,7 @@ impl<T: Config> Pallet<T> {
 			}
 			InboundEntry::Proof { .. } => {
 				ensure!(
-					inbound_routers.get(0) != Some(&router_hash),
+					routers.get(0) != Some(&router_hash),
 					Error::<T>::ProofNotExpectedFromFirstRouter
 				);
 
@@ -117,9 +121,9 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Updates the inbound entry for a particular message, increasing the
-	/// counts accordingly.
-	fn update_pending_entry(
+	/// Upserts an inbound entry for a particular message, increasing the
+	/// relevant counts accordingly.
+	fn upsert_pending_entry(
 		session_id: T::SessionId,
 		message_proof: Proof,
 		router_hash: T::Hash,
@@ -161,8 +165,8 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	/// Creates, validates and updates the inbound entry.
-	fn validate_and_update_pending_entries(
+	/// Creates, validates and upserts the inbound entry.
+	fn validate_and_upsert_pending_entries(
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message: T::Message,
 		message_proof: Proof,
@@ -177,7 +181,7 @@ impl<T: Config> Pallet<T> {
 
 		Self::validate_inbound_entry(&inbound_processing_info, router_hash, &inbound_entry)?;
 
-		Self::update_pending_entry(
+		Self::upsert_pending_entry(
 			inbound_processing_info.current_session_id,
 			message_proof,
 			router_hash,
@@ -197,10 +201,10 @@ impl<T: Config> Pallet<T> {
 		let mut message = None;
 		let mut votes = 0;
 
-		for inbound_router in &inbound_processing_info.inbound_routers {
+		for router in &inbound_processing_info.routers {
 			match PendingInboundEntries::<T>::get(
 				inbound_processing_info.current_session_id,
-				(message_proof, inbound_router),
+				(message_proof, router),
 			) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
@@ -232,10 +236,10 @@ impl<T: Config> Pallet<T> {
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
 	) -> DispatchResult {
-		for inbound_router in &inbound_processing_info.inbound_routers {
+		for router in &inbound_processing_info.routers {
 			match PendingInboundEntries::<T>::try_mutate(
 				inbound_processing_info.current_session_id,
-				(message_proof, inbound_router),
+				(message_proof, router),
 				|storage_entry| match storage_entry {
 					None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
 					Some(stored_inbound_entry) => match stored_inbound_entry {
@@ -283,8 +287,8 @@ impl<T: Config> Pallet<T> {
 		domain_address: DomainAddress,
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
-		let inbound_routers = InboundRouters::<T>::get(domain_address.domain())
-			.ok_or(Error::<T>::MultiRouterNotFound)?;
+		let routers =
+			Routers::<T>::get(domain_address.domain()).ok_or(Error::<T>::MultiRouterNotFound)?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -299,7 +303,7 @@ impl<T: Config> Pallet<T> {
 
 		Ok(InboundProcessingInfo {
 			domain_address,
-			inbound_routers,
+			routers,
 			current_session_id,
 			expected_proof_count_per_message: expected_proof_count,
 		})
@@ -332,7 +336,7 @@ impl<T: Config> Pallet<T> {
 
 			let message_proof = Self::get_message_proof(message.clone());
 
-			if let Err(e) = Self::validate_and_update_pending_entries(
+			if let Err(e) = Self::validate_and_upsert_pending_entries(
 				&inbound_processing_info,
 				submessage.clone(),
 				message_proof,
@@ -372,23 +376,27 @@ impl<T: Config> Pallet<T> {
 	) -> (DispatchResult, Weight) {
 		let read_weight = T::DbWeight::get().reads(1);
 
-		let Some(router) = OutboundRouters::<T>::get(router_hash) else {
-			return (Err(Error::<T>::RouterNotFound.into()), read_weight);
-		};
+		// TODO(cdamian): Update when the router refactor is done.
 
-		let (result, router_weight) = match router.send(sender, message.serialize()) {
-			Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
-			Err(e) => (Err(e.error), e.post_info.actual_weight),
-		};
+		// let Some(router) = Routers::<T>::get(router_hash) else {
+		// 	return (Err(Error::<T>::RouterNotFound.into()), read_weight);
+		// };
+		//
+		// let (result, router_weight) = match router.send(sender, message.serialize())
+		// { 	Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
+		// 	Err(e) => (Err(e.error), e.post_info.actual_weight),
+		// };
+		//
+		// (result, router_weight.unwrap_or(read_weight))
 
-		(result, router_weight.unwrap_or(read_weight))
+		(Ok(()), read_weight)
 	}
 
 	/// Retrieves the hashes of the routers set for a domain and queues the
 	/// message and proofs accordingly.
 	pub(crate) fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
-		let router_hashes = OutboundDomainRouters::<T>::get(destination.clone())
-			.ok_or(Error::<T>::MultiRouterNotFound)?;
+		let router_hashes =
+			Routers::<T>::get(destination.clone()).ok_or(Error::<T>::MultiRouterNotFound)?;
 
 		let message_proof = message.to_message_proof();
 		let mut message_opt = Some(message);
@@ -413,5 +421,53 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(())
+	}
+
+	/// Clears `PendingInboundEntries` mapped to invalid session IDs as long as
+	/// there is enough weight available for this operation.
+	///
+	/// The invalid session IDs are removed from storage if all entries mapped
+	/// to them were cleared.
+	pub(crate) fn clear_invalid_session_ids(max_weight: Weight) -> Weight {
+		let invalid_session_ids = InvalidSessionIds::<T>::iter_keys().collect::<Vec<_>>();
+
+		let mut weight = T::DbWeight::get().reads(1);
+
+		for invalid_session_id in invalid_session_ids {
+			let mut cursor: Option<Vec<u8>> = None;
+
+			loop {
+				let res = PendingInboundEntries::<T>::clear_prefix(
+					invalid_session_id,
+					INVALID_ID_REMOVAL_LIMIT,
+					cursor.as_ref().map(|x| x.as_ref()),
+				);
+
+				weight.saturating_accrue(
+					T::DbWeight::get().reads_writes(res.loops.into(), res.unique.into()),
+				);
+
+				if weight.all_gte(max_weight) {
+					return weight;
+				}
+
+				cursor = match res.maybe_cursor {
+					None => {
+						InvalidSessionIds::<T>::remove(invalid_session_id);
+
+						weight.saturating_accrue(T::DbWeight::get().writes(1));
+
+						if weight.all_gte(max_weight) {
+							return weight;
+						}
+
+						break;
+					}
+					Some(c) => Some(c),
+				};
+			}
+		}
+
+		weight
 	}
 }
