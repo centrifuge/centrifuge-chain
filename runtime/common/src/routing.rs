@@ -1,4 +1,4 @@
-use cfg_traits::liquidity_pools::{MessageReceiver, MessageSender};
+use cfg_traits::liquidity_pools::{MessageReceiver, MessageSender, RouterSupport};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
@@ -11,7 +11,7 @@ use sp_std::marker::PhantomData;
 /// RouterId is more specific than Domain, because RouterId also identify by
 /// where the message is sent/received
 pub enum RouterId {
-	/// The message must be sent/received by EVM using axelar
+	/// The message must be sent/received by EVM using Axelar
 	Axelar(AxelarId),
 }
 
@@ -19,6 +19,15 @@ impl From<RouterId> for Domain {
 	fn from(router_id: RouterId) -> Domain {
 		match router_id {
 			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::EVM(chain_id),
+		}
+	}
+}
+
+impl RouterSupport<Domain> for RouterId {
+	fn for_domain(domain: Domain) -> Vec<Self> {
+		match domain {
+			Domain::EVM(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
+			Domain::Centrifuge => vec![],
 		}
 	}
 }
