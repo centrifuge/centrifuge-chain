@@ -1,6 +1,6 @@
 [package]
 description = "Pallet to send and receive messages from axelar"
-name = "pallet-axelar-router"
+name = "pallet-axelar-evm-router"
 version = "1.0.0"
 authors.workspace = true
 edition.workspace = true
@@ -27,8 +27,6 @@ cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
 
-fp-evm = { workspace = true }
-precompile-utils = { workspace = true }
 ethabi = { workspace = true }
 
 # Optionals for benchmarking
@@ -53,8 +51,6 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "cfg-utils/std",
-  "fp-evm/std",
-  "precompile-utils/std",
   "ethabi/std",
 ]
 runtime-benchmarks = [

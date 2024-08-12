@@ -7498,7 +7498,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-axelar-router"
+name = "pallet-axelar-evm-router"
 version = "1.0.0"
 dependencies = [
  "cfg-mocks",
@@ -7506,13 +7506,11 @@ dependencies = [
  "cfg-types",
  "cfg-utils",
  "ethabi",
- "fp-evm",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
  "parity-scale-codec",
- "precompile-utils",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -11678,6 +11676,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-evm-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",

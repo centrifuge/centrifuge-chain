@@ -38,6 +38,7 @@ pub trait LPEncoding: Sized {
 	fn empty() -> Self;
 }
 
+/// TODO: removed
 /// The trait required for sending outbound messages.
 pub trait Router {
 	/// The sender type of the outbound message.
@@ -51,7 +52,7 @@ pub trait Router {
 }
 
 /// The behavior of an entity that can send messages
-pub trait MessageSender {
+pub trait MessageSender<Middleware> {
 	/// The originator of the message to be sent
 	type Origin;
 
@@ -60,6 +61,7 @@ pub trait MessageSender {
 
 	/// Sends a message for origin to destination
 	fn send(
+		middleware: Middleware,
 		origin: Self::Origin,
 		destination: Self::Destination,
 		message: Vec<u8>,
@@ -67,15 +69,16 @@ pub trait MessageSender {
 }
 
 /// The behavior of an entity that can receive messages
-pub trait MessageReceiver {
-	/// The maximum lenght for a message the implementor is able to receive.
-	type MaxEncodedLen: Get<u32>;
-
+pub trait MessageReceiver<Middleware> {
 	/// The originator of the message to be sent
 	type Origin;
 
+	/// The maximum lenght for a message the implementor is able to receive.
+	type MaxEncodedLen: Get<u32>;
+
 	/// Sends a message for origin to destination
 	fn receive(
+		middleware: Middleware,
 		origin: Self::Origin,
 		message: BoundedVec<u8, Self::MaxEncodedLen>,
 	) -> DispatchResult;

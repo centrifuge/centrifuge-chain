@@ -69,6 +69,7 @@ orml-xtokens = { workspace = true }
 pallet-anchors = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
+pallet-axelar-evm-router = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
@@ -186,6 +187,7 @@ std = [
   "pallet-anchors/std",
   "pallet-aura/std",
   "pallet-authorship/std",
+  "pallet-axelar-evm-router/std",
   "pallet-balances/std",
   "pallet-base-fee/std",
   "pallet-block-rewards/std",
@@ -265,6 +267,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
+  "pallet-axelar-evm-router/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
@@ -336,6 +339,7 @@ try-runtime = [
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
+  "pallet-axelar-evm-router/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",

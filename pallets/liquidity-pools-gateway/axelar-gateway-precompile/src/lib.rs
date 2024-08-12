@@ -16,14 +16,19 @@
 //! messages from the Axelar network.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_traits::liquidity_pools::MessageReceiver;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
-use frame_support::ensure;
+use frame_support::{
+	ensure,
+	pallet_prelude::*,
+	weights::{constants::RocksDbWeight, Weight},
+	BoundedVec, DefaultNoBound,
+};
+use frame_system::pallet_prelude::*;
 use precompile_utils::prelude::*;
-use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
+use sp_core::{ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
-
-pub use crate::weights::WeightInfo;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
 // Ensure we allow enough to support a hex encoded address with the `0x` prefix.
@@ -37,8 +42,6 @@ pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
 pub use pallet::*;
-
-pub mod weights;
 
 #[derive(
 	PartialEq,
@@ -95,15 +98,14 @@ impl SourceConverter {
 	}
 }
 
+/// Type to represent the kind of message received by Axelar
+pub enum AxelarKind {
+	Evm,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
-	// Import various types used to declare pallet in scope.
-	use frame_support::{pallet_prelude::*, DefaultNoBound};
-	use frame_system::pallet_prelude::*;
-	use sp_core::{H160, H256};
-
-	use super::SourceConverter;
-	use crate::weights::WeightInfo;
+	use super::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
@@ -112,16 +114,15 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_evm::Config + pallet_liquidity_pools_gateway::Config
-	{
+	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The origin that is allowed to set the gateway address we accept
 		/// messages from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
-		type WeightInfo: WeightInfo;
+		/// The target of the messages comming from other chains
+		type Gateway: MessageReceiver<AxelarKind, Origin = DomainAddress>;
 	}
 
 	#[pallet::storage]
@@ -167,9 +168,15 @@ pub mod pallet {
 		AccountBytesMismatchForDomain,
 	}
 
+	impl<T: Config> Pallet<T> {
+		fn weight_for_set_method() -> Weight {
+			Weight::from_parts(10_000_000, 128).saturating_add(RocksDbWeight::get().writes(1))
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T as Config>::WeightInfo::set_gateway())]
+		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
 		#[pallet::call_index(0)]
 		pub fn set_gateway(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
@@ -181,7 +188,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::set_converter())]
+		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
 		#[pallet::call_index(1)]
 		pub fn set_converter(
 			origin: OriginFor<T>,
@@ -200,11 +207,7 @@ pub mod pallet {
 }
 
 #[precompile_utils::precompile]
-impl<T: Config> Pallet<T>
-where
-	T: frame_system::Config,
-	<T as frame_system::Config>::RuntimeOrigin: From<pallet_liquidity_pools_gateway::GatewayOrigin>,
-{
+impl<T: Config> Pallet<T> {
 	// Mimics:
 	//
 	//   function execute(
@@ -241,13 +244,13 @@ where
 			}
 		);
 
-		let msg = BoundedVec::<
-			u8,
-			<T as pallet_liquidity_pools_gateway::Config>::MaxIncomingMessageSize,
-		>::try_from(payload.as_bytes().to_vec())
-		.map_err(|_| PrecompileFailure::Error {
-			exit_status: ExitError::Other("payload conversion".into()),
-		})?;
+		let msg =
+			BoundedVec::<u8, <T::Gateway as MessageReceiver<AxelarKind>>::MaxEncodedLen>::try_from(
+				payload.as_bytes().to_vec(),
+			)
+			.map_err(|_| PrecompileFailure::Error {
+				exit_status: ExitError::Other("payload conversion".into()),
+			})?;
 
 		let domain_converter = SourceConversion::<T>::get(BlakeTwo256::hash(
 			source_chain.as_bytes(),
@@ -268,13 +271,8 @@ where
 				exit_status: ExitError::Other("account bytes mismatch for domain".into()),
 			})?;
 
-		pallet_liquidity_pools_gateway::Pallet::<T>::receive_message(
-			pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
-			msg,
-		)
-		.map(|_| ())
-		.map_err(TryDispatchError::Substrate)
-		.map_err(Into::into)
+		T::Gateway::receive(AxelarKind::Evm, domain_address, msg)
+			.map_err(|e| TryDispatchError::Substrate(e).into())
 	}
 
 	// Mimics:
