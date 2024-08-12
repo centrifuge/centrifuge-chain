@@ -173,7 +173,10 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The target of the messages comming from other chains
-		type Gateway: MessageReceiver<Middleware = AxelarId, Origin = DomainAddress>;
+		type Gateway: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
+
+		/// Middleware used by the gateway
+		type Middleware: From<AxelarId>;
 
 		/// The target of the messages comming from this chain
 		type Transactor: EthereumTransactor;
@@ -314,7 +317,7 @@ pub mod pallet {
 
 					let origin = DomainAddress::EVM(chain_id, source_address_bytes);
 
-					T::Gateway::receive(AxelarId::Evm(chain_id), origin, msg)
+					T::Gateway::receive(AxelarId::Evm(chain_id).into(), origin, msg)
 						.map_err(|e| TryDispatchError::Substrate(e).into())
 				}
 			}

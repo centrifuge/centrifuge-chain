@@ -1,9 +1,6 @@
-use cfg_traits::liquidity_pools::{MessageReceiver, MessageSender, RouterSupport};
+use cfg_traits::liquidity_pools::{MessageSender, RouterSupport};
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	BoundedVec,
-};
+use frame_support::dispatch::DispatchResultWithPostInfo;
 use pallet_axelar_router::AxelarId;
 use sp_std::marker::PhantomData;
 
@@ -52,25 +49,5 @@ where
 				pallet_axelar_router::Pallet::<Routers>::send(axelar_id, origin, message)
 			}
 		}
-	}
-}
-
-/// Maps the AxelarId to a RouterId before calling to the gateway
-struct AxelarReceiver<Gateway>(PhantomData<Gateway>);
-
-impl<Gateway> MessageReceiver for AxelarReceiver<Gateway>
-where
-	Gateway: MessageReceiver<Middleware = RouterId>,
-{
-	type MaxEncodedLen = Gateway::MaxEncodedLen;
-	type Middleware = AxelarId;
-	type Origin = Gateway::Origin;
-
-	fn receive(
-		axelar_id: AxelarId,
-		origin: Self::Origin,
-		message: BoundedVec<u8, Self::MaxEncodedLen>,
-	) -> DispatchResult {
-		Gateway::receive(RouterId::Axelar(axelar_id), origin, message)
 	}
 }
