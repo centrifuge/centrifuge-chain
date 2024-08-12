@@ -19,7 +19,7 @@ impl From<AxelarId> for Middleware {
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		Receiver: cfg_mocks::message_receiver::pallet,
+		Receiver: cfg_mocks::router_message::pallet,
 		Transactor: cfg_mocks::ethereum_transactor::pallet,
 		AccountCodeChecker: cfg_mocks::pre_conditions::pallet,
 		AxelarRouter: pallet_axelar_router,
@@ -31,7 +31,7 @@ impl frame_system::Config for Runtime {
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-impl cfg_mocks::message_receiver::pallet::Config for Runtime {
+impl cfg_mocks::router_message::pallet::Config for Runtime {
 	type Middleware = Middleware;
 	type Origin = DomainAddress;
 }

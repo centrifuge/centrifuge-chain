@@ -63,11 +63,8 @@ pub trait MessageSender {
 	type Origin;
 
 	/// Sends a message for origin to destination
-	fn send(
-		middleware: Self::Middleware,
-		origin: Self::Origin,
-		message: Vec<u8>,
-	) -> DispatchResultWithPostInfo;
+	fn send(middleware: Self::Middleware, origin: Self::Origin, message: Vec<u8>)
+		-> DispatchResult;
 }
 
 /// The behavior of an entity that can receive messages

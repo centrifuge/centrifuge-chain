@@ -56,7 +56,6 @@ cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
 
 # Pallets in the export list
-axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
@@ -174,7 +173,6 @@ std = [
   "cfg-types/std",
   "cfg-utils/std",
   # Pallet exporting list
-  "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
@@ -259,7 +257,6 @@ runtime-benchmarks = [
   "cfg-utils/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
   # Pallet exporting list
-  "axelar-gateway-precompile/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -326,7 +323,6 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   # Pallet exporting list
-  "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",

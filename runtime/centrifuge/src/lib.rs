@@ -34,6 +34,7 @@ use cfg_traits::{
 	Seconds,
 };
 use cfg_types::{
+	domain_address::DomainAddress,
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
@@ -1840,7 +1841,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
+	pub Sender: DomainAddress = gateway::get_gateway_account::<Runtime>();
 }
 
 parameter_types! {
@@ -1866,7 +1867,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type MessageSender = RouterDispatcher<Runtime>;
+	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
@@ -1874,7 +1876,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<AccountId, pallet_liquidity_pools::Message>;
+	type Message = GatewayMessage<pallet_liquidity_pools::Message>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;

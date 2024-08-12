@@ -1,9 +1,6 @@
-use cfg_mocks::{
-	pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue, pallet_mock_routers,
-	RouterMock,
-};
-use cfg_traits::liquidity_pools::LPEncoding;
-use cfg_types::domain_address::DomainAddress;
+use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
+use cfg_traits::liquidity_pools::{LPEncoding, RouterSupport};
+use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -76,12 +73,21 @@ impl LPEncoding for Message {
 	}
 }
 
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+pub struct RouterId(u32);
+
+impl RouterSupport<Domain> for RouterId {
+	fn for_domain(_domain: Domain) -> Vec<RouterId> {
+		vec![] // TODO
+	}
+}
+
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
-		MockRouters: pallet_mock_routers,
+		MockMessageSender: cfg_mocks::router_message::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
 );
@@ -99,14 +105,17 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 	type Message = Message;
 }
 
-impl pallet_mock_routers::Config for Runtime {}
-
 impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<AccountId32, Message>;
+	type Message = GatewayMessage<Message>;
+}
+
+impl cfg_mocks::router_message::pallet::Config for Runtime {
+	type Middleware = RouterId;
+	type Origin = DomainAddress;
 }
 
 frame_support::parameter_types! {
-	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
+	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes()).into());
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 }
@@ -118,13 +127,16 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
-	type Router = RouterMock<Runtime>;
+	type MessageSender = MockMessageSender;
+	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type WeightInfo = ();
 }
 
+/*
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	System::externalities()
 }
+*/
