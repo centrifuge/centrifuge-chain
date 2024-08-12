@@ -293,7 +293,7 @@ pub mod pallet {
 
 			match config.domain {
 				DomainConfig::Evm(evm_config) => {
-					let sender_evm_address = H160::from_slice(&origin.address());
+					let sender_evm_address = H160::from_slice(&origin.address()[0..20]);
 
 					let message = wrap_into_axelar_msg(
 						message,
