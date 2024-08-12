@@ -171,8 +171,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type WeightInfo = ();
 }
 
-/*
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	System::externalities()
 }
-*/

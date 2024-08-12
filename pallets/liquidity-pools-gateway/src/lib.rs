@@ -40,9 +40,8 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_arithmetic::traits::{BaseArithmetic, EnsureSub, One};
-use sp_runtime::traits::EnsureAddAssign;
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_arithmetic::traits::{BaseArithmetic, One};
+use sp_std::convert::TryInto;
 
 use crate::{message_processing::InboundEntry, weights::WeightInfo};
 
@@ -131,7 +130,7 @@ pub mod pallet {
 
 		/// Type used for queueing messages.
 		type MessageQueue: MessageQueue<
-			Message = GatewayMessage<Self::AccountId, Self::Message, Self::Hash>,
+			Message = GatewayMessage<Self::AccountId, Self::Message, Self::RouterId>,
 		>;
 
 		/// Maximum number of routers allowed for a domain.
@@ -155,8 +154,7 @@ pub mod pallet {
 		/// The routers for a given domain were set.
 		RoutersSet {
 			domain: Domain,
-			//TODO(cdamian): Use T::RouterId
-			router_ids: BoundedVec<T::Hash, T::MaxRouterCount>,
+			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 		},
 
 		/// An instance was added to a domain.
@@ -187,7 +185,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn routers)]
 	pub type Routers<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::RouterId, T::MaxRouterCount>>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -222,7 +220,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::SessionId,
 		Blake2_128Concat,
-		(Proof, T::Hash),
+		(Proof, T::RouterId),
 		InboundEntry<T>,
 	>;
 
@@ -314,10 +312,11 @@ pub mod pallet {
 		pub fn set_domain_routers(
 			origin: OriginFor<T>,
 			domain: Domain,
-			//TODO(cdamian): Use T::RouterId
-			router_ids: BoundedVec<T::Hash, T::MaxRouterCount>,
+			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
 
 			//TODO(cdamian): Outbound -  Call router.init() for each router?
 
@@ -462,8 +461,8 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
+			domain: Domain,
 			message_proof: Proof,
-			proof_count: u32,
 		) -> DispatchResult {
 			//TODO(cdamian): Implement this.
 			unimplemented!()
@@ -499,20 +498,20 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageProcessor for Pallet<T> {
-		type Message = GatewayMessage<T::AccountId, T::Message, T::Hash>;
+		type Message = GatewayMessage<T::AccountId, T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,
 					message,
-					router_hash,
-				} => Self::process_inbound_message(domain_address, message, router_hash),
+					router_id,
+				} => Self::process_inbound_message(domain_address, message, router_id),
 				GatewayMessage::Outbound {
 					sender,
 					message,
-					router_hash,
-				} => Self::process_outbound_message(sender, message, router_hash),
+					router_id,
+				} => Self::process_outbound_message(sender, message, router_id),
 			}
 		}
 
