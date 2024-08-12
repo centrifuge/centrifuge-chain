@@ -45,6 +45,7 @@ pub mod pool;
 pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
+pub mod routing;
 
 pub mod instances {
 	/// The rewards associated to block rewards
