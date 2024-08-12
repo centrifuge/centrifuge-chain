@@ -13,9 +13,7 @@
 
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	traits::Get,
 	weights::Weight,
-	BoundedVec,
 };
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -80,14 +78,11 @@ pub trait MessageReceiver {
 	/// The originator of the received message
 	type Origin;
 
-	/// The maximum lenght for a message the implementor is able to receive.
-	type MaxEncodedLen: Get<u32>;
-
 	/// Sends a message for origin to destination
 	fn receive(
 		middleware: Self::Middleware,
 		origin: Self::Origin,
-		message: BoundedVec<u8, Self::MaxEncodedLen>,
+		message: Vec<u8>,
 	) -> DispatchResult;
 }
 

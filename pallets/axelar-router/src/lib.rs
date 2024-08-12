@@ -5,7 +5,7 @@ use cfg_traits::{
 };
 use cfg_types::{domain_address::DomainAddress, EVMChainId};
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
+use fp_evm::{ExitError, PrecompileHandle};
 use frame_support::{
 	pallet_prelude::*,
 	weights::{constants::RocksDbWeight, Weight},
@@ -16,6 +16,12 @@ pub use pallet::*;
 use precompile_utils::prelude::*;
 use sp_core::{H160, H256, U256};
 use sp_std::collections::btree_map::BTreeMap;
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 /// Maximum size allowed for a byte representation of an Axelar EVM chain
 /// string, as found below:
@@ -86,77 +92,6 @@ pub struct FeeValues {
 	pub gas_limit: U256,
 }
 
-/// Encodes the provided message into the format required for submitting it
-/// to the Axelar contract which in turn calls the LiquidityPools
-/// contract with the serialized LP message as `payload`.
-///
-/// Axelar contract call:
-/// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
-///
-/// LiquidityPools contract call:
-/// <https://github.com/centrifuge/liquidity-pools/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
-fn wrap_into_axelar_msg(
-	serialized_msg: Vec<u8>,
-	target_chain: Vec<u8>,
-	target_contract: H160,
-) -> Result<Vec<u8>, &'static str> {
-	const AXELAR_FUNCTION_NAME: &str = "callContract";
-	const AXELAR_DESTINATION_CHAIN_PARAM: &str = "destinationChain";
-	const AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM: &str = "destinationContractAddress";
-	const AXELAR_PAYLOAD_PARAM: &str = "payload";
-
-	#[allow(deprecated)]
-	let encoded_axelar_contract = Contract {
-		constructor: None,
-		functions: BTreeMap::<String, Vec<Function>>::from([(
-			AXELAR_FUNCTION_NAME.into(),
-			vec![Function {
-				name: AXELAR_FUNCTION_NAME.into(),
-				inputs: vec![
-					Param {
-						name: AXELAR_DESTINATION_CHAIN_PARAM.into(),
-						kind: ParamType::String,
-						internal_type: None,
-					},
-					Param {
-						name: AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM.into(),
-						kind: ParamType::String,
-						internal_type: None,
-					},
-					Param {
-						name: AXELAR_PAYLOAD_PARAM.into(),
-						kind: ParamType::Bytes,
-						internal_type: None,
-					},
-				],
-				outputs: vec![],
-				constant: Some(false),
-				state_mutability: Default::default(),
-			}],
-		)]),
-		events: Default::default(),
-		errors: Default::default(),
-		receive: false,
-		fallback: false,
-	}
-	.function(AXELAR_FUNCTION_NAME)
-	.map_err(|_| "cannot retrieve Axelar contract function")?
-	.encode_input(&[
-		Token::String(
-			String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?,
-		),
-		// Ensure that the target contract is correctly converted to hex.
-		//
-		// The `to_string` method on the H160 is returning a string containing an ellipsis, such
-		// as: 0x1234…7890
-		Token::String(format!("0x{}", hex::encode(target_contract.0))),
-		Token::Bytes(serialized_msg),
-	])
-	.map_err(|_| "cannot encode input for Axelar contract function")?;
-
-	Ok(encoded_axelar_contract)
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -173,7 +108,7 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The target of the messages comming from other chains
-		type Gateway: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
+		type Receiver: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
 
 		/// Middleware used by the gateway
 		type Middleware: From<AxelarId>;
@@ -277,9 +212,6 @@ pub mod pallet {
 		//
 		//        _execute(sourceChain, sourceAddress, payload);
 		// }
-		//
-		// Note: The _execute logic in this case will forward all calls to the
-		//       liquidity-pools-gateway with a special runtime local origin
 		#[precompile::public("execute(bytes32,string,string,bytes)")]
 		fn execute(
 			handle: &mut impl PrecompileHandle,
@@ -302,13 +234,6 @@ pub mod pallet {
 				ExitError::Other("gateway contract address mismatch".into()),
 			);
 
-			let msg = BoundedVec::<u8, <T::Gateway as MessageReceiver>::MaxEncodedLen>::try_from(
-				payload.as_bytes().to_vec(),
-			)
-			.map_err(|_| PrecompileFailure::Error {
-				exit_status: ExitError::Other("payload conversion".into()),
-			})?;
-
 			match config.domain {
 				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
 					let source_address_bytes =
@@ -316,8 +241,9 @@ pub mod pallet {
 							.ok_or(ExitError::Other("invalid source address".into()))?;
 
 					let origin = DomainAddress::EVM(chain_id, source_address_bytes);
+					let message = payload.as_bytes().to_vec();
 
-					T::Gateway::receive(AxelarId::Evm(chain_id).into(), origin, msg)
+					T::Receiver::receive(AxelarId::Evm(chain_id).into(), origin, message)
 						.map_err(|e| TryDispatchError::Substrate(e).into())
 				}
 			}
@@ -388,4 +314,75 @@ pub mod pallet {
 			}
 		}
 	}
+}
+
+/// Encodes the provided message into the format required for submitting it
+/// to the Axelar contract which in turn calls the LiquidityPools
+/// contract with the serialized LP message as `payload`.
+///
+/// Axelar contract call:
+/// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
+///
+/// LiquidityPools contract call:
+/// <https://github.com/centrifuge/liquidity-pools/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
+fn wrap_into_axelar_msg(
+	serialized_msg: Vec<u8>,
+	target_chain: Vec<u8>,
+	target_contract: H160,
+) -> Result<Vec<u8>, &'static str> {
+	const AXELAR_FUNCTION_NAME: &str = "callContract";
+	const AXELAR_DESTINATION_CHAIN_PARAM: &str = "destinationChain";
+	const AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM: &str = "destinationContractAddress";
+	const AXELAR_PAYLOAD_PARAM: &str = "payload";
+
+	#[allow(deprecated)]
+	let encoded_axelar_contract = Contract {
+		constructor: None,
+		functions: BTreeMap::<String, Vec<Function>>::from([(
+			AXELAR_FUNCTION_NAME.into(),
+			vec![Function {
+				name: AXELAR_FUNCTION_NAME.into(),
+				inputs: vec![
+					Param {
+						name: AXELAR_DESTINATION_CHAIN_PARAM.into(),
+						kind: ParamType::String,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM.into(),
+						kind: ParamType::String,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_PAYLOAD_PARAM.into(),
+						kind: ParamType::Bytes,
+						internal_type: None,
+					},
+				],
+				outputs: vec![],
+				constant: Some(false),
+				state_mutability: Default::default(),
+			}],
+		)]),
+		events: Default::default(),
+		errors: Default::default(),
+		receive: false,
+		fallback: false,
+	}
+	.function(AXELAR_FUNCTION_NAME)
+	.map_err(|_| "cannot retrieve Axelar contract function")?
+	.encode_input(&[
+		Token::String(
+			String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?,
+		),
+		// Ensure that the target contract is correctly converted to hex.
+		//
+		// The `to_string` method on the H160 is returning a string containing an ellipsis, such
+		// as: 0x1234…7890
+		Token::String(format!("0x{}", hex::encode(target_contract.0))),
+		Token::Bytes(serialized_msg),
+	])
+	.map_err(|_| "cannot encode input for Axelar contract function")?;
+
+	Ok(encoded_axelar_contract)
 }
