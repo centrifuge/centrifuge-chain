@@ -144,19 +144,19 @@ pub mod pallet {
 		RouterNotFound,
 
 		/// Emit when the evm account code is not registered
-		ContractCodeNotMatch,
+		ContractCodeMismatch,
 	}
 
 	impl<T: Config> Pallet<T> {
 		fn weight_for_set_method() -> Weight {
-			Weight::from_parts(50_000_000, 256).saturating_add(RocksDbWeight::get().writes(2))
+			Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(2))
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(0)]
 		pub fn set_config(
 			origin: OriginFor<T>,
 			chain_name: ChainName,
@@ -171,7 +171,7 @@ pub mod pallet {
 							evm_config.target_contract_address,
 							evm_config.target_contract_hash,
 						)),
-						Error::<T>::ContractCodeNotMatch
+						Error::<T>::ContractCodeMismatch
 					);
 
 					ChainNameById::<T>::insert(
