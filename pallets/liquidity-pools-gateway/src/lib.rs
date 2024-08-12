@@ -62,6 +62,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_arithmetic::traits::EnsureAdd;
 
 	use super::*;
@@ -74,6 +75,13 @@ pub mod pallet {
 
 	#[pallet::origin]
 	pub type Origin = GatewayOrigin;
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_idle(_now: BlockNumberFor<T>, max_weight: Weight) -> Weight {
+			Self::clear_invalid_session_ids(max_weight)
+		}
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -144,6 +152,13 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// The routers for a given domain were set.
+		RoutersSet {
+			domain: Domain,
+			//TODO(cdamian): Use T::RouterId
+			router_ids: BoundedVec<T::Hash, T::MaxRouterCount>,
+		},
+
 		/// An instance was added to a domain.
 		InstanceAdded { instance: DomainAddress },
 
@@ -155,19 +170,24 @@ pub mod pallet {
 			domain: Domain,
 			hook_address: [u8; 20],
 		},
-
-		/// The outbound routers for a given domain were set.
-		OutboundRoutersSet {
-			domain: Domain,
-			routers: BoundedVec<T::Router, T::MaxRouterCount>,
-		},
-
-		/// Inbound routers were set.
-		InboundRoutersSet {
-			domain: Domain,
-			router_hashes: BoundedVec<T::Hash, T::MaxRouterCount>,
-		},
 	}
+
+	// TODO(cdamian): Add migration to clear this storage.
+	// /// Storage for domain routers.
+	// ///
+	// /// This can only be set by an admin.
+	// #[pallet::storage]
+	// #[pallet::getter(fn domain_routers)]
+	// pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain,
+	// T::Router>;
+
+	/// Storage for routers specific for a domain.
+	///
+	/// This can only be set by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn routers)]
+	pub type Routers<T: Config> =
+		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -194,21 +214,6 @@ pub mod pallet {
 	pub(crate) type PackedMessage<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
 
-	/// Storage for outbound routers.
-	///
-	/// This can only be set by an admin.
-	#[pallet::storage]
-	#[pallet::getter(fn routers)]
-	pub type OutboundRouters<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::Router>;
-
-	/// Storage for outbound routers specific for a domain.
-	///
-	/// This can only be set by an admin.
-	#[pallet::storage]
-	#[pallet::getter(fn outbound_domain_routers)]
-	pub type OutboundDomainRouters<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
-
 	/// Storage for pending inbound messages.
 	#[pallet::storage]
 	#[pallet::getter(fn pending_inbound_entries)]
@@ -221,14 +226,6 @@ pub mod pallet {
 		InboundEntry<T>,
 	>;
 
-	/// Storage for inbound routers specific for a domain.
-	///
-	/// This can only be set by an admin.
-	#[pallet::storage]
-	#[pallet::getter(fn inbound_routers)]
-	pub type InboundRouters<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::Hash, T::MaxRouterCount>>;
-
 	/// Storage for the inbound message session IDs.
 	#[pallet::storage]
 	#[pallet::getter(fn inbound_message_sessions)]
@@ -238,6 +235,14 @@ pub mod pallet {
 	/// Storage for inbound message session IDs.
 	#[pallet::storage]
 	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
+
+	/// Storage that keeps track of invalid session IDs.
+	///
+	/// Any `PendingInboundEntries` mapped to the invalid IDs are removed from
+	/// storage during `on_idle`.
+	#[pallet::storage]
+	#[pallet::getter(fn invalid_session_ids)]
+	pub type InvalidSessionIds<T: Config> = StorageMap<_, Blake2_128Concat, T::SessionId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -303,6 +308,38 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Sets the router IDs used for a specific domain,
+		#[pallet::weight(T::WeightInfo::set_domain_routers())]
+		#[pallet::call_index(0)]
+		pub fn set_domain_routers(
+			origin: OriginFor<T>,
+			domain: Domain,
+			//TODO(cdamian): Use T::RouterId
+			router_ids: BoundedVec<T::Hash, T::MaxRouterCount>,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			//TODO(cdamian): Outbound -  Call router.init() for each router?
+
+			<Routers<T>>::insert(domain.clone(), router_ids.clone());
+
+			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
+				let old_session_id = *n;
+				let new_session_id = old_session_id.ensure_add(One::one())?;
+
+				*n = new_session_id;
+
+				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
+			})?;
+
+			InboundMessageSessions::<T>::insert(domain.clone(), new_session_id);
+			InvalidSessionIds::<T>::insert(old_session_id, ());
+
+			Self::deposit_event(Event::RoutersSet { domain, router_ids });
+
+			Ok(())
+		}
+
 		/// Add a known instance of a deployed liquidity pools integration for a
 		/// specific domain.
 		#[pallet::weight(T::WeightInfo::add_instance())]
@@ -417,81 +454,12 @@ pub mod pallet {
 			}
 		}
 
-		/// Set outbound routers for a particular domain.
-		#[pallet::weight(T::WeightInfo::set_outbound_routers())]
-		#[pallet::call_index(11)]
-		pub fn set_outbound_routers(
-			origin: OriginFor<T>,
-			domain: Domain,
-			routers: BoundedVec<T::Router, T::MaxRouterCount>,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
-
-			let mut router_hashes = Vec::new();
-
-			for router in &routers {
-				router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
-
-				let router_hash = router.hash();
-
-				router_hashes.push(router_hash);
-
-				OutboundRouters::<T>::insert(router_hash, router);
-			}
-
-			<OutboundDomainRouters<T>>::insert(
-				domain.clone(),
-				BoundedVec::try_from(router_hashes).map_err(|_| Error::<T>::InvalidMultiRouter)?,
-			);
-
-			Self::deposit_event(Event::OutboundRoutersSet { domain, routers });
-
-			Ok(())
-		}
-
-		/// Set inbound routers.
-		#[pallet::weight(T::WeightInfo::set_inbound_routers())]
-		#[pallet::call_index(12)]
-		pub fn set_inbound_routers(
-			origin: OriginFor<T>,
-			domain: Domain,
-			router_hashes: BoundedVec<T::Hash, T::MaxRouterCount>,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
-				let old_session_id = *n;
-				let new_session_id = n.ensure_add(One::one())?;
-
-				*n = new_session_id;
-
-				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
-			})?;
-
-			InboundRouters::<T>::insert(domain.clone(), router_hashes.clone());
-			InboundMessageSessions::<T>::insert(domain.clone(), new_session_id);
-
-			//TODO(cdamian): The storages are updated with the new session.
-			// We can process the removal of entries associated with the old entries
-			// `on_idle`.
-			let _ = PendingInboundEntries::<T>::clear_prefix(old_session_id, u32::MAX, None);
-
-			Self::deposit_event(Event::InboundRoutersSet {
-				domain,
-				router_hashes,
-			});
-
-			Ok(())
-		}
-
 		/// Manually increase the proof count for a particular message and
 		/// executes it if the required count is reached.
 		///
 		/// Can only be called by `AdminOrigin`.
 		#[pallet::weight(T::WeightInfo::execute_message_recovery())]
-		#[pallet::call_index(13)]
+		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
 			message_proof: Proof,
