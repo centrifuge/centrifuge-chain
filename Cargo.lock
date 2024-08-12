@@ -1507,6 +1507,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
