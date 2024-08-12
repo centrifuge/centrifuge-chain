@@ -10,8 +10,12 @@ use frame_support::{
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use parity_scale_codec::MaxEncodedLen;
+use sp_arithmetic::ArithmeticError::Overflow;
 use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160, H256};
-use sp_runtime::{DispatchError, DispatchError::BadOrigin};
+use sp_runtime::{
+	DispatchError,
+	DispatchError::{Arithmetic, BadOrigin},
+};
 use sp_std::sync::{
 	atomic::{AtomicU32, Ordering},
 	Arc,
@@ -61,15 +65,13 @@ mod set_domain_routers {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 
+			let mut session_id = 1;
+
 			let router_id_1 = H256::from_low_u64_be(1);
 			let router_id_2 = H256::from_low_u64_be(2);
 			let router_id_3 = H256::from_low_u64_be(3);
 
-			//TODO(cdamian): Enable this after we figure out router init?
-			// let router = RouterMock::<Runtime>::default();
-			// router.mock_init(move || Ok(()));
-
-			let router_ids =
+			let mut router_ids =
 				BoundedVec::try_from(vec![router_id_1, router_id_2, router_id_3]).unwrap();
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_routers(
@@ -81,32 +83,44 @@ mod set_domain_routers {
 			assert_eq!(Routers::<Runtime>::get(domain.clone()).unwrap(), router_ids);
 			assert_eq!(
 				InboundMessageSessions::<Runtime>::get(domain.clone()),
-				Some(1)
+				Some(session_id)
 			);
-			assert_eq!(InvalidSessionIds::<Runtime>::get(0), Some(()));
+			assert_eq!(InvalidMessageSessions::<Runtime>::get(session_id - 1), None);
 
-			event_exists(Event::<Runtime>::RoutersSet { domain, router_ids });
+			event_exists(Event::<Runtime>::RoutersSet {
+				domain: domain.clone(),
+				router_ids,
+				session_id,
+			});
+
+			router_ids = BoundedVec::try_from(vec![router_id_3, router_id_2, router_id_1]).unwrap();
+
+			session_id += 1;
+
+			assert_ok!(LiquidityPoolsGateway::set_domain_routers(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				router_ids.clone(),
+			));
+
+			assert_eq!(Routers::<Runtime>::get(domain.clone()).unwrap(), router_ids);
+			assert_eq!(
+				InboundMessageSessions::<Runtime>::get(domain.clone()),
+				Some(session_id)
+			);
+			assert_eq!(
+				InvalidMessageSessions::<Runtime>::get(session_id - 1),
+				Some(())
+			);
+
+			event_exists(Event::<Runtime>::RoutersSet {
+				domain,
+				router_ids,
+				session_id,
+			});
 		});
 	}
 
-	//TODO(cdamian): Enable this after we figure out router init?
-	//
-	// fn router_init_error() {
-	// 	new_test_ext().execute_with(|| {
-	// 		let domain = Domain::EVM(0);
-	// 		let router = RouterMock::<Runtime>::default();
-	// 		router.mock_init(move || Err(DispatchError::Other("error")));
-	//
-	// 		assert_noop!(
-	// 			LiquidityPoolsGateway::set_domain_router(
-	// 				RuntimeOrigin::root(),
-	// 				domain.clone(),
-	// 				router,
-	// 			),
-	// 			Error::<Runtime>::RouterInitFailed,
-	// 		);
-	// 	});
-	// }
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
@@ -123,7 +137,7 @@ mod set_domain_routers {
 
 			assert!(Routers::<Runtime>::get(domain.clone()).is_none());
 			assert!(InboundMessageSessions::<Runtime>::get(domain).is_none());
-			assert!(InvalidSessionIds::<Runtime>::get(0).is_none());
+			assert!(InvalidMessageSessions::<Runtime>::get(0).is_none());
 		});
 	}
 
@@ -143,7 +157,25 @@ mod set_domain_routers {
 
 			assert!(Routers::<Runtime>::get(domain.clone()).is_none());
 			assert!(InboundMessageSessions::<Runtime>::get(domain).is_none());
-			assert!(InvalidSessionIds::<Runtime>::get(0).is_none());
+			assert!(InvalidMessageSessions::<Runtime>::get(0).is_none());
+		});
+	}
+
+	#[test]
+	fn session_id_overflow() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+
+			SessionIdStore::<Runtime>::set(u32::MAX);
+
+			assert_noop!(
+				LiquidityPoolsGateway::set_domain_routers(
+					RuntimeOrigin::root(),
+					domain,
+					BoundedVec::try_from(vec![]).unwrap(),
+				),
+				Arithmetic(Overflow)
+			);
 		});
 	}
 }
@@ -826,7 +858,7 @@ mod message_processor_impl {
 					};
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
-					assert_noop!(res, Error::<Runtime>::MultiRouterNotFound);
+					assert_noop!(res, Error::<Runtime>::RoutersNotFound);
 				});
 			}
 
@@ -2863,6 +2895,200 @@ mod batches {
 			assert_err!(result, DispatchError::Unavailable);
 			// 2 correct messages and 1 failed message processed.
 			assert_eq!(handler.times(), 3);
+		});
+	}
+}
+
+mod execute_message_recovery {
+	use super::*;
+
+	#[test]
+	fn success() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router_id = H256::from_low_u64_be(1);
+			let session_id = 1;
+
+			Routers::<Runtime>::insert(
+				domain.clone(),
+				BoundedVec::try_from(vec![router_id]).unwrap(),
+			);
+			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
+
+			assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				MESSAGE_PROOF,
+				router_id
+			));
+
+			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
+				domain: domain.clone(),
+				proof: MESSAGE_PROOF,
+				router_id: router_id.clone(),
+			});
+
+			let inbound_entry =
+				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, router_id))
+					.expect("inbound entry is stored");
+
+			assert_eq!(
+				inbound_entry,
+				InboundEntry::<Runtime>::Proof { current_count: 1 }
+			);
+
+			assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				MESSAGE_PROOF,
+				router_id
+			));
+
+			let inbound_entry =
+				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, router_id))
+					.expect("inbound entry is stored");
+
+			assert_eq!(
+				inbound_entry,
+				InboundEntry::<Runtime>::Proof { current_count: 2 }
+			);
+
+			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
+				domain: domain.clone(),
+				proof: MESSAGE_PROOF,
+				router_id: router_id.clone(),
+			});
+		});
+	}
+
+	#[test]
+	fn inbound_domain_session_not_found() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router_id = H256::from_low_u64_be(1);
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					domain.clone(),
+					MESSAGE_PROOF,
+					router_id
+				),
+				Error::<Runtime>::InboundDomainSessionNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn routers_not_found() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router_id = H256::from_low_u64_be(1);
+			let session_id = 1;
+
+			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					domain.clone(),
+					MESSAGE_PROOF,
+					router_id
+				),
+				Error::<Runtime>::RoutersNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn unknown_inbound_message_router() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router_id_1 = H256::from_low_u64_be(1);
+			let router_id_2 = H256::from_low_u64_be(2);
+			let session_id = 1;
+
+			Routers::<Runtime>::insert(
+				domain.clone(),
+				BoundedVec::try_from(vec![router_id_1]).unwrap(),
+			);
+			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					domain.clone(),
+					MESSAGE_PROOF,
+					router_id_2
+				),
+				Error::<Runtime>::UnknownInboundMessageRouter
+			);
+		});
+	}
+
+	#[test]
+	fn proof_count_overflow() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router_id = H256::from_low_u64_be(1);
+			let session_id = 1;
+
+			Routers::<Runtime>::insert(
+				domain.clone(),
+				BoundedVec::try_from(vec![router_id]).unwrap(),
+			);
+			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
+			PendingInboundEntries::<Runtime>::insert(
+				session_id,
+				(MESSAGE_PROOF, router_id),
+				InboundEntry::<Runtime>::Proof {
+					current_count: u32::MAX,
+				},
+			);
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					domain.clone(),
+					MESSAGE_PROOF,
+					router_id
+				),
+				Arithmetic(Overflow)
+			);
+		});
+	}
+
+	#[test]
+	fn expected_message_proof_type() {
+		new_test_ext().execute_with(|| {
+			let domain_address = TEST_DOMAIN_ADDRESS;
+			let router_id = H256::from_low_u64_be(1);
+			let session_id = 1;
+
+			Routers::<Runtime>::insert(
+				domain_address.domain(),
+				BoundedVec::try_from(vec![router_id]).unwrap(),
+			);
+			InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
+			PendingInboundEntries::<Runtime>::insert(
+				session_id,
+				(MESSAGE_PROOF, router_id),
+				InboundEntry::<Runtime>::Message {
+					domain_address: domain_address.clone(),
+					message: Message::Simple,
+					expected_proof_count: 2,
+				},
+			);
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					domain_address.domain(),
+					MESSAGE_PROOF,
+					router_id
+				),
+				Error::<Runtime>::ExpectedMessageProofType
+			);
 		});
 	}
 }
