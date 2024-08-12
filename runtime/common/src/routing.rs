@@ -1,3 +1,4 @@
+use cfg_primitives::AccountId;
 use cfg_traits::liquidity_pools::{MessageSender, RouterSupport};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::dispatch::DispatchResultWithPostInfo;
@@ -7,6 +8,7 @@ use sp_std::marker::PhantomData;
 /// Identification of the router where the message is sent and received
 /// RouterId is more specific than Domain, because RouterId also identify by
 /// where the message is sent/received
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum RouterId {
 	/// The message must be sent/received by EVM using Axelar
 	Axelar(AxelarId),
