@@ -21,8 +21,14 @@ pub enum RouterId {
 	Axelar(AxelarId),
 }
 
+impl From<AxelarId> for RouterId {
+	fn from(axelar_id: AxelarId) -> Self {
+		RouterId::Axelar(axelar_id)
+	}
+}
+
 impl From<RouterId> for Domain {
-	fn from(router_id: RouterId) -> Domain {
+	fn from(router_id: RouterId) -> Self {
 		match router_id {
 			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::EVM(chain_id),
 		}
@@ -39,7 +45,7 @@ impl RouterSupport<Domain> for RouterId {
 }
 
 /// This type choose the correct router implementation given a router id
-struct RouterDispatcher<Routers>(PhantomData<Routers>);
+pub struct RouterDispatcher<Routers>(PhantomData<Routers>);
 impl<Routers> MessageSender for RouterDispatcher<Routers>
 where
 	Routers: pallet_axelar_router::Config,
@@ -60,7 +66,7 @@ where
 	}
 }
 
-struct EvmAccountCodeChecker<Runtime>(PhantomData<Runtime>);
+pub struct EvmAccountCodeChecker<Runtime>(PhantomData<Runtime>);
 impl<Runtime: pallet_evm::Config> PreConditions<(H160, H256)> for EvmAccountCodeChecker<Runtime> {
 	type Result = bool;
 
