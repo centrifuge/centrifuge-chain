@@ -29,14 +29,6 @@ pub fn rely<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
-		names::GAS_SERVICE,
-		"rely",
-		Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
-	)
-	.unwrap();
-	evm.call(
-		Keyring::Alice,
-		Default::default(),
 		names::ESCROW,
 		"rely",
 		Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
@@ -120,6 +112,14 @@ pub fn rely<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 		Keyring::Alice,
 		Default::default(),
 		names::ROUTER_ESCROW,
+		"rely",
+		Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
+	)
+	.unwrap();
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::TRANSFER_PROXY_FACTORY,
 		"rely",
 		Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 	)
@@ -278,6 +278,30 @@ pub fn file<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 		]),
 	)
 	.unwrap();
+
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::GATEWAY,
+		"file",
+		Some(&[
+			Token::FixedBytes("payers".as_bytes().to_vec()),
+			Token::Address(evm.deployed(names::ROUTER).address()),
+			Token::Bool(true),
+		]),
+	)
+	.unwrap();
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::TRANSFER_PROXY_FACTORY,
+		"file",
+		Some(&[
+			Token::FixedBytes("poolManager".as_bytes().to_vec()),
+			Token::Address(evm.deployed(names::POOL_MANAGER).address()),
+		]),
+	)
+	.unwrap();
 }
 
 /// Replicate Deployer.sol function `wire`
@@ -349,6 +373,14 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Keyring::Alice,
 		Default::default(),
 		names::RESTRICTION_MANAGER,
+		"deny",
+		Some(&[Token::Address(Keyring::Alice.into())]),
+	)
+	.unwrap();
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::TRANSFER_PROXY_FACTORY,
 		"deny",
 		Some(&[Token::Address(Keyring::Alice.into())]),
 	)
@@ -530,7 +562,10 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		contracts::TRANSFER_PROXY_FACTORY,
 		names::TRANSFER_PROXY_FACTORY,
 		Keyring::Alice,
-		Some(&[Token::Address(evm.deployed(names::POOL_MANAGER).address())]),
+		Some(&[
+			Token::Address(evm.deployed(names::ROOT).address()),
+			Token::Address(Keyring::Alice.into()),
+		]),
 	);
 	evm.deploy(
 		contracts::GAS_SERVICE,

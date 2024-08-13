@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 use super::*;
+use crate::cases::lp::utils::pool_c_tranche_1_id;
 
 pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
 	setup::<T, _>(|evm| {
@@ -19,7 +20,8 @@ pub fn setup_full<T: Runtime>() -> impl EnvEvmExtension<T> {
 		setup_tranches(evm);
 		setup_investment_currencies(evm);
 		setup_deploy_lps(evm);
-		setup_investors(evm)
+		setup_investors(evm);
+		setup_market_ratios::<T>();
 	})
 }
 
@@ -642,6 +644,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		meta.location = Some(utils::lp_asset_location::<T>(
 			evm.deployed(names::USDC).address(),
 		));
+		meta.additional.local_representation = Some(LocalUSDC.id().try_into().unwrap())
 	});
 
 	register_currency::<T>(DAI, |meta| {
@@ -929,4 +932,70 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	});
 
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+}
+
+/// Setup symmetric trading pairs and market ratios
+///
+/// NOTE: Necessary in order to be able to invest
+pub fn setup_market_ratios<T: Runtime>() {
+	for currency_id in [USDC.id(), FRAX.id(), DAI.id()] {
+		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+			pallet_foreign_investments::pool_currency_of::<T>((POOL_A, pool_a_tranche_1_id::<T>()))
+				.unwrap(),
+			currency_id,
+			Keyring::Admin.id(),
+			POOL_A,
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			POOL_A,
+			pool_a_tranche_1_id::<T>(),
+			currency_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+			pallet_foreign_investments::pool_currency_of::<T>((POOL_B, pool_b_tranche_1_id::<T>()))
+				.unwrap(),
+			currency_id,
+			Keyring::Admin.id(),
+			POOL_B,
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			POOL_B,
+			pool_b_tranche_1_id::<T>(),
+			currency_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+			pallet_foreign_investments::pool_currency_of::<T>((POOL_B, pool_b_tranche_2_id::<T>()))
+				.unwrap(),
+			currency_id,
+			Keyring::Admin.id(),
+			POOL_B,
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			POOL_B,
+			pool_b_tranche_2_id::<T>(),
+			currency_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+
+		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+			pallet_foreign_investments::pool_currency_of::<T>((POOL_C, pool_c_tranche_1_id::<T>()))
+				.unwrap(),
+			currency_id,
+			Keyring::Admin.id(),
+			POOL_C,
+		);
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_token_price(
+			OriginFor::<T>::signed(Keyring::Alice.into()),
+			POOL_C,
+			pool_c_tranche_1_id::<T>(),
+			currency_id,
+			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		));
+	}
 }

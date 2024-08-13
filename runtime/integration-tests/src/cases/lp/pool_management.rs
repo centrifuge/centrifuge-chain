@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, PoolId, SECONDS_PER_YEAR};
-use cfg_traits::{PoolMetadata, TimeAsSecs, TrancheTokenPrice};
+use cfg_traits::{PoolMetadata, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::PoolRole,
@@ -147,20 +147,16 @@ fn add_pool<T: Runtime>() {
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
-		let creation_time = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-
-		// Compare the pool.created_at field that is returned
-		let evm_pool_time = Decoder::<Uint>::decode(
+		assert!(Decoder::<bool>::decode(
 			&evm.view(
 				Keyring::Alice,
 				names::POOL_MANAGER,
-				"pools",
+				"isPoolActive",
 				Some(&[Token::Uint(Uint::from(POOL))]),
 			)
 			.unwrap()
-			.value,
-		);
-		assert_eq!(evm_pool_time, Uint::from(creation_time));
+			.value
+		));
 	});
 
 	env.state_mut(|evm| {
@@ -466,6 +462,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
+		super::setup_market_ratios::<T>();
 	});
 
 	let decimals_new = 42;
@@ -561,27 +558,6 @@ fn update_tranche_token_price<T: Runtime>() {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
 		super::setup_tranches(evm);
-	});
-
-	// Neither price nor computed exists yet
-	env.state(|evm| {
-		let (price_evm, computed_evm) = Decoder::<(u128, u64)>::decode(
-			&evm.view(
-				Keyring::Alice,
-				names::POOL_MANAGER,
-				"getTranchePrice",
-				Some(&[
-					Token::Uint(Uint::from(POOL_A)),
-					Token::FixedBytes(pool_a_tranche_1_id::<T>().to_vec()),
-					Token::Address(evm.deployed(names::USDC).address()),
-				]),
-			)
-			.unwrap()
-			.value,
-		);
-
-		assert_eq!(price_evm, 0);
-		assert_eq!(computed_evm, 0);
 	});
 
 	let (price, last_updated) = env.state_mut(|_evm| {
