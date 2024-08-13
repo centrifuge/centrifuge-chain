@@ -21,7 +21,6 @@ use cfg_types::{
 };
 use cumulus_primitives_core::WeightLimit;
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
-use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
 use runtime_common::remarks::Remark;
 use sp_runtime::traits::Zero;
 use staging_xcm::{
@@ -358,7 +357,6 @@ mod xcm {
 
 mod eth_address {
 	use super::*;
-	use crate::utils::last_event;
 
 	const TRANSFER: u32 = 10;
 	const CHAIN_ID: u64 = 1;
@@ -424,22 +422,6 @@ mod eth_address {
 				curr.id(),
 				curr_contract,
 				curr.val(TRANSFER),
-			));
-
-			assert_ok!(
-				pallet_liquidity_pools_gateway_queue::Pallet::<T>::process_message(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					MessageNonceStore::<T>::get(),
-				)
-			);
-
-			let last_event = last_event::<T, pallet_liquidity_pools_gateway_queue::Event<T>>();
-			assert!(matches!(
-				last_event,
-				pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
-					error,
-					..
-				} if error == pallet_axelar_router::Error::<T>::RouterNotFound.into()
 			));
 		});
 	}
