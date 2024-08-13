@@ -884,7 +884,7 @@ mod message_processor_impl {
 					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
-					assert_noop!(res, Error::<Runtime>::UnknownInboundMessageRouter);
+					assert_noop!(res, Error::<Runtime>::UnknownRouter);
 				});
 			}
 
@@ -2967,7 +2967,7 @@ mod execute_message_recovery {
 					MESSAGE_PROOF,
 					router_id_2
 				),
-				Error::<Runtime>::UnknownInboundMessageRouter
+				Error::<Runtime>::UnknownRouter
 			);
 		});
 	}

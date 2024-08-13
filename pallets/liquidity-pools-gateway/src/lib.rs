@@ -277,8 +277,8 @@ pub mod pallet {
 		/// Inbound domain session not found.
 		InboundDomainSessionNotFound,
 
-		/// The router that sent the inbound message is unknown.
-		UnknownInboundMessageRouter,
+		/// Unknown router.
+		UnknownRouter,
 
 		/// The router that sent the message is not the first one.
 		MessageExpectedFromFirstRouter,
@@ -443,7 +443,7 @@ pub mod pallet {
 
 			match PackedMessage::<T>::take((&sender, &destination)) {
 				Some(msg) if msg.submessages().is_empty() => Ok(()), //No-op
-				Some(message) => Self::queue_message(destination, message),
+				Some(message) => Self::queue_outbound_message(destination, message),
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
 		}
@@ -467,7 +467,7 @@ pub mod pallet {
 
 			ensure!(
 				routers.iter().any(|x| x == &router_id),
-				Error::<T>::UnknownInboundMessageRouter
+				Error::<T>::UnknownRouter
 			);
 
 			PendingInboundEntries::<T>::try_mutate(
@@ -513,7 +513,7 @@ pub mod pallet {
 
 			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
 				Some(batch) => batch.pack_with(message),
-				None => Self::queue_message(destination, message),
+				None => Self::queue_outbound_message(destination, message),
 			})
 		}
 	}
