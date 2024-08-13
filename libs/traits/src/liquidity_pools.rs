@@ -41,9 +41,12 @@ pub trait LPEncoding: Sized {
 	fn to_message_proof(&self) -> Self;
 }
 
-pub trait RouterSupport<Domain>: Sized {
+pub trait RouterProvider<Domain>: Sized {
+	/// The router identifier.
+	type RouterId;
+
 	/// Returns a list of routers supported for the given domain.
-	fn for_domain(domain: Domain) -> Vec<Self>;
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId>;
 }
 
 /// The behavior of an entity that can send messages

@@ -31,7 +31,7 @@ use core::fmt::Debug;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, MessageReceiver,
-	MessageSender, OutboundMessageHandler, Proof, RouterSupport,
+	MessageSender, OutboundMessageHandler, Proof, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -106,7 +106,10 @@ pub mod pallet {
 		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
 
 		/// An identification of a router
-		type RouterId: RouterSupport<Domain> + Parameter + Default + MaxEncodedLen;
+		type RouterId: Parameter + Default + MaxEncodedLen;
+
+		/// The type that provides the router available for a domain.
+		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 
 		/// The type that processes inbound messages.
 		type InboundMessageHandler: InboundMessageHandler<
