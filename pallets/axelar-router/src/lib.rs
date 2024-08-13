@@ -33,7 +33,7 @@ pub use pallet::*;
 use precompile_utils::prelude::*;
 use scale_info::prelude::{format, string::String};
 use sp_core::{H160, H256, U256};
-use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
+use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 
 #[cfg(test)]
 mod mock;
@@ -149,7 +149,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		ConfigSet {
 			name: ChainName,
-			config: AxelarConfig,
+			config: Box<AxelarConfig>,
 		},
 	}
 
@@ -178,7 +178,7 @@ pub mod pallet {
 		pub fn set_config(
 			origin: OriginFor<T>,
 			chain_name: ChainName,
-			config: AxelarConfig,
+			config: Box<AxelarConfig>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
@@ -203,7 +203,7 @@ pub mod pallet {
 
 			Self::deposit_event(Event::<T>::ConfigSet {
 				name: chain_name,
-				config: config,
+				config,
 			});
 
 			Ok(())
