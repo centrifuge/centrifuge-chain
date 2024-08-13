@@ -39,16 +39,16 @@ pub enum InboundEntry<T: Config> {
 /// Type used when processing inbound messages.
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
-	domain_address: DomainAddress,
-	router_ids: Vec<T::RouterId>,
-	current_session_id: T::SessionId,
-	expected_proof_count_per_message: u32,
+	pub domain_address: DomainAddress,
+	pub router_ids: Vec<T::RouterId>,
+	pub current_session_id: T::SessionId,
+	pub expected_proof_count_per_message: u32,
 }
 
 impl<T: Config> Pallet<T> {
 	/// Retrieves all available routers for a domain and then filters them based
 	/// on the routers that we have in storage.
-	fn get_router_ids_for_domain(domain: Domain) -> Result<Vec<T::RouterId>, DispatchError> {
+	pub fn get_router_ids_for_domain(domain: Domain) -> Result<Vec<T::RouterId>, DispatchError> {
 		let all_routers_for_domain = T::RouterProvider::routers_for_domain(domain);
 
 		let stored_routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
@@ -68,10 +68,9 @@ impl<T: Config> Pallet<T> {
 
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
-	fn get_expected_proof_count(domain: Domain) -> Result<u32, DispatchError> {
-		let routers_count = Self::get_router_ids_for_domain(domain)?.len();
-
-		let expected_proof_count = routers_count
+	fn get_expected_proof_count(router_ids: &Vec<T::RouterId>) -> Result<u32, DispatchError> {
+		let expected_proof_count = router_ids
+			.len()
 			.ensure_sub(1)
 			.map_err(|_| Error::<T>::NotEnoughRoutersForDomain)?;
 
@@ -216,12 +215,13 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Checks if the number of proofs required for executing one message
-	/// were received, and returns the message if so.
-	fn get_executable_message(
+	/// were received, and if so, decreases the counts accordingly and executes
+	/// the message.
+	pub(crate) fn execute_if_requirements_are_met(
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
 		weight: &mut Weight,
-	) -> Option<T::Message> {
+	) -> DispatchResult {
 		let mut message = None;
 		let mut votes = 0;
 
@@ -234,7 +234,7 @@ impl<T: Config> Pallet<T> {
 			) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
-				None => return None,
+				None => return Ok(()),
 				Some(inbound_entry) => match inbound_entry {
 					InboundEntry::Message {
 						message: stored_message,
@@ -249,11 +249,25 @@ impl<T: Config> Pallet<T> {
 			};
 		}
 
-		if votes == inbound_processing_info.expected_proof_count_per_message {
-			return message;
+		if votes < inbound_processing_info.expected_proof_count_per_message {
+			return Ok(());
 		}
 
-		None
+		match message {
+			Some(msg) => {
+				Self::decrease_pending_entries_counts(
+					&inbound_processing_info,
+					message_proof,
+					weight,
+				)?;
+
+				T::InboundMessageHandler::handle(
+					inbound_processing_info.domain_address.clone(),
+					msg,
+				)
+			}
+			None => Ok(()),
+		}
 	}
 
 	/// Decreases the counts for inbound entries and removes them if the
@@ -312,7 +326,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Retrieves the information required for processing an inbound
 	/// message.
-	fn get_inbound_processing_info(
+	pub(crate) fn get_inbound_processing_info(
 		domain_address: DomainAddress,
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
@@ -324,7 +338,7 @@ impl<T: Config> Pallet<T> {
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let expected_proof_count = Self::get_expected_proof_count(domain_address.domain())?;
+		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -373,23 +387,13 @@ impl<T: Config> Pallet<T> {
 				return (Err(e), weight);
 			}
 
-			match Self::get_executable_message(&inbound_processing_info, message_proof, &mut weight)
-			{
-				Some(m) => {
-					if let Err(e) = Self::decrease_pending_entries_counts(
-						&inbound_processing_info,
-						message_proof,
-						&mut weight,
-					) {
-						return (Err(e), weight.saturating_mul(count));
-					}
-
-					if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), m) {
-						// We only consume the processed weight if error during the batch
-						return (Err(e), weight.saturating_mul(count));
-					}
-				}
-				None => continue,
+			match Self::execute_if_requirements_are_met(
+				&inbound_processing_info,
+				message_proof,
+				&mut weight,
+			) {
+				Err(e) => return (Err(e), weight.saturating_mul(count)),
+				Ok(_) => continue,
 			}
 		}
 

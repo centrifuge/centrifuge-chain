@@ -13,7 +13,7 @@
 use frame_support::weights::{constants::RocksDbWeight, Weight};
 
 pub trait WeightInfo {
-	fn set_domain_routers() -> Weight;
+	fn set_routers() -> Weight;
 	fn add_instance() -> Weight;
 	fn remove_instance() -> Weight;
 	fn add_relayer() -> Weight;
@@ -31,7 +31,7 @@ pub trait WeightInfo {
 const N: u64 = 4;
 
 impl WeightInfo for () {
-	fn set_domain_routers() -> Weight {
+	fn set_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
