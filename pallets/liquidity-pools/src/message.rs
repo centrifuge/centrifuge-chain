@@ -939,6 +939,19 @@ mod tests {
 	}
 
 	#[test]
+	fn recover_assets() {
+		test_encode_decode_identity(
+			Message::RecoverAssets {
+				contract: default_address_32(),
+				asset: default_address_32(),
+				recipient: default_address_32(),
+				amount: Default::default(),
+			},
+			"0de.....",
+		)
+	}
+
+	#[test]
 	fn batch_empty() {
 		test_encode_decode_identity(Message::Batch(BatchMessages::default()), concat!("04"))
 	}
