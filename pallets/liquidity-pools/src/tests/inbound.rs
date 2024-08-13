@@ -169,6 +169,8 @@ mod handle_tranche_tokens_transfer {
 				AMOUNT,
 			)
 			.unwrap();
+			let origin = EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), AMOUNT);
 
 			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
@@ -181,10 +183,8 @@ mod handle_tranche_tokens_transfer {
 				}
 			));
 
-			let origin = EVM_DOMAIN_ADDRESS.domain().into_account();
-			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), 0);
-
 			let destination = ALICE_EVM_DOMAIN_ADDRESS.domain().into_account();
+			assert_eq!(destination, origin);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		});
 	}
