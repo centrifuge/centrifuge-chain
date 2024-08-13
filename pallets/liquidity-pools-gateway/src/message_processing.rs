@@ -378,7 +378,7 @@ impl<T: Config> Pallet<T> {
 	/// Retrieves the stored router, sends the message, and calculates and
 	/// returns the router operation result and the weight used.
 	pub(crate) fn process_outbound_message(
-		sender: T::AccountId,
+		sender: DomainAddress,
 		message: T::Message,
 		router_id: T::RouterId,
 	) -> (DispatchResult, Weight) {
@@ -419,12 +419,11 @@ impl<T: Config> Pallet<T> {
 
 			// We are using the sender specified in the pallet config so that we can
 			// ensure that the account is funded
-			let gateway_message =
-				GatewayMessage::<T::AccountId, T::Message, T::RouterId>::Outbound {
-					sender: T::Sender::get(),
-					message: router_msg,
-					router_id,
-				};
+			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Outbound {
+				sender: T::Sender::get(),
+				message: router_msg,
+				router_id,
+			};
 
 			T::MessageQueue::submit(gateway_message)?;
 		}
