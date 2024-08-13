@@ -102,8 +102,8 @@ impl LPEncoding for Message {
 	}
 }
 
-#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub struct RouterId(u32);
+#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
+pub struct RouterId(pub u32);
 
 impl RouterSupport<Domain> for RouterId {
 	fn for_domain(_domain: Domain) -> Vec<RouterId> {

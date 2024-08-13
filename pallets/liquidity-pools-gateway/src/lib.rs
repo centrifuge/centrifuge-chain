@@ -40,7 +40,7 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
-use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
+use sp_arithmetic::traits::{BaseArithmetic, EnsureAdd, EnsureAddAssign, One};
 use sp_std::convert::TryInto;
 
 use crate::{message_processing::InboundEntry, weights::WeightInfo};
@@ -102,7 +102,7 @@ pub mod pallet {
 		/// The Liquidity Pools message type.
 		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
-		/// The target of of the messages comming from this chain
+		/// The target of the messages coming from this chain
 		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
 
 		/// An identification of a router
@@ -148,7 +148,6 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// The routers for a given domain were set.
 		RoutersSet {
-			domain: Domain,
 			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 			session_id: T::SessionId,
 		},
@@ -167,7 +166,6 @@ pub mod pallet {
 
 		/// Message recovery was executed.
 		MessageRecoveryExecuted {
-			domain: Domain,
 			proof: Proof,
 			router_id: T::RouterId,
 		},
@@ -182,13 +180,13 @@ pub mod pallet {
 	// pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain,
 	// T::Router>;
 
-	/// Storage for routers specific for a domain.
+	/// Storage for routers.
 	///
 	/// This can only be set by an admin.
 	#[pallet::storage]
 	#[pallet::getter(fn routers)]
 	pub type Routers<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, BoundedVec<T::RouterId, T::MaxRouterCount>>;
+		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, ValueQuery>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -227,11 +225,11 @@ pub mod pallet {
 		InboundEntry<T>,
 	>;
 
-	/// Storage for the inbound message session IDs.
-	#[pallet::storage]
-	#[pallet::getter(fn inbound_message_sessions)]
-	pub type InboundMessageSessions<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, T::SessionId>;
+	// /// Storage for the inbound message session IDs.
+	// #[pallet::storage]
+	// #[pallet::getter(fn inbound_message_sessions)]
+	// pub type InboundMessageSessions<T: Config> =
+	// 	StorageMap<_, Blake2_128Concat, Domain, T::SessionId>;
 
 	/// Storage for inbound message session IDs.
 	#[pallet::storage]
@@ -279,8 +277,8 @@ pub mod pallet {
 		/// Inbound domain session not found.
 		InboundDomainSessionNotFound,
 
-		/// The router that sent the inbound message is unknown.
-		UnknownInboundMessageRouter,
+		/// Unknown router.
+		UnknownRouter,
 
 		/// The router that sent the message is not the first one.
 		MessageExpectedFromFirstRouter,
@@ -309,35 +307,28 @@ pub mod pallet {
 		/// Sets the router IDs used for a specific domain,
 		#[pallet::weight(T::WeightInfo::set_domain_routers())]
 		#[pallet::call_index(0)]
-		pub fn set_domain_routers(
+		pub fn set_routers(
 			origin: OriginFor<T>,
-			domain: Domain,
 			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			<Routers<T>>::set(router_ids.clone());
 
-			//TODO(cdamian): Outbound -  Call router.init() for each router?
+			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
+				let old_session_id = *n;
+				let new_session_id = n.ensure_add(One::one())?;
 
-			<Routers<T>>::insert(domain.clone(), router_ids.clone());
+				*n = new_session_id;
 
-			if let Some(old_session_id) = InboundMessageSessions::<T>::get(domain.clone()) {
-				InvalidMessageSessions::<T>::insert(old_session_id, ());
-			}
-
-			let session_id = SessionIdStore::<T>::try_mutate(|n| {
-				n.ensure_add_assign(One::one())?;
-
-				Ok::<T::SessionId, DispatchError>(*n)
+				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
 			})?;
 
-			InboundMessageSessions::<T>::insert(domain.clone(), session_id);
+			InvalidMessageSessions::<T>::insert(old_session_id, ());
 
 			Self::deposit_event(Event::RoutersSet {
-				domain,
 				router_ids,
-				session_id,
+				session_id: new_session_id,
 			});
 
 			Ok(())
@@ -452,7 +443,7 @@ pub mod pallet {
 
 			match PackedMessage::<T>::take((&sender, &destination)) {
 				Some(msg) if msg.submessages().is_empty() => Ok(()), //No-op
-				Some(message) => Self::queue_message(destination, message),
+				Some(message) => Self::queue_outbound_message(destination, message),
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
 		}
@@ -465,20 +456,18 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
-			domain: Domain,
 			proof: Proof,
 			router_id: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let session_id = InboundMessageSessions::<T>::get(&domain)
-				.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
+			let session_id = SessionIdStore::<T>::get();
 
-			let routers = Routers::<T>::get(&domain).ok_or(Error::<T>::RoutersNotFound)?;
+			let routers = Routers::<T>::get();
 
 			ensure!(
 				routers.iter().any(|x| x == &router_id),
-				Error::<T>::UnknownInboundMessageRouter
+				Error::<T>::UnknownRouter
 			);
 
 			PendingInboundEntries::<T>::try_mutate(
@@ -501,11 +490,7 @@ pub mod pallet {
 				},
 			)?;
 
-			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
-				domain,
-				proof,
-				router_id,
-			});
+			Self::deposit_event(Event::<T>::MessageRecoveryExecuted { proof, router_id });
 
 			Ok(())
 		}
@@ -528,7 +513,7 @@ pub mod pallet {
 
 			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
 				Some(batch) => batch.pack_with(message),
-				None => Self::queue_message(destination, message),
+				None => Self::queue_outbound_message(destination, message),
 			})
 		}
 	}
