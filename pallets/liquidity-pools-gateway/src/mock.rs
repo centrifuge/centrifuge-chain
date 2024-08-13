@@ -144,7 +144,7 @@ impl cfg_mocks::router_message::pallet::Config for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes()).into());
+	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(123).to_fixed_bytes()).into());
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 	pub const MaxRouterCount: u32 = 8;
