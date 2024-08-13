@@ -31,16 +31,16 @@ use core::fmt::Debug;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, MessageReceiver,
-	MessageSender, OutboundMessageHandler, RouterSupport,
+	MessageSender, OutboundMessageHandler, Proof, RouterSupport,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
-use frame_system::pallet_prelude::{ensure_signed, OriginFor};
+use frame_system::pallet_prelude::{ensure_signed, BlockNumberFor, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
-use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_arithmetic::traits::{BaseArithmetic, One};
+use parity_scale_codec::FullCodec;
+use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_std::convert::TryInto;
 
 use crate::{message_processing::InboundEntry, weights::WeightInfo};
@@ -61,9 +61,6 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_system::pallet_prelude::BlockNumberFor;
-	use sp_arithmetic::traits::{EnsureAdd, EnsureAddAssign};
-
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -109,7 +106,7 @@ pub mod pallet {
 		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
 
 		/// An identification of a router
-		type RouterId: RouterSupport<Domain> + Parameter;
+		type RouterId: RouterSupport<Domain> + Parameter + Default + MaxEncodedLen;
 
 		/// The type that processes inbound messages.
 		type InboundMessageHandler: InboundMessageHandler<
@@ -129,9 +126,7 @@ pub mod pallet {
 		type Sender: Get<DomainAddress>;
 
 		/// Type used for queueing messages.
-		type MessageQueue: MessageQueue<
-			Message = GatewayMessage<Self::AccountId, Self::Message, Self::RouterId>,
-		>;
+		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::Message, Self::RouterId>>;
 
 		/// Maximum number of routers allowed for a domain.
 		#[pallet::constant]
@@ -545,7 +540,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageProcessor for Pallet<T> {
-		type Message = GatewayMessage<T::AccountId, T::Message, T::RouterId>;
+		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
@@ -579,20 +574,19 @@ pub mod pallet {
 		type Origin = DomainAddress;
 
 		fn receive(
-			_router_id: T::RouterId,
+			router_id: T::RouterId,
 			origin_address: DomainAddress,
 			message: Vec<u8>,
 		) -> DispatchResult {
-			// TODO handle router ids logic with votes and session_id
-
 			ensure!(
 				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
 				Error::<T>::UnknownInstance,
 			);
 
-			let gateway_message = GatewayMessage::<T::Message>::Inbound {
+			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
 				domain_address: origin_address,
 				message: T::Message::deserialize(&message)?,
+				router_id,
 			};
 
 			T::MessageQueue::submit(gateway_message)
