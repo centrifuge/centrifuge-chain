@@ -11,7 +11,7 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::ArithmeticError::Overflow;
-use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160, H256};
+use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{
 	DispatchError,
 	DispatchError::{Arithmetic, BadOrigin},
@@ -30,11 +30,9 @@ use crate::{message_processing::InboundEntry, GatewayMessage};
 
 pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(0, [1; 20]);
 
-lazy_static! {
-	static ref ROUTER_HASH_1: H256 = H256::from_low_u64_be(1);
-	static ref ROUTER_HASH_2: H256 = H256::from_low_u64_be(2);
-	static ref ROUTER_HASH_3: H256 = H256::from_low_u64_be(3);
-}
+pub const ROUTER_ID_1: RouterId = RouterId(1);
+pub const ROUTER_ID_2: RouterId = RouterId(2);
+pub const ROUTER_ID_3: RouterId = RouterId(3);
 
 mod utils {
 	use super::*;
@@ -67,12 +65,8 @@ mod set_domain_routers {
 
 			let mut session_id = 1;
 
-			let router_id_1 = H256::from_low_u64_be(1);
-			let router_id_2 = H256::from_low_u64_be(2);
-			let router_id_3 = H256::from_low_u64_be(3);
-
 			let mut router_ids =
-				BoundedVec::try_from(vec![router_id_1, router_id_2, router_id_3]).unwrap();
+				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap();
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_routers(
 				RuntimeOrigin::root(),
@@ -93,7 +87,7 @@ mod set_domain_routers {
 				session_id,
 			});
 
-			router_ids = BoundedVec::try_from(vec![router_id_3, router_id_2, router_id_1]).unwrap();
+			router_ids = BoundedVec::try_from(vec![ROUTER_ID_3, ROUTER_ID_2, ROUTER_ID_1]).unwrap();
 
 			session_id += 1;
 
@@ -340,7 +334,7 @@ mod receive_message_domain {
 			let domain_address = DomainAddress::EVM(0, address.into());
 			let message = Message::Simple;
 
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
@@ -352,7 +346,7 @@ mod receive_message_domain {
 			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
-				router_id,
+				router_id: router_id.clone(),
 			};
 
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
@@ -373,7 +367,7 @@ mod receive_message_domain {
 		new_test_ext().execute_with(|| {
 			let encoded_msg = Message::Simple.serialize();
 
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_noop!(
 				LiquidityPoolsGateway::receive_message(
@@ -391,7 +385,7 @@ mod receive_message_domain {
 		new_test_ext().execute_with(|| {
 			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
 			let encoded_msg = Message::Simple.serialize();
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_noop!(
 				LiquidityPoolsGateway::receive_message(
@@ -410,7 +404,7 @@ mod receive_message_domain {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 			let encoded_msg = Message::Simple.serialize();
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_noop!(
 				LiquidityPoolsGateway::receive_message(
@@ -430,7 +424,7 @@ mod receive_message_domain {
 			let domain_address = DomainAddress::EVM(0, address.into());
 			let message = Message::Simple;
 
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
@@ -444,7 +438,7 @@ mod receive_message_domain {
 			let gateway_message = GatewayMessage::Inbound {
 				domain_address: domain_address.clone(),
 				message: message.clone(),
-				router_id,
+				router_id: router_id.clone(),
 			};
 
 			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
@@ -475,14 +469,14 @@ mod outbound_message_handler_impl {
 			let msg = Message::Simple;
 			let message_proof = msg.to_message_proof().get_message_proof().unwrap();
 
-			let router_id_1 = H256::from_low_u64_be(1);
-			let router_id_2 = H256::from_low_u64_be(2);
-			let router_id_3 = H256::from_low_u64_be(3);
+			let router_id_1 = ROUTER_ID_1;
+			let router_id_2 = ROUTER_ID_2;
+			let router_id_3 = ROUTER_ID_3;
 
 			//TODO(cdamian): Router init
-			// let router_hash_1 = H256::from_low_u64_be(1);
-			// let router_hash_2 = H256::from_low_u64_be(2);
-			// let router_hash_3 = H256::from_low_u64_be(3);
+			// let router_hash_1 = ROUTER_ID_1;
+			// let router_hash_2 = ROUTER_ID_2;
+			// let router_hash_3 = ROUTER_ID_3;
 			//
 			// let router_mock_1 = RouterMock::<Runtime>::default();
 			// let router_mock_2 = RouterMock::<Runtime>::default();
@@ -548,30 +542,14 @@ mod outbound_message_handler_impl {
 			let sender = get_test_account_id();
 			let msg = Message::Simple;
 
-			let router_id_1 = H256::from_low_u64_be(1);
-			let router_id_2 = H256::from_low_u64_be(2);
-			let router_id_3 = H256::from_low_u64_be(3);
-
-			//TODO(cdamian): Router init?
-			// let router_hash_1 = H256::from_low_u64_be(1);
-			// let router_hash_2 = H256::from_low_u64_be(2);
-			// let router_hash_3 = H256::from_low_u64_be(3);
-			//
-			// let router_mock_1 = RouterMock::<Runtime>::default();
-			// let router_mock_2 = RouterMock::<Runtime>::default();
-			// let router_mock_3 = RouterMock::<Runtime>::default();
-			//
-			// router_mock_1.mock_init(move || Ok(()));
-			// router_mock_1.mock_hash(move || router_hash_1);
-			// router_mock_2.mock_init(move || Ok(()));
-			// router_mock_2.mock_hash(move || router_hash_2);
-			// router_mock_3.mock_init(move || Ok(()));
-			// router_mock_3.mock_hash(move || router_hash_3);
+			let router_id_1 = ROUTER_ID_1;
+			let router_id_2 = ROUTER_ID_2;
+			let router_id_3 = ROUTER_ID_3;
 
 			assert_ok!(LiquidityPoolsGateway::set_domain_routers(
 				RuntimeOrigin::root(),
 				domain.clone(),
-				BoundedVec::try_from(vec![router_id_1, router_id_2, router_id_3]).unwrap(),
+				BoundedVec::try_from(vec![router_id_1.clone(), router_id_2, router_id_3]).unwrap(),
 			));
 
 			let gateway_message = GatewayMessage::Outbound {
@@ -713,20 +691,20 @@ mod message_processor_impl {
 			/// Used for generating all `RouterMessage` combinations like:
 			///
 			/// vec![
-			/// 	(*ROUTER_HASH_1, Message::Simple),
-			/// 	(*ROUTER_HASH_1, Message::Simple),
+			/// 	(ROUTER_ID_1, Message::Simple),
+			/// 	(ROUTER_ID_1, Message::Simple),
 			/// ]
 			/// vec![
-			/// 	(*ROUTER_HASH_1, Message::Simple),
-			/// 	(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+			/// 	(ROUTER_ID_1, Message::Simple),
+			/// 	(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 			/// ]
 			/// vec![
-			/// 	(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-			/// 	(*ROUTER_HASH_1, Message::Simple),
+			/// 	(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+			/// 	(ROUTER_ID_1, Message::Simple),
 			/// ]
 			/// vec![
-			/// 	(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-			/// 	(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+			/// 	(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+			/// 	(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 			/// ]
 			pub fn generate_test_combinations<T>(
 				t: T,
@@ -744,11 +722,11 @@ mod message_processor_impl {
 			}
 
 			/// Type used for mapping a message to a router hash.
-			pub type RouterMessage = (H256, Message);
+			pub type RouterMessage = (RouterId, Message);
 
 			/// Type used for aggregating tests for inbound messages.
 			pub struct InboundMessageTestSuite {
-				pub routers: Vec<H256>,
+				pub routers: Vec<RouterId>,
 				pub tests: Vec<InboundMessageTest>,
 			}
 
@@ -764,14 +742,14 @@ mod message_processor_impl {
 			#[derive(Clone, Debug)]
 			pub struct ExpectedTestResult {
 				pub message_submitted_times: u32,
-				pub expected_storage_entries: Vec<(H256, Option<InboundEntry<Runtime>>)>,
+				pub expected_storage_entries: Vec<(RouterId, Option<InboundEntry<Runtime>>)>,
 			}
 
 			/// Generates the combinations of `RouterMessage` used when testing,
 			/// maps the `ExpectedTestResult` for each and creates the
 			/// `InboundMessageTestSuite`.
 			pub fn generate_test_suite(
-				routers: Vec<H256>,
+				routers: Vec<RouterId>,
 				test_data: Vec<RouterMessage>,
 				expected_results: HashMap<Vec<RouterMessage>, ExpectedTestResult>,
 				message_count: usize,
@@ -811,16 +789,16 @@ mod message_processor_impl {
 					let message_proof = message.to_message_proof().get_message_proof().unwrap();
 					let session_id = 1;
 					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_hash = *ROUTER_HASH_1;
+					let router_id = ROUTER_ID_1;
 					let gateway_message = GatewayMessage::Inbound {
 						domain_address: domain_address.clone(),
 						message: message.clone(),
-						router_id: router_hash,
+						router_id: router_id.clone(),
 					};
 
 					Routers::<Runtime>::insert(
 						domain_address.domain(),
-						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
+						BoundedVec::<_, _>::try_from(vec![router_id.clone()]).unwrap(),
 					);
 					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 
@@ -839,7 +817,7 @@ mod message_processor_impl {
 
 					assert!(PendingInboundEntries::<Runtime>::get(
 						session_id,
-						(message_proof, router_hash)
+						(message_proof, router_id)
 					)
 					.is_none());
 				});
@@ -850,7 +828,7 @@ mod message_processor_impl {
 				new_test_ext().execute_with(|| {
 					let message = Message::Simple;
 					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_hash = *ROUTER_HASH_1;
+					let router_hash = ROUTER_ID_1;
 					let gateway_message = GatewayMessage::Inbound {
 						domain_address: domain_address.clone(),
 						message: message.clone(),
@@ -867,16 +845,16 @@ mod message_processor_impl {
 				new_test_ext().execute_with(|| {
 					let message = Message::Simple;
 					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_hash = *ROUTER_HASH_1;
+					let router_id = ROUTER_ID_1;
 					let gateway_message = GatewayMessage::Inbound {
 						domain_address: domain_address.clone(),
 						message: message.clone(),
-						router_id: router_hash,
+						router_id: router_id.clone(),
 					};
 
 					Routers::<Runtime>::insert(
 						domain_address.domain(),
-						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
+						BoundedVec::<_, _>::try_from(vec![router_id]).unwrap(),
 					);
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -890,13 +868,13 @@ mod message_processor_impl {
 					let message = Message::Simple;
 					let session_id = 1;
 					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_hash = *ROUTER_HASH_1;
+					let router_hash = ROUTER_ID_1;
 					let gateway_message = GatewayMessage::Inbound {
 						domain_address: domain_address.clone(),
 						message: message.clone(),
 						// The router stored has a different hash, this should trigger the expected
 						// error.
-						router_id: *ROUTER_HASH_2,
+						router_id: ROUTER_ID_2,
 					};
 
 					Routers::<Runtime>::insert(
@@ -917,21 +895,21 @@ mod message_processor_impl {
 					let message_proof = message.to_message_proof().get_message_proof().unwrap();
 					let session_id = 1;
 					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_hash = *ROUTER_HASH_1;
+					let router_id = ROUTER_ID_1;
 					let gateway_message = GatewayMessage::Inbound {
 						domain_address: domain_address.clone(),
 						message: message.clone(),
-						router_id: router_hash,
+						router_id: router_id.clone(),
 					};
 
 					Routers::<Runtime>::insert(
 						domain_address.domain(),
-						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
+						BoundedVec::<_, _>::try_from(vec![router_id.clone()]).unwrap(),
 					);
 					InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 					PendingInboundEntries::<Runtime>::insert(
 						session_id,
-						(message_proof, router_hash),
+						(message_proof, router_id),
 						InboundEntry::<Runtime>::Proof { current_count: 0 },
 					);
 
@@ -949,8 +927,8 @@ mod message_processor_impl {
 
 				lazy_static! {
 					static ref TEST_DATA: Vec<RouterMessage> = vec![
-						(*ROUTER_HASH_1, Message::Simple),
-						(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+						(ROUTER_ID_1, Message::Simple),
+						(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 					];
 				}
 
@@ -965,35 +943,35 @@ mod message_processor_impl {
 							HashMap::from([
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 2,
 												}),
@@ -1003,34 +981,34 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 							]);
 
 						let suite = generate_test_suite(
-							vec![*ROUTER_HASH_1, *ROUTER_HASH_2],
+							vec![ROUTER_ID_1, ROUTER_ID_2],
 							TEST_DATA.clone(),
 							expected_results,
 							MESSAGE_COUNT,
@@ -1051,37 +1029,37 @@ mod message_processor_impl {
 							HashMap::from([
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 3,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 3,
 												}),
@@ -1091,58 +1069,58 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 1,
 												}),
@@ -1152,37 +1130,37 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 1,
 												}),
@@ -1192,16 +1170,16 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 1,
 												}),
@@ -1212,7 +1190,7 @@ mod message_processor_impl {
 							]);
 
 						let suite = generate_test_suite(
-							vec![*ROUTER_HASH_1, *ROUTER_HASH_2],
+							vec![ROUTER_ID_1, ROUTER_ID_2],
 							TEST_DATA.clone(),
 							expected_results,
 							MESSAGE_COUNT,
@@ -1233,39 +1211,39 @@ mod message_processor_impl {
 							HashMap::from([
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 4,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 4,
 												}),
@@ -1275,195 +1253,195 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
 											(
-												*ROUTER_HASH_1,
+												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
 												}),
 											),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 2,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
-											(*ROUTER_HASH_2, None),
+											(ROUTER_ID_1, None),
+											(ROUTER_ID_2, None),
 										],
 									},
 								),
 								(
 									vec![
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 2,
 												}),
@@ -1473,17 +1451,17 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 2,
 												}),
@@ -1493,17 +1471,17 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 2,
 												}),
@@ -1513,17 +1491,17 @@ mod message_processor_impl {
 								),
 								(
 									vec![
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-										(*ROUTER_HASH_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
 										expected_storage_entries: vec![
-											(*ROUTER_HASH_1, None),
+											(ROUTER_ID_1, None),
 											(
-												*ROUTER_HASH_2,
+												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
 													current_count: 2,
 												}),
@@ -1534,7 +1512,7 @@ mod message_processor_impl {
 							]);
 
 						let suite = generate_test_suite(
-							vec![*ROUTER_HASH_1, *ROUTER_HASH_2],
+							vec![ROUTER_ID_1, ROUTER_ID_2],
 							TEST_DATA.clone(),
 							expected_results,
 							MESSAGE_COUNT,
@@ -1555,8 +1533,7 @@ mod message_processor_impl {
 
 						Routers::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
-							BoundedVec::<_, _>::try_from(vec![*ROUTER_HASH_1, *ROUTER_HASH_2])
-								.unwrap(),
+							BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
 						);
 						InboundMessageSessions::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
@@ -1566,7 +1543,7 @@ mod message_processor_impl {
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
-							router_id: *ROUTER_HASH_2,
+							router_id: ROUTER_ID_2,
 						};
 
 						let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1581,8 +1558,7 @@ mod message_processor_impl {
 
 						Routers::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
-							BoundedVec::<_, _>::try_from(vec![*ROUTER_HASH_1, *ROUTER_HASH_2])
-								.unwrap(),
+							BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
 						);
 						InboundMessageSessions::<Runtime>::insert(
 							TEST_DOMAIN_ADDRESS.domain(),
@@ -1592,7 +1568,7 @@ mod message_processor_impl {
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Proof(MESSAGE_PROOF),
-							router_id: *ROUTER_HASH_1,
+							router_id: ROUTER_ID_1,
 						};
 
 						let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1607,9 +1583,9 @@ mod message_processor_impl {
 
 			lazy_static! {
 				static ref TEST_DATA: Vec<RouterMessage> = vec![
-					(*ROUTER_HASH_1, Message::Simple),
-					(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-					(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+					(ROUTER_ID_1, Message::Simple),
+					(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+					(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 				];
 			}
 
@@ -1624,56 +1600,56 @@ mod message_processor_impl {
 						HashMap::from([
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
@@ -1683,21 +1659,21 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -1707,21 +1683,21 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -1731,14 +1707,14 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -1746,60 +1722,34 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
-											Some(InboundEntry::<Runtime>::Proof {
-												current_count: 1,
-											}),
-										),
-									],
-								},
-							),
-							(
-								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-								],
-								ExpectedTestResult {
-									message_submitted_times: 0,
-									expected_storage_entries: vec![
-										(
-											*ROUTER_HASH_1,
-											Some(InboundEntry::<Runtime>::Message {
-												domain_address: TEST_DOMAIN_ADDRESS,
-												message: Message::Simple,
-												expected_proof_count: 2,
-											}),
-										),
-										(*ROUTER_HASH_2, None),
-										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -1809,49 +1759,75 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
 											}),
 										),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_2,
+											Some(InboundEntry::<Runtime>::Proof {
+												current_count: 1,
+											}),
+										),
+										(ROUTER_ID_3, None),
+									],
+								},
+							),
+							(
+								vec![
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+								],
+								ExpectedTestResult {
+									message_submitted_times: 0,
+									expected_storage_entries: vec![
+										(
+											ROUTER_ID_1,
+											Some(InboundEntry::<Runtime>::Message {
+												domain_address: TEST_DOMAIN_ADDRESS,
+												message: Message::Simple,
+												expected_proof_count: 2,
+											}),
+										),
+										(ROUTER_ID_2, None),
+										(
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -1862,7 +1838,7 @@ mod message_processor_impl {
 						]);
 
 					let suite = generate_test_suite(
-						vec![*ROUTER_HASH_1, *ROUTER_HASH_2, *ROUTER_HASH_3],
+						vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
 						TEST_DATA.clone(),
 						expected_results,
 						MESSAGE_COUNT,
@@ -1883,59 +1859,59 @@ mod message_processor_impl {
 						HashMap::from([
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 6,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 3,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 3,
 											}),
@@ -1945,15 +1921,15 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -1961,26 +1937,26 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -1988,26 +1964,26 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -2015,62 +1991,35 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
-											Some(InboundEntry::<Runtime>::Proof {
-												current_count: 2,
-											}),
-										),
-									],
-								},
-							),
-							(
-								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-								],
-								ExpectedTestResult {
-									message_submitted_times: 0,
-									expected_storage_entries: vec![
-										(
-											*ROUTER_HASH_1,
-											Some(InboundEntry::<Runtime>::Message {
-												domain_address: TEST_DOMAIN_ADDRESS,
-												message: Message::Simple,
-												expected_proof_count: 2,
-											}),
-										),
-										(*ROUTER_HASH_2, None),
-										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
@@ -2080,24 +2029,24 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
@@ -2107,15 +2056,42 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
+											Some(InboundEntry::<Runtime>::Message {
+												domain_address: TEST_DOMAIN_ADDRESS,
+												message: Message::Simple,
+												expected_proof_count: 2,
+											}),
+										),
+										(ROUTER_ID_2, None),
+										(
+											ROUTER_ID_3,
+											Some(InboundEntry::<Runtime>::Proof {
+												current_count: 2,
+											}),
+										),
+									],
+								},
+							),
+							(
+								vec![
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+								],
+								ExpectedTestResult {
+									message_submitted_times: 0,
+									expected_storage_entries: vec![
+										(
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -2123,26 +2099,26 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -2150,35 +2126,35 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2188,15 +2164,15 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
@@ -2204,35 +2180,35 @@ mod message_processor_impl {
 											}),
 										),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2242,24 +2218,24 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
 										(
-											*ROUTER_HASH_1,
+											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
 											}),
 										),
-										(*ROUTER_HASH_2, None),
+										(ROUTER_ID_2, None),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2269,112 +2245,112 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_1, Message::Simple),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_1, Message::Simple),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 1,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(*ROUTER_HASH_2, None),
-										(*ROUTER_HASH_3, None),
+										(ROUTER_ID_1, None),
+										(ROUTER_ID_2, None),
+										(ROUTER_ID_3, None),
 									],
 								},
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2384,22 +2360,22 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2409,47 +2385,22 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
-											Some(InboundEntry::<Runtime>::Proof {
-												current_count: 2,
-											}),
-										),
-									],
-								},
-							),
-							(
-								vec![
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-								],
-								ExpectedTestResult {
-									message_submitted_times: 0,
-									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
-										(
-											*ROUTER_HASH_2,
-											Some(InboundEntry::<Runtime>::Proof {
-												current_count: 1,
-											}),
-										),
-										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
@@ -2459,22 +2410,47 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
+											Some(InboundEntry::<Runtime>::Proof {
+												current_count: 1,
+											}),
+										),
+										(
+											ROUTER_ID_3,
+											Some(InboundEntry::<Runtime>::Proof {
+												current_count: 2,
+											}),
+										),
+									],
+								},
+							),
+							(
+								vec![
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+								],
+								ExpectedTestResult {
+									message_submitted_times: 0,
+									expected_storage_entries: vec![
+										(ROUTER_ID_1, None),
+										(
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
@@ -2484,22 +2460,22 @@ mod message_processor_impl {
 							),
 							(
 								vec![
-									(*ROUTER_HASH_2, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
-									(*ROUTER_HASH_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+									(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
 								],
 								ExpectedTestResult {
 									message_submitted_times: 0,
 									expected_storage_entries: vec![
-										(*ROUTER_HASH_1, None),
+										(ROUTER_ID_1, None),
 										(
-											*ROUTER_HASH_2,
+											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 1,
 											}),
 										),
 										(
-											*ROUTER_HASH_3,
+											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
 												current_count: 2,
 											}),
@@ -2510,7 +2486,7 @@ mod message_processor_impl {
 						]);
 
 					let suite = generate_test_suite(
-						vec![*ROUTER_HASH_1, *ROUTER_HASH_2, *ROUTER_HASH_3],
+						vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
 						TEST_DATA.clone(),
 						expected_results,
 						MESSAGE_COUNT,
@@ -2526,11 +2502,11 @@ mod message_processor_impl {
 			new_test_ext().execute_with(|| {
 				let domain_address = DomainAddress::EVM(1, [1; 20]);
 
-				let router_id = H256::from_low_u64_be(1);
+				let router_id = ROUTER_ID_1;
 
 				Routers::<Runtime>::insert(
 					domain_address.domain(),
-					BoundedVec::try_from(vec![router_id]).unwrap(),
+					BoundedVec::try_from(vec![router_id.clone()]).unwrap(),
 				);
 				InboundMessageSessions::<Runtime>::insert(domain_address.domain(), 1);
 
@@ -2562,33 +2538,15 @@ mod message_processor_impl {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let sender = get_test_account_id();
-				let domain = Domain::EVM(1);
+				let sender = TEST_DOMAIN_ADDRESS;
 				let message = Message::Simple;
-
-				let expected_sender = sender.clone();
-				let expected_message = message.clone();
 
 				let router_post_info = PostDispatchInfo {
 					actual_weight: Some(Weight::from_parts(1, 1)),
 					pays_fee: Pays::Yes,
 				};
 
-				let router_id = H256::from_low_u64_be(1);
-
-				//TODO(cdamian): Drop mock?
-				// let router_hash = H256::from_low_u64_be(1);
-				//
-				// let router_mock = RouterMock::<Runtime>::default();
-				// router_mock.mock_send(move |mock_sender, mock_message| {
-				// 	assert_eq!(mock_sender, expected_sender);
-				// 	assert_eq!(mock_message, expected_message.serialize());
-				//
-				// 	Ok(router_post_info)
-				// });
-				// router_mock.mock_hash(move || router_hash);
-				//
-				// DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
+				let router_id = ROUTER_ID_1;
 
 				let min_expected_weight = <Runtime as frame_system::Config>::DbWeight::get()
 					.reads(1) + router_post_info.actual_weight.unwrap()
@@ -2619,7 +2577,7 @@ mod message_processor_impl {
 		// 		let gateway_message = GatewayMessage::Outbound {
 		// 			sender,
 		// 			message,
-		// 			router_id: H256::from_low_u64_be(1),
+		// 			router_id: ROUTER_ID_1,
 		// 		};
 		//
 		// 		let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
@@ -2631,32 +2589,13 @@ mod message_processor_impl {
 		#[test]
 		fn router_error() {
 			new_test_ext().execute_with(|| {
-				let sender = get_test_account_id();
-				let domain = Domain::EVM(1);
+				let sender = TEST_DOMAIN_ADDRESS;
 				let message = Message::Simple;
-
-				let expected_sender = sender.clone();
-				let expected_message = message.clone();
 
 				let router_post_info = PostDispatchInfo {
 					actual_weight: Some(Weight::from_parts(1, 1)),
 					pays_fee: Pays::Yes,
 				};
-
-				// let router_err = DispatchError::Unavailable;
-				//
-				// let router_mock = RouterMock::<Runtime>::default();
-				// router_mock.mock_send(move |mock_sender, mock_message| {
-				// 	assert_eq!(mock_sender, expected_sender);
-				// 	assert_eq!(mock_message, expected_message.serialize());
-				//
-				// 	Err(DispatchErrorWithPostInfo {
-				// 		post_info: router_post_info,
-				// 		error: router_err,
-				// 	})
-				// });
-				//
-				// DomainRouters::<Runtime>::insert(domain.clone(), router_mock);
 
 				let min_expected_weight = <Runtime as frame_system::Config>::DbWeight::get()
 					.reads(1) + router_post_info.actual_weight.unwrap()
@@ -2665,7 +2604,7 @@ mod message_processor_impl {
 				let gateway_message = GatewayMessage::Outbound {
 					sender,
 					message: message.clone(),
-					router_id: H256::from_low_u64_be(1),
+					router_id: ROUTER_ID_1,
 				};
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
@@ -2712,9 +2651,12 @@ mod batches {
 			// Ok Batched
 			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
 
-			let router_id_1 = H256::from_low_u64_be(1);
+			let router_id_1 = ROUTER_ID_1;
 
-			Routers::<Runtime>::insert(DOMAIN, BoundedVec::try_from(vec![router_id_1]).unwrap());
+			Routers::<Runtime>::insert(
+				DOMAIN,
+				BoundedVec::try_from(vec![router_id_1.clone()]).unwrap(),
+			);
 
 			// Not batched, it belong to OTHER
 			assert_ok!(LiquidityPoolsGateway::handle(
@@ -2770,7 +2712,7 @@ mod batches {
 				DispatchError::Other(MAX_PACKED_MESSAGES_ERR)
 			);
 
-			let router_id_1 = H256::from_low_u64_be(1);
+			let router_id_1 = ROUTER_ID_1;
 
 			Routers::<Runtime>::insert(DOMAIN, BoundedVec::try_from(vec![router_id_1]).unwrap());
 
@@ -2812,7 +2754,7 @@ mod batches {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
-			let router_id_1 = H256::from_low_u64_be(1);
+			let router_id_1 = ROUTER_ID_1;
 
 			Routers::<Runtime>::insert(
 				domain_address.domain(),
@@ -2827,7 +2769,7 @@ mod batches {
 			let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
 				domain_address,
 				message: Message::deserialize(&(1..=submessage_count).collect::<Vec<_>>()).unwrap(),
-				router_id: *ROUTER_HASH_1,
+				router_id: ROUTER_ID_1,
 			});
 
 			let expected_weight = Weight::default()
@@ -2869,7 +2811,7 @@ mod batches {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
-			let router_id_1 = H256::from_low_u64_be(1);
+			let router_id_1 = ROUTER_ID_1;
 
 			Routers::<Runtime>::insert(
 				domain_address.domain(),
@@ -2889,7 +2831,7 @@ mod batches {
 			let (result, _) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
 				domain_address,
 				message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
-				router_id: *ROUTER_HASH_1,
+				router_id: ROUTER_ID_1,
 			});
 
 			assert_err!(result, DispatchError::Unavailable);
@@ -2906,12 +2848,12 @@ mod execute_message_recovery {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
 			Routers::<Runtime>::insert(
 				domain.clone(),
-				BoundedVec::try_from(vec![router_id]).unwrap(),
+				BoundedVec::try_from(vec![router_id.clone()]).unwrap(),
 			);
 			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
 
@@ -2919,7 +2861,7 @@ mod execute_message_recovery {
 				RuntimeOrigin::root(),
 				domain.clone(),
 				MESSAGE_PROOF,
-				router_id
+				router_id.clone(),
 			));
 
 			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
@@ -2928,9 +2870,11 @@ mod execute_message_recovery {
 				router_id: router_id.clone(),
 			});
 
-			let inbound_entry =
-				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, router_id))
-					.expect("inbound entry is stored");
+			let inbound_entry = PendingInboundEntries::<Runtime>::get(
+				session_id,
+				(MESSAGE_PROOF, router_id.clone()),
+			)
+			.expect("inbound entry is stored");
 
 			assert_eq!(
 				inbound_entry,
@@ -2941,12 +2885,14 @@ mod execute_message_recovery {
 				RuntimeOrigin::root(),
 				domain.clone(),
 				MESSAGE_PROOF,
-				router_id
+				router_id.clone()
 			));
 
-			let inbound_entry =
-				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, router_id))
-					.expect("inbound entry is stored");
+			let inbound_entry = PendingInboundEntries::<Runtime>::get(
+				session_id,
+				(MESSAGE_PROOF, router_id.clone()),
+			)
+			.expect("inbound entry is stored");
 
 			assert_eq!(
 				inbound_entry,
@@ -2956,7 +2902,7 @@ mod execute_message_recovery {
 			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
 				domain: domain.clone(),
 				proof: MESSAGE_PROOF,
-				router_id: router_id.clone(),
+				router_id,
 			});
 		});
 	}
@@ -2965,7 +2911,7 @@ mod execute_message_recovery {
 	fn inbound_domain_session_not_found() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
@@ -2983,7 +2929,7 @@ mod execute_message_recovery {
 	fn routers_not_found() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
 			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
@@ -3004,8 +2950,8 @@ mod execute_message_recovery {
 	fn unknown_inbound_message_router() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router_id_1 = H256::from_low_u64_be(1);
-			let router_id_2 = H256::from_low_u64_be(2);
+			let router_id_1 = ROUTER_ID_1;
+			let router_id_2 = ROUTER_ID_2;
 			let session_id = 1;
 
 			Routers::<Runtime>::insert(
@@ -3030,17 +2976,17 @@ mod execute_message_recovery {
 	fn proof_count_overflow() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
 			Routers::<Runtime>::insert(
 				domain.clone(),
-				BoundedVec::try_from(vec![router_id]).unwrap(),
+				BoundedVec::try_from(vec![router_id.clone()]).unwrap(),
 			);
 			InboundMessageSessions::<Runtime>::insert(domain.clone(), session_id);
 			PendingInboundEntries::<Runtime>::insert(
 				session_id,
-				(MESSAGE_PROOF, router_id),
+				(MESSAGE_PROOF, router_id.clone()),
 				InboundEntry::<Runtime>::Proof {
 					current_count: u32::MAX,
 				},
@@ -3062,17 +3008,17 @@ mod execute_message_recovery {
 	fn expected_message_proof_type() {
 		new_test_ext().execute_with(|| {
 			let domain_address = TEST_DOMAIN_ADDRESS;
-			let router_id = H256::from_low_u64_be(1);
+			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
 			Routers::<Runtime>::insert(
 				domain_address.domain(),
-				BoundedVec::try_from(vec![router_id]).unwrap(),
+				BoundedVec::try_from(vec![router_id.clone()]).unwrap(),
 			);
 			InboundMessageSessions::<Runtime>::insert(domain_address.domain(), session_id);
 			PendingInboundEntries::<Runtime>::insert(
 				session_id,
-				(MESSAGE_PROOF, router_id),
+				(MESSAGE_PROOF, router_id.clone()),
 				InboundEntry::<Runtime>::Message {
 					domain_address: domain_address.clone(),
 					message: Message::Simple,
