@@ -15,7 +15,7 @@ use sp_runtime::DispatchError;
 
 use crate::{
 	message::GatewayMessage, Config, Error, InvalidMessageSessions, Pallet, PendingInboundEntries,
-	SessionIdStore,
+	Routers, SessionIdStore,
 };
 
 /// The limit used when clearing the `PendingInboundEntries` for invalid
@@ -46,12 +46,34 @@ pub struct InboundProcessingInfo<T: Config> {
 }
 
 impl<T: Config> Pallet<T> {
+	/// Retrieves all available routers for a domain and then filters them based
+	/// on the routers that we have in storage.
+	fn get_router_ids_for_domain(domain: Domain) -> Result<Vec<T::RouterId>, DispatchError> {
+		let all_routers_for_domain = T::RouterId::for_domain(domain);
+
+		let stored_routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
+
+		let res = all_routers_for_domain
+			.iter()
+			.filter(|x| stored_routers.iter().any(|y| *x == y))
+			.map(|x| x.clone())
+			.collect::<Vec<_>>();
+
+		if res.is_empty() {
+			return Err(Error::<T>::NotEnoughRoutersForDomain.into());
+		}
+
+		Ok(res)
+	}
+
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
 	fn get_expected_proof_count(domain: Domain) -> Result<u32, DispatchError> {
-		let routers_count = T::RouterId::for_domain(domain).len();
+		let routers_count = Self::get_router_ids_for_domain(domain)?.len();
 
-		let expected_proof_count = routers_count.ensure_sub(1)?;
+		let expected_proof_count = routers_count
+			.ensure_sub(1)
+			.map_err(|_| Error::<T>::NotEnoughRoutersForDomain)?;
 
 		Ok(expected_proof_count as u32)
 	}
@@ -294,11 +316,11 @@ impl<T: Config> Pallet<T> {
 		domain_address: DomainAddress,
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
-		let router_ids = T::RouterId::for_domain(domain_address.domain());
+		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let current_session_id = SessionIdStore::<T>::get();
+		let current_session_id = SessionIdStore::<T>::get().ok_or(Error::<T>::SessionIdNotFound)?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -395,7 +417,7 @@ impl<T: Config> Pallet<T> {
 		destination: Domain,
 		message: T::Message,
 	) -> DispatchResult {
-		let router_ids = T::RouterId::for_domain(destination);
+		let router_ids = Self::get_router_ids_for_domain(destination)?;
 
 		let message_proof = message.to_message_proof();
 		let mut message_opt = Some(message);

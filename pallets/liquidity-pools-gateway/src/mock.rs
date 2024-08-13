@@ -2,7 +2,10 @@ use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
 use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterSupport};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	EVMChainId,
+};
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -11,6 +14,13 @@ use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
+
+pub const TEST_EVM_CHAIN: EVMChainId = 1;
+pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(TEST_EVM_CHAIN, [1; 20]);
+
+pub const ROUTER_ID_1: RouterId = RouterId(1);
+pub const ROUTER_ID_2: RouterId = RouterId(2);
+pub const ROUTER_ID_3: RouterId = RouterId(3);
 
 pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 
@@ -106,8 +116,11 @@ impl LPEncoding for Message {
 pub struct RouterId(pub u32);
 
 impl RouterSupport<Domain> for RouterId {
-	fn for_domain(_domain: Domain) -> Vec<RouterId> {
-		vec![] // TODO
+	fn for_domain(domain: Domain) -> Vec<RouterId> {
+		match domain {
+			Domain::Centrifuge => vec![],
+			Domain::EVM(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
+		}
 	}
 }
 
