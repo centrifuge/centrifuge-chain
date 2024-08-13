@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
-use frame_support::{
-	assert_err, assert_noop, assert_ok, dispatch::PostDispatchInfo, pallet_prelude::Pays,
-	weights::Weight,
-};
+use frame_support::{assert_err, assert_noop, assert_ok, weights::Weight};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use parity_scale_codec::MaxEncodedLen;

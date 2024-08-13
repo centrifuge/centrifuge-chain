@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterSupport};
+use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -115,8 +115,12 @@ impl LPEncoding for Message {
 #[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
 pub struct RouterId(pub u32);
 
-impl RouterSupport<Domain> for RouterId {
-	fn for_domain(domain: Domain) -> Vec<RouterId> {
+pub struct TestRouterProvider;
+
+impl RouterProvider<Domain> for TestRouterProvider {
+	type RouterId = RouterId;
+
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
 		match domain {
 			Domain::Centrifuge => vec![],
 			Domain::EVM(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
@@ -173,6 +177,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type MessageSender = MockMessageSender;
 	type RouterId = RouterId;
+	type RouterProvider = TestRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;

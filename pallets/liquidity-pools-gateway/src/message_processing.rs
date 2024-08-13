@@ -1,6 +1,6 @@
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageQueue, MessageSender, Proof, RouterSupport,
+	InboundMessageHandler, LPEncoding, MessageQueue, MessageSender, Proof, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
@@ -49,7 +49,7 @@ impl<T: Config> Pallet<T> {
 	/// Retrieves all available routers for a domain and then filters them based
 	/// on the routers that we have in storage.
 	fn get_router_ids_for_domain(domain: Domain) -> Result<Vec<T::RouterId>, DispatchError> {
-		let all_routers_for_domain = T::RouterId::for_domain(domain);
+		let all_routers_for_domain = T::RouterProvider::routers_for_domain(domain);
 
 		let stored_routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
 
