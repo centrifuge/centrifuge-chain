@@ -10,7 +10,7 @@ use frame_support::{
 use pallet_axelar_router::AxelarId;
 use sp_core::{H160, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
-use sp_std::{marker::PhantomData, vec};
+use sp_std::{marker::PhantomData, vec, vec::Vec};
 
 /// Identification of the router where the message is sent and received
 /// RouterId is more specific than Domain, because RouterId also identify by

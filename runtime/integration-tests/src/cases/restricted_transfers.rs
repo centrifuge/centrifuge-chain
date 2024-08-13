@@ -439,7 +439,7 @@ mod eth_address {
 				pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
 					error,
 					..
-				} if error == pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound.into()
+				} if error == pallet_axelar_router::Error::<T>::RouterNotFound.into()
 			));
 		});
 	}

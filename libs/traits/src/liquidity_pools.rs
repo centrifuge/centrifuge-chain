@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	weights::Weight,
-};
+use frame_support::{dispatch::DispatchResult, weights::Weight};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -34,19 +31,6 @@ pub trait LPEncoding: Sized {
 	/// Creates an empty message.
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
-}
-
-/// The trait required for sending outbound messages.
-/// TODO: remove this
-pub trait Router {
-	/// The sender type of the outbound message.
-	type Sender;
-
-	/// Initialize the router.
-	fn init(&self) -> DispatchResult;
-
-	/// Send the message to the router's destination.
-	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
 }
 
 pub trait RouterSupport<Domain>: Sized {
