@@ -2,7 +2,7 @@
 pub mod pallet {
 	use cfg_traits::liquidity_pools::{MessageReceiver, MessageSender};
 	use frame_support::pallet_prelude::*;
-	use mock_builder::{execute_call, register_call};
+	use mock_builder::{execute_call, register_call, CallHandler};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -25,8 +25,8 @@ pub mod pallet {
 
 		pub fn mock_send(
 			f: impl Fn(T::Middleware, T::Origin, Vec<u8>) -> DispatchResult + 'static,
-		) {
-			register_call!(move |(a, b, c)| f(a, b, c));
+		) -> CallHandler {
+			register_call!(move |(a, b, c)| f(a, b, c))
 		}
 	}
 

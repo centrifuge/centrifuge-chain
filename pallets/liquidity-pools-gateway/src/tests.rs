@@ -305,7 +305,7 @@ mod receive_message_domain {
 				router_id: router_id.clone(),
 			};
 
-			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+			let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
 				assert_eq!(mock_message, gateway_message);
 				Ok(())
 			});
@@ -315,6 +315,8 @@ mod receive_message_domain {
 				router_id,
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
+
+			assert_eq!(handler.times(), 1);
 		});
 	}
 
@@ -430,7 +432,7 @@ mod outbound_message_handler_impl {
 				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
 			));
 
-			MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+			let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
 				match mock_msg {
 					GatewayMessage::Inbound { .. } => {
 						assert!(false, "expected outbound message")
@@ -453,11 +455,12 @@ mod outbound_message_handler_impl {
 			});
 
 			assert_ok!(LiquidityPoolsGateway::handle(sender, domain, msg));
+			assert_eq!(handler.times(), 3);
 		});
 	}
 
 	#[test]
-	fn local_domain() {
+	fn domain_not_supported() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
 			let sender = get_test_account_id();
@@ -471,25 +474,35 @@ mod outbound_message_handler_impl {
 	}
 
 	#[test]
+	fn routers_not_found() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let sender = get_test_account_id();
+			let msg = Message::Simple;
+
+			assert_noop!(
+				LiquidityPoolsGateway::handle(sender, domain, msg),
+				Error::<Runtime>::RoutersNotFound
+			);
+		});
+	}
+
+	#[test]
 	fn message_queue_error() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 			let sender = get_test_account_id();
 			let msg = Message::Simple;
 
-			let router_id_1 = ROUTER_ID_1;
-			let router_id_2 = ROUTER_ID_2;
-			let router_id_3 = ROUTER_ID_3;
-
 			assert_ok!(LiquidityPoolsGateway::set_routers(
 				RuntimeOrigin::root(),
-				BoundedVec::try_from(vec![router_id_1.clone(), router_id_2, router_id_3]).unwrap(),
+				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
 			));
 
 			let gateway_message = GatewayMessage::Outbound {
 				sender: <Runtime as Config>::Sender::get(),
 				message: msg.clone(),
-				router_id: router_id_1,
+				router_id: ROUTER_ID_1,
 			};
 
 			let err = DispatchError::Unavailable;
@@ -523,7 +536,7 @@ mod set_domain_hook {
 	}
 
 	#[test]
-	fn failure_bad_origin() {
+	fn bad_origin() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
 
@@ -539,7 +552,7 @@ mod set_domain_hook {
 	}
 
 	#[test]
-	fn failure_centrifuge_domain() {
+	fn domain_not_supported() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
 
@@ -2422,10 +2435,8 @@ mod message_processor_impl {
 			new_test_ext().execute_with(|| {
 				let domain_address = DomainAddress::EVM(1, [1; 20]);
 
-				let router_id = ROUTER_ID_1;
-
 				Routers::<Runtime>::set(Some(
-					BoundedVec::try_from(vec![router_id.clone()]).unwrap(),
+					BoundedVec::try_from(vec![ROUTER_ID_1.clone()]).unwrap(),
 				));
 				SessionIdStore::<Runtime>::set(Some(1));
 
@@ -2433,7 +2444,7 @@ mod message_processor_impl {
 				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
-					router_id,
+					router_id: ROUTER_ID_1,
 				};
 
 				let err = DispatchError::Unavailable;
@@ -2466,44 +2477,25 @@ mod message_processor_impl {
 					router_id: ROUTER_ID_1,
 				};
 
-				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
-					assert_eq!(mock_router_id, ROUTER_ID_1);
-					assert_eq!(mock_sender, sender);
-					assert_eq!(mock_message, message.serialize());
+				let handler = MockMessageSender::mock_send(
+					move |mock_router_id, mock_sender, mock_message| {
+						assert_eq!(mock_router_id, ROUTER_ID_1);
+						assert_eq!(mock_sender, sender);
+						assert_eq!(mock_message, message.serialize());
 
-					Ok(())
-				});
+						Ok(())
+					},
+				);
 
 				let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
 				assert_ok!(res);
 				assert!(weight.eq(&LP_DEFENSIVE_WEIGHT));
+				assert_eq!(handler.times(), 1);
 			});
 		}
 
-		//TODO(cdamian): Fix when bi-directional routers are in.
-		// #[test]
-		// fn router_not_found() {
-		// 	new_test_ext().execute_with(|| {
-		// 		let sender = get_test_account_id();
-		// 		let message = Message::Simple;
-		//
-		// 		let expected_weight = <Runtime as
-		// frame_system::Config>::DbWeight::get().reads(1);
-		//
-		// 		let gateway_message = GatewayMessage::Outbound {
-		// 			sender,
-		// 			message,
-		// 			router_id: ROUTER_ID_1,
-		// 		};
-		//
-		// 		let (res, weight) = LiquidityPoolsGateway::process(gateway_message);
-		// 		assert_noop!(res, Error::<Runtime>::RouterNotFound);
-		// 		assert_eq!(weight, expected_weight);
-		// 	});
-		// }
-
 		#[test]
-		fn router_error() {
+		fn message_sender_error() {
 			new_test_ext().execute_with(|| {
 				let sender = TEST_DOMAIN_ADDRESS;
 				let message = Message::Simple;
@@ -2561,7 +2553,7 @@ mod batches {
 				DOMAIN
 			));
 
-			let handle = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+			let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
 
 			// Ok Batched
 			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -2586,7 +2578,7 @@ mod batches {
 			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
 
 			// Two non-packed messages
-			assert_eq!(handle.times(), 2);
+			assert_eq!(handler.times(), 2);
 
 			assert_ok!(LiquidityPoolsGateway::end_batch_message(
 				RuntimeOrigin::signed(USER),
@@ -2594,7 +2586,7 @@ mod batches {
 			));
 
 			// Packed message queued
-			assert_eq!(handle.times(), 3);
+			assert_eq!(handler.times(), 3);
 		});
 	}
 
@@ -2606,7 +2598,7 @@ mod batches {
 				DOMAIN
 			));
 
-			MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+			let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
 
 			(0..MAX_PACKED_MESSAGES).for_each(|_| {
 				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -2625,6 +2617,7 @@ mod batches {
 				RuntimeOrigin::signed(USER),
 				DOMAIN
 			));
+			assert_eq!(handler.times(), 1);
 		});
 	}
 
@@ -2799,7 +2792,7 @@ mod execute_message_recovery {
 	}
 
 	#[test]
-	fn inbound_domain_session_not_found() {
+	fn session_id_not_found() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
@@ -2829,7 +2822,7 @@ mod execute_message_recovery {
 	}
 
 	#[test]
-	fn unknown_inbound_message_router() {
+	fn unknown_router() {
 		new_test_ext().execute_with(|| {
 			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap()));
 			SessionIdStore::<Runtime>::set(Some(1));
