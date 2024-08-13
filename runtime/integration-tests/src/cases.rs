@@ -8,7 +8,7 @@ mod investments;
 mod liquidity_pools;
 mod liquidity_pools_gateway_queue;
 mod loans;
-//mod lp;
+mod lp;
 mod oracles;
 mod proxy;
 mod restricted_transfers;

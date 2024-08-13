@@ -20,7 +20,7 @@ use frame_support::traits::{OriginTrait, PalletInfo};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::ExecutionInfo;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
-use sp_core::{ByteArray, Get};
+use sp_core::Get;
 use sp_runtime::{
 	traits::{Convert, EnsureAdd},
 	DispatchError,
@@ -99,7 +99,7 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 	// The sender is the sender account on the gateway
 	assert_eq!(
 		status.from.0,
-		<T as pallet_liquidity_pools_gateway::Config>::Sender::get().as_slice()[0..20]
+		<T as pallet_liquidity_pools_gateway::Config>::Sender::get().address()[0..20]
 	);
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
