@@ -22,8 +22,6 @@ members = [
   "pallets/keystore",
   "pallets/liquidity-pools",
   "pallets/liquidity-pools-gateway",
-  "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
-  "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-pools-gateway/queue",
   "pallets/liquidity-rewards",
   "pallets/loans",
@@ -222,8 +220,6 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 
 # Centrifuge pallets
-axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
-liquidity-pools-gateway-routers = { path = "pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-anchors-v2 = { path = "pallets/anchors-v2", default-features = false }
 pallet-axelar-router = { path = "pallets/axelar-router", default-features = false }

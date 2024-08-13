@@ -280,7 +280,10 @@ pub mod utils {
 
 			assert_ok!(orml_tokens::Pallet::<T>::set_balance(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
-				<T as pallet_liquidity_pools_gateway::Config>::Sender::get().into(),
+				AccountId::from(
+					<T as pallet_liquidity_pools_gateway::Config>::Sender::get().address()
+				)
+				.into(),
 				GLMR_CURRENCY_ID,
 				DEFAULT_BALANCE_GLMR,
 				0,
