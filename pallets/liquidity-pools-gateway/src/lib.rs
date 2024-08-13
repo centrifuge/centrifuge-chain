@@ -40,7 +40,7 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
-use sp_std::convert::TryInto;
+use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
 
