@@ -16,7 +16,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_call(
-			func: impl Fn(H160, H160, &[u8], U256, U256, U256) -> DispatchResult + 'static,
+			func: impl Fn(H160, H160, &[u8], U256, U256, U256) -> DispatchResultWithPostInfo + 'static,
 		) {
 			register_call!(move |(a, b, c, d, e, f)| func(a, b, c, d, e, f));
 		}

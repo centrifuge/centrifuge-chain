@@ -22,7 +22,7 @@ use cfg_traits::{
 };
 use cfg_types::{domain_address::DomainAddress, EVMChainId};
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use fp_evm::{ExitError, PrecompileHandle};
+use fp_evm::PrecompileHandle;
 use frame_support::{
 	pallet_prelude::*,
 	weights::{constants::RocksDbWeight, Weight},
@@ -155,22 +155,25 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Router not found.
+		/// Emit when the router configuration is not found.
 		RouterNotFound,
 
 		/// Emit when the evm account code is not registered
 		ContractCodeMismatch,
-	}
 
-	impl<T: Config> Pallet<T> {
-		fn weight_for_set_method() -> Weight {
-			Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(2))
-		}
+		/// Emit when the source chain is too big
+		SourceChainTooLong,
+
+		/// Emit when the source address can not be recognized
+		InvalidSourceAddress,
+
+		/// Emit when a message is received from a non LP caller
+		ContractCallerMismatch,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(Pallet::<T>::weight_for_set_method())]
+		#[pallet::weight(Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(2)))]
 		#[pallet::call_index(0)]
 		pub fn set_config(
 			origin: OriginFor<T>,
@@ -207,6 +210,41 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> Pallet<T> {
+		pub fn receive(
+			caller: H160,
+			source_chain: &[u8],
+			source_address: &[u8],
+			payload: &[u8],
+		) -> DispatchResult {
+			let chain_name: ChainName = source_chain
+				.to_vec()
+				.try_into()
+				.map_err(|_| Error::<T>::SourceChainTooLong)?;
+
+			let config = Configuration::<T>::get(chain_name).ok_or(Error::<T>::RouterNotFound)?;
+
+			ensure!(
+				caller == config.liquidity_pools_contract_address,
+				Error::<T>::ContractCallerMismatch,
+			);
+
+			match config.domain {
+				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
+					let source_address_bytes =
+						cfg_utils::decode_var_source::<EVM_ADDRESS_LEN>(source_address)
+							.ok_or(Error::<T>::InvalidSourceAddress)?;
+
+					T::Receiver::receive(
+						AxelarId::Evm(chain_id).into(),
+						DomainAddress::EVM(chain_id, source_address_bytes),
+						payload.to_vec(),
+					)
+				}
+			}
+		}
+	}
+
 	#[precompile_utils::precompile]
 	impl<T: Config> Pallet<T> {
 		// Mimics:
@@ -235,34 +273,13 @@ pub mod pallet {
 			source_address: BoundedString<ConstU32<MAX_SOURCE_ADDRESS_BYTES>>,
 			payload: BoundedBytes<ConstU32<MAX_PAYLOAD_BYTES>>,
 		) -> EvmResult {
-			dbg!("aaaa");
-			let chain_name: ChainName = source_chain
-				.as_bytes()
-				.to_vec()
-				.try_into()
-				.map_err(|_| ExitError::Other("unexpected chain id".into()))?;
-
-			let config = Configuration::<T>::get(chain_name)
-				.ok_or(ExitError::Other("invalid source chain".into()))?;
-
-			ensure!(
-				handle.context().caller == config.liquidity_pools_contract_address,
-				ExitError::Other("gateway contract address mismatch".into()),
-			);
-
-			match config.domain {
-				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
-					let source_address_bytes =
-						cfg_utils::decode_var_source::<EVM_ADDRESS_LEN>(source_address.as_bytes())
-							.ok_or(ExitError::Other("invalid source address".into()))?;
-
-					let origin = DomainAddress::EVM(chain_id, source_address_bytes);
-					let message = payload.as_bytes().to_vec();
-
-					T::Receiver::receive(AxelarId::Evm(chain_id).into(), origin, message)
-						.map_err(|e| TryDispatchError::Substrate(e).into())
-				}
-			}
+			Self::receive(
+				handle.context().caller,
+				source_chain.as_bytes(),
+				source_address.as_bytes(),
+				payload.as_bytes(),
+			)
+			.map_err(|e| TryDispatchError::Substrate(e).into())
 		}
 
 		// Mimics:
@@ -339,7 +356,7 @@ pub mod pallet {
 ///
 /// LiquidityPools contract call:
 /// <https://github.com/centrifuge/liquidity-pools/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
-fn wrap_into_axelar_msg(
+pub fn wrap_into_axelar_msg(
 	serialized_msg: Vec<u8>,
 	target_chain: Vec<u8>,
 	target_contract: H160,

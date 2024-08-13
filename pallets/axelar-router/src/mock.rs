@@ -6,9 +6,10 @@ use sp_io::TestExternalities;
 
 use crate::{pallet as pallet_axelar_router, AxelarId};
 
-type AccountId = u64;
+pub type AccountId = u64;
 
-pub struct Middleware(AxelarId);
+#[derive(Debug, PartialEq)]
+pub struct Middleware(pub AxelarId);
 
 impl From<AxelarId> for Middleware {
 	fn from(id: AxelarId) -> Self {
@@ -22,7 +23,7 @@ frame_support::construct_runtime!(
 		Receiver: cfg_mocks::router_message::pallet,
 		Transactor: cfg_mocks::ethereum_transactor::pallet,
 		AccountCodeChecker: cfg_mocks::pre_conditions::pallet,
-		AxelarRouter: pallet_axelar_router,
+		Router: pallet_axelar_router,
 	}
 );
 

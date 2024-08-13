@@ -10,13 +10,12 @@ use orml_traits::MultiCurrency;
 use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
-use polkadot_core_primitives::BlakeTwo256;
 use runtime_common::{
 	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
 	gateway::get_gateway_h160_account,
 };
 use sp_core::{Get, H160, H256, U256};
-use sp_runtime::traits::Hash;
+use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	config::Runtime,
@@ -61,8 +60,6 @@ mod axelar_evm {
 	}
 
 	fn send_ethereum_message_through_axelar_to_centrifuge<T: Runtime>(message: Message) {
-		let command_id = H256::from_low_u64_be(5678);
-
 		#[allow(deprecated)] // Due `constant` field. Can be remove in future ethabi
 		let eth_function_encoded = Function {
 			name: "execute".into(),
@@ -93,7 +90,7 @@ mod axelar_evm {
 			state_mutability: Default::default(),
 		}
 		.encode_input(&[
-			Token::FixedBytes(command_id.0.to_vec()),
+			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
 			Token::String(CHAIN_NAME.into()),
 			Token::String(String::from_utf8(SOURCE_ADDRESS.as_fixed_bytes().to_vec()).unwrap()),
 			Token::Bytes(message.serialize()),
