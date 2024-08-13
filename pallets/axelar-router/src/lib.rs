@@ -155,9 +155,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Domain not found.
-		DomainNotFound,
-
 		/// Router not found.
 		RouterNotFound,
 
@@ -302,7 +299,7 @@ pub mod pallet {
 
 		fn send(axelar_id: AxelarId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
 			let chain_name =
-				ChainNameById::<T>::get(axelar_id).ok_or(Error::<T>::DomainNotFound)?;
+				ChainNameById::<T>::get(axelar_id).ok_or(Error::<T>::RouterNotFound)?;
 			let config = Configuration::<T>::get(&chain_name).ok_or(Error::<T>::RouterNotFound)?;
 
 			match config.domain {
