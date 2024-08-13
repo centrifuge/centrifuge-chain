@@ -1,5 +1,7 @@
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{InboundMessageHandler, LPEncoding, MessageQueue, Proof};
+use cfg_traits::liquidity_pools::{
+	InboundMessageHandler, LPEncoding, MessageQueue, MessageSender, Proof, RouterSupport,
+};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -13,8 +15,8 @@ use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
 use sp_runtime::DispatchError;
 
 use crate::{
-	message::GatewayMessage, Config, Error, InboundMessageSessions, InvalidMessageSessions, Pallet,
-	PendingInboundEntries, Routers,
+	message::GatewayMessage, Config, Error, InvalidMessageSessions, Pallet, PendingInboundEntries,
+	Routers, SessionIdStore,
 };
 
 /// The limit used when clearing the `PendingInboundEntries` for invalid
@@ -39,7 +41,7 @@ pub enum InboundEntry<T: Config> {
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	domain_address: DomainAddress,
-	routers: BoundedVec<T::RouterId, T::MaxRouterCount>,
+	router_ids: Vec<T::RouterId, T::MaxRouterCount>,
 	current_session_id: T::SessionId,
 	expected_proof_count_per_message: u32,
 }
@@ -47,10 +49,10 @@ pub struct InboundProcessingInfo<T: Config> {
 impl<T: Config> Pallet<T> {
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
-	fn get_expected_proof_count(domain: &Domain) -> Result<u32, DispatchError> {
-		let routers = Routers::<T>::get(domain).ok_or(Error::<T>::RoutersNotFound)?;
+	fn get_expected_proof_count(domain: Domain) -> Result<u32, DispatchError> {
+		let routers_count = T::RouterId::for_domain(domain).len();
 
-		let expected_proof_count = routers.len().ensure_sub(1)?;
+		let expected_proof_count = routers_count.ensure_sub(1)?;
 
 		Ok(expected_proof_count as u32)
 	}
@@ -94,17 +96,17 @@ impl<T: Config> Pallet<T> {
 		router_id: &T::RouterId,
 		inbound_entry: &InboundEntry<T>,
 	) -> DispatchResult {
-		let routers = inbound_processing_info.routers.clone();
+		let router_ids = inbound_processing_info.router_ids.clone();
 
 		ensure!(
-			routers.iter().any(|x| x == router_id),
-			Error::<T>::UnknownInboundMessageRouter
+			router_ids.iter().any(|x| x == router_id),
+			Error::<T>::UnknownRouter
 		);
 
 		match inbound_entry {
 			InboundEntry::Message { .. } => {
 				ensure!(
-					routers.get(0) == Some(&router_id),
+					router_ids.get(0) == Some(&router_id),
 					Error::<T>::MessageExpectedFromFirstRouter
 				);
 
@@ -112,7 +114,7 @@ impl<T: Config> Pallet<T> {
 			}
 			InboundEntry::Proof { .. } => {
 				ensure!(
-					routers.get(0) != Some(&router_id),
+					router_ids.get(0) != Some(&router_id),
 					Error::<T>::ProofNotExpectedFromFirstRouter
 				);
 
@@ -202,12 +204,12 @@ impl<T: Config> Pallet<T> {
 		let mut message = None;
 		let mut votes = 0;
 
-		for router in &inbound_processing_info.routers {
+		for router_id in &inbound_processing_info.router_ids {
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 			match PendingInboundEntries::<T>::get(
 				inbound_processing_info.current_session_id,
-				(message_proof, router),
+				(message_proof, router_id),
 			) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
@@ -240,12 +242,12 @@ impl<T: Config> Pallet<T> {
 		message_proof: Proof,
 		weight: &mut Weight,
 	) -> DispatchResult {
-		for router in &inbound_processing_info.routers {
+		for router_id in &inbound_processing_info.router_ids {
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			match PendingInboundEntries::<T>::try_mutate(
 				inbound_processing_info.current_session_id,
-				(message_proof, router),
+				(message_proof, router_id),
 				|storage_entry| match storage_entry {
 					None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
 					Some(stored_inbound_entry) => match stored_inbound_entry {
@@ -290,26 +292,24 @@ impl<T: Config> Pallet<T> {
 	/// Retrieves the information required for processing an inbound
 	/// message.
 	fn get_inbound_processing_info(
-		domain_address: DomainAddress,
+		domain: Domain,
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
-		let routers =
-			Routers::<T>::get(domain_address.domain()).ok_or(Error::<T>::RoutersNotFound)?;
+		let router_ids = T::RouterId::for_domain(domain.clone());
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let current_session_id = InboundMessageSessions::<T>::get(domain_address.domain())
-			.ok_or(Error::<T>::InboundDomainSessionNotFound)?;
+		let current_session_id = SessionIdStore::<T>::get();
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let expected_proof_count = Self::get_expected_proof_count(&domain_address.domain())?;
+		let expected_proof_count = Self::get_expected_proof_count(domain)?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 		Ok(InboundProcessingInfo {
 			domain_address,
-			routers,
+			router_ids,
 			current_session_id,
 			expected_proof_count_per_message: expected_proof_count,
 		})
@@ -325,7 +325,7 @@ impl<T: Config> Pallet<T> {
 		let mut weight = Default::default();
 
 		let inbound_processing_info =
-			match Self::get_inbound_processing_info(domain_address.clone(), &mut weight) {
+			match Self::get_inbound_processing_info(domain_address.domain(), &mut weight) {
 				Ok(i) => i,
 				Err(e) => return (Err(e), weight),
 			};
@@ -382,29 +382,21 @@ impl<T: Config> Pallet<T> {
 		message: T::Message,
 		router_id: T::RouterId,
 	) -> (DispatchResult, Weight) {
-		let read_weight = T::DbWeight::get().reads(1);
+		let weight = LP_DEFENSIVE_WEIGHT;
 
-		// TODO(cdamian): Update when the router refactor is done.
-
-		// let Some(router) = Routers::<T>::get(router_id) else {
-		// 	return (Err(Error::<T>::RouterNotFound.into()), read_weight);
-		// };
-		//
-		// let (result, router_weight) = match router.send(sender, message.serialize())
-		// { 	Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
-		// 	Err(e) => (Err(e.error), e.post_info.actual_weight),
-		// };
-		//
-		// (result, router_weight.unwrap_or(read_weight))
-
-		(Ok(()), read_weight)
+		match T::MessageSender::send(router_id, sender, message.serialize()) {
+			Ok(_) => (Ok(()), weight),
+			Err(e) => (Err(e), weight),
+		}
 	}
 
 	/// Retrieves the IDs of the routers set for a domain and queues the
 	/// message and proofs accordingly.
-	pub(crate) fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
-		let router_ids =
-			Routers::<T>::get(destination.clone()).ok_or(Error::<T>::RoutersNotFound)?;
+	pub(crate) fn queue_outbound_message(
+		destination: Domain,
+		message: T::Message,
+	) -> DispatchResult {
+		let router_ids = T::RouterId::for_domain(destination);
 
 		let message_proof = message.to_message_proof();
 		let mut message_opt = Some(message);
