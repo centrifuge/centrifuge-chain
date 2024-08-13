@@ -40,7 +40,7 @@ use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
-use sp_arithmetic::traits::{BaseArithmetic, EnsureAdd, EnsureAddAssign, One};
+use sp_arithmetic::traits::{BaseArithmetic, EnsureAdd, EnsureAddAssign, One, Zero};
 use sp_std::convert::TryInto;
 
 use crate::{message_processing::InboundEntry, weights::WeightInfo};
@@ -177,7 +177,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn routers)]
 	pub type Routers<T: Config> =
-		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, ValueQuery>;
+		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, OptionQuery>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -218,7 +218,7 @@ pub mod pallet {
 
 	/// Storage for inbound message session IDs.
 	#[pallet::storage]
-	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
+	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, OptionQuery>;
 
 	/// Storage that keeps track of invalid session IDs.
 	///
@@ -259,8 +259,8 @@ pub mod pallet {
 		/// Invalid multi router.
 		InvalidMultiRouter,
 
-		/// Inbound domain session not found.
-		InboundDomainSessionNotFound,
+		/// Session ID not found.
+		SessionIdNotFound,
 
 		/// Unknown router.
 		UnknownRouter,
@@ -285,6 +285,9 @@ pub mod pallet {
 
 		/// Recovery message not found.
 		RecoveryMessageNotFound,
+
+		/// Not enough routers are stored for a domain.
+		NotEnoughRoutersForDomain,
 	}
 
 	#[pallet::call]
@@ -298,16 +301,20 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			<Routers<T>>::set(router_ids.clone());
+			<Routers<T>>::set(Some(router_ids.clone()));
 
-			let (old_session_id, new_session_id) = SessionIdStore::<T>::try_mutate(|n| {
-				let old_session_id = *n;
-				let new_session_id = n.ensure_add(One::one())?;
+			let (old_session_id, new_session_id) =
+				SessionIdStore::<T>::try_mutate(|storage_entry| {
+					let old_session_id = storage_entry.unwrap_or(T::SessionId::zero());
+					let new_session_id = old_session_id.ensure_add(One::one())?;
 
-				*n = new_session_id;
+					*storage_entry = Some(new_session_id);
 
-				Ok::<(T::SessionId, T::SessionId), DispatchError>((old_session_id, new_session_id))
-			})?;
+					Ok::<(T::SessionId, T::SessionId), DispatchError>((
+						old_session_id,
+						new_session_id,
+					))
+				})?;
 
 			InvalidMessageSessions::<T>::insert(old_session_id, ());
 
@@ -446,9 +453,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let session_id = SessionIdStore::<T>::get();
+			let session_id = SessionIdStore::<T>::get().ok_or(Error::<T>::SessionIdNotFound)?;
 
-			let routers = Routers::<T>::get();
+			let routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
 
 			ensure!(
 				routers.iter().any(|x| x == &router_id),
