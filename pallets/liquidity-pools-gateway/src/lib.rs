@@ -171,15 +171,6 @@ pub mod pallet {
 		},
 	}
 
-	// TODO(cdamian): Add migration to clear this storage.
-	// /// Storage for domain routers.
-	// ///
-	// /// This can only be set by an admin.
-	// #[pallet::storage]
-	// #[pallet::getter(fn domain_routers)]
-	// pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain,
-	// T::Router>;
-
 	/// Storage for routers.
 	///
 	/// This can only be set by an admin.
@@ -206,7 +197,7 @@ pub mod pallet {
 	pub type DomainHookAddress<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
-	/// Stores a batch message, not ready yet to be enqueue.
+	/// Stores a batch message, not ready yet to be enqueued.
 	/// Lifetime handled by `start_batch_message()` and `end_batch_message()`
 	/// extrinsics.
 	#[pallet::storage]
@@ -224,12 +215,6 @@ pub mod pallet {
 		(Proof, T::RouterId),
 		InboundEntry<T>,
 	>;
-
-	// /// Storage for the inbound message session IDs.
-	// #[pallet::storage]
-	// #[pallet::getter(fn inbound_message_sessions)]
-	// pub type InboundMessageSessions<T: Config> =
-	// 	StorageMap<_, Blake2_128Concat, Domain, T::SessionId>;
 
 	/// Storage for inbound message session IDs.
 	#[pallet::storage]

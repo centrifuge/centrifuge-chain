@@ -8,7 +8,6 @@ use frame_support::{
 	ensure,
 	pallet_prelude::{Decode, Encode, Get, TypeInfo},
 	weights::Weight,
-	BoundedVec,
 };
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
@@ -16,7 +15,7 @@ use sp_runtime::DispatchError;
 
 use crate::{
 	message::GatewayMessage, Config, Error, InvalidMessageSessions, Pallet, PendingInboundEntries,
-	Routers, SessionIdStore,
+	SessionIdStore,
 };
 
 /// The limit used when clearing the `PendingInboundEntries` for invalid
@@ -41,7 +40,7 @@ pub enum InboundEntry<T: Config> {
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	domain_address: DomainAddress,
-	router_ids: Vec<T::RouterId, T::MaxRouterCount>,
+	router_ids: Vec<T::RouterId>,
 	current_session_id: T::SessionId,
 	expected_proof_count_per_message: u32,
 }
@@ -292,10 +291,10 @@ impl<T: Config> Pallet<T> {
 	/// Retrieves the information required for processing an inbound
 	/// message.
 	fn get_inbound_processing_info(
-		domain: Domain,
+		domain_address: DomainAddress,
 		weight: &mut Weight,
 	) -> Result<InboundProcessingInfo<T>, DispatchError> {
-		let router_ids = T::RouterId::for_domain(domain.clone());
+		let router_ids = T::RouterId::for_domain(domain_address.domain());
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -303,7 +302,7 @@ impl<T: Config> Pallet<T> {
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let expected_proof_count = Self::get_expected_proof_count(domain)?;
+		let expected_proof_count = Self::get_expected_proof_count(domain_address.domain())?;
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -325,7 +324,7 @@ impl<T: Config> Pallet<T> {
 		let mut weight = Default::default();
 
 		let inbound_processing_info =
-			match Self::get_inbound_processing_info(domain_address.domain(), &mut weight) {
+			match Self::get_inbound_processing_info(domain_address.clone(), &mut weight) {
 				Ok(i) => i,
 				Err(e) => return (Err(e), weight),
 			};
