@@ -11757,7 +11757,6 @@ name = "runtime-integration-tests"
 version = "0.1.0"
 dependencies = [
  "altair-runtime",
- "axelar-gateway-precompile",
  "centrifuge-runtime",
  "cfg-primitives",
  "cfg-traits",
@@ -11784,7 +11783,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "lazy_static",
- "liquidity-pools-gateway-routers",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -11793,6 +11791,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-babe",
  "pallet-balances",
  "pallet-base-fee",
