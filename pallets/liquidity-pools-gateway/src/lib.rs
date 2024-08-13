@@ -61,6 +61,8 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::dispatch::PostDispatchInfo;
+
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -291,12 +293,15 @@ pub mod pallet {
 
 		/// Not enough routers are stored for a domain.
 		NotEnoughRoutersForDomain,
+
+		/// First router for a domain was not found.
+		FirstRouterNotFound,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Sets the router IDs used for a specific domain,
-		#[pallet::weight(T::WeightInfo::set_domain_routers())]
+		#[pallet::weight(T::WeightInfo::set_routers())]
 		#[pallet::call_index(0)]
 		pub fn set_routers(
 			origin: OriginFor<T>,
@@ -451,22 +456,29 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
+			domain_address: DomainAddress,
 			proof: Proof,
 			router_id: T::RouterId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let session_id = SessionIdStore::<T>::get().ok_or(Error::<T>::SessionIdNotFound)?;
+			let mut weight = Weight::default();
 
-			let routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
+			let inbound_processing_info =
+				Self::get_inbound_processing_info(domain_address, &mut weight)?;
 
 			ensure!(
-				routers.iter().any(|x| x == &router_id),
+				inbound_processing_info
+					.router_ids
+					.iter()
+					.any(|x| x == &router_id),
 				Error::<T>::UnknownRouter
 			);
 
+			weight.saturating_accrue(T::DbWeight::get().writes(1));
+
 			PendingInboundEntries::<T>::try_mutate(
-				session_id,
+				inbound_processing_info.current_session_id,
 				(proof, router_id.clone()),
 				|storage_entry| match storage_entry {
 					Some(entry) => match entry {
@@ -485,9 +497,14 @@ pub mod pallet {
 				},
 			)?;
 
+			Self::execute_if_requirements_are_met(&inbound_processing_info, proof, &mut weight)?;
+
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted { proof, router_id });
 
-			Ok(())
+			Ok(PostDispatchInfo {
+				actual_weight: Some(weight),
+				pays_fee: Pays::Yes,
+			})
 		}
 	}
 

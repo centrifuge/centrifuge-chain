@@ -2737,86 +2737,140 @@ mod execute_message_recovery {
 	use super::*;
 
 	#[test]
-	fn success() {
+	fn success_with_execution() {
 		new_test_ext().execute_with(|| {
-			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id.clone()]).unwrap()));
+			Routers::<Runtime>::set(Some(
+				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
+			));
 			SessionIdStore::<Runtime>::set(Some(session_id));
 
+			PendingInboundEntries::<Runtime>::insert(
+				session_id,
+				(MESSAGE_PROOF, ROUTER_ID_1),
+				InboundEntry::<Runtime>::Message {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 1,
+				},
+			);
+
+			let handler =
+				MockLiquidityPools::mock_handle(move |mock_domain_address, mock_message| {
+					assert_eq!(mock_domain_address, TEST_DOMAIN_ADDRESS);
+					assert_eq!(mock_message, Message::Simple);
+
+					Ok(())
+				});
+
 			assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
 				RuntimeOrigin::root(),
+				TEST_DOMAIN_ADDRESS,
 				MESSAGE_PROOF,
-				router_id.clone(),
+				ROUTER_ID_2,
 			));
 
 			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
 				proof: MESSAGE_PROOF,
-				router_id: router_id.clone(),
+				router_id: ROUTER_ID_2,
 			});
 
-			let inbound_entry = PendingInboundEntries::<Runtime>::get(
+			assert_eq!(handler.times(), 1);
+
+			assert!(PendingInboundEntries::<Runtime>::get(
 				session_id,
-				(MESSAGE_PROOF, router_id.clone()),
+				(MESSAGE_PROOF, ROUTER_ID_1)
 			)
-			.expect("inbound entry is stored");
+			.is_none());
 
-			assert_eq!(
-				inbound_entry,
-				InboundEntry::<Runtime>::Proof { current_count: 1 }
-			);
-
-			assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
-				RuntimeOrigin::root(),
-				MESSAGE_PROOF,
-				router_id.clone()
-			));
-
-			let inbound_entry = PendingInboundEntries::<Runtime>::get(
+			assert!(PendingInboundEntries::<Runtime>::get(
 				session_id,
-				(MESSAGE_PROOF, router_id.clone()),
+				(MESSAGE_PROOF, ROUTER_ID_2)
 			)
-			.expect("inbound entry is stored");
-
-			assert_eq!(
-				inbound_entry,
-				InboundEntry::<Runtime>::Proof { current_count: 2 }
-			);
-
-			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
-				proof: MESSAGE_PROOF,
-				router_id,
-			});
+			.is_none());
 		});
 	}
 
 	#[test]
-	fn session_id_not_found() {
+	fn success_without_execution() {
 		new_test_ext().execute_with(|| {
-			assert_noop!(
-				LiquidityPoolsGateway::execute_message_recovery(
-					RuntimeOrigin::root(),
-					MESSAGE_PROOF,
-					ROUTER_ID_1,
-				),
-				Error::<Runtime>::SessionIdNotFound
+			let session_id = 1;
+
+			Routers::<Runtime>::set(Some(
+				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
+			));
+			SessionIdStore::<Runtime>::set(Some(session_id));
+
+			PendingInboundEntries::<Runtime>::insert(
+				session_id,
+				(MESSAGE_PROOF, ROUTER_ID_1),
+				InboundEntry::<Runtime>::Message {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 2,
+				},
 			);
+
+			assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
+				RuntimeOrigin::root(),
+				TEST_DOMAIN_ADDRESS,
+				MESSAGE_PROOF,
+				ROUTER_ID_2,
+			));
+
+			event_exists(Event::<Runtime>::MessageRecoveryExecuted {
+				proof: MESSAGE_PROOF,
+				router_id: ROUTER_ID_2,
+			});
+
+			assert_eq!(
+				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_1)),
+				Some(InboundEntry::<Runtime>::Message {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 2,
+				})
+			);
+			assert_eq!(
+				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_2)),
+				Some(InboundEntry::<Runtime>::Proof { current_count: 1 })
+			);
+			assert!(
+				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_3))
+					.is_none()
+			)
 		});
 	}
 
 	#[test]
 	fn routers_not_found() {
 		new_test_ext().execute_with(|| {
-			SessionIdStore::<Runtime>::set(Some(1));
-
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
+					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
 					ROUTER_ID_1,
 				),
 				Error::<Runtime>::RoutersNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn session_id_not_found() {
+		new_test_ext().execute_with(|| {
+			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap()));
+
+			assert_noop!(
+				LiquidityPoolsGateway::execute_message_recovery(
+					RuntimeOrigin::root(),
+					TEST_DOMAIN_ADDRESS,
+					MESSAGE_PROOF,
+					ROUTER_ID_1,
+				),
+				Error::<Runtime>::SessionIdNotFound
 			);
 		});
 	}
@@ -2830,6 +2884,7 @@ mod execute_message_recovery {
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
+					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
 					ROUTER_ID_2
 				),
@@ -2857,6 +2912,7 @@ mod execute_message_recovery {
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
+					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
 					router_id
 				),
@@ -2887,6 +2943,7 @@ mod execute_message_recovery {
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
+					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
 					router_id
 				),
