@@ -13,7 +13,7 @@ use sp_runtime::{traits::Saturating, DispatchError, TokenError};
 
 use crate::{mock::*, Error, Message, UpdateRestrictionMessage};
 
-//mod inbound;
+mod inbound;
 
 mod transfer {
 	use super::*;
@@ -1418,7 +1418,7 @@ mod freeze {
 	use super::*;
 	use crate::message::UpdateRestrictionMessage;
 
-	fn config_mocks(receiver: DomainAddress) {
+	fn config_mocks() {
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
@@ -1464,7 +1464,7 @@ mod freeze {
 	#[test]
 	fn success() {
 		System::externalities().execute_with(|| {
-			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+			config_mocks();
 
 			assert_ok!(LiquidityPools::freeze_investor(
 				RuntimeOrigin::signed(ALICE),
@@ -1510,7 +1510,7 @@ mod freeze {
 		#[test]
 		fn with_pool_dne() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
@@ -1528,7 +1528,7 @@ mod freeze {
 		#[test]
 		fn with_tranche_dne() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
@@ -1546,7 +1546,7 @@ mod freeze {
 		#[test]
 		fn with_origin_not_admin() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(|_, _, _| false);
 
 				assert_noop!(
@@ -1564,7 +1564,7 @@ mod freeze {
 		#[test]
 		fn with_investor_not_member() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
@@ -1591,7 +1591,7 @@ mod freeze {
 		#[test]
 		fn with_investor_frozen() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
@@ -1634,7 +1634,7 @@ mod unfreeze {
 	use super::*;
 	use crate::message::UpdateRestrictionMessage;
 
-	fn config_mocks(receiver: DomainAddress) {
+	fn config_mocks() {
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
@@ -1680,7 +1680,7 @@ mod unfreeze {
 	#[test]
 	fn success() {
 		System::externalities().execute_with(|| {
-			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+			config_mocks();
 
 			assert_ok!(LiquidityPools::unfreeze_investor(
 				RuntimeOrigin::signed(ALICE),
@@ -1726,7 +1726,7 @@ mod unfreeze {
 		#[test]
 		fn with_pool_dne() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Pools::mock_pool_exists(|_| false);
 
 				assert_noop!(
@@ -1744,7 +1744,7 @@ mod unfreeze {
 		#[test]
 		fn with_tranche_dne() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Pools::mock_tranche_exists(|_, _| false);
 
 				assert_noop!(
@@ -1762,7 +1762,7 @@ mod unfreeze {
 		#[test]
 		fn with_origin_not_admin() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(|_, _, _| false);
 
 				assert_noop!(
@@ -1780,7 +1780,7 @@ mod unfreeze {
 		#[test]
 		fn with_investor_not_member() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
@@ -1807,7 +1807,7 @@ mod unfreeze {
 		#[test]
 		fn with_investor_unfrozen() {
 			System::externalities().execute_with(|| {
-				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+				config_mocks();
 				Permissions::mock_has(move |_, _, _| true);
 
 				assert_noop!(
