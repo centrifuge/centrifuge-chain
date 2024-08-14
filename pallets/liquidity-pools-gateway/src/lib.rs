@@ -35,12 +35,12 @@ use cfg_traits::liquidity_pools::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
-use frame_system::pallet_prelude::{ensure_signed, BlockNumberFor, OriginFor};
+use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
-use sp_arithmetic::traits::{BaseArithmetic, EnsureAdd, EnsureAddAssign, One, Zero};
+use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_std::convert::TryInto;
 
 use crate::{message_processing::InboundEntry, weights::WeightInfo};
@@ -73,13 +73,6 @@ pub mod pallet {
 
 	#[pallet::origin]
 	pub type Origin = GatewayOrigin;
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_idle(_now: BlockNumberFor<T>, max_weight: Weight) -> Weight {
-			Self::clear_invalid_session_ids(max_weight)
-		}
-	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -175,7 +168,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn routers)]
 	pub type Routers<T: Config> =
-		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, OptionQuery>;
+		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, ValueQuery>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -208,23 +201,15 @@ pub mod pallet {
 	pub type PendingInboundEntries<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::SessionId,
+		Proof,
 		Blake2_128Concat,
-		(Proof, T::RouterId),
+		T::RouterId,
 		InboundEntry<T>,
 	>;
 
 	/// Storage for inbound message session IDs.
 	#[pallet::storage]
-	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, OptionQuery>;
-
-	/// Storage that keeps track of invalid session IDs.
-	///
-	/// Any `PendingInboundEntries` mapped to the invalid IDs are removed from
-	/// storage during `on_idle`.
-	#[pallet::storage]
-	#[pallet::getter(fn invalid_message_sessions)]
-	pub type InvalidMessageSessions<T: Config> = StorageMap<_, Blake2_128Concat, T::SessionId, ()>;
+	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -254,11 +239,8 @@ pub mod pallet {
 		/// was not started by `start_batch_message()`.
 		MessagePackingNotStarted,
 
-		/// Invalid multi router.
-		InvalidMultiRouter,
-
-		/// Session ID not found.
-		SessionIdNotFound,
+		/// Invalid routers.
+		InvalidRouters,
 
 		/// Unknown router.
 		UnknownRouter,
@@ -286,9 +268,6 @@ pub mod pallet {
 
 		/// Not enough routers are stored for a domain.
 		NotEnoughRoutersForDomain,
-
-		/// First router for a domain was not found.
-		FirstRouterNotFound,
 	}
 
 	#[pallet::call]
@@ -302,22 +281,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			<Routers<T>>::set(Some(router_ids.clone()));
+			ensure!(router_ids.len() > 0, Error::<T>::InvalidRouters);
 
-			let (old_session_id, new_session_id) =
-				SessionIdStore::<T>::try_mutate(|storage_entry| {
-					let old_session_id = storage_entry.unwrap_or(T::SessionId::zero());
-					let new_session_id = old_session_id.ensure_add(One::one())?;
+			<Routers<T>>::set(router_ids.clone());
 
-					*storage_entry = Some(new_session_id);
+			let new_session_id = SessionIdStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
 
-					Ok::<(T::SessionId, T::SessionId), DispatchError>((
-						old_session_id,
-						new_session_id,
-					))
-				})?;
-
-			InvalidMessageSessions::<T>::insert(old_session_id, ());
+				Ok::<T::SessionId, DispatchError>(*n)
+			})?;
 
 			Self::deposit_event(Event::RoutersSet {
 				router_ids,
@@ -468,27 +440,43 @@ pub mod pallet {
 				Error::<T>::UnknownRouter
 			);
 
+			ensure!(
+				inbound_processing_info.router_ids.len() > 1,
+				Error::<T>::NotEnoughRoutersForDomain
+			);
+
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-			PendingInboundEntries::<T>::try_mutate(
-				inbound_processing_info.current_session_id,
-				(proof, router_id.clone()),
-				|storage_entry| match storage_entry {
-					Some(entry) => match entry {
-						InboundEntry::Proof { current_count } => {
-							current_count.ensure_add_assign(1).map_err(|e| e.into())
+			PendingInboundEntries::<T>::try_mutate(proof, router_id.clone(), |storage_entry| {
+				match storage_entry {
+					Some(stored_inbound_entry) => match stored_inbound_entry {
+						InboundEntry::Proof {
+							session_id,
+							current_count,
+						} => {
+							if *session_id != inbound_processing_info.current_session_id {
+								*session_id = inbound_processing_info.current_session_id;
+								*current_count = 1;
+							} else {
+								current_count.ensure_add_assign(1)?;
+							}
+
+							Ok::<(), DispatchError>(())
 						}
 						InboundEntry::Message { .. } => {
 							Err(Error::<T>::ExpectedMessageProofType.into())
 						}
 					},
 					None => {
-						*storage_entry = Some(InboundEntry::<T>::Proof { current_count: 1 });
+						*storage_entry = Some(InboundEntry::<T>::Proof {
+							session_id: inbound_processing_info.current_session_id,
+							current_count: 1,
+						});
 
 						Ok::<(), DispatchError>(())
 					}
-				},
-			)?;
+				}
+			})?;
 
 			Self::execute_if_requirements_are_met(&inbound_processing_info, proof, &mut weight)?;
 

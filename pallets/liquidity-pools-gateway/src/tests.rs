@@ -62,12 +62,8 @@ mod set_routers {
 				router_ids.clone(),
 			));
 
-			assert_eq!(Routers::<Runtime>::get(), Some(router_ids.clone()));
-			assert_eq!(SessionIdStore::<Runtime>::get(), Some(session_id));
-			assert_eq!(
-				InvalidMessageSessions::<Runtime>::get(session_id - 1),
-				Some(())
-			);
+			assert_eq!(Routers::<Runtime>::get(), router_ids.clone());
+			assert_eq!(SessionIdStore::<Runtime>::get(), session_id);
 
 			event_exists(Event::<Runtime>::RoutersSet {
 				router_ids,
@@ -83,12 +79,8 @@ mod set_routers {
 				router_ids.clone(),
 			));
 
-			assert_eq!(Routers::<Runtime>::get(), Some(router_ids.clone()));
-			assert_eq!(SessionIdStore::<Runtime>::get(), Some(session_id));
-			assert_eq!(
-				InvalidMessageSessions::<Runtime>::get(session_id - 1),
-				Some(())
-			);
+			assert_eq!(Routers::<Runtime>::get(), router_ids.clone());
+			assert_eq!(SessionIdStore::<Runtime>::get(), session_id);
 
 			event_exists(Event::<Runtime>::RoutersSet {
 				router_ids,
@@ -108,21 +100,33 @@ mod set_routers {
 				BadOrigin
 			);
 
-			assert!(Routers::<Runtime>::get().is_none());
-			assert!(SessionIdStore::<Runtime>::get().is_none());
-			assert!(InvalidMessageSessions::<Runtime>::get(0).is_none());
+			assert!(Routers::<Runtime>::get().is_empty());
+			assert_eq!(SessionIdStore::<Runtime>::get(), 0);
+		});
+	}
+
+	#[test]
+	fn invalid_routers() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				LiquidityPoolsGateway::set_routers(
+					RuntimeOrigin::root(),
+					BoundedVec::try_from(vec![]).unwrap(),
+				),
+				Error::<Runtime>::InvalidRouters
+			);
 		});
 	}
 
 	#[test]
 	fn session_id_overflow() {
 		new_test_ext().execute_with(|| {
-			SessionIdStore::<Runtime>::set(Some(u32::MAX));
+			SessionIdStore::<Runtime>::set(u32::MAX);
 
 			assert_noop!(
 				LiquidityPoolsGateway::set_routers(
 					RuntimeOrigin::root(),
-					BoundedVec::try_from(vec![]).unwrap(),
+					BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap(),
 				),
 				Arithmetic(Overflow)
 			);
@@ -482,7 +486,7 @@ mod outbound_message_handler_impl {
 
 			assert_noop!(
 				LiquidityPoolsGateway::handle(sender, domain, msg),
-				Error::<Runtime>::RoutersNotFound
+				Error::<Runtime>::NotEnoughRoutersForDomain
 			);
 		});
 	}
@@ -585,13 +589,13 @@ mod message_processor_impl {
 					println!("Executing test for - {:?}", test.router_messages);
 
 					new_test_ext().execute_with(|| {
-						let session_id = 1;
+						let session_id = TEST_SESSION_ID;
 
 						Routers::<Runtime>::set(
-							Some(BoundedVec::try_from(test_routers.clone()).unwrap()),
+							BoundedVec::try_from(test_routers.clone()).unwrap(),
 						);
 						SessionIdStore::<Runtime>::set(
-							Some(session_id),
+							session_id,
 						);
 
 						let handler = MockLiquidityPools::mock_handle(move |_, _| Ok(()));
@@ -620,12 +624,11 @@ mod message_processor_impl {
 						for expected_storage_entry in
 							test.expected_test_result.expected_storage_entries
 						{
-							let expected_storage_entry_router_hash = expected_storage_entry.0;
+							let expected_storage_entry_router_id = expected_storage_entry.0;
 							let expected_inbound_entry = expected_storage_entry.1;
 
 							let storage_entry = PendingInboundEntries::<Runtime>::get(
-								session_id,
-								(MESSAGE_PROOF, expected_storage_entry_router_hash),
+								MESSAGE_PROOF, expected_storage_entry_router_id,
 							);
 							assert_eq!(storage_entry, expected_inbound_entry, "Expected inbound entry {expected_inbound_entry:?}, found {storage_entry:?}");
 						}
@@ -741,10 +744,10 @@ mod message_processor_impl {
 						router_id: router_id.clone(),
 					};
 
-					Routers::<Runtime>::set(Some(
+					Routers::<Runtime>::set(
 						BoundedVec::<_, _>::try_from(vec![router_id.clone()]).unwrap(),
-					));
-					SessionIdStore::<Runtime>::set(Some(session_id));
+					);
+					SessionIdStore::<Runtime>::set(session_id);
 
 					let handler = MockLiquidityPools::mock_handle(
 						move |mock_domain_address, mock_message| {
@@ -759,11 +762,9 @@ mod message_processor_impl {
 					assert_ok!(res);
 					assert_eq!(handler.times(), 1);
 
-					assert!(PendingInboundEntries::<Runtime>::get(
-						session_id,
-						(message_proof, router_id)
-					)
-					.is_none());
+					assert!(
+						PendingInboundEntries::<Runtime>::get(message_proof, router_id).is_none()
+					);
 				});
 			}
 
@@ -780,28 +781,7 @@ mod message_processor_impl {
 					};
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
-					assert_noop!(res, Error::<Runtime>::RoutersNotFound);
-				});
-			}
-
-			#[test]
-			fn inbound_domain_session_not_found() {
-				new_test_ext().execute_with(|| {
-					let message = Message::Simple;
-					let domain_address = DomainAddress::EVM(1, [1; 20]);
-					let router_id = ROUTER_ID_1;
-					let gateway_message = GatewayMessage::Inbound {
-						domain_address: domain_address.clone(),
-						message: message.clone(),
-						router_id: router_id.clone(),
-					};
-
-					Routers::<Runtime>::set(Some(
-						BoundedVec::<_, _>::try_from(vec![router_id]).unwrap(),
-					));
-
-					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
-					assert_noop!(res, Error::<Runtime>::SessionIdNotFound);
+					assert_noop!(res, Error::<Runtime>::NotEnoughRoutersForDomain);
 				});
 			}
 
@@ -820,10 +800,10 @@ mod message_processor_impl {
 						router_id: ROUTER_ID_2,
 					};
 
-					Routers::<Runtime>::set(Some(
+					Routers::<Runtime>::set(
 						BoundedVec::<_, _>::try_from(vec![router_hash]).unwrap(),
-					));
-					SessionIdStore::<Runtime>::set(Some(session_id));
+					);
+					SessionIdStore::<Runtime>::set(session_id);
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
 					assert_noop!(res, Error::<Runtime>::UnknownRouter);
@@ -844,14 +824,17 @@ mod message_processor_impl {
 						router_id: router_id.clone(),
 					};
 
-					Routers::<Runtime>::set(Some(
+					Routers::<Runtime>::set(
 						BoundedVec::<_, _>::try_from(vec![router_id.clone()]).unwrap(),
-					));
-					SessionIdStore::<Runtime>::set(Some(session_id));
+					);
+					SessionIdStore::<Runtime>::set(session_id);
 					PendingInboundEntries::<Runtime>::insert(
-						session_id,
-						(message_proof, router_id),
-						InboundEntry::<Runtime>::Proof { current_count: 0 },
+						message_proof,
+						router_id,
+						InboundEntry::<Runtime>::Proof {
+							session_id,
+							current_count: 0,
+						},
 					);
 
 					let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -893,6 +876,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
@@ -914,6 +898,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 2,
 												}),
 											),
@@ -980,6 +965,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 3,
@@ -1002,6 +988,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 3,
 												}),
 											),
@@ -1020,6 +1007,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
@@ -1041,6 +1029,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
@@ -1063,6 +1052,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 1,
 												}),
 											),
@@ -1081,6 +1071,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 1,
@@ -1103,6 +1094,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 1,
 												}),
 											),
@@ -1122,6 +1114,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 1,
 												}),
 											),
@@ -1163,6 +1156,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 4,
@@ -1186,6 +1180,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 4,
 												}),
 											),
@@ -1205,6 +1200,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
@@ -1227,6 +1223,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
@@ -1249,6 +1246,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
@@ -1271,6 +1269,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_1,
 												Some(InboundEntry::<Runtime>::Message {
+													session_id: TEST_SESSION_ID,
 													domain_address: TEST_DOMAIN_ADDRESS,
 													message: Message::Simple,
 													expected_proof_count: 2,
@@ -1384,6 +1383,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 2,
 												}),
 											),
@@ -1404,6 +1404,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 2,
 												}),
 											),
@@ -1424,6 +1425,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 2,
 												}),
 											),
@@ -1444,6 +1446,7 @@ mod message_processor_impl {
 											(
 												ROUTER_ID_2,
 												Some(InboundEntry::<Runtime>::Proof {
+													session_id: TEST_SESSION_ID,
 													current_count: 2,
 												}),
 											),
@@ -1472,10 +1475,10 @@ mod message_processor_impl {
 					new_test_ext().execute_with(|| {
 						let session_id = 1;
 
-						Routers::<Runtime>::set(Some(
+						Routers::<Runtime>::set(
 							BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
-						));
-						SessionIdStore::<Runtime>::set(Some(session_id));
+						);
+						SessionIdStore::<Runtime>::set(session_id);
 
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: TEST_DOMAIN_ADDRESS,
@@ -1493,10 +1496,10 @@ mod message_processor_impl {
 					new_test_ext().execute_with(|| {
 						let session_id = 1;
 
-						Routers::<Runtime>::set(Some(
+						Routers::<Runtime>::set(
 							BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
-						));
-						SessionIdStore::<Runtime>::set(Some(session_id));
+						);
+						SessionIdStore::<Runtime>::set(session_id);
 
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: TEST_DOMAIN_ADDRESS,
@@ -1542,6 +1545,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -1564,6 +1568,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -1584,6 +1589,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -1602,12 +1608,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1626,12 +1634,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1649,6 +1659,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1657,6 +1668,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1675,6 +1687,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1684,6 +1697,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1701,6 +1715,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1710,6 +1725,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1727,6 +1743,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1735,6 +1752,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1753,6 +1771,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1762,6 +1781,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1802,6 +1822,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 6,
@@ -1825,6 +1846,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 3,
 											}),
 										),
@@ -1846,6 +1868,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 3,
 											}),
 										),
@@ -1864,6 +1887,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -1872,6 +1896,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1891,6 +1916,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -1899,6 +1925,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -1918,6 +1945,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1926,6 +1954,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -1945,6 +1974,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1954,6 +1984,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -1972,6 +2003,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -1981,6 +2013,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -1999,6 +2032,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -2008,6 +2042,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2026,6 +2061,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -2034,6 +2070,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2053,6 +2090,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 2,
@@ -2061,6 +2099,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2080,6 +2119,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -2089,6 +2129,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2107,6 +2148,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -2115,6 +2157,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2134,6 +2177,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -2143,6 +2187,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2161,6 +2206,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_1,
 											Some(InboundEntry::<Runtime>::Message {
+												session_id: TEST_SESSION_ID,
 												domain_address: TEST_DOMAIN_ADDRESS,
 												message: Message::Simple,
 												expected_proof_count: 4,
@@ -2170,6 +2216,7 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2279,12 +2326,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2304,12 +2353,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2329,12 +2380,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2354,12 +2407,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2379,12 +2434,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
@@ -2404,12 +2461,14 @@ mod message_processor_impl {
 										(
 											ROUTER_ID_2,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 1,
 											}),
 										),
 										(
 											ROUTER_ID_3,
 											Some(InboundEntry::<Runtime>::Proof {
+												session_id: TEST_SESSION_ID,
 												current_count: 2,
 											}),
 										),
@@ -2435,10 +2494,8 @@ mod message_processor_impl {
 			new_test_ext().execute_with(|| {
 				let domain_address = DomainAddress::EVM(1, [1; 20]);
 
-				Routers::<Runtime>::set(Some(
-					BoundedVec::try_from(vec![ROUTER_ID_1.clone()]).unwrap(),
-				));
-				SessionIdStore::<Runtime>::set(Some(1));
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1.clone()]).unwrap());
+				SessionIdStore::<Runtime>::set(1);
 
 				let message = Message::Simple;
 				let gateway_message = GatewayMessage::Inbound {
@@ -2558,7 +2615,7 @@ mod batches {
 			// Ok Batched
 			assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap()));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
 			// Not batched, it belongs to OTHER
 			assert_ok!(LiquidityPoolsGateway::handle(
@@ -2611,7 +2668,7 @@ mod batches {
 
 			let router_id_1 = ROUTER_ID_1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id_1]).unwrap()));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
 
 			assert_ok!(LiquidityPoolsGateway::end_batch_message(
 				RuntimeOrigin::signed(USER),
@@ -2654,8 +2711,8 @@ mod batches {
 
 			let router_id_1 = ROUTER_ID_1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id_1]).unwrap()));
-			SessionIdStore::<Runtime>::set(Some(1));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
+			SessionIdStore::<Runtime>::set(1);
 
 			let handler = MockLiquidityPools::mock_handle(|_, _| Ok(()));
 
@@ -2708,8 +2765,8 @@ mod batches {
 
 			let router_id_1 = ROUTER_ID_1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id_1]).unwrap()));
-			SessionIdStore::<Runtime>::set(Some(1));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
+			SessionIdStore::<Runtime>::set(1);
 
 			let counter = Arc::new(AtomicU32::new(0));
 
@@ -2741,15 +2798,14 @@ mod execute_message_recovery {
 		new_test_ext().execute_with(|| {
 			let session_id = 1;
 
-			Routers::<Runtime>::set(Some(
-				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
-			));
-			SessionIdStore::<Runtime>::set(Some(session_id));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap());
+			SessionIdStore::<Runtime>::set(session_id);
 
 			PendingInboundEntries::<Runtime>::insert(
-				session_id,
-				(MESSAGE_PROOF, ROUTER_ID_1),
+				MESSAGE_PROOF,
+				ROUTER_ID_1,
 				InboundEntry::<Runtime>::Message {
+					session_id,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: Message::Simple,
 					expected_proof_count: 1,
@@ -2778,17 +2834,8 @@ mod execute_message_recovery {
 
 			assert_eq!(handler.times(), 1);
 
-			assert!(PendingInboundEntries::<Runtime>::get(
-				session_id,
-				(MESSAGE_PROOF, ROUTER_ID_1)
-			)
-			.is_none());
-
-			assert!(PendingInboundEntries::<Runtime>::get(
-				session_id,
-				(MESSAGE_PROOF, ROUTER_ID_2)
-			)
-			.is_none());
+			assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none());
+			assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2).is_none());
 		});
 	}
 
@@ -2797,15 +2844,16 @@ mod execute_message_recovery {
 		new_test_ext().execute_with(|| {
 			let session_id = 1;
 
-			Routers::<Runtime>::set(Some(
+			Routers::<Runtime>::set(
 				BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
-			));
-			SessionIdStore::<Runtime>::set(Some(session_id));
+			);
+			SessionIdStore::<Runtime>::set(session_id);
 
 			PendingInboundEntries::<Runtime>::insert(
-				session_id,
-				(MESSAGE_PROOF, ROUTER_ID_1),
+				MESSAGE_PROOF,
+				ROUTER_ID_1,
 				InboundEntry::<Runtime>::Message {
+					session_id,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: Message::Simple,
 					expected_proof_count: 2,
@@ -2825,26 +2873,27 @@ mod execute_message_recovery {
 			});
 
 			assert_eq!(
-				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_1)),
+				PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1),
 				Some(InboundEntry::<Runtime>::Message {
+					session_id,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: Message::Simple,
 					expected_proof_count: 2,
 				})
 			);
 			assert_eq!(
-				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_2)),
-				Some(InboundEntry::<Runtime>::Proof { current_count: 1 })
+				PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2),
+				Some(InboundEntry::<Runtime>::Proof {
+					session_id,
+					current_count: 1
+				})
 			);
-			assert!(
-				PendingInboundEntries::<Runtime>::get(session_id, (MESSAGE_PROOF, ROUTER_ID_3))
-					.is_none()
-			)
+			assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_3).is_none())
 		});
 	}
 
 	#[test]
-	fn routers_not_found() {
+	fn not_enough_routers_for_domain() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
@@ -2853,15 +2902,10 @@ mod execute_message_recovery {
 					MESSAGE_PROOF,
 					ROUTER_ID_1,
 				),
-				Error::<Runtime>::RoutersNotFound
+				Error::<Runtime>::NotEnoughRoutersForDomain
 			);
-		});
-	}
 
-	#[test]
-	fn session_id_not_found() {
-		new_test_ext().execute_with(|| {
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap()));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
@@ -2870,7 +2914,7 @@ mod execute_message_recovery {
 					MESSAGE_PROOF,
 					ROUTER_ID_1,
 				),
-				Error::<Runtime>::SessionIdNotFound
+				Error::<Runtime>::NotEnoughRoutersForDomain
 			);
 		});
 	}
@@ -2878,8 +2922,8 @@ mod execute_message_recovery {
 	#[test]
 	fn unknown_router() {
 		new_test_ext().execute_with(|| {
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap()));
-			SessionIdStore::<Runtime>::set(Some(1));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+			SessionIdStore::<Runtime>::set(1);
 
 			assert_noop!(
 				LiquidityPoolsGateway::execute_message_recovery(
@@ -2896,15 +2940,15 @@ mod execute_message_recovery {
 	#[test]
 	fn proof_count_overflow() {
 		new_test_ext().execute_with(|| {
-			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id.clone()]).unwrap()));
-			SessionIdStore::<Runtime>::set(Some(session_id));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap());
+			SessionIdStore::<Runtime>::set(session_id);
 			PendingInboundEntries::<Runtime>::insert(
-				session_id,
-				(MESSAGE_PROOF, router_id.clone()),
+				MESSAGE_PROOF,
+				ROUTER_ID_2,
 				InboundEntry::<Runtime>::Proof {
+					session_id,
 					current_count: u32::MAX,
 				},
 			);
@@ -2914,7 +2958,7 @@ mod execute_message_recovery {
 					RuntimeOrigin::root(),
 					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
-					router_id
+					ROUTER_ID_2
 				),
 				Arithmetic(Overflow)
 			);
@@ -2925,15 +2969,15 @@ mod execute_message_recovery {
 	fn expected_message_proof_type() {
 		new_test_ext().execute_with(|| {
 			let domain_address = TEST_DOMAIN_ADDRESS;
-			let router_id = ROUTER_ID_1;
 			let session_id = 1;
 
-			Routers::<Runtime>::set(Some(BoundedVec::try_from(vec![router_id.clone()]).unwrap()));
-			SessionIdStore::<Runtime>::set(Some(session_id));
+			Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap());
+			SessionIdStore::<Runtime>::set(session_id);
 			PendingInboundEntries::<Runtime>::insert(
-				session_id,
-				(MESSAGE_PROOF, router_id.clone()),
+				MESSAGE_PROOF,
+				ROUTER_ID_2,
 				InboundEntry::<Runtime>::Message {
+					session_id,
 					domain_address: domain_address.clone(),
 					message: Message::Simple,
 					expected_proof_count: 2,
@@ -2945,7 +2989,7 @@ mod execute_message_recovery {
 					RuntimeOrigin::root(),
 					TEST_DOMAIN_ADDRESS,
 					MESSAGE_PROOF,
-					router_id
+					ROUTER_ID_2
 				),
 				Error::<Runtime>::ExpectedMessageProofType
 			);

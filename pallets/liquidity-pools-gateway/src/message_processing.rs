@@ -14,24 +14,21 @@ use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
 use sp_runtime::DispatchError;
 
 use crate::{
-	message::GatewayMessage, Config, Error, InvalidMessageSessions, Pallet, PendingInboundEntries,
-	Routers, SessionIdStore,
+	message::GatewayMessage, Config, Error, Pallet, PendingInboundEntries, Routers, SessionIdStore,
 };
-
-/// The limit used when clearing the `PendingInboundEntries` for invalid
-/// session IDs.
-const INVALID_ID_REMOVAL_LIMIT: u32 = 100;
 
 /// Type used when storing inbound message information.
 #[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum InboundEntry<T: Config> {
 	Message {
+		session_id: T::SessionId,
 		domain_address: DomainAddress,
 		message: T::Message,
 		expected_proof_count: u32,
 	},
 	Proof {
+		session_id: T::SessionId,
 		current_count: u32,
 	},
 }
@@ -51,7 +48,7 @@ impl<T: Config> Pallet<T> {
 	pub fn get_router_ids_for_domain(domain: Domain) -> Result<Vec<T::RouterId>, DispatchError> {
 		let all_routers_for_domain = T::RouterProvider::routers_for_domain(domain);
 
-		let stored_routers = Routers::<T>::get().ok_or(Error::<T>::RoutersNotFound)?;
+		let stored_routers = Routers::<T>::get();
 
 		let res = all_routers_for_domain
 			.iter()
@@ -91,17 +88,20 @@ impl<T: Config> Pallet<T> {
 	/// Creates an inbound entry based on whether the inbound message is a
 	/// proof or not.
 	fn create_inbound_entry(
-		domain_address: DomainAddress,
+		inbound_processing_info: &InboundProcessingInfo<T>,
 		message: T::Message,
-		expected_proof_count: u32,
 	) -> InboundEntry<T> {
 		match message.get_message_proof() {
 			None => InboundEntry::Message {
-				domain_address,
+				session_id: inbound_processing_info.current_session_id.clone(),
+				domain_address: inbound_processing_info.domain_address.clone(),
 				message,
-				expected_proof_count,
+				expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
 			},
-			Some(_) => InboundEntry::Proof { current_count: 1 },
+			Some(_) => InboundEntry::Proof {
+				session_id: inbound_processing_info.current_session_id,
+				current_count: 1,
+			},
 		}
 	}
 
@@ -146,7 +146,6 @@ impl<T: Config> Pallet<T> {
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	fn upsert_pending_entry(
-		session_id: T::SessionId,
 		message_proof: Proof,
 		router_id: T::RouterId,
 		inbound_entry: InboundEntry<T>,
@@ -154,10 +153,8 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-		PendingInboundEntries::<T>::try_mutate(
-			session_id,
-			(message_proof, router_id),
-			|storage_entry| match storage_entry {
+		PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+			match storage_entry {
 				None => {
 					*storage_entry = Some(inbound_entry);
 
@@ -165,26 +162,51 @@ impl<T: Config> Pallet<T> {
 				}
 				Some(stored_inbound_entry) => match stored_inbound_entry {
 					InboundEntry::Message {
-						expected_proof_count: old,
+						session_id: stored_session_id,
+						expected_proof_count: stored_expected_proof_count,
 						..
 					} => match inbound_entry {
 						InboundEntry::Message {
-							expected_proof_count: new,
+							session_id: new_session_id,
+							expected_proof_count: new_expected_proof_count,
 							..
-						} => old.ensure_add_assign(new).map_err(|e| e.into()),
+						} => {
+							if *stored_session_id != new_session_id {
+								*stored_session_id = new_session_id;
+								*stored_expected_proof_count = new_expected_proof_count;
+							} else {
+								stored_expected_proof_count
+									.ensure_add_assign(new_expected_proof_count)?;
+							}
+
+							Ok::<(), DispatchError>(())
+						}
 						InboundEntry::Proof { .. } => Err(Error::<T>::ExpectedMessageType.into()),
 					},
-					InboundEntry::Proof { current_count: old } => match inbound_entry {
-						InboundEntry::Proof { current_count: new } => {
-							old.ensure_add_assign(new).map_err(|e| e.into())
+					InboundEntry::Proof {
+						session_id: stored_session_id,
+						current_count: stored_current_count,
+					} => match inbound_entry {
+						InboundEntry::Proof {
+							session_id: new_session_id,
+							current_count: new_current_count,
+						} => {
+							if *stored_session_id != new_session_id {
+								*stored_session_id = new_session_id;
+								*stored_current_count = new_current_count;
+							} else {
+								stored_current_count.ensure_add_assign(new_current_count)?;
+							}
+
+							Ok::<(), DispatchError>(())
 						}
 						InboundEntry::Message { .. } => {
 							Err(Error::<T>::ExpectedMessageProofType.into())
 						}
 					},
 				},
-			},
-		)
+			}
+		})
 	}
 
 	/// Creates, validates and upserts the inbound entry.
@@ -195,21 +217,11 @@ impl<T: Config> Pallet<T> {
 		router_id: T::RouterId,
 		weight: &mut Weight,
 	) -> DispatchResult {
-		let inbound_entry = Self::create_inbound_entry(
-			inbound_processing_info.domain_address.clone(),
-			message,
-			inbound_processing_info.expected_proof_count_per_message,
-		);
+		let inbound_entry = Self::create_inbound_entry(inbound_processing_info, message);
 
 		Self::validate_inbound_entry(&inbound_processing_info, &router_id, &inbound_entry)?;
 
-		Self::upsert_pending_entry(
-			inbound_processing_info.current_session_id,
-			message_proof,
-			router_id,
-			inbound_entry,
-			weight,
-		)?;
+		Self::upsert_pending_entry(message_proof, router_id, inbound_entry, weight)?;
 
 		Ok(())
 	}
@@ -228,19 +240,24 @@ impl<T: Config> Pallet<T> {
 		for router_id in &inbound_processing_info.router_ids {
 			weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-			match PendingInboundEntries::<T>::get(
-				inbound_processing_info.current_session_id,
-				(message_proof, router_id),
-			) {
+			match PendingInboundEntries::<T>::get(message_proof, router_id) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
 				None => return Ok(()),
-				Some(inbound_entry) => match inbound_entry {
+				Some(stored_inbound_entry) => match stored_inbound_entry {
 					InboundEntry::Message {
 						message: stored_message,
 						..
 					} => message = Some(stored_message),
-					InboundEntry::Proof { current_count } => {
+					InboundEntry::Proof {
+						session_id,
+						current_count,
+					} => {
+						if session_id != inbound_processing_info.current_session_id {
+							// Don't count vote from invalid sessions.
+							continue;
+						}
+
 						if current_count > 0 {
 							votes += 1;
 						}
@@ -281,39 +298,59 @@ impl<T: Config> Pallet<T> {
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			match PendingInboundEntries::<T>::try_mutate(
-				inbound_processing_info.current_session_id,
-				(message_proof, router_id),
+				message_proof,
+				router_id,
 				|storage_entry| match storage_entry {
 					None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
-					Some(stored_inbound_entry) => match stored_inbound_entry {
-						InboundEntry::Message {
-							expected_proof_count,
-							..
-						} => {
-							let updated_count = (*expected_proof_count).ensure_sub(
-								inbound_processing_info.expected_proof_count_per_message,
-							)?;
+					Some(stored_inbound_entry) => {
+						match stored_inbound_entry {
+							InboundEntry::Message {
+								session_id,
+								expected_proof_count,
+								..
+							} => {
+								if *session_id != inbound_processing_info.current_session_id {
+									// Remove the storage entry completely.
+									*storage_entry = None;
 
-							if updated_count == 0 {
-								*storage_entry = None;
-							} else {
-								*expected_proof_count = updated_count;
+									return Ok::<(), DispatchError>(());
+								}
+
+								let updated_count = (*expected_proof_count).ensure_sub(
+									inbound_processing_info.expected_proof_count_per_message,
+								)?;
+
+								if updated_count == 0 {
+									*storage_entry = None;
+								} else {
+									*expected_proof_count = updated_count;
+								}
+
+								Ok::<(), DispatchError>(())
 							}
+							InboundEntry::Proof {
+								session_id,
+								current_count,
+							} => {
+								if *session_id != inbound_processing_info.current_session_id {
+									// Remove the storage entry completely.
+									*storage_entry = None;
 
-							Ok::<(), DispatchError>(())
-						}
-						InboundEntry::Proof { current_count } => {
-							let updated_count = (*current_count).ensure_sub(1)?;
+									return Ok::<(), DispatchError>(());
+								}
 
-							if updated_count == 0 {
-								*storage_entry = None;
-							} else {
-								*current_count = updated_count;
+								let updated_count = (*current_count).ensure_sub(1)?;
+
+								if updated_count == 0 {
+									*storage_entry = None;
+								} else {
+									*current_count = updated_count;
+								}
+
+								Ok::<(), DispatchError>(())
 							}
-
-							Ok::<(), DispatchError>(())
 						}
-					},
+					}
 				},
 			) {
 				Ok(()) => {}
@@ -334,7 +371,7 @@ impl<T: Config> Pallet<T> {
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
-		let current_session_id = SessionIdStore::<T>::get().ok_or(Error::<T>::SessionIdNotFound)?;
+		let current_session_id = SessionIdStore::<T>::get();
 
 		weight.saturating_accrue(T::DbWeight::get().reads(1));
 
@@ -373,7 +410,9 @@ impl<T: Config> Pallet<T> {
 		let mut count = 0;
 
 		for submessage in message.submessages() {
-			count += 1;
+			if let Err(e) = count.ensure_add_assign(1) {
+				return (Err(e.into()), weight);
+			}
 
 			let message_proof = Self::get_message_proof(message.clone());
 
@@ -446,53 +485,5 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(())
-	}
-
-	/// Clears `PendingInboundEntries` mapped to invalid session IDs as long as
-	/// there is enough weight available for this operation.
-	///
-	/// The invalid session IDs are removed from storage if all entries mapped
-	/// to them were cleared.
-	pub(crate) fn clear_invalid_session_ids(max_weight: Weight) -> Weight {
-		let invalid_session_ids = InvalidMessageSessions::<T>::iter_keys().collect::<Vec<_>>();
-
-		let mut weight = T::DbWeight::get().reads(1);
-
-		for invalid_session_id in invalid_session_ids {
-			let mut cursor: Option<Vec<u8>> = None;
-
-			loop {
-				let res = PendingInboundEntries::<T>::clear_prefix(
-					invalid_session_id,
-					INVALID_ID_REMOVAL_LIMIT,
-					cursor.as_ref().map(|x| x.as_ref()),
-				);
-
-				weight.saturating_accrue(
-					T::DbWeight::get().reads_writes(res.loops.into(), res.unique.into()),
-				);
-
-				if weight.all_gte(max_weight) {
-					return weight;
-				}
-
-				cursor = match res.maybe_cursor {
-					None => {
-						InvalidMessageSessions::<T>::remove(invalid_session_id);
-
-						weight.saturating_accrue(T::DbWeight::get().writes(1));
-
-						if weight.all_gte(max_weight) {
-							return weight;
-						}
-
-						break;
-					}
-					Some(c) => Some(c),
-				};
-			}
-		}
-
-		weight
 	}
 }
