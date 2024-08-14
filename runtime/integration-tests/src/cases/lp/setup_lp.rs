@@ -466,7 +466,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -477,7 +477,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -488,7 +488,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -528,7 +528,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -539,7 +539,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -550,7 +550,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -590,7 +590,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -601,7 +601,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -612,7 +612,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.id_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -667,7 +667,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		);
 		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()).as_local(),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()).as_local(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -675,7 +675,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -687,7 +687,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()).as_local(),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()).as_local(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -695,7 +695,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -707,7 +707,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()).as_local(),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()).as_local(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -715,7 +715,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -727,7 +727,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()).as_local(),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()).as_local(),
 			POOL_C,
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -735,7 +735,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_C,
 			utils::pool_c_tranche_1_id::<T>(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.id_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -747,7 +747,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				currency,
 				"mint",
 				Some(&[
-					Token::Address(investor.into()),
+					Token::Address(investor.id_eth()),
 					Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 				]),
 			)
@@ -759,7 +759,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 						investor,
 						currency,
 						"balanceOf",
-						Some(&[Token::Address(investor.into())])
+						Some(&[Token::Address(investor.id_eth())])
 					)
 					.unwrap()
 					.value

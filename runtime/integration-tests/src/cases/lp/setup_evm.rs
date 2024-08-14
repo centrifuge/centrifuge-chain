@@ -350,7 +350,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::ADAPTER,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap(); */
 	evm.call(
@@ -358,7 +358,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::LP_FACTORY,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -366,7 +366,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::TRANCHE_FACTORY,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -374,7 +374,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::RESTRICTION_MANAGER,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -382,7 +382,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::TRANSFER_PROXY_FACTORY,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -390,7 +390,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::ROOT,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -398,7 +398,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::INVESTMENT_MANAGER,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -406,7 +406,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::POOL_MANAGER,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -414,7 +414,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::ESCROW,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -422,7 +422,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::ROUTER_ESCROW,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -430,7 +430,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::GATEWAY,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -438,7 +438,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::ROUTER,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 	evm.call(
@@ -446,7 +446,7 @@ pub fn remove_deployer_access<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExte
 		Default::default(),
 		names::GAS_SERVICE,
 		"deny",
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	)
 	.unwrap();
 }
@@ -497,13 +497,13 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		contracts::ESCROW,
 		names::ESCROW,
 		Keyring::Alice,
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	);
 	evm.deploy(
 		contracts::ESCROW,
 		names::ROUTER_ESCROW,
 		Keyring::Alice,
-		Some(&[Token::Address(Keyring::Alice.into())]),
+		Some(&[Token::Address(Keyring::Alice.id_eth())]),
 	);
 	evm.deploy(
 		contracts::ROOT,
@@ -512,7 +512,7 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		Some(&[
 			Token::Address(evm.deployed(names::ESCROW).address()),
 			Token::Uint(U256::from(48 * SECONDS_PER_HOUR)),
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 		]),
 	);
 	evm.deploy(
@@ -527,7 +527,7 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		Keyring::Alice,
 		Some(&[
 			Token::Address(evm.deployed(names::ROOT).address()),
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 		]),
 	);
 	evm.deploy(
@@ -536,7 +536,7 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		Keyring::Alice,
 		Some(&[
 			Token::Address(evm.deployed(names::ROOT).address()),
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 		]),
 	);
 	evm.deploy(
@@ -564,7 +564,7 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		Keyring::Alice,
 		Some(&[
 			Token::Address(evm.deployed(names::ROOT).address()),
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.id_eth()),
 		]),
 	);
 	evm.deploy(
@@ -605,7 +605,7 @@ pub fn deployer_script<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T
 		Keyring::Alice,
 		Some(&[
 			// Based on https://github.com/centrifuge/liquidity-pools/blob/da4e46577712c762d069670077280112ea1c8ce8/test/integration/LocalAdapter.s.sol#L12-L14
-			Token::Address(H160::from(Keyring::Admin)),
+			Token::Address(Keyring::Admin.id_eth()),
 			Token::Address(evm.deployed(names::ROOT).address()),
 			Token::Address(evm.deployed(names::GATEWAY).address()),
 		]),

@@ -36,8 +36,9 @@ use crate::{
 	utils::{accounts::Keyring, evm::receipt_ok, last_event, pool::get_tranche_ids},
 };
 
+/// Returns the local representation of a remote ethereum account
 pub fn remote_account_of<T: Runtime>(keyring: Keyring) -> <T as frame_system::Config>::AccountId {
-	DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, keyring.into()).as_local()
+	DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, keyring.id_eth()).as_local()
 }
 
 pub const REVERT_ERR: Result<CallInfo, DispatchError> =
@@ -164,7 +165,7 @@ pub fn to_fixed_array<const S: usize>(src: &[u8]) -> [u8; S] {
 
 pub fn as_h160_32bytes(who: Keyring) -> [u8; 32] {
 	let mut address = [0u8; 32];
-	address[..20].copy_from_slice(H160::from(who).as_bytes());
+	address[..20].copy_from_slice(who.id_eth().as_bytes());
 	address
 }
 
