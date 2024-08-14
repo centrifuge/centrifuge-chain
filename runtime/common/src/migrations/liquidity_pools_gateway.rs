@@ -11,8 +11,10 @@
 // GNU General Public License for more details.
 
 use cfg_types::domain_address::Domain;
+#[cfg(feature = "try-runtime")]
+use frame_support::pallet_prelude::{Decode, Encode};
 use frame_support::{
-	pallet_prelude::{Decode, Encode, ValueQuery},
+	pallet_prelude::ValueQuery,
 	storage_alias,
 	traits::{Get, OnRuntimeUpgrade},
 	weights::Weight,
@@ -157,21 +159,26 @@ pub mod clear_deprecated_domain_router_entries {
 		fn on_runtime_upgrade() -> Weight {
 			let items = v0::DomainRouters::<T>::iter_keys().count().saturated_into();
 
-			pallet_liquidity_pools_gateway::DomainRouters::<T>::translate_values::<
-				v0::DomainRouter<T>,
-				_,
-			>(|old| match old {
-				v0::DomainRouter::AxelarEVM(router) => Some(
-					liquidity_pools_gateway_routers::DomainRouter::<T>::AxelarEVM(router).into(),
-				),
-				// Remove other entries
-				router => {
-					log::info!("{LOG_PREFIX}: Removing entry {router:?}!");
-					None
-				}
-			});
+			pallet_liquidity_pools_gateway::DomainRouters::<T>::translate::<v0::DomainRouter<T>, _>(
+				|key, old| {
+					log::debug!("{LOG_PREFIX}: Inspecting key {key:?} with value\n{old:?}");
+					match old {
+						v0::DomainRouter::AxelarEVM(router) => Some(
+							liquidity_pools_gateway_routers::DomainRouter::<T>::AxelarEVM(router)
+								.into(),
+						),
+						// Remove other entries
+						router => {
+							log::info!("{LOG_PREFIX} : Removing entry {router:?}!");
+							None
+						}
+					}
+				},
+			);
 
-			log::info!("{LOG_PREFIX}: Migration done with {items:?} items in total!");
+			log::info!(
+				"{LOG_PREFIX} ON_RUNTIME_UPGRADE: Migration done with {items:?} items in total!"
+			);
 
 			T::DbWeight::get().reads_writes(items, items)
 		}
@@ -179,12 +186,23 @@ pub mod clear_deprecated_domain_router_entries {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			let count_total = v0::DomainRouters::<T>::iter_keys().count();
-			let count_axelar_evm_router: u64 = v0::DomainRouters::<T>::iter_values()
-				.filter(|v| matches!(v, v0::DomainRouter::AxelarEVM(_)))
+			let count_axelar_evm_router: u64 = v0::DomainRouters::<T>::iter()
+				.filter(|(domain, router)| {
+					log::debug!(
+						"{LOG_PREFIX} PRE: Inspecting key {domain:?} with value\n{router:?}"
+					);
+					matches!(router, v0::DomainRouter::AxelarEVM(_))
+				})
 				.count()
 				.saturated_into();
-			log::info!("{LOG_PREFIX}: Found {count_axelar_evm_router:?} values of total {count_total:?} to migrate!");
-			log::info!("{LOG_PREFIX}: Pre checks done!");
+			log::info!(
+				"{LOG_PREFIX} PRE: Found {count_axelar_evm_router:?} values of
+		total {count_total:?} to migrate!"
+			);
+			log::info!(
+				"{LOG_PREFIX} PRE: Checks
+		done!"
+			);
 			Ok(count_axelar_evm_router.encode())
 		}
 
@@ -197,10 +215,10 @@ pub mod clear_deprecated_domain_router_entries {
 				.saturated_into();
 			assert_eq!(
 				pre_count, post_count,
-				"{LOG_PREFIX}: Mismatching number of domain routers after migration!"
+				"{LOG_PREFIX} POST: Mismatching number of domain routers after migration!"
 			);
 
-			log::info!("{LOG_PREFIX}: Post checks done!");
+			log::info!("{LOG_PREFIX} POST: Checks done!");
 
 			Ok(())
 		}

@@ -15,13 +15,21 @@ use crate::Runtime;
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeAltair1402 = (
-	// Remove deprecated DomainRouters entries
-	runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore
 	frame_support::migrations::VersionedMigration<
 		0,
 		1,
-		runtime_common::migrations::liquidity_pools_gateway::clear_outbound_nonce::Migration<Runtime>,
+		runtime_common::migrations::liquidity_pools_gateway::clear_outbound_nonce::Migration<
+			Runtime,
+		>,
+		pallet_liquidity_pools_gateway::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
+	// Remove deprecated DomainRouters entries
+	frame_support::migrations::VersionedMigration<
+		1,
+		2,
+		runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,

@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use frame_support::migrations::VersionedMigration;
+
 use crate::Runtime;
 
-pub type UpgradeDevelopment1402 =
-	(runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>,);
+pub type UpgradeDevelopment1402 = VersionedMigration<1, 2, runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>, pallet_liquidity_pools_gateway::Pallet<Runtime>, <Runtime as frame_system::Config>::DbWeight>;
