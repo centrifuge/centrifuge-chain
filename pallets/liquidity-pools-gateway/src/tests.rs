@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
+use cfg_traits::liquidity_pools::{
+	LPEncoding, MessageProcessor, MessageReceiver, OutboundMessageHandler,
+};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use sp_arithmetic::ArithmeticError::Overflow;
+use sp_arithmetic::ArithmeticError::{Overflow, Underflow};
 use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{
 	DispatchError,
@@ -23,7 +25,7 @@ use super::{
 	pallet::*,
 };
 use crate::{
-	message_processing::{InboundEntry, InboundProcessingInfo},
+	message_processing::{InboundEntry, InboundProcessingInfo, MessageEntry, ProofEntry},
 	GatewayMessage,
 };
 
@@ -679,12 +681,12 @@ mod extrinsics {
 				PendingInboundEntries::<Runtime>::insert(
 					MESSAGE_PROOF,
 					ROUTER_ID_1,
-					InboundEntry::<Runtime>::Message {
+					InboundEntry::Message(MessageEntry {
 						session_id,
 						domain_address: TEST_DOMAIN_ADDRESS,
 						message: Message::Simple,
 						expected_proof_count: 1,
-					},
+					}),
 				);
 
 				let handler =
@@ -731,12 +733,12 @@ mod extrinsics {
 				PendingInboundEntries::<Runtime>::insert(
 					MESSAGE_PROOF,
 					ROUTER_ID_1,
-					InboundEntry::<Runtime>::Message {
+					InboundEntry::Message(MessageEntry {
 						session_id,
 						domain_address: TEST_DOMAIN_ADDRESS,
 						message: Message::Simple,
 						expected_proof_count: 2,
-					},
+					}),
 				);
 
 				assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
@@ -753,19 +755,25 @@ mod extrinsics {
 
 				assert_eq!(
 					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1),
-					Some(InboundEntry::<Runtime>::Message {
-						session_id,
-						domain_address: TEST_DOMAIN_ADDRESS,
-						message: Message::Simple,
-						expected_proof_count: 2,
-					})
+					Some(
+						MessageEntry {
+							session_id,
+							domain_address: TEST_DOMAIN_ADDRESS,
+							message: Message::Simple,
+							expected_proof_count: 2,
+						}
+						.into()
+					)
 				);
 				assert_eq!(
 					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2),
-					Some(InboundEntry::<Runtime>::Proof {
-						session_id,
-						current_count: 1
-					})
+					Some(
+						ProofEntry {
+							session_id,
+							current_count: 1
+						}
+						.into()
+					)
 				);
 				assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_3).is_none())
 			});
@@ -828,10 +836,10 @@ mod extrinsics {
 				PendingInboundEntries::<Runtime>::insert(
 					MESSAGE_PROOF,
 					ROUTER_ID_2,
-					InboundEntry::<Runtime>::Proof {
+					InboundEntry::Proof(ProofEntry {
 						session_id,
 						current_count: u32::MAX,
-					},
+					}),
 				);
 
 				assert_noop!(
@@ -859,12 +867,12 @@ mod extrinsics {
 				PendingInboundEntries::<Runtime>::insert(
 					MESSAGE_PROOF,
 					ROUTER_ID_2,
-					InboundEntry::<Runtime>::Message {
+					InboundEntry::Message(MessageEntry {
 						session_id,
 						domain_address: domain_address.clone(),
 						message: Message::Simple,
 						expected_proof_count: 2,
-					},
+					}),
 				);
 
 				assert_noop!(
@@ -1248,10 +1256,10 @@ mod implementations {
 						PendingInboundEntries::<Runtime>::insert(
 							message_proof,
 							router_id,
-							InboundEntry::<Runtime>::Proof {
+							InboundEntry::Proof(ProofEntry {
 								session_id,
 								current_count: 0,
-							},
+							}),
 						);
 
 						let (res, _) = LiquidityPoolsGateway::process(gateway_message);
@@ -1292,12 +1300,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 2,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1314,10 +1325,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 2,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1381,12 +1395,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 3,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 3,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1404,10 +1421,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 3,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 3,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1423,12 +1443,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 1,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 1,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1445,12 +1468,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 1,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 1,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1468,10 +1494,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 1,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 1,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1487,12 +1516,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 1,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 1,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1510,10 +1542,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 1,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 1,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1530,10 +1565,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 1,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 1,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1572,12 +1610,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 4,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 4,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1596,10 +1637,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 4,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 4,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1616,35 +1660,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}),
-												),
-												(ROUTER_ID_2, None),
-											],
-										},
-									),
-									(
-										vec![
-											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_1, Message::Simple),
-										],
-										ExpectedTestResult {
-											message_submitted_times: 1,
-											expected_storage_entries: vec![
-												(
-													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 2,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1653,6 +1677,32 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_1, Message::Simple),
+										],
+										ExpectedTestResult {
+											message_submitted_times: 1,
+											expected_storage_entries: vec![
+												(
+													ROUTER_ID_1,
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 2,
+														}
+														.into(),
+													),
+												),
+												(ROUTER_ID_2, None),
+											],
+										},
+									),
+									(
+										vec![
+											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
@@ -1662,12 +1712,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 2,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1685,12 +1738,15 @@ mod implementations {
 											expected_storage_entries: vec![
 												(
 													ROUTER_ID_1,
-													Some(InboundEntry::<Runtime>::Message {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}),
+													Some(
+														MessageEntry {
+															session_id: TEST_SESSION_ID,
+															domain_address: TEST_DOMAIN_ADDRESS,
+															message: Message::Simple,
+															expected_proof_count: 2,
+														}
+														.into(),
+													),
 												),
 												(ROUTER_ID_2, None),
 											],
@@ -1799,10 +1855,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 2,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1820,10 +1879,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 2,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1841,10 +1903,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 2,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1862,10 +1927,13 @@ mod implementations {
 												(ROUTER_ID_1, None),
 												(
 													ROUTER_ID_2,
-													Some(InboundEntry::<Runtime>::Proof {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}),
+													Some(
+														ProofEntry {
+															session_id: TEST_SESSION_ID,
+															current_count: 2,
+														}
+														.into(),
+													),
 												),
 											],
 										},
@@ -1963,12 +2031,15 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(ROUTER_ID_3, None),
@@ -1986,10 +2057,13 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2007,10 +2081,13 @@ mod implementations {
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2026,17 +2103,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2052,17 +2135,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2077,19 +2166,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2105,20 +2200,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2133,20 +2234,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2161,19 +2268,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2189,20 +2302,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2240,12 +2359,15 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 6,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 6,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(ROUTER_ID_3, None),
@@ -2264,10 +2386,13 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 3,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 3,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2286,10 +2411,13 @@ mod implementations {
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 3,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 3,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2305,19 +2433,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2334,19 +2468,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2363,19 +2503,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2392,20 +2538,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2421,20 +2573,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2450,20 +2608,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2479,19 +2643,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2508,19 +2678,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 2,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2537,20 +2713,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2566,19 +2748,25 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_3, None),
 										],
@@ -2595,20 +2783,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2624,20 +2818,26 @@ mod implementations {
 										expected_storage_entries: vec![
 											(
 												ROUTER_ID_1,
-												Some(InboundEntry::<Runtime>::Message {
-													session_id: TEST_SESSION_ID,
-													domain_address: TEST_DOMAIN_ADDRESS,
-													message: Message::Simple,
-													expected_proof_count: 4,
-												}),
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
 											),
 											(ROUTER_ID_2, None),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2744,17 +2944,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2771,17 +2977,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2798,17 +3010,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2825,17 +3043,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2852,17 +3076,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2879,17 +3109,23 @@ mod implementations {
 											(ROUTER_ID_1, None),
 											(
 												ROUTER_ID_2,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 1,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
 											),
 											(
 												ROUTER_ID_3,
-												Some(InboundEntry::<Runtime>::Proof {
-													session_id: TEST_SESSION_ID,
-													current_count: 2,
-												}),
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
 											),
 										],
 									},
@@ -2906,6 +3142,57 @@ mod implementations {
 						run_inbound_message_test_suite(suite);
 					}
 				}
+			}
+
+			#[test]
+			fn same_message_multiple_domain_addresses() {
+				new_test_ext().execute_with(|| {
+					let message = Message::Simple;
+
+					let first_message = GatewayMessage::Inbound {
+						domain_address: DomainAddress::EVM(1, [1; 20]),
+						message: message.clone(),
+						router_id: ROUTER_ID_1,
+					};
+
+					let second_message = GatewayMessage::Inbound {
+						domain_address: DomainAddress::EVM(2, [2; 20]),
+						message,
+						router_id: ROUTER_ID_1,
+					};
+
+					Routers::<Runtime>::set(
+						BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
+					);
+
+					let (res, _) = LiquidityPoolsGateway::process(first_message);
+					assert_ok!(res);
+
+					let expected_inbound_entry = InboundEntry::Message(MessageEntry {
+						session_id: 0,
+						domain_address: DomainAddress::EVM(1, [1; 20]),
+						message: Message::Simple,
+						expected_proof_count: 1,
+					});
+
+					let stored_inbound_entry =
+						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+					assert_eq!(stored_inbound_entry, expected_inbound_entry);
+
+					let (res, _) = LiquidityPoolsGateway::process(second_message);
+					assert_ok!(res);
+
+					let expected_inbound_entry = InboundEntry::Message(MessageEntry {
+						session_id: 0,
+						domain_address: DomainAddress::EVM(1, [1; 20]),
+						message: Message::Simple,
+						expected_proof_count: 2,
+					});
+
+					let stored_inbound_entry =
+						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+					assert_eq!(stored_inbound_entry, expected_inbound_entry);
+				});
 			}
 
 			#[test]
@@ -3117,144 +3404,34 @@ mod implementations {
 						expected_proof_count_per_message: 2,
 					};
 
-					let tests = vec![
+					let tests: Vec<(Message, InboundEntry<Runtime>)> = vec![
 						(
 							Message::Simple,
-							InboundEntry::<Runtime>::Message {
+							MessageEntry {
 								session_id: inbound_processing_info.current_session_id,
 								domain_address: inbound_processing_info.domain_address.clone(),
 								message: Message::Simple,
 								expected_proof_count: inbound_processing_info
 									.expected_proof_count_per_message,
-							},
+							}
+							.into(),
 						),
 						(
 							Message::Proof(MESSAGE_PROOF),
-							InboundEntry::<Runtime>::Proof {
+							ProofEntry {
 								session_id: inbound_processing_info.current_session_id,
 								current_count: 1,
-							},
+							}
+							.into(),
 						),
 					];
 
 					for (test_message, expected_inbound_entry) in tests {
-						let res = LiquidityPoolsGateway::create_inbound_entry(
-							&inbound_processing_info,
-							test_message,
-						);
+						let res: InboundEntry<Runtime> =
+							(&inbound_processing_info, test_message).into();
 
 						assert_eq!(res, expected_inbound_entry)
 					}
-				});
-			}
-		}
-
-		mod validate_inbound_entry {
-			use super::*;
-
-			#[test]
-			fn success() {
-				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
-
-					let inbound_entry = InboundEntry::<Runtime>::Message {
-						session_id: inbound_processing_info.current_session_id,
-						domain_address: inbound_processing_info.domain_address.clone(),
-						message: Message::Simple,
-						expected_proof_count: inbound_processing_info
-							.expected_proof_count_per_message,
-					};
-
-					assert_ok!(LiquidityPoolsGateway::validate_inbound_entry(
-						&inbound_processing_info,
-						&ROUTER_ID_1,
-						&inbound_entry
-					));
-
-					let inbound_entry = InboundEntry::<Runtime>::Proof {
-						session_id: inbound_processing_info.current_session_id,
-						current_count: 1,
-					};
-
-					assert_ok!(LiquidityPoolsGateway::validate_inbound_entry(
-						&inbound_processing_info,
-						&ROUTER_ID_2,
-						&inbound_entry
-					));
-				});
-			}
-
-			#[test]
-			fn unknown_router() {
-				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
-
-					let inbound_entry = InboundEntry::<Runtime>::Proof {
-						session_id: inbound_processing_info.current_session_id,
-						current_count: 1,
-					};
-
-					assert_noop!(
-						LiquidityPoolsGateway::validate_inbound_entry(
-							&inbound_processing_info,
-							&RouterId(4),
-							&inbound_entry
-						),
-						Error::<Runtime>::UnknownRouter
-					);
-				});
-			}
-
-			#[test]
-			fn message_type_mismatch() {
-				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
-
-					let inbound_entry = InboundEntry::<Runtime>::Message {
-						session_id: inbound_processing_info.current_session_id,
-						domain_address: inbound_processing_info.domain_address.clone(),
-						message: Message::Simple,
-						expected_proof_count: inbound_processing_info
-							.expected_proof_count_per_message,
-					};
-
-					assert_noop!(
-						LiquidityPoolsGateway::validate_inbound_entry(
-							&inbound_processing_info,
-							&ROUTER_ID_2,
-							&inbound_entry
-						),
-						Error::<Runtime>::MessageExpectedFromFirstRouter
-					);
-
-					let inbound_entry = InboundEntry::<Runtime>::Proof {
-						session_id: inbound_processing_info.current_session_id,
-						current_count: 1,
-					};
-
-					assert_noop!(
-						LiquidityPoolsGateway::validate_inbound_entry(
-							&inbound_processing_info,
-							&ROUTER_ID_1,
-							&inbound_entry
-						),
-						Error::<Runtime>::ProofNotExpectedFromFirstRouter
-					);
 				});
 			}
 		}
@@ -3272,23 +3449,25 @@ mod implementations {
 						expected_proof_count_per_message: 2,
 					};
 
-					let tests = vec![
+					let tests: Vec<(RouterId, InboundEntry<Runtime>)> = vec![
 						(
 							ROUTER_ID_1,
-							InboundEntry::<Runtime>::Message {
+							MessageEntry {
 								session_id: inbound_processing_info.current_session_id,
 								domain_address: inbound_processing_info.domain_address.clone(),
 								message: Message::Simple,
 								expected_proof_count: inbound_processing_info
 									.expected_proof_count_per_message,
-							},
+							}
+							.into(),
 						),
 						(
 							ROUTER_ID_2,
-							InboundEntry::<Runtime>::Proof {
+							ProofEntry {
 								session_id: inbound_processing_info.current_session_id,
 								current_count: 1,
-							},
+							}
+							.into(),
 						),
 					];
 
@@ -3311,12 +3490,13 @@ mod implementations {
 			#[test]
 			fn message_entry_same_session() {
 				new_test_ext().execute_with(|| {
-					let inbound_entry = InboundEntry::<Runtime>::Message {
+					let inbound_entry: InboundEntry<Runtime> = MessageEntry {
 						session_id: 1,
 						domain_address: TEST_DOMAIN_ADDRESS,
 						message: Message::Simple,
 						expected_proof_count: 2,
-					};
+					}
+					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3334,12 +3514,13 @@ mod implementations {
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
-						InboundEntry::<Runtime>::Message {
+						MessageEntry {
 							session_id: 1,
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
 							expected_proof_count: 4,
 						}
+						.into()
 					);
 				});
 			}
@@ -3350,35 +3531,37 @@ mod implementations {
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
-						InboundEntry::<Runtime>::Message {
+						InboundEntry::Message(MessageEntry {
 							session_id: 1,
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
 							expected_proof_count: 2,
-						},
+						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
 						ROUTER_ID_1.clone(),
-						InboundEntry::<Runtime>::Message {
+						MessageEntry {
 							session_id: 2,
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
 							expected_proof_count: 2,
-						},
+						}
+						.into(),
 					));
 
 					let res =
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
-						InboundEntry::<Runtime>::Message {
+						MessageEntry {
 							session_id: 2,
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}
+						.into()
 					);
 				});
 			}
@@ -3386,12 +3569,13 @@ mod implementations {
 			#[test]
 			fn expected_message_type() {
 				new_test_ext().execute_with(|| {
-					let inbound_entry = InboundEntry::<Runtime>::Message {
+					let inbound_entry: InboundEntry<Runtime> = MessageEntry {
 						session_id: 1,
 						domain_address: TEST_DOMAIN_ADDRESS,
 						message: Message::Simple,
 						expected_proof_count: 2,
-					};
+					}
+					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3403,10 +3587,10 @@ mod implementations {
 						LiquidityPoolsGateway::upsert_pending_entry(
 							MESSAGE_PROOF,
 							ROUTER_ID_1.clone(),
-							InboundEntry::Proof {
+							InboundEntry::Proof(ProofEntry {
 								session_id: 1,
 								current_count: 1
-							},
+							}),
 						),
 						Error::<Runtime>::ExpectedMessageType
 					);
@@ -3416,10 +3600,11 @@ mod implementations {
 			#[test]
 			fn proof_entry_same_session() {
 				new_test_ext().execute_with(|| {
-					let inbound_entry = InboundEntry::<Runtime>::Proof {
+					let inbound_entry: InboundEntry<Runtime> = ProofEntry {
 						session_id: 1,
 						current_count: 1,
-					};
+					}
+					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3437,10 +3622,11 @@ mod implementations {
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
-						InboundEntry::<Runtime>::Proof {
+						ProofEntry {
 							session_id: 1,
 							current_count: 2,
 						}
+						.into()
 					);
 				});
 			}
@@ -3451,29 +3637,31 @@ mod implementations {
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
-						InboundEntry::<Runtime>::Proof {
+						InboundEntry::Proof(ProofEntry {
 							session_id: 1,
 							current_count: 2,
-						},
+						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
 						ROUTER_ID_1.clone(),
-						InboundEntry::<Runtime>::Proof {
+						ProofEntry {
 							session_id: 2,
 							current_count: 1,
-						},
+						}
+						.into(),
 					));
 
 					let res =
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
-						InboundEntry::<Runtime>::Proof {
+						ProofEntry {
 							session_id: 2,
 							current_count: 1,
 						}
+						.into()
 					);
 				});
 			}
@@ -3481,10 +3669,11 @@ mod implementations {
 			#[test]
 			fn expected_message_proof_type() {
 				new_test_ext().execute_with(|| {
-					let inbound_entry = InboundEntry::<Runtime>::Proof {
+					let inbound_entry: InboundEntry<Runtime> = ProofEntry {
 						session_id: 1,
 						current_count: 1,
-					};
+					}
+					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3496,12 +3685,12 @@ mod implementations {
 						LiquidityPoolsGateway::upsert_pending_entry(
 							MESSAGE_PROOF,
 							ROUTER_ID_1.clone(),
-							InboundEntry::Message {
+							InboundEntry::Message(MessageEntry {
 								session_id: 1,
 								domain_address: TEST_DOMAIN_ADDRESS,
 								message: Message::Simple,
 								expected_proof_count: 1,
-							},
+							}),
 						),
 						Error::<Runtime>::ExpectedMessageProofType
 					);
@@ -3525,28 +3714,28 @@ mod implementations {
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
-						InboundEntry::Message {
+						InboundEntry::Message(MessageEntry {
 							session_id: 1,
 							domain_address: TEST_DOMAIN_ADDRESS,
 							message: Message::Simple,
 							expected_proof_count: 2,
-						},
+						}),
 					);
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_2,
-						InboundEntry::Proof {
+						InboundEntry::Proof(ProofEntry {
 							session_id: 2,
 							current_count: 1,
-						},
+						}),
 					);
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_3,
-						InboundEntry::Proof {
+						InboundEntry::Proof(ProofEntry {
 							session_id: 3,
 							current_count: 1,
-						},
+						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_if_requirements_are_met(
@@ -3602,13 +3791,13 @@ mod implementations {
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
-						InboundEntry::Message {
+						InboundEntry::Message(MessageEntry {
 							session_id: 1,
 							domain_address: inbound_processing_info.domain_address.clone(),
 							message: Message::Simple,
 							expected_proof_count: inbound_processing_info
 								.expected_proof_count_per_message,
-						},
+						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
@@ -3634,10 +3823,10 @@ mod implementations {
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
-						InboundEntry::Proof {
+						InboundEntry::Proof(ProofEntry {
 							session_id: 1,
 							current_count: 1,
-						},
+						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
@@ -3649,6 +3838,561 @@ mod implementations {
 					);
 				});
 			}
+		}
+	}
+}
+
+mod inbound_entry {
+	use super::*;
+
+	mod create_post_voting_entry {
+		use super::*;
+
+		#[test]
+		fn message_entry_some() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let message = Message::Simple;
+
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: message.clone(),
+					expected_proof_count: 4,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+
+				assert_eq!(
+					res,
+					Some(InboundEntry::<Runtime>::Message(MessageEntry {
+						session_id,
+						domain_address: TEST_DOMAIN_ADDRESS,
+						message,
+						expected_proof_count: 2,
+					}))
+				);
+			});
+		}
+
+		#[test]
+		fn message_entry_session_change() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let message = Message::Simple;
+
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: message.clone(),
+					expected_proof_count: 4,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id + 1,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+				assert_eq!(res, None);
+			});
+		}
+
+		#[test]
+		fn message_entry_count_underflow() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let message = Message::Simple;
+
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: message.clone(),
+					expected_proof_count: 2,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 3,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				);
+
+				assert_noop!(res, Arithmetic(Underflow));
+			});
+		}
+
+		#[test]
+		fn message_entry_zero_updated_count() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let message = Message::Simple;
+
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: message.clone(),
+					expected_proof_count: 2,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+
+				assert_eq!(res, None);
+			});
+		}
+
+		#[test]
+		fn proof_entry_some() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 2,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+
+				assert_eq!(
+					res,
+					Some(InboundEntry::<Runtime>::Proof(ProofEntry {
+						session_id,
+						current_count: 1
+					}))
+				);
+			});
+		}
+
+		#[test]
+		fn proof_entry_session_change() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 2,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id + 1,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+
+				assert_eq!(res, None);
+			});
+		}
+
+		#[test]
+		fn proof_entry_count_underflow() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 0,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				);
+
+				assert_noop!(res, Arithmetic(Underflow),);
+			});
+		}
+
+		#[test]
+		fn proof_entry_zero_updated_count() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 1,
+				});
+
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![],
+					current_session_id: session_id,
+					expected_proof_count_per_message: 2,
+				};
+
+				let res = InboundEntry::create_post_voting_entry(
+					&inbound_entry,
+					&inbound_processing_info,
+				)
+				.unwrap();
+
+				assert_eq!(res, None,);
+			});
+		}
+	}
+
+	mod validate {
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
+					current_session_id: 1,
+					expected_proof_count_per_message: 2,
+				};
+
+				let inbound_entry = InboundEntry::Message(MessageEntry {
+					session_id: inbound_processing_info.current_session_id,
+					domain_address: inbound_processing_info.domain_address.clone(),
+					message: Message::Simple,
+					expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
+				});
+
+				assert_ok!(inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_1));
+
+				let inbound_entry = InboundEntry::Proof(ProofEntry {
+					session_id: inbound_processing_info.current_session_id,
+					current_count: 1,
+				});
+
+				assert_ok!(inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_2));
+			});
+		}
+
+		#[test]
+		fn unknown_router() {
+			new_test_ext().execute_with(|| {
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2],
+					current_session_id: 1,
+					expected_proof_count_per_message: 2,
+				};
+
+				let inbound_entry = InboundEntry::Proof(ProofEntry {
+					session_id: inbound_processing_info.current_session_id,
+					current_count: 1,
+				});
+
+				assert_noop!(
+					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_3),
+					Error::<Runtime>::UnknownRouter
+				);
+			});
+		}
+
+		#[test]
+		fn message_type_mismatch() {
+			new_test_ext().execute_with(|| {
+				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
+					domain_address: TEST_DOMAIN_ADDRESS,
+					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
+					current_session_id: 1,
+					expected_proof_count_per_message: 2,
+				};
+
+				let inbound_entry = InboundEntry::Message(MessageEntry {
+					session_id: inbound_processing_info.current_session_id,
+					domain_address: inbound_processing_info.domain_address.clone(),
+					message: Message::Simple,
+					expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
+				});
+
+				assert_noop!(
+					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_2),
+					Error::<Runtime>::MessageExpectedFromFirstRouter
+				);
+
+				let inbound_entry = InboundEntry::Proof(ProofEntry {
+					session_id: inbound_processing_info.current_session_id,
+					current_count: 1,
+				});
+
+				assert_noop!(
+					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_1),
+					Error::<Runtime>::ProofNotExpectedFromFirstRouter
+				);
+			});
+		}
+	}
+
+	mod increment_proof_count {
+		use super::*;
+
+		#[test]
+		fn success_same_session() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let mut inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 1,
+				});
+
+				assert_ok!(inbound_entry.increment_proof_count(session_id));
+				assert_eq!(
+					inbound_entry,
+					InboundEntry::<Runtime>::Proof(ProofEntry {
+						session_id,
+						current_count: 2,
+					})
+				);
+			});
+		}
+
+		#[test]
+		fn success_new_session() {
+			new_test_ext().execute_with(|| {
+				let session_id = 1;
+				let mut inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
+					current_count: 1,
+				});
+
+				let new_session_id = session_id + 1;
+
+				assert_ok!(inbound_entry.increment_proof_count(new_session_id));
+				assert_eq!(
+					inbound_entry,
+					InboundEntry::<Runtime>::Proof(ProofEntry {
+						session_id: new_session_id,
+						current_count: 1,
+					})
+				);
+			});
+		}
+
+		#[test]
+		fn expected_message_proof_type() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id: 1,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 1,
+				});
+
+				assert_noop!(
+					inbound_entry.increment_proof_count(1),
+					Error::<Runtime>::ExpectedMessageProofType
+				);
+			});
+		}
+	}
+
+	mod pre_dispatch_update {
+		use super::*;
+
+		#[test]
+		fn message_success_same_session() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id: 1,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 2,
+				});
+
+				let inbound_entry_2 = inbound_entry_1.clone();
+
+				assert_ok!(inbound_entry_1.pre_dispatch_update(inbound_entry_2));
+				assert_eq!(
+					inbound_entry_1,
+					InboundEntry::<Runtime>::Message(MessageEntry {
+						session_id: 1,
+						domain_address: TEST_DOMAIN_ADDRESS,
+						message: Message::Simple,
+						expected_proof_count: 4,
+					})
+				)
+			});
+		}
+
+		#[test]
+		fn message_success_session_change() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id: 1,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 2,
+				});
+
+				let inbound_entry_2 = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id: 2,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 5,
+				});
+
+				assert_ok!(inbound_entry_1.pre_dispatch_update(inbound_entry_2.clone()));
+				assert_eq!(inbound_entry_1, inbound_entry_2)
+			});
+		}
+
+		#[test]
+		fn proof_success_same_session() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry_1 = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id: 1,
+					current_count: 1,
+				});
+
+				let inbound_entry_2 = inbound_entry_1.clone();
+
+				assert_ok!(inbound_entry_1.pre_dispatch_update(inbound_entry_2));
+				assert_eq!(
+					inbound_entry_1,
+					InboundEntry::<Runtime>::Proof(ProofEntry {
+						session_id: 1,
+						current_count: 2,
+					})
+				)
+			});
+		}
+
+		#[test]
+		fn proof_success_session_change() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry_1 = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id: 1,
+					current_count: 1,
+				});
+
+				let inbound_entry_2 = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id: 2,
+					current_count: 3,
+				});
+
+				assert_ok!(inbound_entry_1.pre_dispatch_update(inbound_entry_2.clone()));
+				assert_eq!(inbound_entry_1, inbound_entry_2)
+			});
+		}
+
+		#[test]
+		fn mismatch_errors() {
+			new_test_ext().execute_with(|| {
+				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id: 1,
+					domain_address: TEST_DOMAIN_ADDRESS,
+					message: Message::Simple,
+					expected_proof_count: 2,
+				});
+
+				let mut inbound_entry_2 = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id: 1,
+					current_count: 1,
+				});
+
+				assert_noop!(
+					inbound_entry_1.pre_dispatch_update(inbound_entry_2.clone()),
+					Error::<Runtime>::ExpectedMessageType
+				);
+
+				assert_noop!(
+					inbound_entry_2.pre_dispatch_update(inbound_entry_1),
+					Error::<Runtime>::ExpectedMessageProofType
+				);
+			});
+		}
+	}
+}
+
+mod inbound_processing_info {
+	use super::*;
+
+	mod try_from_domain_address {
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2];
+				let expected_proof_count = router_ids.len() - 1;
+
+				Routers::<Runtime>::set(BoundedVec::try_from(router_ids.clone()).unwrap());
+
+				let res: InboundProcessingInfo<Runtime> = TEST_DOMAIN_ADDRESS.try_into().unwrap();
+				assert_eq!(res.domain_address, TEST_DOMAIN_ADDRESS);
+				assert_eq!(res.router_ids, router_ids);
+				assert_eq!(res.current_session_id, 0);
+				assert_eq!(
+					res.expected_proof_count_per_message,
+					expected_proof_count as u32
+				);
+			});
+		}
+
+		#[test]
+		fn not_enough_routers_for_domain() {
+			new_test_ext().execute_with(|| {
+				let res: Result<InboundProcessingInfo<Runtime>, DispatchError> =
+					TEST_DOMAIN_ADDRESS.try_into();
+
+				assert_eq!(
+					res.err().unwrap(),
+					Error::<Runtime>::NotEnoughRoutersForDomain.into()
+				);
+			});
 		}
 	}
 }
