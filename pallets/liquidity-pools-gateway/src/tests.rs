@@ -106,6 +106,19 @@ mod set_routers {
 	}
 
 	#[test]
+	fn invalid_routers() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				LiquidityPoolsGateway::set_routers(
+					RuntimeOrigin::root(),
+					BoundedVec::try_from(vec![]).unwrap(),
+				),
+				Error::<Runtime>::InvalidRouters
+			);
+		});
+	}
+
+	#[test]
 	fn session_id_overflow() {
 		new_test_ext().execute_with(|| {
 			SessionIdStore::<Runtime>::set(u32::MAX);
