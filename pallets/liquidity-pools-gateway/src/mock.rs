@@ -15,6 +15,7 @@ use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
+pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
 pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(TEST_EVM_CHAIN, [1; 20]);
 
