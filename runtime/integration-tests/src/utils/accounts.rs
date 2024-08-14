@@ -45,13 +45,13 @@ impl Keyring {
 
 	/// NOTE: Needs to be executed in an externalities environment
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		AccountConverter::evm_address_to_account::<T>(self.id_eth())
+		AccountConverter::evm_address_to_account::<T>(self.in_eth())
 	}
 
 	/// Returns the Ethereum address.
 	/// The H160 retrived is NOT the local representation of that account in our
-	/// chain, it's the real Ethereum address.
-	pub fn id_eth(self) -> H160 {
+	/// chain, it's the real address in ethereum.
+	pub fn in_eth(self) -> H160 {
 		let pair: ecdsa::Pair = self.into();
 		H160::from(H256::from(
 			sp_core::KeccakHasher::hash(&pair.public().as_ref()).0,

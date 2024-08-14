@@ -390,7 +390,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Bob.id_eth())
+						Token::Address(Keyring::Bob.in_eth())
 					]),
 				)
 				.unwrap()
@@ -402,7 +402,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth())
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
 				.as_local(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
@@ -412,7 +412,7 @@ fn update_member<T: Runtime>() {
 			Keyring::Bob.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -428,7 +428,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Bob.id_eth())
+						Token::Address(Keyring::Bob.in_eth())
 					]),
 				)
 				.unwrap()
@@ -445,7 +445,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Alice.id_eth())
+						Token::Address(Keyring::Alice.in_eth())
 					]),
 				)
 				.unwrap()
@@ -620,7 +620,7 @@ fn freeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).id_eth())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -630,7 +630,7 @@ fn freeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth())
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
 				.as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
@@ -639,7 +639,7 @@ fn freeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -653,7 +653,7 @@ fn freeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).id_eth())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -675,7 +675,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth())
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
 				.as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
@@ -684,7 +684,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -697,7 +697,7 @@ fn unfreeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).id_eth())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -707,7 +707,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		remove_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth())
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
 				.as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
@@ -716,7 +716,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -729,7 +729,7 @@ fn unfreeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).id_eth())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()

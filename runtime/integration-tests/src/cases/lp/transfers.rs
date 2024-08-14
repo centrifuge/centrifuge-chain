@@ -46,7 +46,7 @@ mod utils {
 					Keyring::Alice,
 					names::POOL_A_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				0
 			);
@@ -78,7 +78,7 @@ mod utils {
 				OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
-				DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).id_eth()),
+				DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
 				AMOUNT,
 			)
 			.unwrap();
@@ -91,7 +91,7 @@ mod utils {
 					Keyring::Alice,
 					names::POOL_A_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				AMOUNT
 			);
@@ -116,7 +116,7 @@ mod utils {
 				Keyring::Alice,
 				names::USDC,
 				"balanceOf",
-				Some(&[Token::Address(Keyring::Alice.id_eth())]),
+				Some(&[Token::Address(Keyring::Alice.in_eth())]),
 			));
 			assert!(
 				balance >= AMOUNT,
@@ -157,7 +157,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 		pallet_liquidity_pools::Pallet::<T>::transfer(
 			OriginFor::<T>::signed(Keyring::Ferdie.into()),
 			USDC.id(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Ferdie.id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Ferdie.in_eth()),
 			AMOUNT,
 		)
 		.unwrap();
@@ -170,7 +170,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 				Keyring::Alice,
 				names::USDC,
 				"balanceOf",
-				Some(&[Token::Address(Keyring::Ferdie.id_eth())]),
+				Some(&[Token::Address(Keyring::Ferdie.in_eth())]),
 			)),
 			AMOUNT
 		);
@@ -188,7 +188,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 					Keyring::Alice,
 					names::POOL_A_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)
 				.unwrap()
 				.value,
@@ -215,7 +215,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 			OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).id_eth()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
 			AMOUNT,
 		)
 		.unwrap();
@@ -229,7 +229,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 					Keyring::Alice,
 					names::POOL_A_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)
 				.unwrap()
 				.value,
@@ -250,7 +250,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 				Keyring::TrancheInvestor(1),
 				names::POOL_A_T_1,
 				"balanceOf",
-				Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+				Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 			)) >= AMOUNT,
 			"Insufficient POOL_A_T_1 funds by TrancheInvestor(1)"
 		);
@@ -309,7 +309,7 @@ fn transfer_tranche_tokens_domain_to_local_to_domain<T: Runtime>() {
 					Keyring::Alice,
 					names::POOL_A_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(2).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(2).in_eth())]),
 				)
 				.unwrap()
 				.value,
@@ -330,7 +330,7 @@ fn transfer_tranche_tokens_domain_to_local<T: Runtime>() {
 				Keyring::TrancheInvestor(1),
 				names::POOL_A_T_1,
 				"balanceOf",
-				Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+				Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 			)) >= AMOUNT,
 			"Insufficient POOL_A_T_1 funds by TrancheInvestor(1)"
 		);

@@ -78,8 +78,8 @@ mod utils {
 			"requestDeposit",
 			Some(&[
 				Token::Uint(DEFAULT_INVESTMENT_AMOUNT.into()),
-				Token::Address(who.id_eth()),
-				Token::Address(who.id_eth()),
+				Token::Address(who.in_eth()),
+				Token::Address(who.in_eth()),
 			]),
 		)
 		.unwrap();
@@ -91,7 +91,7 @@ mod utils {
 			Default::default(),
 			lp_pool,
 			"cancelDepositRequest",
-			Some(&[Token::Uint(U256::from(0)), Token::Address(who.id_eth())]),
+			Some(&[Token::Uint(U256::from(0)), Token::Address(who.in_eth())]),
 		)
 		.unwrap();
 	}
@@ -183,7 +183,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -228,10 +228,10 @@ mod with_pool_currency {
 						Keyring::TrancheInvestor(1),
 						names::POOL_C_T_1_USDC,
 						"maxDeposit",
-						Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+						Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 					))),
-					Token::Address(Keyring::TrancheInvestor(1).id_eth()),
-					Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+					Token::Address(Keyring::TrancheInvestor(1).in_eth()),
+					Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 				]),
 			)
 			.unwrap();
@@ -241,7 +241,7 @@ mod with_pool_currency {
 					Keyring::TrancheInvestor(1),
 					names::POOL_C_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				// Same amount as price is 1.
 				DEFAULT_INVESTMENT_AMOUNT
@@ -252,7 +252,7 @@ mod with_pool_currency {
 					Keyring::TrancheInvestor(1),
 					names::POOL_C_T_1_USDC,
 					"maxDeposit",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).id_eth())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				0
 			);
@@ -287,7 +287,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -318,7 +318,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -370,7 +370,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -401,7 +401,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -450,7 +450,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -503,7 +503,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -549,7 +549,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -578,7 +578,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -615,7 +615,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -665,7 +665,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -712,7 +712,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				remaining_amount
@@ -737,7 +737,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				remaining_amount
@@ -778,7 +778,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).id_eth()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
