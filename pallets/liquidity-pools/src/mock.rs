@@ -68,8 +68,6 @@ frame_support::construct_runtime!(
 		AssetRegistry: cfg_mocks::asset_registry::pallet,
 		ForeignInvestment: cfg_mocks::foreign_investment::pallet,
 		Gateway: cfg_mocks::pallet_mock_liquidity_pools_gateway,
-		DomainAddressToAccountId: cfg_mocks::converter::pallet::<Instance1>,
-		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance2>,
 		TransferFilter: cfg_mocks::pre_conditions::pallet,
 		MarketRatio: cfg_mocks::token_swaps::pallet,
 		Tokens: orml_tokens,
@@ -119,16 +117,6 @@ impl cfg_mocks::pallet_mock_liquidity_pools_gateway::Config for Runtime {
 	type Message = crate::Message;
 }
 
-impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance1> for Runtime {
-	type From = DomainAddress;
-	type To = AccountId;
-}
-
-impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance2> for Runtime {
-	type From = (Domain, [u8; 32]);
-	type To = DomainAddress;
-}
-
 impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 	type Conditions = (AccountId, DomainAddress, CurrencyId);
 	type Result = DispatchResult;
@@ -172,8 +160,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToDomainAddress = DomainAccountToDomainAddress;
-	type DomainAddressToAccountId = DomainAddressToAccountId;
 	type ForeignInvestment = ForeignInvestment;
 	type GeneralCurrencyPrefix = CurrencyPrefix;
 	type MarketRatio = MarketRatio;
