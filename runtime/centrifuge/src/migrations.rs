@@ -14,12 +14,14 @@ use crate::Runtime;
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1401 = (
+pub type UpgradeCentrifuge1402 = (
+	// Remove deprecated DomainRouters entries
+	runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore
 	frame_support::migrations::VersionedMigration<
 		0,
 		1,
-		runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>,
+		runtime_common::migrations::liquidity_pools_gateway::clear_outbound_nonce::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,

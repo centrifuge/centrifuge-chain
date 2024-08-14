@@ -181,9 +181,12 @@ mod tests {
 }
 
 pub mod utils {
+	#[cfg(feature = "std")]
 	use sp_core::H160;
+	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
 
+	#[cfg(feature = "std")]
 	use crate::evm::precompile::H160Addresses;
 
 	#[cfg(feature = "std")]
