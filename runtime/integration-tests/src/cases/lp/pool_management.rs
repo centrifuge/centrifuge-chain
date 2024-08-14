@@ -879,3 +879,40 @@ fn recover_assets<T: Runtime>() {
 		);
 	});
 }
+
+#[test_runtimes([development])]
+fn schedule_upgrade<T: Runtime>() {
+	let mut env = super::setup_full::<T>();
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+}
+
+#[test_runtimes([development])]
+fn cancel_upgrade<T: Runtime>() {
+	let mut env = super::setup_full::<T>();
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::cancel_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+}
