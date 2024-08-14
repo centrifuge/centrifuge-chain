@@ -3580,7 +3580,7 @@ mod implementations {
 					};
 
 					assert_noop!(
-						LiquidityPoolsGateway::decrease_pending_entries_counts(
+						LiquidityPoolsGateway::execute_post_voting_dispatch(
 							&inbound_processing_info,
 							MESSAGE_PROOF
 						),
@@ -3611,7 +3611,7 @@ mod implementations {
 						},
 					);
 
-					assert_ok!(LiquidityPoolsGateway::decrease_pending_entries_counts(
+					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
 						&inbound_processing_info,
 						MESSAGE_PROOF
 					));
@@ -3640,7 +3640,7 @@ mod implementations {
 						},
 					);
 
-					assert_ok!(LiquidityPoolsGateway::decrease_pending_entries_counts(
+					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
 						&inbound_processing_info,
 						MESSAGE_PROOF
 					));

@@ -43,7 +43,10 @@ use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_std::convert::TryInto;
 
-use crate::{message_processing::InboundEntry, weights::WeightInfo};
+use crate::{
+	message_processing::{InboundEntry, InboundProcessingInfo},
+	weights::WeightInfo,
+};
 
 mod origin;
 pub use origin::*;
@@ -62,6 +65,7 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use crate::message_processing::ProofEntry;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -93,7 +97,14 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The Liquidity Pools message type.
-		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
+		type Message: LPEncoding
+			+ Clone
+			+ Debug
+			+ PartialEq
+			+ Eq
+			+ MaxEncodedLen
+			+ TypeInfo
+			+ FullCodec;
 
 		/// The target of the messages coming from this chain
 		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
@@ -266,6 +277,12 @@ pub mod pallet {
 
 		/// Not enough routers are stored for a domain.
 		NotEnoughRoutersForDomain,
+
+		/// The messages of 2 inbound entries do not match.
+		InboundEntryMessageMismatch,
+
+		/// The domain addresses of 2 inbound entries do not match.
+		InboundEntryDomainAddressMismatch,
 	}
 
 	#[pallet::call]
@@ -426,7 +443,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let inbound_processing_info = Self::get_inbound_processing_info(domain_address)?;
+			let inbound_processing_info: InboundProcessingInfo<T> = domain_address.try_into()?;
 
 			ensure!(
 				inbound_processing_info
@@ -443,29 +460,13 @@ pub mod pallet {
 
 			PendingInboundEntries::<T>::try_mutate(proof, router_id.clone(), |storage_entry| {
 				match storage_entry {
-					Some(stored_inbound_entry) => match stored_inbound_entry {
-						InboundEntry::Proof {
-							session_id,
-							current_count,
-						} => {
-							if *session_id != inbound_processing_info.current_session_id {
-								*session_id = inbound_processing_info.current_session_id;
-								*current_count = 1;
-							} else {
-								current_count.ensure_add_assign(1)?;
-							}
-
-							Ok::<(), DispatchError>(())
-						}
-						InboundEntry::Message { .. } => {
-							Err(Error::<T>::ExpectedMessageProofType.into())
-						}
-					},
+					Some(stored_inbound_entry) => stored_inbound_entry
+						.increment_proof_count(inbound_processing_info.current_session_id),
 					None => {
-						*storage_entry = Some(InboundEntry::<T>::Proof {
+						*storage_entry = Some(InboundEntry::<T>::Proof(ProofEntry {
 							session_id: inbound_processing_info.current_session_id,
 							current_count: 1,
-						});
+						}));
 
 						Ok::<(), DispatchError>(())
 					}

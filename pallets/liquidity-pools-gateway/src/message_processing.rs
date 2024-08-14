@@ -17,29 +17,272 @@ use crate::{
 	message::GatewayMessage, Config, Error, Pallet, PendingInboundEntries, Routers, SessionIdStore,
 };
 
+/// Type that holds the information needed for inbound message entries.
+#[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct MessageEntry<T: Config> {
+	/// The session ID for this entry.
+	pub session_id: T::SessionId,
+
+	/// The sender of the inbound message.
+	pub domain_address: DomainAddress,
+
+	/// The LP message.
+	pub message: T::Message,
+
+	/// The expected proof count for processing one or more of the provided
+	/// message.
+	///
+	/// NOTE - this gets increased by the `expected_proof_count` for a set of
+	/// routers (see `get_expected_proof_count`) every time a new identical message is submitted.
+	pub expected_proof_count: u32,
+}
+
+/// Type that holds the information needed for inbound proof entries.
+#[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ProofEntry<T: Config> {
+	/// The session ID for this entry.
+	pub session_id: T::SessionId,
+
+	/// The number of proofs received for a particular message.
+	///
+	/// NOTE - this gets increased by 1 every time a new identical message is
+	/// submitted.
+	pub current_count: u32,
+}
+
+impl<T: Config> ProofEntry<T> {
+	/// Returns `true` if all the following conditions are true:
+	/// - the session IDs match
+	/// - the `current_count` is greater than 0
+	pub fn has_valid_vote_for_session(&self, session_id: T::SessionId) -> bool {
+		self.session_id == session_id && self.current_count > 0
+	}
+}
+
 /// Type used when storing inbound message information.
 #[derive(Debug, Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum InboundEntry<T: Config> {
-	Message {
-		session_id: T::SessionId,
-		domain_address: DomainAddress,
-		message: T::Message,
-		expected_proof_count: u32,
-	},
-	Proof {
-		session_id: T::SessionId,
-		current_count: u32,
-	},
+	Message(MessageEntry<T>),
+	Proof(ProofEntry<T>),
 }
 
-/// Type used when processing inbound messages.
+impl<T: Config> From<(&InboundProcessingInfo<T>, T::Message)> for InboundEntry<T> {
+	fn from((inbound_processing_info, message): (&InboundProcessingInfo<T>, T::Message)) -> Self {
+		match message.get_message_proof() {
+			None => InboundEntry::Message(MessageEntry {
+				session_id: inbound_processing_info.current_session_id.clone(),
+				domain_address: inbound_processing_info.domain_address.clone(),
+				message,
+				expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
+			}),
+			Some(_) => InboundEntry::Proof(ProofEntry {
+				session_id: inbound_processing_info.current_session_id,
+				current_count: 1,
+			}),
+		}
+	}
+}
+
+impl<T: Config> From<MessageEntry<T>> for InboundEntry<T> {
+	fn from(message_entry: MessageEntry<T>) -> Self {
+		Self::Message(message_entry)
+	}
+}
+
+impl<T: Config> From<ProofEntry<T>> for InboundEntry<T> {
+	fn from(proof_entry: ProofEntry<T>) -> Self {
+		Self::Proof(proof_entry)
+	}
+}
+
+impl<T: Config> InboundEntry<T> {
+	/// Creates a new `InboundEntry` based on the information provided.
+	///
+	/// If a session change is detected or if the updated counts reach 0, it
+	/// means that a new entry is no longer required, otherwise, the counts are
+	/// decreased accordingly, based on the entry type.
+	pub fn create_post_voting_entry(
+		inbound_entry: &InboundEntry<T>,
+		inbound_processing_info: &InboundProcessingInfo<T>,
+	) -> Result<Option<Self>, DispatchError> {
+		match inbound_entry {
+			InboundEntry::Message(message_entry) => {
+				if message_entry.session_id != inbound_processing_info.current_session_id {
+					return Ok(None);
+				}
+
+				let updated_count = message_entry
+					.expected_proof_count
+					.ensure_sub(inbound_processing_info.expected_proof_count_per_message)?;
+
+				if updated_count == 0 {
+					return Ok(None);
+				}
+
+				Ok(Some(
+					MessageEntry {
+						expected_proof_count: updated_count,
+						..message_entry.clone()
+					}
+					.into(),
+				))
+			}
+			InboundEntry::Proof(proof_entry) => {
+				if proof_entry.session_id != inbound_processing_info.current_session_id {
+					return Ok(None);
+				}
+
+				let updated_count = proof_entry.current_count.ensure_sub(1)?;
+
+				if updated_count == 0 {
+					return Ok(None);
+				}
+
+				Ok(Some(
+					ProofEntry {
+						current_count: updated_count,
+						..proof_entry.clone()
+					}
+					.into(),
+				))
+			}
+		}
+	}
+
+	/// Validation ensures that:
+	///
+	/// - the router that sent the inbound message is a valid router for the
+	///   specific domain.
+	/// - messages are only sent by the first inbound router.
+	/// - proofs are not sent by the first inbound router.
+	pub fn validate(
+		&self,
+		inbound_processing_info: &InboundProcessingInfo<T>,
+		router_id: &T::RouterId,
+	) -> DispatchResult {
+		let router_ids = inbound_processing_info.router_ids.clone();
+
+		ensure!(
+			router_ids.iter().any(|x| x == router_id),
+			Error::<T>::UnknownRouter
+		);
+
+		match self {
+			InboundEntry::Message { .. } => {
+				ensure!(
+					router_ids.get(0) == Some(&router_id),
+					Error::<T>::MessageExpectedFromFirstRouter
+				);
+
+				Ok(())
+			}
+			InboundEntry::Proof { .. } => {
+				ensure!(
+					router_ids.get(0) != Some(&router_id),
+					Error::<T>::ProofNotExpectedFromFirstRouter
+				);
+
+				Ok(())
+			}
+		}
+	}
+
+	/// Checks if the entry type is a proof and increments the count by 1
+	/// or sets it to 1 if the session is changed.
+	pub fn increment_proof_count(&mut self, session_id: T::SessionId) -> DispatchResult {
+		match self {
+			InboundEntry::Proof(proof_entry) => {
+				if proof_entry.session_id != session_id {
+					proof_entry.session_id = session_id;
+					proof_entry.current_count = 1;
+				} else {
+					proof_entry.current_count.ensure_add_assign(1)?;
+				}
+
+				Ok::<(), DispatchError>(())
+			}
+			InboundEntry::Message(_) => Err(Error::<T>::ExpectedMessageProofType.into()),
+		}
+	}
+
+	/// A pre-dispatch update involves increasing the `expected_proof_count` or
+	/// `current_count` of `self` with the one of `other`.
+	///
+	/// If a session ID change is detected, `self` is replaced completely by
+	/// `other`.
+	pub fn pre_dispatch_update(&mut self, other: Self) -> DispatchResult {
+		match (&mut *self, &other) {
+			// Message entries
+			(
+				InboundEntry::Message(self_message_entry),
+				InboundEntry::Message(other_message_entry),
+			) => {
+				if self_message_entry.session_id != other_message_entry.session_id {
+					*self = other;
+
+					return Ok(());
+				}
+
+				self_message_entry
+					.expected_proof_count
+					.ensure_add_assign(other_message_entry.expected_proof_count)?;
+
+				Ok(())
+			}
+			// Proof entries
+			(InboundEntry::Proof(self_proof_entry), InboundEntry::Proof(other_proof_entry)) => {
+				if self_proof_entry.session_id != other_proof_entry.session_id {
+					*self = other;
+
+					return Ok(());
+				}
+
+				self_proof_entry
+					.current_count
+					.ensure_add_assign(other_proof_entry.current_count)?;
+
+				Ok(())
+			}
+			// Mismatches
+			(InboundEntry::Message(_), InboundEntry::Proof(_)) => {
+				Err(Error::<T>::ExpectedMessageType.into())
+			}
+			(InboundEntry::Proof(_), InboundEntry::Message(_)) => {
+				Err(Error::<T>::ExpectedMessageProofType.into())
+			}
+		}
+	}
+}
+
+/// Type that holds information used when processing inbound messages.
 #[derive(Clone)]
 pub struct InboundProcessingInfo<T: Config> {
 	pub domain_address: DomainAddress,
 	pub router_ids: Vec<T::RouterId>,
 	pub current_session_id: T::SessionId,
 	pub expected_proof_count_per_message: u32,
+}
+
+impl<T: Config> TryFrom<DomainAddress> for InboundProcessingInfo<T> {
+	type Error = DispatchError;
+
+	fn try_from(domain_address: DomainAddress) -> Result<Self, Self::Error> {
+		let router_ids = Pallet::<T>::get_router_ids_for_domain(domain_address.domain())?;
+
+		let current_session_id = SessionIdStore::<T>::get();
+
+		let expected_proof_count = Pallet::<T>::get_expected_proof_count(&router_ids)?;
+
+		Ok(InboundProcessingInfo {
+			domain_address,
+			router_ids,
+			current_session_id,
+			expected_proof_count_per_message: expected_proof_count,
+		})
+	}
 }
 
 impl<T: Config> Pallet<T> {
@@ -93,123 +336,23 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Creates an inbound entry based on whether the inbound message is a
-	/// proof or not.
-	pub(crate) fn create_inbound_entry(
-		inbound_processing_info: &InboundProcessingInfo<T>,
-		message: T::Message,
-	) -> InboundEntry<T> {
-		match message.get_message_proof() {
-			None => InboundEntry::Message {
-				session_id: inbound_processing_info.current_session_id.clone(),
-				domain_address: inbound_processing_info.domain_address.clone(),
-				message,
-				expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
-			},
-			Some(_) => InboundEntry::Proof {
-				session_id: inbound_processing_info.current_session_id,
-				current_count: 1,
-			},
-		}
-	}
-
-	/// Validation ensures that:
-	///
-	/// - the router that sent the inbound message is a valid router for the
-	///   specific domain.
-	/// - messages are only sent by the first inbound router.
-	/// - proofs are not sent by the first inbound router.
-	pub(crate) fn validate_inbound_entry(
-		inbound_processing_info: &InboundProcessingInfo<T>,
-		router_id: &T::RouterId,
-		inbound_entry: &InboundEntry<T>,
-	) -> DispatchResult {
-		let router_ids = inbound_processing_info.router_ids.clone();
-
-		ensure!(
-			router_ids.iter().any(|x| x == router_id),
-			Error::<T>::UnknownRouter
-		);
-
-		match inbound_entry {
-			InboundEntry::Message { .. } => {
-				ensure!(
-					router_ids.get(0) == Some(&router_id),
-					Error::<T>::MessageExpectedFromFirstRouter
-				);
-
-				Ok(())
-			}
-			InboundEntry::Proof { .. } => {
-				ensure!(
-					router_ids.get(0) != Some(&router_id),
-					Error::<T>::ProofNotExpectedFromFirstRouter
-				);
-
-				Ok(())
-			}
-		}
-	}
-
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
 		message_proof: Proof,
 		router_id: T::RouterId,
-		inbound_entry: InboundEntry<T>,
+		new_inbound_entry: InboundEntry<T>,
 	) -> DispatchResult {
 		PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
 			match storage_entry {
 				None => {
-					*storage_entry = Some(inbound_entry);
+					*storage_entry = Some(new_inbound_entry);
 
 					Ok::<(), DispatchError>(())
 				}
-				Some(stored_inbound_entry) => match stored_inbound_entry {
-					InboundEntry::Message {
-						session_id: stored_session_id,
-						expected_proof_count: stored_expected_proof_count,
-						..
-					} => match inbound_entry {
-						InboundEntry::Message {
-							session_id: new_session_id,
-							expected_proof_count: new_expected_proof_count,
-							..
-						} => {
-							if *stored_session_id != new_session_id {
-								*stored_session_id = new_session_id;
-								*stored_expected_proof_count = new_expected_proof_count;
-							} else {
-								stored_expected_proof_count
-									.ensure_add_assign(new_expected_proof_count)?;
-							}
-
-							Ok::<(), DispatchError>(())
-						}
-						InboundEntry::Proof { .. } => Err(Error::<T>::ExpectedMessageType.into()),
-					},
-					InboundEntry::Proof {
-						session_id: stored_session_id,
-						current_count: stored_current_count,
-					} => match inbound_entry {
-						InboundEntry::Proof {
-							session_id: new_session_id,
-							current_count: new_current_count,
-						} => {
-							if *stored_session_id != new_session_id {
-								*stored_session_id = new_session_id;
-								*stored_current_count = new_current_count;
-							} else {
-								stored_current_count.ensure_add_assign(new_current_count)?;
-							}
-
-							Ok::<(), DispatchError>(())
-						}
-						InboundEntry::Message { .. } => {
-							Err(Error::<T>::ExpectedMessageProofType.into())
-						}
-					},
-				},
+				Some(stored_inbound_entry) => {
+					stored_inbound_entry.pre_dispatch_update(new_inbound_entry)
+				}
 			}
 		})
 	}
@@ -221,9 +364,9 @@ impl<T: Config> Pallet<T> {
 		message_proof: Proof,
 		router_id: T::RouterId,
 	) -> DispatchResult {
-		let inbound_entry = Self::create_inbound_entry(inbound_processing_info, message);
+		let inbound_entry: InboundEntry<T> = (inbound_processing_info, message).into();
 
-		Self::validate_inbound_entry(&inbound_processing_info, &router_id, &inbound_entry)?;
+		inbound_entry.validate(&inbound_processing_info, &router_id)?;
 
 		Self::upsert_pending_entry(message_proof, router_id, inbound_entry)?;
 
@@ -246,20 +389,11 @@ impl<T: Config> Pallet<T> {
 				// we can return.
 				None => return Ok(()),
 				Some(stored_inbound_entry) => match stored_inbound_entry {
-					InboundEntry::Message {
-						message: stored_message,
-						..
-					} => message = Some(stored_message),
-					InboundEntry::Proof {
-						session_id,
-						current_count,
-					} => {
-						if session_id != inbound_processing_info.current_session_id {
-							// Don't count vote from invalid sessions.
-							continue;
-						}
-
-						if current_count > 0 {
+					InboundEntry::Message(message_entry) => message = Some(message_entry.message),
+					InboundEntry::Proof(proof_entry) => {
+						if proof_entry
+							.has_valid_vote_for_session(inbound_processing_info.current_session_id)
+						{
 							votes.ensure_add_assign(1)?;
 						}
 					}
@@ -273,7 +407,7 @@ impl<T: Config> Pallet<T> {
 
 		match message {
 			Some(msg) => {
-				Self::decrease_pending_entries_counts(&inbound_processing_info, message_proof)?;
+				Self::execute_post_voting_dispatch(&inbound_processing_info, message_proof)?;
 
 				T::InboundMessageHandler::handle(
 					inbound_processing_info.domain_address.clone(),
@@ -286,92 +420,31 @@ impl<T: Config> Pallet<T> {
 
 	/// Decreases the counts for inbound entries and removes them if the
 	/// counts reach 0.
-	pub(crate) fn decrease_pending_entries_counts(
+	pub(crate) fn execute_post_voting_dispatch(
 		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
 	) -> DispatchResult {
 		for router_id in &inbound_processing_info.router_ids {
-			match PendingInboundEntries::<T>::try_mutate(
-				message_proof,
-				router_id,
-				|storage_entry| match storage_entry {
-					None => Err(Error::<T>::PendingInboundEntryNotFound.into()),
-					Some(stored_inbound_entry) => {
-						match stored_inbound_entry {
-							InboundEntry::Message {
-								session_id,
-								expected_proof_count,
-								..
-							} => {
-								if *session_id != inbound_processing_info.current_session_id {
-									// Remove the storage entry completely.
-									*storage_entry = None;
-
-									return Ok::<(), DispatchError>(());
-								}
-
-								let updated_count = (*expected_proof_count).ensure_sub(
-									inbound_processing_info.expected_proof_count_per_message,
-								)?;
-
-								if updated_count == 0 {
-									*storage_entry = None;
-								} else {
-									*expected_proof_count = updated_count;
-								}
-
-								Ok::<(), DispatchError>(())
-							}
-							InboundEntry::Proof {
-								session_id,
-								current_count,
-							} => {
-								if *session_id != inbound_processing_info.current_session_id {
-									// Remove the storage entry completely.
-									*storage_entry = None;
-
-									return Ok::<(), DispatchError>(());
-								}
-
-								let updated_count = (*current_count).ensure_sub(1)?;
-
-								if updated_count == 0 {
-									*storage_entry = None;
-								} else {
-									*current_count = updated_count;
-								}
-
-								Ok::<(), DispatchError>(())
-							}
-						}
+			PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+				match storage_entry {
+					None => {
+						Err::<(), DispatchError>(Error::<T>::PendingInboundEntryNotFound.into())
 					}
-				},
-			) {
-				Ok(()) => {}
-				Err(e) => return Err(e),
-			}
+					Some(stored_inbound_entry) => {
+						let post_dispatch_entry = InboundEntry::create_post_voting_entry(
+							&stored_inbound_entry,
+							&inbound_processing_info,
+						)?;
+
+						*storage_entry = post_dispatch_entry;
+
+						Ok(())
+					}
+				}
+			})?;
 		}
 
 		Ok(())
-	}
-
-	/// Retrieves the information required for processing an inbound
-	/// message.
-	pub(crate) fn get_inbound_processing_info(
-		domain_address: DomainAddress,
-	) -> Result<InboundProcessingInfo<T>, DispatchError> {
-		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
-
-		let current_session_id = SessionIdStore::<T>::get();
-
-		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
-
-		Ok(InboundProcessingInfo {
-			domain_address,
-			router_ids,
-			current_session_id,
-			expected_proof_count_per_message: expected_proof_count,
-		})
 	}
 
 	/// Iterates over a batch of messages and checks if the requirements for
@@ -383,11 +456,10 @@ impl<T: Config> Pallet<T> {
 	) -> (DispatchResult, Weight) {
 		let weight = LP_DEFENSIVE_WEIGHT;
 
-		let inbound_processing_info =
-			match Self::get_inbound_processing_info(domain_address.clone()) {
-				Ok(i) => i,
-				Err(e) => return (Err(e), weight),
-			};
+		let inbound_processing_info = match domain_address.clone().try_into() {
+			Ok(i) => i,
+			Err(e) => return (Err(e), weight),
+		};
 
 		let mut count = 0;
 
