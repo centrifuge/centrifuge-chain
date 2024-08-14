@@ -12,9 +12,11 @@ use sp_core::{H160, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
 
-/// Identification of the router where the message is sent and received
-/// RouterId is more specific than Domain, because RouterId also identify by
-/// where the message is sent/received
+/// Identification of the router where the messages are sent and received.
+///
+/// NOTE: `RouterId` is more specific than `Domain`. `Domain` identifies the
+/// source and destination of the message, but `RouterId` also identifies how
+/// to reach them.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum RouterId {
 	/// The message must be sent/received by EVM using Axelar

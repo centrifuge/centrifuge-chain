@@ -179,7 +179,7 @@ pub mod pallet {
 		UnknownInstance,
 
 		/// Router not found.
-		RouterNotFound,
+		RouterConfigurationNotFound,
 
 		/// Emitted when you call `start_batch_messages()` but that was already
 		/// called. You should finalize the message with `end_batch_messages()`

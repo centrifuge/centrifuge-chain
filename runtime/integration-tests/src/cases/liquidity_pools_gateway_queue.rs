@@ -67,7 +67,7 @@ fn outbound<T: Runtime + FudgeSupport>() {
 		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
 			nonce,
 			message,
-			error: pallet_axelar_router::Error::<T>::RouterNotFound.into(),
+			error: pallet_axelar_router::Error::<T>::RouterConfigurationNotFound.into(),
 		}
 	});
 

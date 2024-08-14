@@ -113,7 +113,7 @@ mod send {
 		new_test_ext().execute_with(|| {
 			assert_err!(
 				Router::send(AxelarId::Evm(CHAIN_ID), SENDER, MESSAGE.to_vec()),
-				Error::<Runtime>::RouterNotFound,
+				Error::<Runtime>::RouterConfigurationNotFound,
 			);
 		});
 	}
@@ -167,7 +167,7 @@ mod receive {
 					&SOURCE_ADDRESS.0,
 					MESSAGE
 				),
-				Error::<Runtime>::RouterNotFound
+				Error::<Runtime>::RouterConfigurationNotFound
 			);
 		});
 	}

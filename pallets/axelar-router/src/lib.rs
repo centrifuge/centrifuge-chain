@@ -156,7 +156,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Emit when the router configuration is not found.
-		RouterNotFound,
+		RouterConfigurationNotFound,
 
 		/// Emit when the evm account code is not registered
 		ContractCodeMismatch,
@@ -222,7 +222,8 @@ pub mod pallet {
 				.try_into()
 				.map_err(|_| Error::<T>::SourceChainTooLong)?;
 
-			let config = Configuration::<T>::get(chain_name).ok_or(Error::<T>::RouterNotFound)?;
+			let config = Configuration::<T>::get(chain_name)
+				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
 			ensure!(
 				caller == config.liquidity_pools_contract_address,
@@ -316,9 +317,10 @@ pub mod pallet {
 		type Origin = DomainAddress;
 
 		fn send(axelar_id: AxelarId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
-			let chain_name =
-				ChainNameById::<T>::get(axelar_id).ok_or(Error::<T>::RouterNotFound)?;
-			let config = Configuration::<T>::get(&chain_name).ok_or(Error::<T>::RouterNotFound)?;
+			let chain_name = ChainNameById::<T>::get(axelar_id)
+				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
+			let config = Configuration::<T>::get(&chain_name)
+				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
 			match config.domain {
 				DomainConfig::Evm(evm_config) => {
