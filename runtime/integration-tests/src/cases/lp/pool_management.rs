@@ -30,8 +30,8 @@ use crate::{
 		names::POOL_A_T_1,
 		utils,
 		utils::{pool_a_tranche_1_id, Decoder},
-		LocalUSDC, EVM_DOMAIN, EVM_DOMAIN_CHAIN_ID, LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A,
-		USDC,
+		LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN, EVM_DOMAIN_CHAIN_ID,
+		LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A, USDC,
 	},
 	config::Runtime,
 	env::{EnvEvmExtension, EvmEnv},
@@ -789,5 +789,93 @@ fn update_tranche_hook<T: Runtime>() {
 				.value,
 		);
 		assert_eq!(hook_address, H160::from(new_hook));
+	});
+}
+
+#[test]
+fn tmp() {
+	recover_assets::<development_runtime::Runtime>()
+}
+
+#[test_runtimes([development])]
+fn recover_assets<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+	});
+	let investor = Keyring::Custom("WrongTransfer");
+	let amount = DEFAULT_BALANCE * DECIMALS_6;
+
+	// Transfer assets into wrong contract
+	let (token, wrong_contract) = env.state_mut(|evm| {
+		let wrong_contract = evm.deployed(names::POOL_MANAGER).address();
+		let token = evm.deployed(names::USDC).address();
+
+		// Need to mint here instead of executing `transferAssets` because this would
+		// transfer to escrow instead of pool manager
+		evm.call(
+			Keyring::Admin,
+			Default::default(),
+			names::USDC,
+			"mint",
+			Some(&[
+				Token::Address(wrong_contract.into()),
+				Token::Uint(sp_core::U256::from(amount)),
+			]),
+		)
+		.unwrap();
+
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(wrong_contract.into())]),
+			)),
+			amount
+		);
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(investor.into())]),
+			)),
+			0
+		);
+
+		(token, wrong_contract)
+	});
+
+	env.state_mut(|_| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::recover_assets(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			utils::to_fixed_array(wrong_contract.as_bytes()),
+			utils::to_fixed_array(token.as_bytes()),
+			sp_core::U256::from(amount),
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(wrong_contract)]),
+			)),
+			0
+		);
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(investor.into())]),
+			)),
+			amount
+		);
 	});
 }
