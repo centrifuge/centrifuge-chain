@@ -15,10 +15,7 @@
 use frame_support::PalletId;
 use sp_runtime::TypeId;
 
-use crate::{
-	domain_address::{DomainAddress, DomainLocator},
-	investments::InvestmentAccount,
-};
+use crate::investments::InvestmentAccount;
 
 // The TypeId impl we derive pool-accounts from
 impl<InvestmentId> TypeId for InvestmentAccount<InvestmentId> {
@@ -45,10 +42,5 @@ pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = *b"xCFG";
 /// The identifier of the group eligible to receive block rewards.
 pub const COLLATOR_GROUP_ID: u32 = 1;
 
-impl TypeId for DomainAddress {
-	const TYPE_ID: [u8; 4] = *b"dadr";
-}
-
-impl<Domain> TypeId for DomainLocator<Domain> {
-	const TYPE_ID: [u8; 4] = *b"domn";
-}
+pub const DOMAIN_ID: [u8; 4] = *b"dadr";
+pub const DOMAIN_ADDRESS_ID: [u8; 4] = *b"domn";

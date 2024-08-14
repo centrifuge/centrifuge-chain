@@ -55,8 +55,8 @@ pub struct SerializableDomain(u8, u64);
 impl From<Domain> for SerializableDomain {
 	fn from(domain: Domain) -> Self {
 		match domain {
-			Domain::Centrifuge => Self(0, 0),
-			Domain::EVM(chain_id) => Self(1, chain_id),
+			Domain::Local => Self(0, 0),
+			Domain::Evm(chain_id) => Self(1, chain_id),
 		}
 	}
 }
@@ -66,8 +66,8 @@ impl TryInto<Domain> for SerializableDomain {
 
 	fn try_into(self) -> Result<Domain, DispatchError> {
 		match self.0 {
-			0 => Ok(Domain::Centrifuge),
-			1 => Ok(Domain::EVM(self.1)),
+			0 => Ok(Domain::Local),
+			1 => Ok(Domain::Evm(self.1)),
 			_ => Err(DispatchError::Other("Unknown domain")),
 		}
 	}
@@ -624,22 +624,22 @@ mod tests {
 	fn encoding_domain() {
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Centrifuge)).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Local)).unwrap()),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(1))).unwrap()),
 			"010000000000000001"
 		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1284))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(1284))).unwrap()),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(43114))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(43114))).unwrap()),
 			"01000000000000a86a"
 		);
 	}
@@ -741,14 +741,14 @@ mod tests {
 
 	#[test]
 	fn transfer_tranche_tokens_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, default_address_20());
+		let domain_address = DomainAddress::Evm(1284, default_address_20());
 
 		test_encode_decode_identity(
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				domain: domain_address.domain().into(),
-				receiver: domain_address.address(),
+				receiver: domain_address.as_local(),
 				amount: AMOUNT,
 			},
 			"120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
@@ -761,7 +761,7 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				domain: Domain::Centrifuge.into(),
+				domain: Domain::Local.into(),
 				receiver: default_address_32(),
 				amount: AMOUNT,
 			},

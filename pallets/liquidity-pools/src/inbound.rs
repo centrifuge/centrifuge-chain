@@ -12,22 +12,19 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{investments::ForeignInvestment, liquidity_pools::OutboundMessageHandler};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::{Domain, DomainAddress, LocalAddress};
 use frame_support::{
 	ensure,
 	traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
 };
 use sp_core::Get;
-use sp_runtime::{
-	traits::{Convert, Zero},
-	DispatchResult,
-};
+use sp_runtime::{traits::Zero, DispatchResult};
 
 use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, Pallet};
 
 impl<T: Config> Pallet<T>
 where
-	<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
+	T::AccountId: From<LocalAddress> + Into<LocalAddress>,
 {
 	/// Executes a transfer from another domain exclusively for
 	/// non-tranche-tokens.
@@ -60,8 +57,7 @@ where
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
-		let local_representation_of_receiver =
-			T::DomainAddressToAccountId::convert(receiver.clone());
+		let local_representation_of_receiver: T::AccountId = receiver.as_local();
 
 		Self::validate_investor_can_transfer(
 			local_representation_of_receiver.clone(),
@@ -82,7 +78,7 @@ where
 		// If the receiver is not on the Centrifuge domain we need to forward it now
 		// to the right domain from the holdings of the receiver we just transferred
 		// them to.
-		if receiver.domain() != Domain::Centrifuge {
+		if receiver.domain() != Domain::Local {
 			Pallet::<T>::transfer_tranche_tokens(
 				T::RuntimeOrigin::signed(local_representation_of_receiver),
 				pool_id,

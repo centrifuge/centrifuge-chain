@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundMessageHandler};
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{Domain, LocalAddress};
 use frame_support::traits::{
 	fungibles::Mutate,
 	tokens::{Fortitude, Precision, Preservation},
@@ -24,7 +24,7 @@ use crate::{pallet::Config, Message, Pallet};
 
 impl<T: Config> ForeignInvestmentHooks<T::AccountId> for Pallet<T>
 where
-	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
+	T::AccountId: From<LocalAddress> + Into<LocalAddress>,
 {
 	type Amount = T::Balance;
 	type CurrencyId = T::CurrencyId;
@@ -39,8 +39,8 @@ where
 		fulfilled: Self::Amount,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
-		let domain_address: DomainAddress = wrapped_token.into();
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
 
 		T::Tokens::burn_from(
 			currency_id,
@@ -59,11 +59,7 @@ where
 			fulfilled_invest_amount: fulfilled.into(),
 		};
 
-		T::OutboundMessageHandler::handle(
-			T::TreasuryAccount::get(),
-			domain_address.domain(),
-			message,
-		)
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
 	}
 
 	fn fulfill_collect_investment(
@@ -74,13 +70,13 @@ where
 		tranche_tokens_payout: Self::TrancheAmount,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
-		let domain_address: DomainAddress = wrapped_token.into();
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
 
 		T::Tokens::transfer(
 			(pool_id, tranche_id).into(),
 			who,
-			&domain_address.domain().into_account(),
+			&domain.into_account(),
 			tranche_tokens_payout,
 			Preservation::Expendable,
 		)?;
@@ -94,11 +90,7 @@ where
 			tranche_tokens_payout: tranche_tokens_payout.into(),
 		};
 
-		T::OutboundMessageHandler::handle(
-			T::TreasuryAccount::get(),
-			domain_address.domain(),
-			message,
-		)
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
 	}
 
 	fn fulfill_collect_redemption(
@@ -109,8 +101,8 @@ where
 		amount_payout: Self::Amount,
 	) -> DispatchResult {
 		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
-		let domain_address: DomainAddress = wrapped_token.into();
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
 
 		T::Tokens::burn_from(
 			currency_id,
@@ -129,10 +121,6 @@ where
 			tranche_tokens_payout: tranche_tokens_collected.into(),
 		};
 
-		T::OutboundMessageHandler::handle(
-			T::TreasuryAccount::get(),
-			domain_address.domain(),
-			message,
-		)
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
 	}
 }

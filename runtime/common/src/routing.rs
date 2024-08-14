@@ -32,7 +32,7 @@ impl From<AxelarId> for RouterId {
 impl From<RouterId> for Domain {
 	fn from(router_id: RouterId) -> Self {
 		match router_id {
-			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::EVM(chain_id),
+			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::Evm(chain_id),
 		}
 	}
 }
@@ -40,8 +40,8 @@ impl From<RouterId> for Domain {
 impl RouterSupport<Domain> for RouterId {
 	fn for_domain(domain: Domain) -> Vec<Self> {
 		match domain {
-			Domain::EVM(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
-			Domain::Centrifuge => vec![],
+			Domain::Evm(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
+			Domain::Local => vec![],
 		}
 	}
 }
