@@ -41,10 +41,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.load_contracts();
 
 		// Fund gateway sender
-		give_balance::<T>(
-			<T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-			DEFAULT_BALANCE * CFG,
-		);
+		give_balance::<T>(T::Sender::get().address().into(), DEFAULT_BALANCE * CFG);
 
 		// Register general local pool-currency
 		register_currency::<T>(LocalUSDC, |_| {});
@@ -67,49 +64,31 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		// Create router
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
-		let evm_domain = EVMDomain {
-			target_contract_address: evm.deployed(names::ADAPTER).address(),
-			target_contract_hash: BlakeTwo256::hash_of(
-				&evm.deployed(names::ADAPTER).deployed_bytecode,
-			),
-			fee_values: FeeValues {
-				value: sp_core::U256::zero(),
-				gas_limit: sp_core::U256::from(500_000),
-				gas_price: sp_core::U256::from(base_fee),
-			},
+		let axelar_evm_config = AxelarConfig {
+			liquidity_pools_contract_address: evm.deployed(names::ADAPTER).address(),
+			domain: DomainConfig::Evm(EvmConfig {
+				chain_id: EVM_DOMAIN_CHAIN_ID,
+				target_contract_address: evm.deployed(names::ADAPTER).address(),
+				target_contract_hash: BlakeTwo256::hash_of(
+					&evm.deployed(names::ADAPTER).deployed_bytecode,
+				),
+				fee_values: FeeValues {
+					value: sp_core::U256::zero(),
+					gas_limit: sp_core::U256::from(500_000),
+					gas_price: sp_core::U256::from(base_fee),
+				},
+			}),
 		};
 
-		let axelar_evm_router = AxelarEVMRouter::<T>::new(
-			EVMRouter::new(evm_domain),
-			BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
-				EVM_DOMAIN_STR.as_bytes().to_vec(),
-			)
-			.unwrap(),
-			evm.deployed(names::ADAPTER).address(),
-		);
-
-		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
-				RawOrigin::Root.into(),
-				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
-				DomainRouter::<T>::AxelarEVM(axelar_evm_router),
-			)
-		);
+		assert_ok!(pallet_axelar_router::Pallet::<T>::set_config(
+			RawOrigin::Root.into(),
+			EVM_DOMAIN_STR.as_bytes().to_vec().try_into().unwrap(),
+			Box::new(axelar_evm_config)
+		));
 
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 			RawOrigin::Root.into(),
 			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, EVM_LP_INSTANCE)
-		));
-
-		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_gateway(
-			RawOrigin::Root.into(),
-			evm.deployed(names::ADAPTER).address()
-		));
-
-		assert_ok!(axelar_gateway_precompile::Pallet::<T>::set_converter(
-			RawOrigin::Root.into(),
-			BlakeTwo256::hash(EVM_DOMAIN_STR.as_bytes()),
-			SourceConverter::new(EVM_DOMAIN),
 		));
 
 		assert_ok!(

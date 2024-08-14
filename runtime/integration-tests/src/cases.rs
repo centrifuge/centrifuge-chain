@@ -10,7 +10,6 @@ mod liquidity_pools_gateway_queue;
 mod loans;
 mod lp;
 mod oracles;
-mod precompile;
 mod proxy;
 mod restricted_transfers;
 mod routers;

@@ -125,7 +125,7 @@ pub trait Env<T: Runtime>: Default {
 
 		if let Blocks::UntilEvent { event, limit } = blocks.clone() {
 			if !found_event {
-				panic!("Event {event:?} was not found producing {limit} blocks");
+				panic!("The event:\n{event:#?}\nwas not found producing {limit} blocks");
 			}
 		}
 	}

@@ -20,7 +20,6 @@ use frame_support::{
 	traits::{IsSubType, IsType, OriginTrait},
 	Parameter,
 };
-use liquidity_pools_gateway_routers::DomainRouter;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use pallet_transaction_payment::CurrencyAdapter;
@@ -34,6 +33,7 @@ use runtime_common::{
 	oracle::Feeder,
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
+	routing::RouterId,
 };
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
@@ -136,8 +136,8 @@ pub trait Runtime:
 		PoolId = PoolId,
 		TrancheId = TrancheId,
 		BalanceRatio = Ratio,
-	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
-	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<AccountId, Message>>
+	> + pallet_liquidity_pools_gateway::Config<RouterId = RouterId, Message = Message>
+	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<Message>>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
@@ -183,7 +183,7 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
-	> + axelar_gateway_precompile::Config
+	> + pallet_axelar_router::Config
 	+ pallet_token_mux::Config<
 		BalanceIn = Balance,
 		BalanceOut = Balance,
