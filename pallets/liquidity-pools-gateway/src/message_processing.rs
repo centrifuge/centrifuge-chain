@@ -10,7 +10,7 @@ use frame_support::{
 	weights::Weight,
 };
 use parity_scale_codec::MaxEncodedLen;
-use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub};
+use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub, SaturatedConversion};
 use sp_runtime::DispatchError;
 
 use crate::{
@@ -34,7 +34,8 @@ pub struct MessageEntry<T: Config> {
 	/// message.
 	///
 	/// NOTE - this gets increased by the `expected_proof_count` for a set of
-	/// routers (see `get_expected_proof_count`) every time a new identical message is submitted.
+	/// routers (see `get_expected_proof_count`) every time a new identical
+	/// message is submitted.
 	pub expected_proof_count: u32,
 }
 
@@ -322,7 +323,7 @@ impl<T: Config> Pallet<T> {
 			.ensure_sub(1)
 			.map_err(|_| Error::<T>::NotEnoughRoutersForDomain)?;
 
-		Ok(expected_proof_count as u32)
+		Ok(expected_proof_count.saturated_into())
 	}
 
 	/// Gets the message proof for a message.

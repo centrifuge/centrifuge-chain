@@ -41,6 +41,7 @@ use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
+use sp_runtime::SaturatedConversion;
 use sp_std::convert::TryInto;
 
 use crate::{
@@ -532,7 +533,7 @@ pub mod pallet {
 		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			match msg {
 				GatewayMessage::Inbound { message, .. } => {
-					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len() as u64)
+					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len().saturated_into())
 				}
 				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
 			}
