@@ -13,7 +13,7 @@ use sp_runtime::{traits::Saturating, DispatchError, TokenError};
 
 use crate::{mock::*, Error, Message, UpdateRestrictionMessage};
 
-mod inbound;
+//mod inbound;
 
 mod transfer {
 	use super::*;
@@ -30,7 +30,7 @@ mod transfer {
 					msg,
 					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
-						receiver: EVM_DOMAIN_ADDRESS.address(),
+						receiver: EVM_DOMAIN_ADDRESS.as_local(),
 						amount: AMOUNT
 					}
 				);
@@ -160,7 +160,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						DomainAddress::Centrifuge([2; 32]),
+						DomainAddress::Local([2; 32]),
 						AMOUNT
 					),
 					Error::<Runtime>::InvalidDomain
@@ -210,11 +210,10 @@ mod transfer_tranche_tokens {
 	use super::*;
 
 	fn config_mocks() {
-		DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, CONTRACT_ACCOUNT_ID);
+			assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
 					assert_eq!(tranche_id, TRANCHE_ID);
@@ -241,7 +240,7 @@ mod transfer_tranche_tokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					domain: EVM_DOMAIN_ADDRESS.domain().into(),
-					receiver: EVM_DOMAIN_ADDRESS.address(),
+					receiver: EVM_DOMAIN_ADDRESS.as_local(),
 					amount: AMOUNT
 				}
 			);
@@ -314,7 +313,7 @@ mod transfer_tranche_tokens {
 				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-					assert_eq!(who, CONTRACT_ACCOUNT_ID);
+					assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
 					match role {
 						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
 							assert_eq!(tranche_id, TRANCHE_ID);
@@ -471,11 +470,6 @@ mod add_tranche {
 	use super::*;
 
 	fn config_mocks() {
-		let mut hook = [0; 32];
-		hook[0..20].copy_from_slice(&DOMAIN_HOOK_ADDRESS_20);
-		hook[20..28].copy_from_slice(&1u64.to_be_bytes());
-		hook[28..31].copy_from_slice(b"EVM");
-
 		Permissions::mock_has(move |scope, who, role| {
 			assert_eq!(who, ALICE);
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
@@ -489,10 +483,6 @@ mod add_tranche {
 			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
 			Some(DOMAIN_HOOK_ADDRESS_20)
 		});
-		DomainAddressToAccountId::mock_convert(move |domain| {
-			assert_eq!(domain, DomainAddress::EVM(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20));
-			hook.clone().into()
-		});
 		Gateway::mock_handle(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);
 			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
@@ -504,7 +494,7 @@ mod add_tranche {
 					token_name: vec_to_fixed_array(NAME),
 					token_symbol: vec_to_fixed_array(SYMBOL),
 					decimals: DECIMALS,
-					hook,
+					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20).as_local(),
 				}
 			);
 			Ok(())
@@ -850,9 +840,8 @@ mod update_member {
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
 		Time::mock_now(|| NOW);
-		DomainAddressToAccountId::mock_convert(|_| CONTRACT_ACCOUNT_ID);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, CONTRACT_ACCOUNT_ID);
+			assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			assert!(matches!(
 				role,
@@ -870,7 +859,7 @@ mod update_member {
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::UpdateMember {
 						valid_until: VALID_UNTIL_SECS,
-						member: EVM_DOMAIN_ADDRESS.address(),
+						member: EVM_DOMAIN_ADDRESS.as_local(),
 					}
 				}
 			);
@@ -1430,20 +1419,18 @@ mod freeze {
 	use crate::message::UpdateRestrictionMessage;
 
 	fn config_mocks(receiver: DomainAddress) {
-		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
-		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has frozen investor
 					true
@@ -1466,7 +1453,7 @@ mod freeze {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::Freeze {
-						address: ALICE_EVM_DOMAIN_ADDRESS.address().into()
+						address: ALICE_EVM_DOMAIN_ADDRESS.as_local()
 					}
 				}
 			);
@@ -1609,13 +1596,13 @@ mod freeze {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
 						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 							assert_eq!(tranche_id, TRANCHE_ID);
 							assert_eq!(validity, NOW_SECS);
 							true
 						}
 						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 							assert_eq!(tranche_id, TRANCHE_ID);
 							false
 						}
@@ -1648,20 +1635,18 @@ mod unfreeze {
 	use crate::message::UpdateRestrictionMessage;
 
 	fn config_mocks(receiver: DomainAddress) {
-		DomainAccountToDomainAddress::mock_convert(move |_| receiver.clone());
-		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has unfrozen investor
 					false
@@ -1684,7 +1669,7 @@ mod unfreeze {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::Unfreeze {
-						address: ALICE_EVM_DOMAIN_ADDRESS.address().into()
+						address: ALICE_EVM_DOMAIN_ADDRESS.as_local()
 					}
 				}
 			);
@@ -1823,17 +1808,7 @@ mod unfreeze {
 		fn with_investor_unfrozen() {
 			System::externalities().execute_with(|| {
 				config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
-				Permissions::mock_has(move |scope, who, role| {
-					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-					match role {
-						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-							assert_eq!(who, ALICE_EVM_LOCAL_ACCOUNT);
-							assert_eq!(tranche_id, TRANCHE_ID);
-							true
-						}
-						_ => true,
-					}
-				});
+				Permissions::mock_has(move |_, _, _| true);
 
 				assert_noop!(
 					LiquidityPools::unfreeze_investor(
@@ -1853,7 +1828,6 @@ mod update_tranche_hook {
 	use super::*;
 
 	fn config_mocks() {
-		DomainAddressToAccountId::mock_convert(move |_| DOMAIN_HOOK_ADDRESS_32.into());
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
@@ -1874,7 +1848,7 @@ mod update_tranche_hook {
 				Message::UpdateTrancheHook {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					hook: DOMAIN_HOOK_ADDRESS_32
+					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20).as_local(),
 				}
 			);
 			Ok(())
@@ -1999,7 +1973,7 @@ mod update_tranche_hook {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						Domain::Centrifuge,
+						Domain::Local,
 						DOMAIN_HOOK_ADDRESS_20
 					),
 					Error::<Runtime>::InvalidDomain

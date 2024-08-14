@@ -1,7 +1,7 @@
 use cfg_primitives::{PoolId, TrancheId};
 use cfg_traits::{Millis, Seconds};
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::{Domain, DomainAddress, EthAddress, LocalAddress},
 	permissions::PermissionScope,
 	tokens::{
 		AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
@@ -26,24 +26,14 @@ pub const CHAIN_ID: u64 = 1;
 pub const ALICE_32: [u8; 32] = [2; 32];
 pub const ALICE: AccountId = AccountId::new(ALICE_32);
 pub const ALICE_ETH: [u8; 20] = [2; 20];
-pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, ALICE_ETH);
-// TODO(future): Can be removed after domain conversion refactor
-pub const ALICE_EVM_LOCAL_ACCOUNT: AccountId = {
-	let mut arr = [0u8; 32];
-	let mut i = 0;
-	while i < 20 {
-		arr[i] = ALICE_ETH[i];
-		i += 1;
-	}
-	AccountId::new(arr)
-};
-pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge(ALICE_32);
+pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Evm(42, ALICE_ETH);
+pub const LOCAL_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Local(ALICE_32);
 pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
 pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
 pub const DOMAIN_HOOK_ADDRESS_20: [u8; 20] = [10u8; 20];
 pub const DOMAIN_HOOK_ADDRESS_32: [u8; 32] = [10u8; 32];
-pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
-pub const EVM_DOMAIN: Domain = Domain::EVM(CHAIN_ID);
+pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Evm(CHAIN_ID, CONTRACT_ACCOUNT);
+pub const EVM_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
 pub const AMOUNT: Balance = 100;
 pub const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
