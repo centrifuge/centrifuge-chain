@@ -138,14 +138,7 @@ pub mod pallet {
 		type MaxRouterCount: Get<u32>;
 
 		/// Type for identifying sessions of inbound routers.
-		type SessionId: Parameter
-			+ Member
-			+ BaseArithmetic
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type SessionId: Parameter + Member + BaseArithmetic + Default + Copy + MaxEncodedLen;
 	}
 
 	#[pallet::event]
