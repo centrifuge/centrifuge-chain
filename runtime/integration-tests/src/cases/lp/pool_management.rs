@@ -402,8 +402,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
-				.as_local(),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()).as_local(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
