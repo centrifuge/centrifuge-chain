@@ -61,8 +61,6 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::dispatch::PostDispatchInfo;
-
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -272,7 +270,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Sets the router IDs used for a specific domain,
+		/// Sets the IDs of the routers that are used when receiving and sending
+		/// messages.
 		#[pallet::weight(T::WeightInfo::set_routers())]
 		#[pallet::call_index(0)]
 		pub fn set_routers(
@@ -424,13 +423,10 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			proof: Proof,
 			router_id: T::RouterId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let mut weight = Weight::default();
-
-			let inbound_processing_info =
-				Self::get_inbound_processing_info(domain_address, &mut weight)?;
+			let inbound_processing_info = Self::get_inbound_processing_info(domain_address)?;
 
 			ensure!(
 				inbound_processing_info
@@ -444,8 +440,6 @@ pub mod pallet {
 				inbound_processing_info.router_ids.len() > 1,
 				Error::<T>::NotEnoughRoutersForDomain
 			);
-
-			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			PendingInboundEntries::<T>::try_mutate(proof, router_id.clone(), |storage_entry| {
 				match storage_entry {
@@ -478,14 +472,11 @@ pub mod pallet {
 				}
 			})?;
 
-			Self::execute_if_requirements_are_met(&inbound_processing_info, proof, &mut weight)?;
+			Self::execute_if_requirements_are_met(&inbound_processing_info, proof)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted { proof, router_id });
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(weight),
-				pays_fee: Pays::Yes,
-			})
+			Ok(())
 		}
 	}
 
