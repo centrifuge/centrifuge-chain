@@ -2016,7 +2016,7 @@ mod recover_assets {
 	const ASSET: [u8; 32] = [43; 32];
 
 	fn config_mocks() {
-		DomainAddressToAccountId::mock_convert(move |_| DOMAIN_HOOK_ADDRESS_32.into());
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Permissions::mock_has(|_, _, _| false);
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, TreasuryAccount::get());
@@ -2027,7 +2027,7 @@ mod recover_assets {
 					contract: CONTRACT,
 					asset: ASSET,
 					recipient: ALICE_EVM_LOCAL_ACCOUNT.into(),
-					amount: AMOUNT.into(),
+					amount: sp_core::U256::from(AMOUNT).into(),
 				}
 			);
 			Ok(())

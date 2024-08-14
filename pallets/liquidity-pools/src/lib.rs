@@ -121,6 +121,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
+	use sp_core::U256;
 	use sp_runtime::{traits::Zero, DispatchError};
 
 	use super::*;
@@ -1029,7 +1030,7 @@ pub mod pallet {
 			incorrect_contract: [u8; 32],
 			asset: [u8; 32],
 			// NOTE: Solidity balance is `U256` per default
-			amount: sp_core::U256,
+			amount: U256,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
@@ -1045,7 +1046,7 @@ pub mod pallet {
 					contract: incorrect_contract,
 					asset,
 					recipient: T::DomainAddressToAccountId::convert(domain_address).into(),
-					amount,
+					amount: amount.into(),
 				},
 			)?;
 
