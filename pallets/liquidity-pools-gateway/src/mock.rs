@@ -5,7 +5,7 @@ use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::crypto::AccountId32;
 use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
@@ -115,7 +115,7 @@ impl cfg_mocks::router_message::pallet::Config for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes()).into());
+	pub Sender: DomainAddress = DomainAddress::Local([1; 32]);
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 }

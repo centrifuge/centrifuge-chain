@@ -25,7 +25,7 @@ fn inbound<T: Runtime + FudgeSupport>() {
 	let expected_event = env.parachain_state_mut(|| {
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
-			domain_address: DomainAddress::EVM(1, [2; 20]),
+			domain_address: DomainAddress::Evm(1, [2; 20]),
 			message: Message::Invalid,
 		};
 
@@ -55,8 +55,8 @@ fn outbound<T: Runtime + FudgeSupport>() {
 	let expected_event = env.parachain_state_mut(|| {
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: DomainAddress::Centrifuge([1; 32]),
-			destination: Domain::EVM(1),
+			sender: DomainAddress::Local([1; 32]),
+			destination: Domain::Evm(1),
 			message: Message::Invalid,
 		};
 

@@ -9,7 +9,7 @@ const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
 const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
 const SOURCE_ADDRESS: H160 = H160::repeat_byte(3);
 const AXELAR_CONTRACT_HASH: H256 = H256::repeat_byte(42);
-const SENDER: DomainAddress = DomainAddress::Centrifuge([0; 32]);
+const SENDER: DomainAddress = DomainAddress::Local([0; 32]);
 const MESSAGE: &[u8] = &[1, 2, 3];
 const FEE_VALUE: U256 = U256::zero();
 const GAS_LIMIT: U256 = U256::one();
@@ -91,7 +91,7 @@ mod send {
 			correct_configuration();
 
 			Transactor::mock_call(move |from, to, data, value, gas_price, gas_limit| {
-				assert_eq!(from, H160::from_slice(&SENDER.address()[0..20]));
+				assert_eq!(from, SENDER.as_eth());
 				assert_eq!(to, AXELAR_CONTRACT_ADDRESS);
 				assert_eq!(data, &wrap_message(MESSAGE.to_vec()));
 				assert_eq!(value, FEE_VALUE);
@@ -143,7 +143,7 @@ mod receive {
 
 			Receiver::mock_receive(|middleware, origin, message| {
 				assert_eq!(middleware, Middleware(AxelarId::Evm(CHAIN_ID)));
-				assert_eq!(origin, DomainAddress::EVM(CHAIN_ID, SOURCE_ADDRESS.0));
+				assert_eq!(origin, DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS.0));
 				assert_eq!(&message, MESSAGE);
 				Ok(())
 			});

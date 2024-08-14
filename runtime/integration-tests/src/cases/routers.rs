@@ -12,7 +12,7 @@ use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use runtime_common::{
 	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
-	gateway::get_gateway_h160_account,
+	gateway::get_gateway_domain_address,
 };
 use sp_core::{Get, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -35,7 +35,7 @@ mod axelar_evm {
 	const CHAIN_NAME: &str = "Ethereum";
 	const INITIAL: Balance = 100;
 	const CHAIN_ID: EVMChainId = 1;
-	const TEST_DOMAIN: Domain = Domain::EVM(CHAIN_ID);
+	const TEST_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
 	const AXELAR_CONTRACT_CODE: &[u8] = &[0, 0, 0];
 	const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
 	const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
@@ -120,7 +120,7 @@ mod axelar_evm {
 
 			utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
 			utils::evm::mint_balance_into_derived_account::<T>(
-				get_gateway_h160_account::<T>(),
+				get_gateway_domain_address::<T>().as_eth::<H160>(),
 				cfg(1),
 			);
 
@@ -171,7 +171,7 @@ mod axelar_evm {
 
 			pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 				RawOrigin::Root.into(),
-				DomainAddress::EVM(CHAIN_ID, SOURCE_ADDRESS.0),
+				DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS.0),
 			)
 			.unwrap();
 

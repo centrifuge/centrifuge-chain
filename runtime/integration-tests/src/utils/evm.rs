@@ -4,12 +4,12 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+use cfg_types::domain_address::DomainAddress;
 use cfg_utils::vec_to_fixed_array;
 use ethabi::{ethereum_types::H160, Contract};
 use ethereum::ReceiptV3;
 use frame_support::traits::{fungible::Mutate, OriginTrait};
 use pallet_evm::FeeCalculator;
-use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::traits::Get;
 
 use crate::{config::Runtime, utils::ESSENTIAL};
@@ -184,11 +184,10 @@ pub fn receipt_ok(receipt: ReceiptV3) -> bool {
 	inner.status_code == 1
 }
 
-pub fn mint_balance_into_derived_account<T: Runtime>(address: impl AsRef<[u8]>, balance: u128) {
+pub fn mint_balance_into_derived_account<T: Runtime>(address: impl Into<[u8; 20]>, balance: u128) {
 	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-	let derived_account =
-		AccountConverter::convert_evm_address(chain_id, vec_to_fixed_array(address));
-	pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
+	let derived_account = DomainAddress::from_evm(chain_id, address).as_local();
+	pallet_balances::Pallet::<T>::mint_into(&derived_account, balance)
 		.expect("Minting into derived EVM accounf failed.");
 }
 

@@ -28,13 +28,13 @@ use cfg_primitives::{
 	SAFE_XCM_VERSION,
 };
 use cfg_types::{
+	domain_address::DomainAddress,
 	fee_keys::FeeKey,
 	tokens::{usdc, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -271,8 +271,8 @@ fn centrifuge_genesis(
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
-		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::convert_evm_address(chain_id, addr)
+		let chain_id = id.unwrap_or(chain_id.into());
+		DomainAddress::from_evm(chain_id, addr).as_local()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -371,8 +371,8 @@ fn altair_genesis(
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
-		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::convert_evm_address(chain_id, addr)
+		let chain_id = id.unwrap_or(chain_id.into());
+		DomainAddress::from_evm(chain_id, addr).as_local()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -472,8 +472,8 @@ fn development_genesis(
 	let chain_id: u32 = id.into();
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
-		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::convert_evm_address(chain_id, addr)
+		let chain_id = id.unwrap_or(chain_id.into());
+		DomainAddress::from_evm(chain_id, addr).as_local()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();

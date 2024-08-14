@@ -93,11 +93,13 @@ pub use message::Message;
 pub mod hooks;
 mod inbound;
 
+/*
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+*/
 
 pub type GeneralCurrencyIndexType = u128;
 

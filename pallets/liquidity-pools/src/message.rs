@@ -740,7 +740,7 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer_tranche_tokens_to_moonbeam() {
+	fn transfer_tranche_tokens_to_chain() {
 		let domain_address = DomainAddress::Evm(1284, default_address_20());
 
 		test_encode_decode_identity(
@@ -751,7 +751,7 @@ mod tests {
 				receiver: domain_address.as_local(),
 				amount: AMOUNT,
 			},
-			"120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+            "120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000050445564d00000000000052b7d2dcc80cd2e4000000"
 		);
 	}
 

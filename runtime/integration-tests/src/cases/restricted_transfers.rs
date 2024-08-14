@@ -397,7 +397,7 @@ mod eth_address {
 		);
 
 		env.parachain_state_mut(|| {
-			let curr_contract = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
+			let curr_contract = DomainAddress::Evm(CHAIN_ID, CONTRACT_ACCOUNT);
 
 			assert_ok!(
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
@@ -411,7 +411,7 @@ mod eth_address {
 				pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					curr.id(),
-					DomainAddress::EVM(CHAIN_ID, [2; 20]), // Not the allowed contract account
+					DomainAddress::Evm(CHAIN_ID, [2; 20]), // Not the allowed contract account
 					curr.val(TRANSFER),
 				),
 				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination

@@ -21,10 +21,7 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_evm::ExecutionInfo;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use sp_core::Get;
-use sp_runtime::{
-	traits::{Convert, EnsureAdd},
-	DispatchError,
-};
+use sp_runtime::{traits::EnsureAdd, DispatchError};
 use staging_xcm::{
 	v4::{
 		Junction::{AccountKey20, GlobalConsensus, PalletInstance},
@@ -40,10 +37,7 @@ use crate::{
 };
 
 pub fn remote_account_of<T: Runtime>(keyring: Keyring) -> <T as frame_system::Config>::AccountId {
-	<T as pallet_liquidity_pools::Config>::DomainAddressToAccountId::convert(DomainAddress::evm(
-		EVM_DOMAIN_CHAIN_ID,
-		keyring.into(),
-	))
+	DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, keyring.into()).as_local()
 }
 
 pub const REVERT_ERR: Result<CallInfo, DispatchError> =
@@ -97,10 +91,7 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 		.clone();
 
 	// The sender is the sender account on the gateway
-	assert_eq!(
-		status.from.0,
-		<T as pallet_liquidity_pools_gateway::Config>::Sender::get().address()[0..20]
-	);
+	assert_eq!(T::Sender::get().as_eth::<[u8; 20]>(), status.from.0);
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
 	assert!(matches!(
@@ -156,7 +147,7 @@ pub fn process_gateway_message<T: Runtime>(
 					sender,
 					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
 				);
-				assert_eq!(destination, Domain::EVM(EVM_DOMAIN_CHAIN_ID));
+				assert_eq!(destination, Domain::Evm(EVM_DOMAIN_CHAIN_ID));
 				verifier(message)
 			}
 		}

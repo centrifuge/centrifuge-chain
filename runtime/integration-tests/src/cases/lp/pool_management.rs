@@ -21,7 +21,6 @@ use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
-use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::FixedPointNumber;
 
 use crate::{
@@ -142,7 +141,7 @@ fn add_pool<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -163,7 +162,7 @@ fn add_pool<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			T::RuntimeOriginExt::signed(Keyring::Admin.into()),
 			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(|_| {
@@ -213,7 +212,7 @@ fn add_tranche<T: Runtime>() {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -403,7 +402,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()).as_local(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -412,7 +411,7 @@ fn update_member<T: Runtime>() {
 			Keyring::Bob.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -517,7 +516,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 				OriginFor::<T>::signed(Keyring::Alice.into()),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
-				Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+				Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 			)
 		);
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -573,7 +572,7 @@ fn update_tranche_token_price<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			USDC.id(),
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
@@ -630,10 +629,7 @@ fn freeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()).as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -641,7 +637,7 @@ fn freeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -677,10 +673,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()).as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -688,7 +681,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -711,10 +704,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		remove_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()).as_local(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -722,7 +712,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
