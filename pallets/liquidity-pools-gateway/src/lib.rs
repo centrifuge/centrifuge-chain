@@ -522,7 +522,14 @@ pub mod pallet {
 					sender,
 					message,
 					router_id,
-				} => Self::process_outbound_message(sender, message, router_id),
+				} => {
+					let weight = LP_DEFENSIVE_WEIGHT;
+
+					match T::MessageSender::send(router_id, sender, message.serialize()) {
+						Ok(_) => (Ok(()), weight),
+						Err(e) => (Err(e), weight),
+					}
+				}
 			}
 		}
 

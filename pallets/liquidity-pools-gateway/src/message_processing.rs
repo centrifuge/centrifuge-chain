@@ -1,6 +1,6 @@
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageQueue, MessageSender, Proof, RouterProvider,
+	InboundMessageHandler, LPEncoding, MessageQueue, Proof, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
@@ -468,21 +468,6 @@ impl<T: Config> Pallet<T> {
 		}
 
 		(Ok(()), weight.saturating_mul(count))
-	}
-
-	/// Retrieves the stored router, sends the message, and calculates and
-	/// returns the router operation result and the weight used.
-	pub(crate) fn process_outbound_message(
-		sender: DomainAddress,
-		message: T::Message,
-		router_id: T::RouterId,
-	) -> (DispatchResult, Weight) {
-		let weight = LP_DEFENSIVE_WEIGHT;
-
-		match T::MessageSender::send(router_id, sender, message.serialize()) {
-			Ok(_) => (Ok(()), weight),
-			Err(e) => (Err(e), weight),
-		}
 	}
 
 	/// Retrieves the IDs of the routers set for a domain and queues the
