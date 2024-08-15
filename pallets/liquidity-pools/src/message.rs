@@ -18,7 +18,6 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
-use sp_core::U256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
 use sp_std::{vec, vec::Vec};
