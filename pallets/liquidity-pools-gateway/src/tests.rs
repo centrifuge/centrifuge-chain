@@ -23,7 +23,7 @@ use super::{
 	pallet::*,
 };
 use crate::{
-	message_processing::{InboundEntry, InboundProcessingInfo, MessageEntry, ProofEntry},
+	message_processing::{InboundEntry, MessageEntry, ProofEntry},
 	GatewayMessage,
 };
 
@@ -3331,29 +3331,25 @@ mod implementations {
 			#[test]
 			fn create_inbound_entry() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
+					let domain_address = TEST_DOMAIN_ADDRESS;
+					let session_id = 1;
+					let expected_proof_count = 2;
 
 					let tests: Vec<(Message, InboundEntry<Runtime>)> = vec![
 						(
 							Message::Simple,
 							MessageEntry {
-								session_id: inbound_processing_info.current_session_id,
-								domain_address: inbound_processing_info.domain_address.clone(),
+								session_id,
+								domain_address: domain_address.clone(),
 								message: Message::Simple,
-								expected_proof_count: inbound_processing_info
-									.expected_proof_count_per_message,
+								expected_proof_count,
 							}
 							.into(),
 						),
 						(
 							Message::Proof(MESSAGE_PROOF),
 							ProofEntry {
-								session_id: inbound_processing_info.current_session_id,
+								session_id,
 								current_count: 1,
 							}
 							.into(),
@@ -3361,8 +3357,12 @@ mod implementations {
 					];
 
 					for (test_message, expected_inbound_entry) in tests {
-						let res: InboundEntry<Runtime> =
-							(&inbound_processing_info, test_message).into();
+						let res = InboundEntry::create(
+							test_message,
+							session_id,
+							domain_address.clone(),
+							expected_proof_count,
+						);
 
 						assert_eq!(res, expected_inbound_entry)
 					}
@@ -3376,29 +3376,25 @@ mod implementations {
 			#[test]
 			fn no_stored_entry() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
+					let domain_address = TEST_DOMAIN_ADDRESS;
+					let session_id = 1;
+					let expected_proof_count = 2;
 
 					let tests: Vec<(RouterId, InboundEntry<Runtime>)> = vec![
 						(
 							ROUTER_ID_1,
 							MessageEntry {
-								session_id: inbound_processing_info.current_session_id,
-								domain_address: inbound_processing_info.domain_address.clone(),
+								session_id,
+								domain_address,
 								message: Message::Simple,
-								expected_proof_count: inbound_processing_info
-									.expected_proof_count_per_message,
+								expected_proof_count,
 							}
 							.into(),
 						),
 						(
 							ROUTER_ID_2,
 							ProofEntry {
-								session_id: inbound_processing_info.current_session_id,
+								session_id,
 								current_count: 1,
 							}
 							.into(),
@@ -3408,7 +3404,7 @@ mod implementations {
 					for (test_router_id, test_inbound_entry) in tests {
 						assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 							MESSAGE_PROOF,
-							test_router_id.clone(),
+							&test_router_id.clone(),
 							test_inbound_entry.clone(),
 						));
 
@@ -3440,7 +3436,7 @@ mod implementations {
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
-						ROUTER_ID_1.clone(),
+						&ROUTER_ID_1,
 						inbound_entry,
 					));
 
@@ -3475,7 +3471,7 @@ mod implementations {
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
-						ROUTER_ID_1.clone(),
+						&ROUTER_ID_1,
 						MessageEntry {
 							session_id: 2,
 							domain_address: TEST_DOMAIN_ADDRESS,
@@ -3520,7 +3516,7 @@ mod implementations {
 					assert_noop!(
 						LiquidityPoolsGateway::upsert_pending_entry(
 							MESSAGE_PROOF,
-							ROUTER_ID_1.clone(),
+							&ROUTER_ID_1,
 							InboundEntry::Proof(ProofEntry {
 								session_id: 1,
 								current_count: 1
@@ -3548,7 +3544,7 @@ mod implementations {
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
-						ROUTER_ID_1.clone(),
+						&ROUTER_ID_1,
 						inbound_entry,
 					));
 
@@ -3579,7 +3575,7 @@ mod implementations {
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
 						MESSAGE_PROOF,
-						ROUTER_ID_1.clone(),
+						&ROUTER_ID_1,
 						ProofEntry {
 							session_id: 2,
 							current_count: 1,
@@ -3618,7 +3614,7 @@ mod implementations {
 					assert_noop!(
 						LiquidityPoolsGateway::upsert_pending_entry(
 							MESSAGE_PROOF,
-							ROUTER_ID_1.clone(),
+							&ROUTER_ID_1,
 							InboundEntry::Message(MessageEntry {
 								session_id: 1,
 								domain_address: TEST_DOMAIN_ADDRESS,
@@ -3638,12 +3634,10 @@ mod implementations {
 			#[test]
 			fn entries_with_invalid_session_are_ignored() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
+					let domain_address = TEST_DOMAIN_ADDRESS;
+					let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
+					let session_id = 1;
+					let expected_proof_count = 2;
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3673,8 +3667,11 @@ mod implementations {
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_if_requirements_are_met(
-						&inbound_processing_info,
-						MESSAGE_PROOF
+						MESSAGE_PROOF,
+						&router_ids,
+						session_id,
+						expected_proof_count,
+						domain_address,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_some()
@@ -3695,17 +3692,16 @@ mod implementations {
 			#[test]
 			fn pending_inbound_entry_not_found() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1],
-						current_session_id: 1,
-						expected_proof_count_per_message: 2,
-					};
+					let router_ids = vec![ROUTER_ID_1];
+					let session_id = 1;
+					let expected_proof_count = 2;
 
 					assert_noop!(
 						LiquidityPoolsGateway::execute_post_voting_dispatch(
-							&inbound_processing_info,
-							MESSAGE_PROOF
+							MESSAGE_PROOF,
+							&router_ids,
+							session_id,
+							expected_proof_count,
 						),
 						Error::<Runtime>::PendingInboundEntryNotFound
 					);
@@ -3715,28 +3711,27 @@ mod implementations {
 			#[test]
 			fn message_entry_new_session() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1],
-						current_session_id: 2,
-						expected_proof_count_per_message: 2,
-					};
+					let domain_address = TEST_DOMAIN_ADDRESS;
+					let router_ids = vec![ROUTER_ID_1];
+					let session_id = 2;
+					let expected_proof_count = 2;
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
 						ROUTER_ID_1,
 						InboundEntry::Message(MessageEntry {
 							session_id: 1,
-							domain_address: inbound_processing_info.domain_address.clone(),
+							domain_address,
 							message: Message::Simple,
-							expected_proof_count: inbound_processing_info
-								.expected_proof_count_per_message,
+							expected_proof_count,
 						}),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
-						&inbound_processing_info,
-						MESSAGE_PROOF
+						MESSAGE_PROOF,
+						&router_ids,
+						session_id,
+						expected_proof_count,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none()
@@ -3747,12 +3742,9 @@ mod implementations {
 			#[test]
 			fn proof_entry_new_session() {
 				new_test_ext().execute_with(|| {
-					let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-						domain_address: TEST_DOMAIN_ADDRESS,
-						router_ids: vec![ROUTER_ID_1],
-						current_session_id: 2,
-						expected_proof_count_per_message: 2,
-					};
+					let router_ids = vec![ROUTER_ID_1];
+					let session_id = 2;
+					let expected_proof_count = 2;
 
 					PendingInboundEntries::<Runtime>::insert(
 						MESSAGE_PROOF,
@@ -3764,8 +3756,10 @@ mod implementations {
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
-						&inbound_processing_info,
-						MESSAGE_PROOF
+						MESSAGE_PROOF,
+						&router_ids,
+						session_id,
+						expected_proof_count,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none()
@@ -3795,16 +3789,13 @@ mod inbound_entry {
 					expected_proof_count: 4,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 
@@ -3833,16 +3824,13 @@ mod inbound_entry {
 					expected_proof_count: 4,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id + 1,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id + 1;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 				assert_eq!(res, None);
@@ -3862,16 +3850,13 @@ mod inbound_entry {
 					expected_proof_count: 2,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 3,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 3;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				);
 
 				assert_noop!(res, Arithmetic(Underflow));
@@ -3891,16 +3876,13 @@ mod inbound_entry {
 					expected_proof_count: 2,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 
@@ -3918,16 +3900,13 @@ mod inbound_entry {
 					current_count: 2,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 
@@ -3951,16 +3930,13 @@ mod inbound_entry {
 					current_count: 2,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id + 1,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id + 1;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 
@@ -3978,19 +3954,16 @@ mod inbound_entry {
 					current_count: 0,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				);
 
-				assert_noop!(res, Arithmetic(Underflow),);
+				assert_noop!(res, Arithmetic(Underflow));
 			});
 		}
 
@@ -4004,16 +3977,13 @@ mod inbound_entry {
 					current_count: 1,
 				});
 
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![],
-					current_session_id: session_id,
-					expected_proof_count_per_message: 2,
-				};
+				let session_id = session_id;
+				let expected_proof_count = 2;
 
 				let res = InboundEntry::create_post_voting_entry(
 					&inbound_entry,
-					&inbound_processing_info,
+					session_id,
+					expected_proof_count,
 				)
 				.unwrap();
 
@@ -4028,48 +3998,42 @@ mod inbound_entry {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-					current_session_id: 1,
-					expected_proof_count_per_message: 2,
-				};
+				let domain_address = TEST_DOMAIN_ADDRESS;
+				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
+				let session_id = 1;
+				let expected_proof_count = 2;
 
-				let inbound_entry = InboundEntry::Message(MessageEntry {
-					session_id: inbound_processing_info.current_session_id,
-					domain_address: inbound_processing_info.domain_address.clone(),
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address,
 					message: Message::Simple,
-					expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
+					expected_proof_count,
 				});
 
-				assert_ok!(inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_1));
+				assert_ok!(inbound_entry.validate(&router_ids, &ROUTER_ID_1));
 
-				let inbound_entry = InboundEntry::Proof(ProofEntry {
-					session_id: inbound_processing_info.current_session_id,
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
 					current_count: 1,
 				});
 
-				assert_ok!(inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_2));
+				assert_ok!(inbound_entry.validate(&router_ids, &ROUTER_ID_2));
 			});
 		}
 
 		#[test]
 		fn unknown_router() {
 			new_test_ext().execute_with(|| {
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2],
-					current_session_id: 1,
-					expected_proof_count_per_message: 2,
-				};
+				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2];
+				let session_id = 1;
 
-				let inbound_entry = InboundEntry::Proof(ProofEntry {
-					session_id: inbound_processing_info.current_session_id,
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
 					current_count: 1,
 				});
 
 				assert_noop!(
-					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_3),
+					inbound_entry.validate(&router_ids, &ROUTER_ID_3),
 					Error::<Runtime>::UnknownRouter
 				);
 			});
@@ -4078,32 +4042,30 @@ mod inbound_entry {
 		#[test]
 		fn message_type_mismatch() {
 			new_test_ext().execute_with(|| {
-				let inbound_processing_info = InboundProcessingInfo::<Runtime> {
-					domain_address: TEST_DOMAIN_ADDRESS,
-					router_ids: vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
-					current_session_id: 1,
-					expected_proof_count_per_message: 2,
-				};
+				let domain_address = TEST_DOMAIN_ADDRESS;
+				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
+				let session_id = 1;
+				let expected_proof_count = 2;
 
-				let inbound_entry = InboundEntry::Message(MessageEntry {
-					session_id: inbound_processing_info.current_session_id,
-					domain_address: inbound_processing_info.domain_address.clone(),
+				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
+					session_id,
+					domain_address,
 					message: Message::Simple,
-					expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
+					expected_proof_count,
 				});
 
 				assert_noop!(
-					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_2),
+					inbound_entry.validate(&router_ids, &ROUTER_ID_2),
 					Error::<Runtime>::MessageExpectedFromFirstRouter
 				);
 
-				let inbound_entry = InboundEntry::Proof(ProofEntry {
-					session_id: inbound_processing_info.current_session_id,
+				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
+					session_id,
 					current_count: 1,
 				});
 
 				assert_noop!(
-					inbound_entry.validate(&inbound_processing_info, &ROUTER_ID_1),
+					inbound_entry.validate(&router_ids, &ROUTER_ID_1),
 					Error::<Runtime>::ProofNotExpectedFromFirstRouter
 				);
 			});
@@ -4285,46 +4247,6 @@ mod inbound_entry {
 				assert_noop!(
 					inbound_entry_2.pre_dispatch_update(inbound_entry_1),
 					Error::<Runtime>::ExpectedMessageProofType
-				);
-			});
-		}
-	}
-}
-
-mod inbound_processing_info {
-	use super::*;
-
-	mod try_from_domain_address {
-		use super::*;
-
-		#[test]
-		fn success() {
-			new_test_ext().execute_with(|| {
-				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2];
-				let expected_proof_count = router_ids.len() - 1;
-
-				Routers::<Runtime>::set(BoundedVec::try_from(router_ids.clone()).unwrap());
-
-				let res: InboundProcessingInfo<Runtime> = TEST_DOMAIN_ADDRESS.try_into().unwrap();
-				assert_eq!(res.domain_address, TEST_DOMAIN_ADDRESS);
-				assert_eq!(res.router_ids, router_ids);
-				assert_eq!(res.current_session_id, 0);
-				assert_eq!(
-					res.expected_proof_count_per_message,
-					expected_proof_count as u32
-				);
-			});
-		}
-
-		#[test]
-		fn not_enough_routers_for_domain() {
-			new_test_ext().execute_with(|| {
-				let res: Result<InboundProcessingInfo<Runtime>, DispatchError> =
-					TEST_DOMAIN_ADDRESS.try_into();
-
-				assert_eq!(
-					res.err().unwrap(),
-					Error::<Runtime>::NotEnoughRoutersForDomain.into()
 				);
 			});
 		}

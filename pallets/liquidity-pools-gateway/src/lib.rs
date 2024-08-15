@@ -44,10 +44,7 @@ use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_runtime::SaturatedConversion;
 use sp_std::{convert::TryInto, vec::Vec};
 
-use crate::{
-	message_processing::{InboundEntry, InboundProcessingInfo},
-	weights::WeightInfo,
-};
+use crate::{message_processing::InboundEntry, weights::WeightInfo};
 
 mod origin;
 pub use origin::*;
@@ -439,28 +436,26 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let inbound_processing_info: InboundProcessingInfo<T> = domain_address.try_into()?;
+			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
 
 			ensure!(
-				inbound_processing_info
-					.router_ids
-					.iter()
-					.any(|x| x == &router_id),
+				router_ids.iter().any(|x| x == &router_id),
 				Error::<T>::UnknownRouter
 			);
+			// Message recovery shouldn't be supported for setups that have less than 1
+			// router since no proofs are required in that case.
+			ensure!(router_ids.len() > 1, Error::<T>::NotEnoughRoutersForDomain);
 
-			ensure!(
-				inbound_processing_info.router_ids.len() > 1,
-				Error::<T>::NotEnoughRoutersForDomain
-			);
+			let session_id = SessionIdStore::<T>::get();
 
 			PendingInboundEntries::<T>::try_mutate(proof, router_id.clone(), |storage_entry| {
 				match storage_entry {
-					Some(stored_inbound_entry) => stored_inbound_entry
-						.increment_proof_count(inbound_processing_info.current_session_id),
+					Some(stored_inbound_entry) => {
+						stored_inbound_entry.increment_proof_count(session_id)
+					}
 					None => {
 						*storage_entry = Some(InboundEntry::<T>::Proof(ProofEntry {
-							session_id: inbound_processing_info.current_session_id,
+							session_id,
 							current_count: 1,
 						}));
 
@@ -469,7 +464,15 @@ pub mod pallet {
 				}
 			})?;
 
-			Self::execute_if_requirements_are_met(&inbound_processing_info, proof)?;
+			let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
+
+			Self::execute_if_requirements_are_met(
+				proof,
+				&router_ids,
+				session_id,
+				expected_proof_count,
+				domain_address,
+			)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted { proof, router_id });
 

@@ -71,23 +71,6 @@ pub enum InboundEntry<T: Config> {
 	Proof(ProofEntry<T>),
 }
 
-impl<T: Config> From<(&InboundProcessingInfo<T>, T::Message)> for InboundEntry<T> {
-	fn from((inbound_processing_info, message): (&InboundProcessingInfo<T>, T::Message)) -> Self {
-		match message.proof_hash() {
-			None => InboundEntry::Message(MessageEntry {
-				session_id: inbound_processing_info.current_session_id,
-				domain_address: inbound_processing_info.domain_address.clone(),
-				message,
-				expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
-			}),
-			Some(_) => InboundEntry::Proof(ProofEntry {
-				session_id: inbound_processing_info.current_session_id,
-				current_count: 1,
-			}),
-		}
-	}
-}
-
 impl<T: Config> From<MessageEntry<T>> for InboundEntry<T> {
 	fn from(message_entry: MessageEntry<T>) -> Self {
 		Self::Message(message_entry)
@@ -101,6 +84,27 @@ impl<T: Config> From<ProofEntry<T>> for InboundEntry<T> {
 }
 
 impl<T: Config> InboundEntry<T> {
+	/// Creates an inbound entry based on the type of message.
+	pub fn create(
+		message: T::Message,
+		session_id: T::SessionId,
+		domain_address: DomainAddress,
+		expected_proof_count: u32,
+	) -> Self {
+		match message.proof_hash() {
+			None => InboundEntry::Message(MessageEntry {
+				session_id,
+				domain_address,
+				message,
+				expected_proof_count,
+			}),
+			Some(_) => InboundEntry::Proof(ProofEntry {
+				session_id,
+				current_count: 1,
+			}),
+		}
+	}
+
 	/// Creates a new `InboundEntry` based on the information provided.
 	///
 	/// If a session change is detected or if the updated counts reach 0, it
@@ -108,17 +112,18 @@ impl<T: Config> InboundEntry<T> {
 	/// decreased accordingly, based on the entry type.
 	pub fn create_post_voting_entry(
 		inbound_entry: &InboundEntry<T>,
-		inbound_processing_info: &InboundProcessingInfo<T>,
+		session_id: T::SessionId,
+		expected_proof_count: u32,
 	) -> Result<Option<Self>, DispatchError> {
 		match inbound_entry {
 			InboundEntry::Message(message_entry) => {
-				if message_entry.session_id != inbound_processing_info.current_session_id {
+				if message_entry.session_id != session_id {
 					return Ok(None);
 				}
 
 				let updated_count = message_entry
 					.expected_proof_count
-					.ensure_sub(inbound_processing_info.expected_proof_count_per_message)?;
+					.ensure_sub(expected_proof_count)?;
 
 				if updated_count == 0 {
 					return Ok(None);
@@ -133,7 +138,7 @@ impl<T: Config> InboundEntry<T> {
 				))
 			}
 			InboundEntry::Proof(proof_entry) => {
-				if proof_entry.session_id != inbound_processing_info.current_session_id {
+				if proof_entry.session_id != session_id {
 					return Ok(None);
 				}
 
@@ -160,13 +165,7 @@ impl<T: Config> InboundEntry<T> {
 	///   specific domain.
 	/// - messages are only sent by the first inbound router.
 	/// - proofs are not sent by the first inbound router.
-	pub fn validate(
-		&self,
-		inbound_processing_info: &InboundProcessingInfo<T>,
-		router_id: &T::RouterId,
-	) -> DispatchResult {
-		let router_ids = inbound_processing_info.router_ids.clone();
-
+	pub fn validate(&self, router_ids: &[T::RouterId], router_id: &T::RouterId) -> DispatchResult {
 		ensure!(
 			router_ids.iter().any(|x| x == router_id),
 			Error::<T>::UnknownRouter
@@ -259,34 +258,6 @@ impl<T: Config> InboundEntry<T> {
 	}
 }
 
-/// Type that holds information used when processing inbound messages.
-#[derive(Clone)]
-pub struct InboundProcessingInfo<T: Config> {
-	pub domain_address: DomainAddress,
-	pub router_ids: Vec<T::RouterId>,
-	pub current_session_id: T::SessionId,
-	pub expected_proof_count_per_message: u32,
-}
-
-impl<T: Config> TryFrom<DomainAddress> for InboundProcessingInfo<T> {
-	type Error = DispatchError;
-
-	fn try_from(domain_address: DomainAddress) -> Result<Self, Self::Error> {
-		let router_ids = Pallet::<T>::get_router_ids_for_domain(domain_address.domain())?;
-
-		let current_session_id = SessionIdStore::<T>::get();
-
-		let expected_proof_count = Pallet::<T>::get_expected_proof_count(&router_ids)?;
-
-		Ok(InboundProcessingInfo {
-			domain_address,
-			router_ids,
-			current_session_id,
-			expected_proof_count_per_message: expected_proof_count,
-		})
-	}
-}
-
 impl<T: Config> Pallet<T> {
 	/// Retrieves all stored routers and then filters them based
 	/// on the available routers for the provided domain.
@@ -342,7 +313,7 @@ impl<T: Config> Pallet<T> {
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
 		message_proof: Proof,
-		router_id: T::RouterId,
+		router_id: &T::RouterId,
 		new_inbound_entry: InboundEntry<T>,
 	) -> DispatchResult {
 		PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
@@ -359,33 +330,20 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
-	/// Creates, validates and upserts the inbound entry.
-	fn validate_and_upsert_pending_entries(
-		inbound_processing_info: &InboundProcessingInfo<T>,
-		message: T::Message,
-		message_proof: Proof,
-		router_id: T::RouterId,
-	) -> DispatchResult {
-		let inbound_entry: InboundEntry<T> = (inbound_processing_info, message).into();
-
-		inbound_entry.validate(inbound_processing_info, &router_id)?;
-
-		Self::upsert_pending_entry(message_proof, router_id, inbound_entry)?;
-
-		Ok(())
-	}
-
 	/// Checks if the number of proofs required for executing one message
 	/// were received, and if so, decreases the counts accordingly and executes
 	/// the message.
 	pub(crate) fn execute_if_requirements_are_met(
-		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
+		router_ids: &[T::RouterId],
+		session_id: T::SessionId,
+		expected_proof_count: u32,
+		domain_address: DomainAddress,
 	) -> DispatchResult {
 		let mut message = None;
 		let mut votes = 0;
 
-		for router_id in &inbound_processing_info.router_ids {
+		for router_id in router_ids {
 			match PendingInboundEntries::<T>::get(message_proof, router_id) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
@@ -393,9 +351,7 @@ impl<T: Config> Pallet<T> {
 				Some(stored_inbound_entry) => match stored_inbound_entry {
 					InboundEntry::Message(message_entry) => message = Some(message_entry.message),
 					InboundEntry::Proof(proof_entry) => {
-						if proof_entry
-							.has_valid_vote_for_session(inbound_processing_info.current_session_id)
-						{
+						if proof_entry.has_valid_vote_for_session(session_id) {
 							votes.ensure_add_assign(1)?;
 						}
 					}
@@ -403,18 +359,20 @@ impl<T: Config> Pallet<T> {
 			};
 		}
 
-		if votes < inbound_processing_info.expected_proof_count_per_message {
+		if votes < expected_proof_count {
 			return Ok(());
 		}
 
 		match message {
 			Some(msg) => {
-				Self::execute_post_voting_dispatch(inbound_processing_info, message_proof)?;
+				Self::execute_post_voting_dispatch(
+					message_proof,
+					router_ids,
+					session_id,
+					expected_proof_count,
+				)?;
 
-				T::InboundMessageHandler::handle(
-					inbound_processing_info.domain_address.clone(),
-					msg,
-				)
+				T::InboundMessageHandler::handle(domain_address, msg)
 			}
 			None => Ok(()),
 		}
@@ -423,10 +381,12 @@ impl<T: Config> Pallet<T> {
 	/// Decreases the counts for inbound entries and removes them if the
 	/// counts reach 0.
 	pub(crate) fn execute_post_voting_dispatch(
-		inbound_processing_info: &InboundProcessingInfo<T>,
 		message_proof: Proof,
+		router_ids: &[T::RouterId],
+		session_id: T::SessionId,
+		expected_proof_count: u32,
 	) -> DispatchResult {
-		for router_id in &inbound_processing_info.router_ids {
+		for router_id in router_ids {
 			PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
 				match storage_entry {
 					None => {
@@ -435,7 +395,8 @@ impl<T: Config> Pallet<T> {
 					Some(stored_inbound_entry) => {
 						let post_dispatch_entry = InboundEntry::create_post_voting_entry(
 							stored_inbound_entry,
-							inbound_processing_info,
+							session_id,
+							expected_proof_count,
 						)?;
 
 						*storage_entry = post_dispatch_entry;
@@ -458,8 +419,15 @@ impl<T: Config> Pallet<T> {
 	) -> (DispatchResult, Weight) {
 		let weight = LP_DEFENSIVE_WEIGHT;
 
-		let inbound_processing_info = match domain_address.clone().try_into() {
-			Ok(i) => i,
+		let router_ids = match Self::get_router_ids_for_domain(domain_address.domain()) {
+			Ok(r) => r,
+			Err(e) => return (Err(e), weight),
+		};
+
+		let session_id = SessionIdStore::<T>::get();
+
+		let expected_proof_count = match Self::get_expected_proof_count(&router_ids) {
+			Ok(r) => r,
 			Err(e) => return (Err(e), weight),
 		};
 
@@ -470,18 +438,30 @@ impl<T: Config> Pallet<T> {
 				return (Err(e.into()), weight.saturating_mul(count));
 			}
 
-			let message_proof = Self::get_message_proof(message.clone());
+			let message_proof = Self::get_message_proof(submessage.clone());
 
-			if let Err(e) = Self::validate_and_upsert_pending_entries(
-				&inbound_processing_info,
-				submessage.clone(),
-				message_proof,
-				router_id.clone(),
-			) {
+			let inbound_entry: InboundEntry<T> = InboundEntry::create(
+				submessage,
+				session_id,
+				domain_address.clone(),
+				expected_proof_count,
+			);
+
+			if let Err(e) = inbound_entry.validate(&router_ids, &router_id.clone()) {
 				return (Err(e), weight.saturating_mul(count));
 			}
 
-			match Self::execute_if_requirements_are_met(&inbound_processing_info, message_proof) {
+			if let Err(e) = Self::upsert_pending_entry(message_proof, &router_id, inbound_entry) {
+				return (Err(e), weight.saturating_mul(count));
+			}
+
+			match Self::execute_if_requirements_are_met(
+				message_proof,
+				&router_ids,
+				session_id,
+				expected_proof_count,
+				domain_address.clone(),
+			) {
 				Err(e) => return (Err(e), weight.saturating_mul(count)),
 				Ok(_) => continue,
 			}
