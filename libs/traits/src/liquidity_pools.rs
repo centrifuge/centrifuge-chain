@@ -35,10 +35,10 @@ pub trait LPEncoding: Sized {
 	fn empty() -> Self;
 
 	/// Retrieves the message proof hash, if the message is a proof type.
-	fn proof_hash(&self) -> Option<Proof>;
+	fn get_proof(&self) -> Option<Proof>;
 
 	/// Converts the message into a message proof type.
-	fn proof_message(&self) -> Self;
+	fn to_proof_message(&self) -> Self;
 }
 
 pub trait RouterProvider<Domain>: Sized {

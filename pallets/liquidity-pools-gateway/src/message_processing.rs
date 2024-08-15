@@ -91,7 +91,7 @@ impl<T: Config> InboundEntry<T> {
 		domain_address: DomainAddress,
 		expected_proof_count: u32,
 	) -> Self {
-		match message.proof_hash() {
+		match message.get_proof() {
 			None => InboundEntry::Message(MessageEntry {
 				session_id,
 				domain_address,
@@ -300,10 +300,10 @@ impl<T: Config> Pallet<T> {
 
 	/// Gets the message proof for a message.
 	pub(crate) fn get_message_proof(message: T::Message) -> Proof {
-		match message.proof_hash() {
+		match message.get_proof() {
 			None => message
-				.proof_message()
-				.proof_hash()
+				.to_proof_message()
+				.get_proof()
 				.expect("message proof ensured by 'to_message_proof'"),
 			Some(proof) => proof,
 		}
@@ -493,7 +493,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(destination)?;
 
-		let message_proof = message.proof_message();
+		let message_proof = message.to_proof_message();
 		let mut message_opt = Some(message);
 
 		for router_id in router_ids {

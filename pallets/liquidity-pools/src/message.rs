@@ -563,14 +563,14 @@ impl LPEncoding for Message {
 		Message::Batch(BatchMessages::default())
 	}
 
-	fn proof_hash(&self) -> Option<Proof> {
+	fn get_proof(&self) -> Option<Proof> {
 		match self {
 			Message::MessageProof { hash } => Some(*hash),
 			_ => None,
 		}
 	}
 
-	fn proof_message(&self) -> Self {
+	fn to_proof_message(&self) -> Self {
 		let hash = keccak_256(&LPEncoding::serialize(self));
 
 		Message::MessageProof { hash }

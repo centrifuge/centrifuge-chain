@@ -97,14 +97,14 @@ impl LPEncoding for Message {
 		Self::Pack(vec![])
 	}
 
-	fn proof_hash(&self) -> Option<Proof> {
+	fn get_proof(&self) -> Option<Proof> {
 		match self {
 			Message::Proof(p) => Some(p.clone()),
 			_ => None,
 		}
 	}
 
-	fn proof_message(&self) -> Self {
+	fn to_proof_message(&self) -> Self {
 		match self {
 			Message::Proof(_) => self.clone(),
 			_ => Message::Proof(MESSAGE_PROOF),
