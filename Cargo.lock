@@ -8244,7 +8244,6 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "lazy_static",
- "mock-builder",
  "orml-traits",
  "parity-scale-codec",
  "scale-info",

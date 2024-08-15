@@ -34,11 +34,11 @@ pub trait LPEncoding: Sized {
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
 
-	/// Retrieves the message proof, if any.
-	fn get_message_proof(&self) -> Option<Proof>;
+	/// Retrieves the message proof hash, if the message is a proof type.
+	fn proof_hash(&self) -> Option<Proof>;
 
 	/// Converts the message into a message proof type.
-	fn to_message_proof(&self) -> Self;
+	fn proof_message(&self) -> Self;
 }
 
 pub trait RouterProvider<Domain>: Sized {

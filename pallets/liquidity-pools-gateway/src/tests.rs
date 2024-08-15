@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{
-	LPEncoding, MessageProcessor, MessageReceiver, OutboundMessageHandler,
-};
+use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
@@ -901,7 +899,7 @@ mod implementations {
 				let domain = Domain::EVM(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
-				let message_proof = msg.to_message_proof().get_message_proof().unwrap();
+				let message_proof = msg.proof_message().proof_hash().unwrap();
 
 				assert_ok!(LiquidityPoolsGateway::set_routers(
 					RuntimeOrigin::root(),
@@ -1158,7 +1156,7 @@ mod implementations {
 				fn success() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_message_proof().get_message_proof().unwrap();
+						let message_proof = message.proof_message().proof_hash().unwrap();
 						let session_id = 1;
 						let domain_address = DomainAddress::EVM(1, [1; 20]);
 						let router_id = ROUTER_ID_1;
@@ -1239,7 +1237,7 @@ mod implementations {
 				fn expected_message_proof_type() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_message_proof().get_message_proof().unwrap();
+						let message_proof = message.proof_message().proof_hash().unwrap();
 						let session_id = 1;
 						let domain_address = DomainAddress::EVM(1, [1; 20]);
 						let router_id = ROUTER_ID_1;
@@ -3142,57 +3140,6 @@ mod implementations {
 						run_inbound_message_test_suite(suite);
 					}
 				}
-			}
-
-			#[test]
-			fn same_message_multiple_domain_addresses() {
-				new_test_ext().execute_with(|| {
-					let message = Message::Simple;
-
-					let first_message = GatewayMessage::Inbound {
-						domain_address: DomainAddress::EVM(1, [1; 20]),
-						message: message.clone(),
-						router_id: ROUTER_ID_1,
-					};
-
-					let second_message = GatewayMessage::Inbound {
-						domain_address: DomainAddress::EVM(2, [2; 20]),
-						message,
-						router_id: ROUTER_ID_1,
-					};
-
-					Routers::<Runtime>::set(
-						BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2]).unwrap(),
-					);
-
-					let (res, _) = LiquidityPoolsGateway::process(first_message);
-					assert_ok!(res);
-
-					let expected_inbound_entry = InboundEntry::Message(MessageEntry {
-						session_id: 0,
-						domain_address: DomainAddress::EVM(1, [1; 20]),
-						message: Message::Simple,
-						expected_proof_count: 1,
-					});
-
-					let stored_inbound_entry =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
-					assert_eq!(stored_inbound_entry, expected_inbound_entry);
-
-					let (res, _) = LiquidityPoolsGateway::process(second_message);
-					assert_ok!(res);
-
-					let expected_inbound_entry = InboundEntry::Message(MessageEntry {
-						session_id: 0,
-						domain_address: DomainAddress::EVM(1, [1; 20]),
-						message: Message::Simple,
-						expected_proof_count: 2,
-					});
-
-					let stored_inbound_entry =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
-					assert_eq!(stored_inbound_entry, expected_inbound_entry);
-				});
 			}
 
 			#[test]

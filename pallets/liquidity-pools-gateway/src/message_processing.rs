@@ -73,7 +73,7 @@ pub enum InboundEntry<T: Config> {
 
 impl<T: Config> From<(&InboundProcessingInfo<T>, T::Message)> for InboundEntry<T> {
 	fn from((inbound_processing_info, message): (&InboundProcessingInfo<T>, T::Message)) -> Self {
-		match message.get_message_proof() {
+		match message.proof_hash() {
 			None => InboundEntry::Message(MessageEntry {
 				session_id: inbound_processing_info.current_session_id,
 				domain_address: inbound_processing_info.domain_address.clone(),
@@ -329,10 +329,10 @@ impl<T: Config> Pallet<T> {
 
 	/// Gets the message proof for a message.
 	pub(crate) fn get_message_proof(message: T::Message) -> Proof {
-		match message.get_message_proof() {
+		match message.proof_hash() {
 			None => message
-				.to_message_proof()
-				.get_message_proof()
+				.proof_message()
+				.proof_hash()
 				.expect("message proof ensured by 'to_message_proof'"),
 			Some(proof) => proof,
 		}
@@ -513,7 +513,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(destination)?;
 
-		let message_proof = message.to_message_proof();
+		let message_proof = message.proof_message();
 		let mut message_opt = Some(message);
 
 		for router_id in router_ids {
