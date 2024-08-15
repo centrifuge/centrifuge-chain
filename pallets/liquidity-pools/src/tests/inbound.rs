@@ -85,6 +85,8 @@ mod handle_transfer {
 }
 
 mod handle_tranche_tokens_transfer {
+	use cfg_types::domain_address::Domain;
+
 	use super::*;
 
 	fn config_mocks(receiver: DomainAddress) {
@@ -143,48 +145,48 @@ mod handle_tranche_tokens_transfer {
 
 	#[test]
 	fn success_with_evm_domain() {
+		const OTHER_CHAIN_ID: u64 = CHAIN_ID + 1;
+		const OTHER_DOMAIN: Domain = Domain::EVM(OTHER_CHAIN_ID);
+		const OTHER_DOMAIN_ADDRESS_ALICE: DomainAddress =
+			DomainAddress::EVM(OTHER_CHAIN_ID, ALICE_ETH);
+
 		System::externalities().execute_with(|| {
-			config_mocks(ALICE_EVM_DOMAIN_ADDRESS);
+			config_mocks(OTHER_DOMAIN_ADDRESS_ALICE);
 
 			TransferFilter::mock_check(|_| Ok(()));
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, ALICE_EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, OTHER_DOMAIN);
 				assert_eq!(
 					msg,
 					Message::TransferTrancheTokens {
 						pool_id: POOL_ID,
 						tranche_id: TRANCHE_ID,
-						domain: ALICE_EVM_DOMAIN_ADDRESS.domain().into(),
-						receiver: ALICE_EVM_DOMAIN_ADDRESS.address().into(),
+						domain: OTHER_DOMAIN.into(),
+						receiver: OTHER_DOMAIN_ADDRESS_ALICE.address().into(),
 						amount: AMOUNT
 					}
 				);
 				Ok(())
 			});
 
-			Tokens::mint_into(
-				TRANCHE_CURRENCY,
-				&EVM_DOMAIN_ADDRESS.domain().into_account(),
-				AMOUNT,
-			)
-			.unwrap();
+			let origin = EVM_DOMAIN.into_account();
+			Tokens::mint_into(TRANCHE_CURRENCY, &origin, AMOUNT).unwrap();
 
 			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN_ADDRESS,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					domain: ALICE_EVM_DOMAIN_ADDRESS.domain().into(),
+					domain: OTHER_DOMAIN.into(),
 					receiver: ALICE.into(),
 					amount: AMOUNT
 				}
 			));
 
-			let origin = EVM_DOMAIN_ADDRESS.domain().into_account();
+			let destination = OTHER_DOMAIN.into_account();
+			assert_ne!(destination, origin);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), 0);
-
-			let destination = ALICE_EVM_DOMAIN_ADDRESS.domain().into_account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		});
 	}

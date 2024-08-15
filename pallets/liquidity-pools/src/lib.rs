@@ -121,6 +121,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
+	use sp_core::U256;
 	use sp_runtime::{traits::Zero, DispatchError};
 
 	use super::*;
@@ -1008,6 +1009,44 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					hook: hook_32,
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Initiate the recovery of assets which were sent to an incorrect
+		/// contract by the account represented by `domain_address`.
+		///
+		/// NOTE: Asset and contract addresses in 32 bytes in order to support
+		/// future non-EVM chains.
+		///
+		/// Origin: Root.
+		#[pallet::call_index(17)]
+		#[pallet::weight(T::WeightInfo::update_tranche_hook())]
+		pub fn recover_assets(
+			origin: OriginFor<T>,
+			domain_address: DomainAddress,
+			incorrect_contract: [u8; 32],
+			asset: [u8; 32],
+			// NOTE: Solidity balance is `U256` per default
+			amount: U256,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			ensure!(
+				matches!(domain_address.domain(), Domain::EVM(_)),
+				Error::<T>::InvalidDomain
+			);
+
+			T::OutboundMessageHandler::handle(
+				T::TreasuryAccount::get(),
+				domain_address.domain(),
+				Message::RecoverAssets {
+					contract: incorrect_contract,
+					asset,
+					recipient: T::DomainAddressToAccountId::convert(domain_address).into(),
+					amount: amount.into(),
 				},
 			)?;
 

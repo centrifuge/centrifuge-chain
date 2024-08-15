@@ -2008,3 +2008,102 @@ mod update_tranche_hook {
 		}
 	}
 }
+
+mod recover_assets {
+	use super::*;
+
+	const CONTRACT: [u8; 32] = [42; 32];
+	const ASSET: [u8; 32] = [43; 32];
+
+	fn config_mocks() {
+		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
+		Permissions::mock_has(|_, _, _| false);
+		Gateway::mock_handle(|sender, destination, msg| {
+			assert_eq!(sender, TreasuryAccount::get());
+			assert_eq!(destination, EVM_DOMAIN);
+			assert_eq!(
+				msg,
+				Message::RecoverAssets {
+					contract: CONTRACT,
+					asset: ASSET,
+					recipient: ALICE_EVM_LOCAL_ACCOUNT.into(),
+					amount: sp_core::U256::from(AMOUNT).into(),
+				}
+			);
+			Ok(())
+		});
+	}
+
+	#[test]
+	fn success() {
+		System::externalities().execute_with(|| {
+			config_mocks();
+
+			assert_ok!(LiquidityPools::recover_assets(
+				RuntimeOrigin::root(),
+				ALICE_EVM_DOMAIN_ADDRESS,
+				CONTRACT,
+				ASSET,
+				AMOUNT.into(),
+			));
+		});
+	}
+
+	mod erroring_out {
+		use super::*;
+
+		#[test]
+		fn with_wrong_origin_none() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+
+				assert_noop!(
+					LiquidityPools::recover_assets(
+						RuntimeOrigin::none(),
+						ALICE_EVM_DOMAIN_ADDRESS,
+						CONTRACT,
+						ASSET,
+						AMOUNT.into(),
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn with_wrong_origin_signed() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+
+				assert_noop!(
+					LiquidityPools::recover_assets(
+						RuntimeOrigin::signed(ALICE.into()),
+						ALICE_EVM_DOMAIN_ADDRESS,
+						CONTRACT,
+						ASSET,
+						AMOUNT.into(),
+					),
+					DispatchError::BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn with_wrong_domain() {
+			System::externalities().execute_with(|| {
+				config_mocks();
+
+				assert_noop!(
+					LiquidityPools::recover_assets(
+						RuntimeOrigin::root(),
+						DomainAddress::Centrifuge(ALICE.into()),
+						CONTRACT,
+						ASSET,
+						AMOUNT.into(),
+					),
+					Error::<Runtime>::InvalidDomain
+				);
+			});
+		}
+	}
+}

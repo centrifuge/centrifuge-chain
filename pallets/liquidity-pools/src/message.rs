@@ -15,7 +15,6 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
-use sp_core::U256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
 use sp_std::{vec, vec::Vec};
 
@@ -267,10 +266,10 @@ pub enum Message<BatchContent = BatchMessages> {
 		asset: Address,
 		/// The user address which receives the recovered tokens
 		recipient: Address,
-		/// The amount of tokens to recover
+		/// The amount of tokens to recover.
 		///
-		/// NOTE: Use `u256` as EVM balances are `u256`.
-		amount: U256,
+		/// NOTE: Represents `sp_core::U256` because EVM balances are `u256`.
+		amount: [u8; 32],
 	},
 	// --- Gas service ---
 	/// Updates the gas price which should cover transaction fees on Centrifuge
@@ -901,6 +900,26 @@ mod tests {
 			},
 			"061231231231231231231231231231231231231231",
 		)
+	}
+
+	#[test]
+	fn recover_assets() {
+		let msg = Message::RecoverAssets {
+			contract: [2u8; 32],
+			asset: [1u8; 32],
+			recipient: [3u8; 32],
+			amount: (sp_core::U256::MAX - 1).into(),
+		};
+		test_encode_decode_identity(
+			msg,
+			concat!(
+				"07",
+				"0202020202020202020202020202020202020202020202020202020202020202",
+				"0101010101010101010101010101010101010101010101010101010101010101",
+				"0303030303030303030303030303030303030303030303030303030303030303",
+				"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe",
+			),
+		);
 	}
 
 	#[test]
