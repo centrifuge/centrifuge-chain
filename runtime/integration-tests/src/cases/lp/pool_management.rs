@@ -831,7 +831,7 @@ fn recover_assets<T: Runtime>() {
 				Keyring::Alice,
 				names::USDC,
 				"balanceOf",
-				Some(&[Token::Address(investor.into())]),
+				Some(&[Token::Address(investor.in_eth())]),
 			)),
 			0
 		);
@@ -842,7 +842,7 @@ fn recover_assets<T: Runtime>() {
 	env.state_mut(|_| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::recover_assets(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
-			DomainAddress::EVM(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			utils::to_fixed_array(wrong_contract.as_bytes()),
 			utils::to_fixed_array(token.as_bytes()),
 			sp_core::U256::from(amount),
@@ -866,7 +866,7 @@ fn recover_assets<T: Runtime>() {
 				Keyring::Alice,
 				names::USDC,
 				"balanceOf",
-				Some(&[Token::Address(investor.into())]),
+				Some(&[Token::Address(investor.in_eth())]),
 			)),
 			amount
 		);
