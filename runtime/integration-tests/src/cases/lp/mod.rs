@@ -24,9 +24,9 @@ use ethabi::{
 use frame_support::{assert_ok, dispatch::RawOrigin, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
-use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
+use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_evm::FeeCalculator;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{account_conversion::AccountConverter, routing::RouterId};
 pub use setup_lp::*;
 use sp_core::Get;
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -87,6 +87,8 @@ pub const EVM_DOMAIN_STR: &str = "TestDomain";
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
 pub const EVM_DOMAIN: Domain = Domain::EVM(EVM_DOMAIN_CHAIN_ID);
+
+pub const EVM_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(EVM_DOMAIN_CHAIN_ID));
 
 /// Represents Solidity enum Domain.Centrifuge
 pub const DOMAIN_CENTRIFUGE: u8 = 0;
