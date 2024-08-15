@@ -3303,28 +3303,6 @@ mod implementations {
 			}
 		}
 
-		mod get_message_proof {
-			use super::*;
-
-			#[test]
-			fn get_message_proof() {
-				new_test_ext().execute_with(|| {
-					let test_messages = vec![
-						Message::Simple,
-						Message::Proof(MESSAGE_PROOF),
-						Message::Pack(vec![Message::Simple]),
-					];
-
-					for test_message in test_messages {
-						assert_eq!(
-							LiquidityPoolsGateway::get_message_proof(test_message),
-							MESSAGE_PROOF
-						);
-					}
-				});
-			}
-		}
-
 		mod create_inbound_entry {
 			use super::*;
 

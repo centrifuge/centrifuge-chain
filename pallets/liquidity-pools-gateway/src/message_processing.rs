@@ -363,19 +363,18 @@ impl<T: Config> Pallet<T> {
 			return Ok(());
 		}
 
-		match message {
-			Some(msg) => {
-				Self::execute_post_voting_dispatch(
-					message_proof,
-					router_ids,
-					session_id,
-					expected_proof_count,
-				)?;
+		if let Some(msg) = message {
+			Self::execute_post_voting_dispatch(
+				message_proof,
+				router_ids,
+				session_id,
+				expected_proof_count,
+			)?;
 
-				T::InboundMessageHandler::handle(domain_address, msg)
-			}
-			None => Ok(()),
+			T::InboundMessageHandler::handle(domain_address, msg)?;
 		}
+
+		Ok(())
 	}
 
 	/// Decreases the counts for inbound entries and removes them if the
