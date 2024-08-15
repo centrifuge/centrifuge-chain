@@ -1020,7 +1020,7 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
-				matches!(domain_address.domain(), Domain::EVM(_)),
+				matches!(domain_address.domain(), Domain::Evm(_)),
 				Error::<T>::InvalidDomain
 			);
 
@@ -1030,7 +1030,7 @@ pub mod pallet {
 				Message::RecoverAssets {
 					contract: incorrect_contract,
 					asset,
-					recipient: T::DomainAddressToAccountId::convert(domain_address).into(),
+					recipient: domain_address.as_local(),
 					amount: amount.into(),
 				},
 			)?;

@@ -1,6 +1,6 @@
 use cfg_traits::liquidity_pools::InboundMessageHandler;
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{

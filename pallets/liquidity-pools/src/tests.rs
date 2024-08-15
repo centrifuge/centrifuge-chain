@@ -1,6 +1,6 @@
 use cfg_traits::Seconds;
 use cfg_types::{
-	domain_address::DomainAddress,
+	domain_address::{Domain, DomainAddress},
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
 };
@@ -1990,17 +1990,16 @@ mod recover_assets {
 	const ASSET: [u8; 32] = [43; 32];
 
 	fn config_mocks() {
-		DomainAddressToAccountId::mock_convert(move |_| ALICE_EVM_LOCAL_ACCOUNT);
 		Permissions::mock_has(|_, _, _| false);
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, TreasuryAccount::get());
-			assert_eq!(destination, EVM_DOMAIN);
+			assert_eq!(destination, Domain::Evm(42));
 			assert_eq!(
 				msg,
 				Message::RecoverAssets {
 					contract: CONTRACT,
 					asset: ASSET,
-					recipient: ALICE_EVM_LOCAL_ACCOUNT.into(),
+					recipient: ALICE_EVM_DOMAIN_ADDRESS.as_local(),
 					amount: sp_core::U256::from(AMOUNT).into(),
 				}
 			);
@@ -2070,7 +2069,7 @@ mod recover_assets {
 				assert_noop!(
 					LiquidityPools::recover_assets(
 						RuntimeOrigin::root(),
-						DomainAddress::Centrifuge(ALICE.into()),
+						DomainAddress::Local(ALICE.into()),
 						CONTRACT,
 						ASSET,
 						AMOUNT.into(),
