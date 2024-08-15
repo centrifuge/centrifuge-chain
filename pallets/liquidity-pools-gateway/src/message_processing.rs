@@ -12,6 +12,7 @@ use frame_support::{
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub, SaturatedConversion};
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 use crate::{
 	message::GatewayMessage, Config, Error, Pallet, PendingInboundEntries, Routers, SessionIdStore,
@@ -74,7 +75,7 @@ impl<T: Config> From<(&InboundProcessingInfo<T>, T::Message)> for InboundEntry<T
 	fn from((inbound_processing_info, message): (&InboundProcessingInfo<T>, T::Message)) -> Self {
 		match message.get_message_proof() {
 			None => InboundEntry::Message(MessageEntry {
-				session_id: inbound_processing_info.current_session_id.clone(),
+				session_id: inbound_processing_info.current_session_id,
 				domain_address: inbound_processing_info.domain_address.clone(),
 				message,
 				expected_proof_count: inbound_processing_info.expected_proof_count_per_message,
@@ -174,7 +175,7 @@ impl<T: Config> InboundEntry<T> {
 		match self {
 			InboundEntry::Message { .. } => {
 				ensure!(
-					router_ids.get(0) == Some(&router_id),
+					router_ids.first() == Some(router_id),
 					Error::<T>::MessageExpectedFromFirstRouter
 				);
 
@@ -182,7 +183,7 @@ impl<T: Config> InboundEntry<T> {
 			}
 			InboundEntry::Proof { .. } => {
 				ensure!(
-					router_ids.get(0) != Some(&router_id),
+					router_ids.first() != Some(router_id),
 					Error::<T>::ProofNotExpectedFromFirstRouter
 				);
 
@@ -303,7 +304,7 @@ impl<T: Config> Pallet<T> {
 					.iter()
 					.any(|available_router| *stored_router == available_router)
 			})
-			.map(|x| x.clone())
+			.cloned()
 			.collect::<Vec<_>>();
 
 		if res.is_empty() {
@@ -316,7 +317,7 @@ impl<T: Config> Pallet<T> {
 	/// Calculates and returns the proof count required for processing one
 	/// inbound message.
 	pub(crate) fn get_expected_proof_count(
-		router_ids: &Vec<T::RouterId>,
+		router_ids: &[T::RouterId],
 	) -> Result<u32, DispatchError> {
 		let expected_proof_count = router_ids
 			.len()
@@ -367,7 +368,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let inbound_entry: InboundEntry<T> = (inbound_processing_info, message).into();
 
-		inbound_entry.validate(&inbound_processing_info, &router_id)?;
+		inbound_entry.validate(inbound_processing_info, &router_id)?;
 
 		Self::upsert_pending_entry(message_proof, router_id, inbound_entry)?;
 
@@ -408,7 +409,7 @@ impl<T: Config> Pallet<T> {
 
 		match message {
 			Some(msg) => {
-				Self::execute_post_voting_dispatch(&inbound_processing_info, message_proof)?;
+				Self::execute_post_voting_dispatch(inbound_processing_info, message_proof)?;
 
 				T::InboundMessageHandler::handle(
 					inbound_processing_info.domain_address.clone(),
@@ -433,8 +434,8 @@ impl<T: Config> Pallet<T> {
 					}
 					Some(stored_inbound_entry) => {
 						let post_dispatch_entry = InboundEntry::create_post_voting_entry(
-							&stored_inbound_entry,
-							&inbound_processing_info,
+							stored_inbound_entry,
+							inbound_processing_info,
 						)?;
 
 						*storage_entry = post_dispatch_entry;

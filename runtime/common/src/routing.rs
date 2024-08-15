@@ -23,6 +23,12 @@ pub enum RouterId {
 	Axelar(AxelarId),
 }
 
+impl Default for RouterId {
+	fn default() -> Self {
+		Self::Axelar(AxelarId::default())
+	}
+}
+
 impl From<AxelarId> for RouterId {
 	fn from(axelar_id: AxelarId) -> Self {
 		RouterId::Axelar(axelar_id)

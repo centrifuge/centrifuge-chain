@@ -1781,7 +1781,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<pallet_liquidity_pools::Message>;
+	type Message = GatewayMessage<pallet_liquidity_pools::Message, RouterId>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;

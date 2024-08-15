@@ -18,7 +18,8 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
-use sp_core::{keccak_256, U256};
+use sp_core::U256;
+use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
 use sp_std::{vec, vec::Vec};
 
@@ -564,7 +565,7 @@ impl LPEncoding for Message {
 
 	fn get_message_proof(&self) -> Option<Proof> {
 		match self {
-			Message::MessageProof { hash } => Some(hash.clone()),
+			Message::MessageProof { hash } => Some(*hash),
 			_ => None,
 		}
 	}
