@@ -34,6 +34,7 @@ use cfg_traits::{
 	Seconds,
 };
 use cfg_types::{
+	domain_address::DomainAddress,
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
@@ -116,6 +117,7 @@ use runtime_common::{
 	},
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	rewards::SingleCurrencyMovement,
+	routing::{EvmAccountCodeChecker, RouterDispatcher, RouterId},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -1839,7 +1841,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
+	pub Sender: DomainAddress = gateway::get_gateway_account::<Runtime>();
 }
 
 parameter_types! {
@@ -1865,7 +1867,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type MessageSender = RouterDispatcher<Runtime>;
+	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
@@ -1873,7 +1876,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<AccountId, pallet_liquidity_pools::Message>;
+	type Message = GatewayMessage<pallet_liquidity_pools::Message>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
@@ -1983,10 +1986,13 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
-impl axelar_gateway_precompile::Config for Runtime {
+impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
+	type Middleware = RouterId;
+	type Receiver = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type Transactor = EthereumTransaction;
 }
 
 /// Block type as expected by this runtime.
@@ -2111,7 +2117,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config<T>, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
-		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
+		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// Synced pallets across all runtimes - Range: 180-240
 		// WHY: * integrations like fireblocks will need to know the index in the enum

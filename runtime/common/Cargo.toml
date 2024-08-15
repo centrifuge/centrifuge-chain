@@ -56,7 +56,6 @@ cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
 
 # Pallets in the export list
-axelar-gateway-precompile = { workspace = true }
 chainbridge = { workspace = true }
 cumulus-pallet-aura-ext = { workspace = true }
 cumulus-pallet-parachain-system = { workspace = true }
@@ -69,6 +68,7 @@ orml-xtokens = { workspace = true }
 pallet-anchors = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
+pallet-axelar-router = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
@@ -173,7 +173,6 @@ std = [
   "cfg-types/std",
   "cfg-utils/std",
   # Pallet exporting list
-  "axelar-gateway-precompile/std",
   "chainbridge/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
@@ -186,6 +185,7 @@ std = [
   "pallet-anchors/std",
   "pallet-aura/std",
   "pallet-authorship/std",
+  "pallet-axelar-router/std",
   "pallet-balances/std",
   "pallet-base-fee/std",
   "pallet-block-rewards/std",
@@ -257,7 +257,6 @@ runtime-benchmarks = [
   "cfg-utils/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
   # Pallet exporting list
-  "axelar-gateway-precompile/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
@@ -265,6 +264,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
+  "pallet-axelar-router/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
@@ -323,7 +323,6 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   # Pallet exporting list
-  "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
@@ -336,6 +335,7 @@ try-runtime = [
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
+  "pallet-axelar-router/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",

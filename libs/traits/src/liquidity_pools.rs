@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	weights::Weight,
-};
+use frame_support::{dispatch::DispatchResult, weights::Weight};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -36,16 +33,38 @@ pub trait LPEncoding: Sized {
 	fn empty() -> Self;
 }
 
-/// The trait required for sending outbound messages.
-pub trait Router {
-	/// The sender type of the outbound message.
-	type Sender;
+pub trait RouterSupport<Domain>: Sized {
+	/// Returns a list of routers supported for the given domain.
+	fn for_domain(domain: Domain) -> Vec<Self>;
+}
 
-	/// Initialize the router.
-	fn init(&self) -> DispatchResult;
+/// The behavior of an entity that can send messages
+pub trait MessageSender {
+	/// The middleware by where this message is sent
+	type Middleware;
 
-	/// Send the message to the router's destination.
-	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+	/// The originator of the message to be sent
+	type Origin;
+
+	/// Sends a message for origin to destination
+	fn send(middleware: Self::Middleware, origin: Self::Origin, message: Vec<u8>)
+		-> DispatchResult;
+}
+
+/// The behavior of an entity that can receive messages
+pub trait MessageReceiver {
+	/// The middleware by where this message is received
+	type Middleware;
+
+	/// The originator of the received message
+	type Origin;
+
+	/// Sends a message for origin to destination
+	fn receive(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Vec<u8>,
+	) -> DispatchResult;
 }
 
 /// The trait required for queueing messages.

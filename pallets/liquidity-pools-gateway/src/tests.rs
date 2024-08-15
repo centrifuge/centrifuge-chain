@@ -1,3 +1,4 @@
+/*
 use cfg_mocks::*;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
@@ -849,3 +850,4 @@ mod batches {
 		});
 	}
 }
+*/

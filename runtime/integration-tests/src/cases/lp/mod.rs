@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use axelar_gateway_precompile::SourceConverter;
 use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
 use cfg_traits::Seconds;
 use cfg_types::{
@@ -22,14 +21,10 @@ use ethabi::{
 	ethereum_types::{H160, U128, U256},
 	FixedBytes, Token, Uint,
 };
-use frame_support::{
-	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
-};
+use frame_support::{assert_ok, dispatch::RawOrigin, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
-use liquidity_pools_gateway_routers::{
-	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
-};
+use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
 use pallet_evm::FeeCalculator;
 use runtime_common::account_conversion::AccountConverter;
 pub use setup_lp::*;

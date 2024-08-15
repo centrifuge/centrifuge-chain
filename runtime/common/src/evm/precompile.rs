@@ -76,7 +76,7 @@ pub type RuntimePrecompilesAt<R, Symbol> = (
 	// Centrifuge specific precompiles:
 	PrecompileAt<
 		AddressU64<LP_AXELAR_GATEWAY>,
-		axelar_gateway_precompile::Pallet<R>,
+		pallet_axelar_router::Pallet<R>,
 		CallableByContract,
 	>,
 );

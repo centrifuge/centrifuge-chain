@@ -1,4 +1,4 @@
-use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
+use cfg_traits::liquidity_pools::MessageQueue;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::assert_ok;
 use pallet_liquidity_pools::Message;
@@ -29,11 +29,9 @@ fn inbound<T: Runtime + FudgeSupport>() {
 			message: Message::Invalid,
 		};
 
-		assert_ok!(
-			<pallet_liquidity_pools_gateway_queue::Pallet<T> as MessageQueueT>::submit(
-				message.clone()
-			)
-		);
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+			message.clone()
+		));
 
 		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
 			nonce,
@@ -57,21 +55,19 @@ fn outbound<T: Runtime + FudgeSupport>() {
 	let expected_event = env.parachain_state_mut(|| {
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: [1; 32].into(),
+			sender: DomainAddress::Centrifuge([1; 32]),
 			destination: Domain::EVM(1),
 			message: Message::Invalid,
 		};
 
-		assert_ok!(
-			<pallet_liquidity_pools_gateway_queue::Pallet<T> as MessageQueueT>::submit(
-				message.clone()
-			)
-		);
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+			message.clone()
+		));
 
 		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure {
 			nonce,
 			message,
-			error: pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound.into(),
+			error: pallet_axelar_router::Error::<T>::RouterConfigurationNotFound.into(),
 		}
 	});
 
