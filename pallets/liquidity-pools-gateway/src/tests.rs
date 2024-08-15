@@ -3664,83 +3664,22 @@ mod implementations {
 			}
 		}
 
-		mod decrease_pending_entries_counts {
+		mod execute_post_voting_dispatch {
 			use super::*;
 
 			#[test]
 			fn pending_inbound_entry_not_found() {
 				new_test_ext().execute_with(|| {
 					let router_ids = vec![ROUTER_ID_1];
-					let session_id = 1;
 					let expected_proof_count = 2;
 
 					assert_noop!(
 						LiquidityPoolsGateway::execute_post_voting_dispatch(
 							MESSAGE_PROOF,
 							&router_ids,
-							session_id,
 							expected_proof_count,
 						),
 						Error::<Runtime>::PendingInboundEntryNotFound
-					);
-				});
-			}
-
-			#[test]
-			fn message_entry_new_session() {
-				new_test_ext().execute_with(|| {
-					let domain_address = TEST_DOMAIN_ADDRESS;
-					let router_ids = vec![ROUTER_ID_1];
-					let session_id = 2;
-					let expected_proof_count = 2;
-
-					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
-						ROUTER_ID_1,
-						InboundEntry::Message(MessageEntry {
-							session_id: 1,
-							domain_address,
-							message: Message::Simple,
-							expected_proof_count,
-						}),
-					);
-
-					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
-						MESSAGE_PROOF,
-						&router_ids,
-						session_id,
-						expected_proof_count,
-					));
-					assert!(
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none()
-					);
-				});
-			}
-
-			#[test]
-			fn proof_entry_new_session() {
-				new_test_ext().execute_with(|| {
-					let router_ids = vec![ROUTER_ID_1];
-					let session_id = 2;
-					let expected_proof_count = 2;
-
-					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
-						ROUTER_ID_1,
-						InboundEntry::Proof(ProofEntry {
-							session_id: 1,
-							current_count: 1,
-						}),
-					);
-
-					assert_ok!(LiquidityPoolsGateway::execute_post_voting_dispatch(
-						MESSAGE_PROOF,
-						&router_ids,
-						session_id,
-						expected_proof_count,
-					));
-					assert!(
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none()
 					);
 				});
 			}
@@ -3757,30 +3696,25 @@ mod inbound_entry {
 		#[test]
 		fn message_entry_some() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
 				let message = Message::Simple;
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
-					session_id,
+					session_id: 1,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: message.clone(),
 					expected_proof_count: 4,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 2;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count)
+						.unwrap();
 
 				assert_eq!(
 					res,
 					Some(InboundEntry::<Runtime>::Message(MessageEntry {
-						session_id,
+						session_id: 1,
 						domain_address: TEST_DOMAIN_ADDRESS,
 						message,
 						expected_proof_count: 2,
@@ -3790,52 +3724,21 @@ mod inbound_entry {
 		}
 
 		#[test]
-		fn message_entry_session_change() {
-			new_test_ext().execute_with(|| {
-				let session_id = 1;
-				let message = Message::Simple;
-
-				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
-					session_id,
-					domain_address: TEST_DOMAIN_ADDRESS,
-					message: message.clone(),
-					expected_proof_count: 4,
-				});
-
-				let session_id = session_id + 1;
-				let expected_proof_count = 2;
-
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
-				assert_eq!(res, None);
-			});
-		}
-
-		#[test]
 		fn message_entry_count_underflow() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
 				let message = Message::Simple;
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
-					session_id,
+					session_id: 1,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: message.clone(),
 					expected_proof_count: 2,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 3;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				);
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count);
 
 				assert_noop!(res, Arithmetic(Underflow));
 			});
@@ -3844,25 +3747,20 @@ mod inbound_entry {
 		#[test]
 		fn message_entry_zero_updated_count() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
 				let message = Message::Simple;
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
-					session_id,
+					session_id: 1,
 					domain_address: TEST_DOMAIN_ADDRESS,
 					message: message.clone(),
 					expected_proof_count: 2,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 2;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count)
+						.unwrap();
 
 				assert_eq!(res, None);
 			});
@@ -3871,27 +3769,21 @@ mod inbound_entry {
 		#[test]
 		fn proof_entry_some() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
-
 				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
-					session_id,
+					session_id: 1,
 					current_count: 2,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 2;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count)
+						.unwrap();
 
 				assert_eq!(
 					res,
 					Some(InboundEntry::<Runtime>::Proof(ProofEntry {
-						session_id,
+						session_id: 1,
 						current_count: 1
 					}))
 				);
@@ -3899,47 +3791,17 @@ mod inbound_entry {
 		}
 
 		#[test]
-		fn proof_entry_session_change() {
-			new_test_ext().execute_with(|| {
-				let session_id = 1;
-
-				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
-					session_id,
-					current_count: 2,
-				});
-
-				let session_id = session_id + 1;
-				let expected_proof_count = 2;
-
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
-
-				assert_eq!(res, None);
-			});
-		}
-
-		#[test]
 		fn proof_entry_count_underflow() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
-
 				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
-					session_id,
+					session_id: 1,
 					current_count: 0,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 2;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				);
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count);
 
 				assert_noop!(res, Arithmetic(Underflow));
 			});
@@ -3948,22 +3810,16 @@ mod inbound_entry {
 		#[test]
 		fn proof_entry_zero_updated_count() {
 			new_test_ext().execute_with(|| {
-				let session_id = 1;
-
 				let inbound_entry = InboundEntry::<Runtime>::Proof(ProofEntry {
-					session_id,
+					session_id: 1,
 					current_count: 1,
 				});
 
-				let session_id = session_id;
 				let expected_proof_count = 2;
 
-				let res = InboundEntry::create_post_voting_entry(
-					&inbound_entry,
-					session_id,
-					expected_proof_count,
-				)
-				.unwrap();
+				let res =
+					InboundEntry::create_post_voting_entry(&inbound_entry, expected_proof_count)
+						.unwrap();
 
 				assert_eq!(res, None,);
 			});

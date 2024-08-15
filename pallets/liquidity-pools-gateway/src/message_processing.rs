@@ -26,6 +26,9 @@ pub struct MessageEntry<T: Config> {
 	pub session_id: T::SessionId,
 
 	/// The sender of the inbound message.
+	///
+	/// NOTE - the `RouterProvider` ensures that we cannot have the same message
+	/// entry, for the same message, for different domain addresses.
 	pub domain_address: DomainAddress,
 
 	/// The LP message.
@@ -107,20 +110,15 @@ impl<T: Config> InboundEntry<T> {
 
 	/// Creates a new `InboundEntry` based on the information provided.
 	///
-	/// If a session change is detected or if the updated counts reach 0, it
-	/// means that a new entry is no longer required, otherwise, the counts are
-	/// decreased accordingly, based on the entry type.
+	/// If the updated counts reach 0, it means that a new entry is no longer
+	/// required, otherwise, the counts are decreased accordingly, based on the
+	/// entry type.
 	pub fn create_post_voting_entry(
 		inbound_entry: &InboundEntry<T>,
-		session_id: T::SessionId,
 		expected_proof_count: u32,
 	) -> Result<Option<Self>, DispatchError> {
 		match inbound_entry {
 			InboundEntry::Message(message_entry) => {
-				if message_entry.session_id != session_id {
-					return Ok(None);
-				}
-
 				let updated_count = message_entry
 					.expected_proof_count
 					.ensure_sub(expected_proof_count)?;
@@ -138,10 +136,6 @@ impl<T: Config> InboundEntry<T> {
 				))
 			}
 			InboundEntry::Proof(proof_entry) => {
-				if proof_entry.session_id != session_id {
-					return Ok(None);
-				}
-
 				let updated_count = proof_entry.current_count.ensure_sub(1)?;
 
 				if updated_count == 0 {
@@ -365,12 +359,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			Self::execute_post_voting_dispatch(
-				message_proof,
-				router_ids,
-				session_id,
-				expected_proof_count,
-			)?;
+			Self::execute_post_voting_dispatch(message_proof, router_ids, expected_proof_count)?;
 
 			T::InboundMessageHandler::handle(domain_address, msg)?;
 		}
@@ -383,7 +372,6 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn execute_post_voting_dispatch(
 		message_proof: Proof,
 		router_ids: &[T::RouterId],
-		session_id: T::SessionId,
 		expected_proof_count: u32,
 	) -> DispatchResult {
 		for router_id in router_ids {
@@ -398,7 +386,6 @@ impl<T: Config> Pallet<T> {
 					Some(stored_inbound_entry) => {
 						let post_dispatch_entry = InboundEntry::create_post_voting_entry(
 							stored_inbound_entry,
-							session_id,
 							expected_proof_count,
 						)?;
 
