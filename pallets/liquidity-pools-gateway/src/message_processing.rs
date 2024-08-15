@@ -350,11 +350,12 @@ impl<T: Config> Pallet<T> {
 				None => return Ok(()),
 				Some(stored_inbound_entry) => match stored_inbound_entry {
 					InboundEntry::Message(message_entry) => message = Some(message_entry.message),
-					InboundEntry::Proof(proof_entry) => {
-						if proof_entry.has_valid_vote_for_session(session_id) {
-							votes.ensure_add_assign(1)?;
-						}
+					InboundEntry::Proof(proof_entry)
+						if proof_entry.has_valid_vote_for_session(session_id) =>
+					{
+						votes.ensure_add_assign(1)?;
 					}
+					_ => {}
 				},
 			};
 		}
@@ -389,6 +390,9 @@ impl<T: Config> Pallet<T> {
 			PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
 				match storage_entry {
 					None => {
+						// This case cannot be reproduced in production since this function is
+						// called only if a message is submitted for further processing, which
+						// means that all the pending inbound entries are present.
 						Err::<(), DispatchError>(Error::<T>::PendingInboundEntryNotFound.into())
 					}
 					Some(stored_inbound_entry) => {
