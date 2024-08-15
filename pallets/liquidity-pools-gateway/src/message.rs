@@ -15,13 +15,3 @@ pub enum GatewayMessage<Message, RouterId> {
 		router_id: RouterId,
 	},
 }
-
-impl<Message: Default, RouterId: Default> Default for GatewayMessage<Message, RouterId> {
-	fn default() -> Self {
-		GatewayMessage::Inbound {
-			domain_address: Default::default(),
-			message: Default::default(),
-			router_id: Default::default(),
-		}
-	}
-}

@@ -30,9 +30,8 @@ pub const MAX_PACKED_MESSAGES: usize = 10;
 
 pub const MESSAGE_PROOF: [u8; 32] = [1; 32];
 
-#[derive(Default, Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
+#[derive(Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
 pub enum Message {
-	#[default]
 	Simple,
 	Pack(Vec<Message>),
 	Proof([u8; 32]),

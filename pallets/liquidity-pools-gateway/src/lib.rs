@@ -111,7 +111,7 @@ pub mod pallet {
 		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
 
 		/// An identification of a router
-		type RouterId: Parameter + Default + MaxEncodedLen;
+		type RouterId: Parameter + MaxEncodedLen;
 
 		/// The type that provides the router available for a domain.
 		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
