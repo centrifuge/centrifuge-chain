@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundMessageHandler};
-use cfg_types::domain_address::{Domain, LocalAddress};
+use cfg_types::domain_address::Domain;
 use frame_support::traits::{
 	fungibles::Mutate,
 	tokens::{Fortitude, Precision, Preservation},
@@ -22,10 +22,7 @@ use sp_runtime::DispatchResult;
 
 use crate::{pallet::Config, Message, Pallet};
 
-impl<T: Config> ForeignInvestmentHooks<T::AccountId> for Pallet<T>
-where
-	T::AccountId: From<LocalAddress> + Into<LocalAddress>,
-{
+impl<T: Config> ForeignInvestmentHooks<T::AccountId> for Pallet<T> {
 	type Amount = T::Balance;
 	type CurrencyId = T::CurrencyId;
 	type InvestmentId = (T::PoolId, T::TrancheId);

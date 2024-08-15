@@ -200,7 +200,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(
-				instance.domain() != Domain::Local,
+				instance.domain() != Domain::Centrifuge,
 				Error::<T>::DomainNotSupported
 			);
 
@@ -244,7 +244,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let GatewayOrigin::Domain(origin_address) = T::LocalEVMOrigin::ensure_origin(origin)?;
 
-			if let DomainAddress::Local(_) = origin_address {
+			if let DomainAddress::Centrifuge(_) = origin_address {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
 
@@ -263,7 +263,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			ensure!(domain != Domain::Local, Error::<T>::DomainNotSupported);
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
 			DomainHookAddress::<T>::insert(domain, hook_address);
 
 			Self::deposit_event(Event::DomainHookAddressSet {
@@ -377,7 +377,10 @@ pub mod pallet {
 			destination: Self::Destination,
 			message: Self::Message,
 		) -> DispatchResult {
-			ensure!(destination != Domain::Local, Error::<T>::DomainNotSupported);
+			ensure!(
+				destination != Domain::Centrifuge,
+				Error::<T>::DomainNotSupported
+			);
 
 			PackedMessage::<T>::mutate((&from, destination), |batch| match batch {
 				Some(batch) => batch.pack_with(message),

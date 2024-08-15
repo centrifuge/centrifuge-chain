@@ -1,8 +1,10 @@
+use cfg_primitives::AccountId;
 use cfg_traits::liquidity_pools::MessageQueue;
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::assert_ok;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use sp_core::H160;
 use sp_runtime::traits::One;
 
 use crate::{
@@ -25,7 +27,7 @@ fn inbound<T: Runtime + FudgeSupport>() {
 	let expected_event = env.parachain_state_mut(|| {
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
-			domain_address: DomainAddress::Evm(1, [2; 20]),
+			domain_address: DomainAddress::Evm(1, H160::repeat_byte(2)),
 			message: Message::Invalid,
 		};
 
@@ -55,7 +57,7 @@ fn outbound<T: Runtime + FudgeSupport>() {
 	let expected_event = env.parachain_state_mut(|| {
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: DomainAddress::Local([1; 32]),
+			sender: DomainAddress::Centrifuge(AccountId::new([1; 32])),
 			destination: Domain::Evm(1),
 			message: Message::Invalid,
 		};

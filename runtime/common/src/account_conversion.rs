@@ -37,7 +37,7 @@ impl AccountConverter {
 							network: Some(Ethereum { chain_id }),
 							key,
 						}],
-					) => Some(DomainAddress::from_evm(*chain_id, *key).as_local()),
+					) => Some(DomainAddress::Evm(*chain_id, H160::from(*key)).account()),
 					_ => None,
 				}
 			}
@@ -46,7 +46,7 @@ impl AccountConverter {
 
 	pub fn evm_address_to_account<R: pallet_evm_chain_id::Config>(address: H160) -> AccountId {
 		let chain_id = pallet_evm_chain_id::Pallet::<R>::get();
-		DomainAddress::from_evm(chain_id, address.0).as_local()
+		DomainAddress::Evm(chain_id, address).account()
 	}
 }
 

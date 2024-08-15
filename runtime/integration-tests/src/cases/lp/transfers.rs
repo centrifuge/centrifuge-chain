@@ -78,7 +78,7 @@ mod utils {
 				OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
-				DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
+				DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
 				AMOUNT,
 			)
 			.unwrap();
@@ -157,7 +157,7 @@ fn transfer_tokens_from_local<T: Runtime>() {
 		pallet_liquidity_pools::Pallet::<T>::transfer(
 			OriginFor::<T>::signed(Keyring::Ferdie.into()),
 			USDC.id(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Ferdie.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Ferdie.in_eth()),
 			AMOUNT,
 		)
 		.unwrap();
@@ -215,7 +215,7 @@ fn transfer_tranche_tokens_from_local<T: Runtime>() {
 			OriginFor::<T>::signed(Keyring::TrancheInvestor(1).into()),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(1).in_eth()),
 			AMOUNT,
 		)
 		.unwrap();

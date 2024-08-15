@@ -272,7 +272,7 @@ fn centrifuge_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or(chain_id.into());
-		DomainAddress::from_evm(chain_id, addr).as_local()
+		DomainAddress::Evm(chain_id, addr.into()).account()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -372,7 +372,7 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or(chain_id.into());
-		DomainAddress::from_evm(chain_id, addr).as_local()
+		DomainAddress::Evm(chain_id, addr.into()).account()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -473,7 +473,7 @@ fn development_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or(chain_id.into());
-		DomainAddress::from_evm(chain_id, addr).as_local()
+		DomainAddress::Evm(chain_id, addr.into()).account()
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();

@@ -41,7 +41,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.load_contracts();
 
 		// Fund gateway sender
-		give_balance::<T>(T::Sender::get().as_local(), DEFAULT_BALANCE * CFG);
+		give_balance::<T>(T::Sender::get().account(), DEFAULT_BALANCE * CFG);
 
 		// Register general local pool-currency
 		register_currency::<T>(LocalUSDC, |_| {});
@@ -88,7 +88,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 			RawOrigin::Root.into(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, EVM_LP_INSTANCE)
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, H160(EVM_LP_INSTANCE))
 		));
 
 		assert_ok!(
@@ -667,7 +667,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		);
 		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -675,7 +675,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -687,7 +687,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -695,7 +695,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -707,7 +707,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -715,7 +715,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -727,7 +727,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_C,
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -735,7 +735,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_C,
 			utils::pool_c_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 

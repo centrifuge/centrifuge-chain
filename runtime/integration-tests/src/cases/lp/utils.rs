@@ -12,7 +12,7 @@
 
 use std::{cmp::min, fmt::Debug};
 
-use cfg_primitives::{Balance, TrancheId};
+use cfg_primitives::{AccountId, Balance, TrancheId};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use ethabi::ethereum_types::{H160, H256, U256};
 use fp_evm::CallInfo;
@@ -37,8 +37,8 @@ use crate::{
 };
 
 /// Returns the local representation of a remote ethereum account
-pub fn remote_account_of<T: Runtime>(keyring: Keyring) -> <T as frame_system::Config>::AccountId {
-	DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, keyring.in_eth()).as_local()
+pub fn remote_account_of<T: Runtime>(keyring: Keyring) -> AccountId {
+	DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, keyring.in_eth()).account()
 }
 
 pub const REVERT_ERR: Result<CallInfo, DispatchError> =
@@ -92,7 +92,7 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 		.clone();
 
 	// The sender is the sender account on the gateway
-	assert_eq!(T::Sender::get().as_eth::<[u8; 20]>(), status.from.0);
+	assert_eq!(T::Sender::get().h160(), status.from);
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
 	assert!(matches!(

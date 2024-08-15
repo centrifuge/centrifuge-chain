@@ -41,7 +41,7 @@ impl RouterSupport<Domain> for RouterId {
 	fn for_domain(domain: Domain) -> Vec<Self> {
 		match domain {
 			Domain::Evm(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
-			Domain::Local => vec![],
+			Domain::Centrifuge => vec![],
 		}
 	}
 }

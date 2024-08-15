@@ -108,7 +108,6 @@ pub trait Runtime:
 	+ pallet_authorship::Config
 	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
-		AccountId = AccountId,
 		WeightToFee = WeightToFee,
 		OnChargeTransaction = CurrencyAdapter<pallet_balances::Pallet<Self>, DealWithFees<Self>>,
 	> + pallet_restricted_tokens::Config<

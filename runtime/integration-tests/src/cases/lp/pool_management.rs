@@ -402,7 +402,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::utils::pool::give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()).as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()).account(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -411,7 +411,7 @@ fn update_member<T: Runtime>() {
 			Keyring::Bob.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -629,8 +629,7 @@ fn freeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
-				.as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -638,7 +637,7 @@ fn freeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -674,8 +673,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
-				.as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -683,7 +681,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -706,8 +704,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		remove_role::<T>(
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth())
-				.as_local(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -715,7 +712,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -842,7 +839,7 @@ fn recover_assets<T: Runtime>() {
 	env.state_mut(|_| {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::recover_assets(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
-			DomainAddress::from_evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			utils::to_fixed_array(wrong_contract.as_bytes()),
 			utils::to_fixed_array(token.as_bytes()),
 			sp_core::U256::from(amount),

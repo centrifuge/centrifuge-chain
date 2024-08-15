@@ -55,7 +55,7 @@ pub struct SerializableDomain(u8, u64);
 impl From<Domain> for SerializableDomain {
 	fn from(domain: Domain) -> Self {
 		match domain {
-			Domain::Local => Self(0, 0),
+			Domain::Centrifuge => Self(0, 0),
 			Domain::Evm(chain_id) => Self(1, chain_id),
 		}
 	}
@@ -66,7 +66,7 @@ impl TryInto<Domain> for SerializableDomain {
 
 	fn try_into(self) -> Result<Domain, DispatchError> {
 		match self.0 {
-			0 => Ok(Domain::Local),
+			0 => Ok(Domain::Centrifuge),
 			1 => Ok(Domain::Evm(self.1)),
 			_ => Err(DispatchError::Other("Unknown domain")),
 		}
@@ -624,7 +624,7 @@ mod tests {
 	fn encoding_domain() {
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Local)).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Centrifuge)).unwrap()),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
@@ -741,14 +741,14 @@ mod tests {
 
 	#[test]
 	fn transfer_tranche_tokens_to_chain() {
-		let domain_address = DomainAddress::Evm(1284, default_address_20());
+		let domain_address = DomainAddress::Evm(1284, default_address_20().into());
 
 		test_encode_decode_identity(
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				domain: domain_address.domain().into(),
-				receiver: domain_address.as_local(),
+				receiver: domain_address.bytes(),
 				amount: AMOUNT,
 			},
             "120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000050445564d00000000000052b7d2dcc80cd2e4000000"
@@ -761,7 +761,7 @@ mod tests {
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				domain: Domain::Local.into(),
+				domain: Domain::Centrifuge.into(),
 				receiver: default_address_32(),
 				amount: AMOUNT,
 			},

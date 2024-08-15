@@ -120,7 +120,7 @@ mod axelar_evm {
 
 			utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
 			utils::evm::mint_balance_into_derived_account::<T>(
-				get_gateway_domain_address::<T>().as_eth::<H160>(),
+				get_gateway_domain_address::<T>().h160(),
 				cfg(1),
 			);
 
@@ -171,7 +171,7 @@ mod axelar_evm {
 
 			pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 				RawOrigin::Root.into(),
-				DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS.0),
+				DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS),
 			)
 			.unwrap();
 

@@ -43,7 +43,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::{liquidity_pools::OutboundMessageHandler, swaps::TokenSwaps, PreConditions};
 use cfg_types::{
-	domain_address::{Domain, DomainAddress, EthAddress, LocalAddress},
+	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -59,6 +59,7 @@ use orml_traits::{
 	GetByKey,
 };
 pub use pallet::*;
+use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, EnsureMul},
 	FixedPointNumber, SaturatedConversion,
@@ -131,7 +132,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config<AccountId = AccountId32> {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -346,10 +347,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		T::AccountId: From<LocalAddress> + Into<LocalAddress>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Add a pool to a given domain.
 		///
 		/// Origin: Pool admin
@@ -422,7 +420,6 @@ pub mod pallet {
 				Domain::Evm(id) => Ok(id),
 				_ => Err(Error::<T>::InvalidDomain),
 			}?;
-			let hook = DomainAddress::Evm(evm_chain_id, hook_bytes).as_local();
 
 			// Send the message to the domain
 			T::OutboundMessageHandler::handle(
@@ -434,7 +431,7 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					hook,
+					hook: DomainAddress::Evm(evm_chain_id, hook_bytes.into()).bytes(),
 				},
 			)?;
 
@@ -522,7 +519,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					domain_address.as_local(),
+					domain_address.account(),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::InvestorDomainAddressNotAMember
@@ -535,7 +532,7 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					update: UpdateRestrictionMessage::UpdateMember {
-						member: domain_address.as_local(),
+						member: domain_address.bytes(),
 						valid_until,
 					},
 				},
@@ -562,7 +559,7 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
-			Self::validate_investor_can_transfer(domain_address.as_local(), pool_id, tranche_id)?;
+			Self::validate_investor_can_transfer(domain_address.account(), pool_id, tranche_id)?;
 
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
@@ -586,7 +583,7 @@ pub mod pallet {
 					tranche_id: tranche_id.into(),
 					amount: amount.into(),
 					domain: domain_address.domain().into(),
-					receiver: domain_address.as_local(),
+					receiver: domain_address.bytes(),
 				},
 			)?;
 
@@ -657,7 +654,7 @@ pub mod pallet {
 				Message::TransferAssets {
 					amount: amount.into(),
 					currency,
-					receiver: receiver.as_local(),
+					receiver: receiver.bytes(),
 				},
 			)?;
 
@@ -682,7 +679,7 @@ pub mod pallet {
 				Domain::Evm(chain_id),
 				Message::AddAsset {
 					currency,
-					evm_address,
+					evm_address: evm_address.0,
 				},
 			)?;
 
@@ -870,7 +867,7 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 			Self::validate_investor_status(
-				domain_address.as_local(),
+				domain_address.account(),
 				pool_id,
 				tranche_id,
 				T::Time::now(),
@@ -884,7 +881,7 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					update: UpdateRestrictionMessage::Freeze {
-						address: domain_address.as_local(),
+						address: domain_address.bytes(),
 					},
 				},
 			)?;
@@ -927,7 +924,7 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 			Self::validate_investor_status(
-				domain_address.as_local(),
+				domain_address.account(),
 				pool_id,
 				tranche_id,
 				T::Time::now(),
@@ -941,7 +938,7 @@ pub mod pallet {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					update: UpdateRestrictionMessage::Unfreeze {
-						address: domain_address.as_local(),
+						address: domain_address.bytes(),
 					},
 				},
 			)?;
@@ -985,7 +982,6 @@ pub mod pallet {
 				Domain::Evm(id) => Ok(id),
 				_ => Err(Error::<T>::InvalidDomain),
 			}?;
-			let hook_32 = DomainAddress::Evm(evm_chain_id, hook).as_local();
 
 			T::OutboundMessageHandler::handle(
 				who,
@@ -993,7 +989,7 @@ pub mod pallet {
 				Message::UpdateTrancheHook {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
-					hook: hook_32,
+					hook: DomainAddress::Evm(evm_chain_id, hook.into()).bytes(),
 				},
 			)?;
 
@@ -1030,7 +1026,7 @@ pub mod pallet {
 				Message::RecoverAssets {
 					contract: incorrect_contract,
 					asset,
-					recipient: domain_address.as_local(),
+					recipient: domain_address.bytes(),
 					amount: amount.into(),
 				},
 			)?;
@@ -1039,10 +1035,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T>
-	where
-		T::AccountId: From<LocalAddress> + Into<LocalAddress>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Returns the `u128` general index of a currency as the concatenation
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.
@@ -1084,7 +1077,7 @@ pub mod pallet {
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
 			currency_id: &T::CurrencyId,
-		) -> Result<(EVMChainId, EthAddress), DispatchError> {
+		) -> Result<(EVMChainId, H160), DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_liquidity_pools(),
@@ -1110,7 +1103,7 @@ pub mod pallet {
 						network: None,
 						key: address,
 					}],
-				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address)),
+				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address.into())),
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
 			}
 		}
@@ -1212,10 +1205,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> InboundMessageHandler for Pallet<T>
-	where
-		T::AccountId: From<LocalAddress> + Into<LocalAddress>,
-	{
+	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = Message;
 		type Sender = DomainAddress;
 
@@ -1256,7 +1246,7 @@ pub mod pallet {
 				} => Self::handle_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).as_local(),
+					DomainAddress::new(sender.domain(), investor).account(),
 					currency.into(),
 					amount.into(),
 				),
@@ -1269,7 +1259,7 @@ pub mod pallet {
 				} => Self::handle_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).as_local(),
+					DomainAddress::new(sender.domain(), investor).account(),
 					amount.into(),
 					currency.into(),
 					sender,
@@ -1282,7 +1272,7 @@ pub mod pallet {
 				} => Self::handle_cancel_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).as_local(),
+					DomainAddress::new(sender.domain(), investor).account(),
 					currency.into(),
 				),
 				Message::CancelRedeemRequest {
@@ -1293,7 +1283,7 @@ pub mod pallet {
 				} => Self::handle_cancel_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).as_local(),
+					DomainAddress::new(sender.domain(), investor).account(),
 					currency.into(),
 					sender,
 				),

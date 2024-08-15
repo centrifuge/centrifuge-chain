@@ -1,6 +1,6 @@
 use cfg_traits::Seconds;
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::DomainAddress,
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
 };
@@ -25,12 +25,12 @@ mod transfer {
 			TransferFilter::mock_check(|_| Ok(()));
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::TransferAssets {
 						currency: util::currency_index(CURRENCY_ID),
-						receiver: EVM_DOMAIN_ADDRESS.as_local(),
+						receiver: CONTRACT_DOMAIN_ADDRESS.bytes(),
 						amount: AMOUNT
 					}
 				);
@@ -42,7 +42,7 @@ mod transfer {
 			assert_ok!(LiquidityPools::transfer(
 				RuntimeOrigin::signed(ALICE),
 				CurrencyId::ForeignAsset(1),
-				EVM_DOMAIN_ADDRESS,
+				CONTRACT_DOMAIN_ADDRESS,
 				AMOUNT
 			));
 
@@ -60,7 +60,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						0
 					),
 					Error::<Runtime>::InvalidTransferAmount,
@@ -75,7 +75,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CurrencyId::Tranche(42, [0; 16]),
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::InvalidTransferCurrency,
@@ -92,7 +92,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::AssetNotFound,
@@ -109,7 +109,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CurrencyId::Native,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					TokenError::Unsupported,
@@ -126,7 +126,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
@@ -143,7 +143,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::AssetNotLiquidityPoolsWrappedToken
@@ -160,7 +160,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						DomainAddress::Local([2; 32]),
+						DomainAddress::Centrifuge(ALICE),
 						AMOUNT
 					),
 					Error::<Runtime>::InvalidDomain
@@ -178,7 +178,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					DispatchError::Other("Err"),
@@ -196,7 +196,7 @@ mod transfer {
 					LiquidityPools::transfer(
 						RuntimeOrigin::signed(ALICE),
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::BalanceTooLow
@@ -213,7 +213,7 @@ mod transfer_tranche_tokens {
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
+			assert_eq!(who, CONTRACT_DOMAIN_ADDRESS.account());
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
 					assert_eq!(tranche_id, TRANCHE_ID);
@@ -233,14 +233,14 @@ mod transfer_tranche_tokens {
 		TransferFilter::mock_check(|_| Ok(()));
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
-			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					domain: EVM_DOMAIN_ADDRESS.domain().into(),
-					receiver: EVM_DOMAIN_ADDRESS.as_local(),
+					domain: CONTRACT_DOMAIN_ADDRESS.domain().into(),
+					receiver: CONTRACT_DOMAIN_ADDRESS.bytes(),
 					amount: AMOUNT
 				}
 			);
@@ -259,11 +259,11 @@ mod transfer_tranche_tokens {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				EVM_DOMAIN_ADDRESS,
+				CONTRACT_DOMAIN_ADDRESS,
 				AMOUNT
 			));
 
-			let destination = EVM_DOMAIN_ADDRESS.domain().into_account();
+			let destination = CONTRACT_DOMAIN_ADDRESS.domain().into_account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE), 0);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		})
@@ -280,7 +280,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						0
 					),
 					Error::<Runtime>::InvalidTransferAmount,
@@ -299,7 +299,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::UnauthorizedTransfer,
@@ -313,7 +313,7 @@ mod transfer_tranche_tokens {
 				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-					assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
+					assert_eq!(who, CONTRACT_DOMAIN_ADDRESS.account());
 					match role {
 						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
 							assert_eq!(tranche_id, TRANCHE_ID);
@@ -333,7 +333,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::InvestorDomainAddressFrozen,
@@ -352,7 +352,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::PoolNotFound,
@@ -371,7 +371,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					Error::<Runtime>::TrancheNotFound,
@@ -390,7 +390,7 @@ mod transfer_tranche_tokens {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						AMOUNT
 					),
 					DispatchError::Other("Err"),
@@ -415,7 +415,7 @@ mod add_pool {
 			Pools::mock_pool_exists(|_| true);
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(msg, Message::AddPool { pool_id: POOL_ID });
 				Ok(())
 			});
@@ -423,7 +423,7 @@ mod add_pool {
 			assert_ok!(LiquidityPools::add_pool(
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
-				EVM_DOMAIN_ADDRESS.domain(),
+				CONTRACT_DOMAIN_ADDRESS.domain(),
 			));
 		})
 	}
@@ -440,7 +440,7 @@ mod add_pool {
 					LiquidityPools::add_pool(
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -457,7 +457,7 @@ mod add_pool {
 					LiquidityPools::add_pool(
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::NotPoolAdmin
 				);
@@ -480,12 +480,12 @@ mod add_tranche {
 		Pools::mock_tranche_exists(|_, _| true);
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 		Gateway::mock_get(move |domain| {
-			assert_eq!(domain, &EVM_DOMAIN_ADDRESS.domain());
-			Some(DOMAIN_HOOK_ADDRESS_20)
+			assert_eq!(domain, &CONTRACT_DOMAIN_ADDRESS.domain());
+			Some(DOMAIN_HOOK_ADDRESS.into())
 		});
 		Gateway::mock_handle(move |sender, destination, msg| {
 			assert_eq!(sender, ALICE);
-			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
 				Message::AddTranche {
@@ -494,7 +494,7 @@ mod add_tranche {
 					token_name: vec_to_fixed_array(NAME),
 					token_symbol: vec_to_fixed_array(SYMBOL),
 					decimals: DECIMALS,
-					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20).as_local(),
+					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS).bytes(),
 				}
 			);
 			Ok(())
@@ -510,7 +510,7 @@ mod add_tranche {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				EVM_DOMAIN_ADDRESS.domain(),
+				CONTRACT_DOMAIN_ADDRESS.domain(),
 			));
 		})
 	}
@@ -528,7 +528,7 @@ mod add_tranche {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::NotPoolAdmin
 				);
@@ -546,7 +546,7 @@ mod add_tranche {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -564,7 +564,7 @@ mod add_tranche {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheNotFound,
 				);
@@ -582,7 +582,7 @@ mod add_tranche {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheMetadataNotFound,
 				);
@@ -600,7 +600,7 @@ mod add_tranche {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::DomainHookAddressNotFound,
 				);
@@ -618,7 +618,7 @@ mod update_tranche_token_metadata {
 		AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
-			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
 				Message::UpdateTrancheMetadata {
@@ -641,7 +641,7 @@ mod update_tranche_token_metadata {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				EVM_DOMAIN_ADDRESS.domain(),
+				CONTRACT_DOMAIN_ADDRESS.domain(),
 			));
 		})
 	}
@@ -660,7 +660,7 @@ mod update_tranche_token_metadata {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -678,7 +678,7 @@ mod update_tranche_token_metadata {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheNotFound,
 				);
@@ -696,7 +696,7 @@ mod update_tranche_token_metadata {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::TrancheMetadataNotFound,
 				);
@@ -719,7 +719,7 @@ mod update_token_price {
 		AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
-			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
 				Message::UpdateTranchePrice {
@@ -746,7 +746,7 @@ mod update_token_price {
 				POOL_ID,
 				TRANCHE_ID,
 				CURRENCY_ID,
-				EVM_DOMAIN_ADDRESS.domain(),
+				CONTRACT_DOMAIN_ADDRESS.domain(),
 			));
 		})
 	}
@@ -765,7 +765,7 @@ mod update_token_price {
 						POOL_ID,
 						TRANCHE_ID,
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::MissingTranchePrice,
 				);
@@ -784,7 +784,7 @@ mod update_token_price {
 						POOL_ID,
 						TRANCHE_ID,
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::PoolNotFound,
 				);
@@ -803,7 +803,7 @@ mod update_token_price {
 						POOL_ID,
 						TRANCHE_ID,
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					DispatchError::Other("")
 				);
@@ -822,7 +822,7 @@ mod update_token_price {
 						POOL_ID,
 						TRANCHE_ID,
 						CURRENCY_ID,
-						EVM_DOMAIN_ADDRESS.domain(),
+						CONTRACT_DOMAIN_ADDRESS.domain(),
 					),
 					Error::<Runtime>::AssetNotLiquidityPoolsTransferable,
 				);
@@ -841,7 +841,7 @@ mod update_member {
 		Pools::mock_tranche_exists(|_, _| true);
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
-			assert_eq!(who, EVM_DOMAIN_ADDRESS.as_local());
+			assert_eq!(who, CONTRACT_DOMAIN_ADDRESS.account());
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			assert!(matches!(
 				role,
@@ -851,7 +851,7 @@ mod update_member {
 		});
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, ALICE);
-			assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 			assert_eq!(
 				msg,
 				Message::UpdateRestriction {
@@ -859,7 +859,7 @@ mod update_member {
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::UpdateMember {
 						valid_until: VALID_UNTIL_SECS,
-						member: EVM_DOMAIN_ADDRESS.as_local(),
+						member: CONTRACT_DOMAIN_ADDRESS.bytes(),
 					}
 				}
 			);
@@ -876,7 +876,7 @@ mod update_member {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				EVM_DOMAIN_ADDRESS,
+				CONTRACT_DOMAIN_ADDRESS,
 				VALID_UNTIL_SECS,
 			));
 		})
@@ -895,7 +895,7 @@ mod update_member {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						VALID_UNTIL_SECS,
 					),
 					Error::<Runtime>::PoolNotFound,
@@ -914,7 +914,7 @@ mod update_member {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						VALID_UNTIL_SECS,
 					),
 					Error::<Runtime>::TrancheNotFound,
@@ -933,7 +933,7 @@ mod update_member {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						VALID_UNTIL_SECS,
 					),
 					Error::<Runtime>::InvalidTrancheInvestorValidity,
@@ -952,7 +952,7 @@ mod update_member {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						EVM_DOMAIN_ADDRESS,
+						CONTRACT_DOMAIN_ADDRESS,
 						VALID_UNTIL_SECS,
 					),
 					Error::<Runtime>::InvestorDomainAddressNotAMember,
@@ -971,12 +971,12 @@ mod add_currency {
 			AssetRegistry::mock_metadata(|_| Some(util::locatable_transferable_metadata()));
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::AddAsset {
 						currency: util::currency_index(CURRENCY_ID),
-						evm_address: CONTRACT_ACCOUNT,
+						evm_address: CONTRACT_ACCOUNT.into(),
 					}
 				);
 				Ok(())
@@ -1057,7 +1057,7 @@ mod allow_investment_currency {
 			});
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::AllowAsset {
@@ -1197,7 +1197,7 @@ mod disallow_investment_currency {
 			});
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, ALICE);
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::DisallowAsset {
@@ -1330,11 +1330,11 @@ mod schedule_upgrade {
 		System::externalities().execute_with(|| {
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, TreasuryAccount::get());
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::ScheduleUpgrade {
-						contract: CONTRACT_ACCOUNT
+						contract: CONTRACT_ACCOUNT.into()
 					}
 				);
 				Ok(())
@@ -1343,7 +1343,7 @@ mod schedule_upgrade {
 			assert_ok!(LiquidityPools::schedule_upgrade(
 				RuntimeOrigin::root(),
 				CHAIN_ID,
-				CONTRACT_ACCOUNT,
+				CONTRACT_ACCOUNT.into(),
 			));
 		})
 	}
@@ -1358,7 +1358,7 @@ mod schedule_upgrade {
 					LiquidityPools::schedule_upgrade(
 						RuntimeOrigin::signed(ALICE),
 						CHAIN_ID,
-						CONTRACT_ACCOUNT,
+						CONTRACT_ACCOUNT.into(),
 					),
 					DispatchError::BadOrigin
 				);
@@ -1375,11 +1375,11 @@ mod cancel_upgrade {
 		System::externalities().execute_with(|| {
 			Gateway::mock_handle(|sender, destination, msg| {
 				assert_eq!(sender, TreasuryAccount::get());
-				assert_eq!(destination, EVM_DOMAIN_ADDRESS.domain());
+				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
 					Message::CancelUpgrade {
-						contract: CONTRACT_ACCOUNT
+						contract: CONTRACT_ACCOUNT.into()
 					}
 				);
 				Ok(())
@@ -1388,7 +1388,7 @@ mod cancel_upgrade {
 			assert_ok!(LiquidityPools::cancel_upgrade(
 				RuntimeOrigin::root(),
 				CHAIN_ID,
-				CONTRACT_ACCOUNT,
+				CONTRACT_ACCOUNT.into(),
 			));
 		})
 	}
@@ -1403,7 +1403,7 @@ mod cancel_upgrade {
 					LiquidityPools::cancel_upgrade(
 						RuntimeOrigin::signed(ALICE),
 						CHAIN_ID,
-						CONTRACT_ACCOUNT,
+						CONTRACT_ACCOUNT.into(),
 					),
 					DispatchError::BadOrigin
 				);
@@ -1424,13 +1424,13 @@ mod freeze {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has frozen investor
 					true
@@ -1453,7 +1453,7 @@ mod freeze {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::Freeze {
-						address: ALICE_EVM_DOMAIN_ADDRESS.as_local()
+						address: ALICE_EVM_DOMAIN_ADDRESS.bytes()
 					}
 				}
 			);
@@ -1596,13 +1596,13 @@ mod freeze {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					match role {
 						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 							assert_eq!(tranche_id, TRANCHE_ID);
 							assert_eq!(validity, NOW_SECS);
 							true
 						}
 						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 							assert_eq!(tranche_id, TRANCHE_ID);
 							false
 						}
@@ -1640,13 +1640,13 @@ mod unfreeze {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 			match role {
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					assert_eq!(validity, NOW_SECS);
 					true
 				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.as_local());
+					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has unfrozen investor
 					false
@@ -1669,7 +1669,7 @@ mod unfreeze {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
 					update: UpdateRestrictionMessage::Unfreeze {
-						address: ALICE_EVM_DOMAIN_ADDRESS.as_local()
+						address: ALICE_EVM_DOMAIN_ADDRESS.bytes()
 					}
 				}
 			);
@@ -1848,7 +1848,7 @@ mod update_tranche_hook {
 				Message::UpdateTrancheHook {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
-					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS_20).as_local(),
+					hook: DomainAddress::Evm(CHAIN_ID, DOMAIN_HOOK_ADDRESS).bytes(),
 				}
 			);
 			Ok(())
@@ -1865,7 +1865,7 @@ mod update_tranche_hook {
 				POOL_ID,
 				TRANCHE_ID,
 				EVM_DOMAIN,
-				DOMAIN_HOOK_ADDRESS_20
+				DOMAIN_HOOK_ADDRESS.into()
 			));
 		});
 	}
@@ -1884,7 +1884,7 @@ mod update_tranche_hook {
 						POOL_ID,
 						TRANCHE_ID,
 						EVM_DOMAIN,
-						DOMAIN_HOOK_ADDRESS_20
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					DispatchError::BadOrigin
 				);
@@ -1899,7 +1899,7 @@ mod update_tranche_hook {
 						POOL_ID,
 						TRANCHE_ID,
 						EVM_DOMAIN,
-						DOMAIN_HOOK_ADDRESS_20
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					DispatchError::BadOrigin
 				);
@@ -1918,7 +1918,7 @@ mod update_tranche_hook {
 						POOL_ID,
 						TRANCHE_ID,
 						EVM_DOMAIN,
-						DOMAIN_HOOK_ADDRESS_20
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -1937,7 +1937,7 @@ mod update_tranche_hook {
 						POOL_ID,
 						TRANCHE_ID,
 						EVM_DOMAIN,
-						DOMAIN_HOOK_ADDRESS_20
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					Error::<Runtime>::TrancheNotFound
 				);
@@ -1956,7 +1956,7 @@ mod update_tranche_hook {
 						POOL_ID,
 						TRANCHE_ID,
 						EVM_DOMAIN,
-						DOMAIN_HOOK_ADDRESS_20
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					Error::<Runtime>::NotPoolAdmin
 				);
@@ -1973,8 +1973,8 @@ mod update_tranche_hook {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						Domain::Local,
-						DOMAIN_HOOK_ADDRESS_20
+						Domain::Centrifuge,
+						DOMAIN_HOOK_ADDRESS.into()
 					),
 					Error::<Runtime>::InvalidDomain
 				);
@@ -1993,13 +1993,13 @@ mod recover_assets {
 		Permissions::mock_has(|_, _, _| false);
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, TreasuryAccount::get());
-			assert_eq!(destination, Domain::Evm(42));
+			assert_eq!(destination, EVM_DOMAIN);
 			assert_eq!(
 				msg,
 				Message::RecoverAssets {
 					contract: CONTRACT,
 					asset: ASSET,
-					recipient: ALICE_EVM_DOMAIN_ADDRESS.as_local(),
+					recipient: ALICE_EVM_DOMAIN_ADDRESS.bytes(),
 					amount: sp_core::U256::from(AMOUNT).into(),
 				}
 			);
@@ -2069,7 +2069,7 @@ mod recover_assets {
 				assert_noop!(
 					LiquidityPools::recover_assets(
 						RuntimeOrigin::root(),
-						DomainAddress::Local(ALICE.into()),
+						DomainAddress::Centrifuge(ALICE.into()),
 						CONTRACT,
 						ASSET,
 						AMOUNT.into(),

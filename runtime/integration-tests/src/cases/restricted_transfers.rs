@@ -22,6 +22,7 @@ use cfg_types::{
 use cumulus_primitives_core::WeightLimit;
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
 use runtime_common::remarks::Remark;
+use sp_core::H160;
 use sp_runtime::traits::Zero;
 use staging_xcm::{
 	v4::{Junction::*, Location, NetworkId},
@@ -360,7 +361,7 @@ mod eth_address {
 
 	const TRANSFER: u32 = 10;
 	const CHAIN_ID: u64 = 1;
-	const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
+	const CONTRACT_ACCOUNT: H160 = H160::repeat_byte(1);
 
 	#[test_runtimes(all)]
 	fn restrict_lp_eth_transfer<T: Runtime>() {
@@ -376,7 +377,7 @@ mod eth_address {
 						GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
 						AccountKey20 {
 							network: None,
-							key: CONTRACT_ACCOUNT,
+							key: CONTRACT_ACCOUNT.into(),
 						},
 					],
 				))),
@@ -411,7 +412,8 @@ mod eth_address {
 				pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					curr.id(),
-					DomainAddress::Evm(CHAIN_ID, [2; 20]), // Not the allowed contract account
+					DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(2)), /* Not the allowed
+					                                                     * contract account */
 					curr.val(TRANSFER),
 				),
 				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination

@@ -184,9 +184,9 @@ pub fn receipt_ok(receipt: ReceiptV3) -> bool {
 	inner.status_code == 1
 }
 
-pub fn mint_balance_into_derived_account<T: Runtime>(address: impl Into<[u8; 20]>, balance: u128) {
+pub fn mint_balance_into_derived_account<T: Runtime>(address: H160, balance: u128) {
 	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-	let derived_account = DomainAddress::from_evm(chain_id, address).as_local();
+	let derived_account = DomainAddress::Evm(chain_id, address).account();
 	pallet_balances::Pallet::<T>::mint_into(&derived_account, balance)
 		.expect("Minting into derived EVM accounf failed.");
 }
