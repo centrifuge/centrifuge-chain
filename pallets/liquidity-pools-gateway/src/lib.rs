@@ -249,9 +249,6 @@ pub mod pallet {
 		/// was not started by `start_batch_message()`.
 		MessagePackingNotStarted,
 
-		/// Invalid routers.
-		InvalidRouters,
-
 		/// Unknown router.
 		UnknownRouter,
 
@@ -297,8 +294,6 @@ pub mod pallet {
 			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-
-			ensure!(router_ids.len() > 0, Error::<T>::InvalidRouters);
 
 			<Routers<T>>::set(router_ids.clone());
 
