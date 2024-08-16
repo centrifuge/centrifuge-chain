@@ -94,16 +94,16 @@ impl<T: Config> InboundEntry<T> {
 		expected_proof_count: u32,
 	) -> Self {
 		if message.is_proof_message() {
+			InboundEntry::Proof(ProofEntry {
+				session_id,
+				current_count: 1,
+			})
+		} else {
 			InboundEntry::Message(MessageEntry {
 				session_id,
 				domain_address,
 				message,
 				expected_proof_count,
-			})
-		} else {
-			InboundEntry::Proof(ProofEntry {
-				session_id,
-				current_count: 1,
 			})
 		}
 	}
