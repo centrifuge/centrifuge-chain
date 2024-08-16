@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterProvider};
+use cfg_traits::liquidity_pools::{LpMessage, Proof, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -54,7 +54,7 @@ impl MaxEncodedLen for Message {
 	}
 }
 
-impl LPEncoding for Message {
+impl LpMessage for Message {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),

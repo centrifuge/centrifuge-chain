@@ -131,13 +131,13 @@ pub mod pallet {
 		/// messages from
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// The target of the messages comming from other chains
+		/// The target of the messages coming from other chains
 		type Receiver: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
 
 		/// Middleware used by the gateway
 		type Middleware: From<AxelarId>;
 
-		/// The target of the messages comming from this chain
+		/// The target of the messages coming from this chain
 		type Transactor: EthereumTransactor;
 
 		/// Checker to ensure an evm account code is registered

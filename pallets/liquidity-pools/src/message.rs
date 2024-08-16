@@ -6,7 +6,7 @@
 //! representation for each message variant.
 
 use cfg_traits::{
-	liquidity_pools::{LPEncoding, Proof},
+	liquidity_pools::{LpMessage, Proof},
 	Seconds,
 };
 use cfg_types::domain_address::Domain;
@@ -532,7 +532,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	},
 }
 
-impl LPEncoding for Message {
+impl LpMessage for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -570,7 +570,7 @@ impl LPEncoding for Message {
 	}
 
 	fn to_proof_message(&self) -> Self {
-		let hash = keccak_256(&LPEncoding::serialize(self));
+		let hash = keccak_256(&LpMessage::serialize(self));
 
 		Message::MessageProof { hash }
 	}

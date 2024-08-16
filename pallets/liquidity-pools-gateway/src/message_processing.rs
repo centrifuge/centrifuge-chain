@@ -1,6 +1,6 @@
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageQueue, Proof, RouterProvider,
+	InboundMessageHandler, LpMessage, MessageQueue, Proof, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{

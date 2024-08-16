@@ -19,7 +19,7 @@ pub type Proof = [u8; 32];
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait LPEncoding: Sized {
+pub trait LpMessage: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
