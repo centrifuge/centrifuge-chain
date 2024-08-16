@@ -291,12 +291,12 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Gets the message proof for a message.
-	pub(crate) fn get_message_proof(message: T::Message) -> MessageHash {
+	pub(crate) fn get_message_hash(message: T::Message) -> MessageHash {
 		match message.get_message_hash() {
 			None => message
 				.to_proof_message()
 				.get_message_hash()
-				.expect("message proof ensured by 'to_message_proof'"),
+				.expect("message hash ensured by 'to_proof_message'"),
 			Some(proof) => proof,
 		}
 	}
@@ -304,11 +304,11 @@ impl<T: Config> Pallet<T> {
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
-		message_proof: MessageHash,
+		message_hash: MessageHash,
 		router_id: &T::RouterId,
 		new_inbound_entry: InboundEntry<T>,
 	) -> DispatchResult {
-		PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+		PendingInboundEntries::<T>::try_mutate(message_hash, router_id, |storage_entry| {
 			match storage_entry {
 				None => {
 					*storage_entry = Some(new_inbound_entry);
@@ -326,7 +326,7 @@ impl<T: Config> Pallet<T> {
 	/// were received, and if so, decreases the counts accordingly and executes
 	/// the message.
 	pub(crate) fn execute_if_requirements_are_met(
-		message_proof: MessageHash,
+		message_hash: MessageHash,
 		router_ids: &[T::RouterId],
 		session_id: T::SessionId,
 		expected_proof_count: u32,
@@ -336,7 +336,7 @@ impl<T: Config> Pallet<T> {
 		let mut votes = 0;
 
 		for router_id in router_ids {
-			match PendingInboundEntries::<T>::get(message_proof, router_id) {
+			match PendingInboundEntries::<T>::get(message_hash, router_id) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
 				None => return Ok(()),
@@ -357,7 +357,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			Self::execute_post_voting_dispatch(message_proof, router_ids, expected_proof_count)?;
+			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
 			T::InboundMessageHandler::handle(domain_address, msg)?;
 		}
@@ -368,12 +368,12 @@ impl<T: Config> Pallet<T> {
 	/// Decreases the counts for inbound entries and removes them if the
 	/// counts reach 0.
 	pub(crate) fn execute_post_voting_dispatch(
-		message_proof: MessageHash,
+		message_hash: MessageHash,
 		router_ids: &[T::RouterId],
 		expected_proof_count: u32,
 	) -> DispatchResult {
 		for router_id in router_ids {
-			PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+			PendingInboundEntries::<T>::try_mutate(message_hash, router_id, |storage_entry| {
 				match storage_entry {
 					None => {
 						// This case cannot be reproduced in production since this function is
@@ -413,7 +413,7 @@ impl<T: Config> Pallet<T> {
 		for submessage in message.submessages() {
 			counter.ensure_add_assign(1)?;
 
-			let message_proof = Self::get_message_proof(submessage.clone());
+			let message_hash = Self::get_message_hash(submessage.clone());
 
 			let inbound_entry: InboundEntry<T> = InboundEntry::create(
 				submessage,
@@ -426,7 +426,7 @@ impl<T: Config> Pallet<T> {
 			Self::upsert_pending_entry(message_proof, &router_id, inbound_entry)?;
 
 			Self::execute_if_requirements_are_met(
-				message_proof,
+				message_hash,
 				&router_ids,
 				session_id,
 				expected_proof_count,
@@ -445,7 +445,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(destination)?;
 
-		let message_proof = message.to_proof_message();
+		let proof_message = message.to_proof_message();
 		let mut message_opt = Some(message);
 
 		for router_id in router_ids {
@@ -453,7 +453,7 @@ impl<T: Config> Pallet<T> {
 			// The remaining routers will send the message proof.
 			let router_msg = match message_opt.take() {
 				Some(m) => m,
-				None => message_proof.clone(),
+				None => proof_message.clone(),
 			};
 
 			// We are using the sender specified in the pallet config so that we can
