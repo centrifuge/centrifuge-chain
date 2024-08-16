@@ -10,7 +10,6 @@ pub enum GatewayMessage<Message, RouterId> {
 		router_id: RouterId,
 	},
 	Outbound {
-		sender: DomainAddress,
 		message: Message,
 		router_id: RouterId,
 	},

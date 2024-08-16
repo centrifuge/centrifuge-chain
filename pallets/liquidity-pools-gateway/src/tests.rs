@@ -898,18 +898,12 @@ mod implementations {
 						GatewayMessage::Inbound { .. } => {
 							assert!(false, "expected outbound message")
 						}
-						GatewayMessage::Outbound {
-							sender, message, ..
-						} => {
-							assert_eq!(sender, <Runtime as Config>::Sender::get());
-
-							match message {
-								Message::Proof(p) => {
-									assert_eq!(p, message_proof);
-								}
-								_ => {}
+						GatewayMessage::Outbound { message, .. } => match message {
+							Message::Proof(p) => {
+								assert_eq!(p, message_proof);
 							}
-						}
+							_ => {}
+						},
 					}
 
 					Ok(())
@@ -961,7 +955,6 @@ mod implementations {
 				));
 
 				let gateway_message = GatewayMessage::Outbound {
-					sender: <Runtime as Config>::Sender::get(),
 					message: msg.clone(),
 					router_id: ROUTER_ID_1,
 				};
@@ -3167,11 +3160,9 @@ mod implementations {
 			#[test]
 			fn success() {
 				new_test_ext().execute_with(|| {
-					let sender = TEST_DOMAIN_ADDRESS;
 					let message = Message::Simple;
 
 					let gateway_message = GatewayMessage::Outbound {
-						sender: sender.clone(),
 						message: message.clone(),
 						router_id: ROUTER_ID_1,
 					};
@@ -3179,7 +3170,7 @@ mod implementations {
 					let handler = MockMessageSender::mock_send(
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
-							assert_eq!(mock_sender, sender);
+							assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
 							assert_eq!(mock_message, message.serialize());
 
 							Ok(())
@@ -3196,11 +3187,9 @@ mod implementations {
 			#[test]
 			fn message_sender_error() {
 				new_test_ext().execute_with(|| {
-					let sender = TEST_DOMAIN_ADDRESS;
 					let message = Message::Simple;
 
 					let gateway_message = GatewayMessage::Outbound {
-						sender: sender.clone(),
 						message: message.clone(),
 						router_id: ROUTER_ID_1,
 					};
@@ -3210,7 +3199,7 @@ mod implementations {
 					MockMessageSender::mock_send(
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
-							assert_eq!(mock_sender, sender);
+							assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
 							assert_eq!(mock_message, message.serialize());
 
 							Err(router_err)

@@ -459,7 +459,6 @@ impl<T: Config> Pallet<T> {
 			// We are using the sender specified in the pallet config so that we can
 			// ensure that the account is funded
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Outbound {
-				sender: T::Sender::get(),
 				message: router_msg,
 				router_id,
 			};

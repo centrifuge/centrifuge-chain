@@ -520,7 +520,7 @@ pub mod pallet {
 
 			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
 
-			Self::send_message_recovery_message(domain.clone(), message, messaging_router.clone())?;
+			Self::send_recovery_message(domain.clone(), message, messaging_router.clone())?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryInitiated {
 				domain,
@@ -549,7 +549,7 @@ pub mod pallet {
 
 			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
 
-			Self::send_message_recovery_message(domain.clone(), message, messaging_router.clone())?;
+			Self::send_recovery_message(domain.clone(), message, messaging_router.clone())?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryDisputed {
 				domain,
