@@ -5,7 +5,7 @@ use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
-	pallet_prelude::{Decode, Encode, Get, TypeInfo},
+	pallet_prelude::{Decode, Encode, TypeInfo},
 };
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub, SaturatedConversion};
@@ -412,7 +412,7 @@ impl<T: Config> Pallet<T> {
 			let message_hash = submessage.get_message_hash();
 
 			let inbound_entry: InboundEntry<T> = InboundEntry::create(
-				submessage,
+				submessage.clone(),
 				session_id,
 				domain_address.clone(),
 				expected_proof_count,
@@ -420,6 +420,13 @@ impl<T: Config> Pallet<T> {
 
 			inbound_entry.validate(&router_ids, &router_id.clone())?;
 			Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
+
+			Self::deposit_processing_event(
+				domain_address.clone(),
+				submessage,
+				message_hash,
+				router_id.clone(),
+			);
 
 			Self::execute_if_requirements_are_met(
 				message_hash,

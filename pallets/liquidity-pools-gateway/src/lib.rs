@@ -662,12 +662,9 @@ pub mod pallet {
 
 					(res, weight)
 				}
-				GatewayMessage::Outbound {
-					sender,
-					message,
-					router_id,
-				} => {
-					let res = T::MessageSender::send(router_id, sender, message.serialize());
+				GatewayMessage::Outbound { message, router_id } => {
+					let res =
+						T::MessageSender::send(router_id, T::Sender::get(), message.serialize());
 
 					(res, LP_DEFENSIVE_WEIGHT)
 				}
