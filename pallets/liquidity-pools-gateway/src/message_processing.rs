@@ -1,4 +1,3 @@
-use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LPEncoding, MessageQueue, Proof, RouterProvider,
 };
@@ -7,7 +6,6 @@ use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::{Decode, Encode, Get, TypeInfo},
-	weights::Weight,
 };
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub, SaturatedConversion};
@@ -406,27 +404,14 @@ impl<T: Config> Pallet<T> {
 		domain_address: DomainAddress,
 		message: T::Message,
 		router_id: T::RouterId,
-	) -> (DispatchResult, Weight) {
-		let weight = LP_DEFENSIVE_WEIGHT;
-
-		let router_ids = match Self::get_router_ids_for_domain(domain_address.domain()) {
-			Ok(r) => r,
-			Err(e) => return (Err(e), weight),
-		};
-
+		counter: &mut u64,
+	) -> DispatchResult {
+		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
 		let session_id = SessionIdStore::<T>::get();
-
-		let expected_proof_count = match Self::get_expected_proof_count(&router_ids) {
-			Ok(r) => r,
-			Err(e) => return (Err(e), weight),
-		};
-
-		let mut count = 0;
+		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 
 		for submessage in message.submessages() {
-			if let Err(e) = count.ensure_add_assign(1) {
-				return (Err(e.into()), weight.saturating_mul(count));
-			}
+			counter.ensure_add_assign(1)?;
 
 			let message_proof = Self::get_message_proof(submessage.clone());
 
@@ -437,27 +422,19 @@ impl<T: Config> Pallet<T> {
 				expected_proof_count,
 			);
 
-			if let Err(e) = inbound_entry.validate(&router_ids, &router_id.clone()) {
-				return (Err(e), weight.saturating_mul(count));
-			}
+			inbound_entry.validate(&router_ids, &router_id.clone())?;
+			Self::upsert_pending_entry(message_proof, &router_id, inbound_entry)?;
 
-			if let Err(e) = Self::upsert_pending_entry(message_proof, &router_id, inbound_entry) {
-				return (Err(e), weight.saturating_mul(count));
-			}
-
-			match Self::execute_if_requirements_are_met(
+			Self::execute_if_requirements_are_met(
 				message_proof,
 				&router_ids,
 				session_id,
 				expected_proof_count,
 				domain_address.clone(),
-			) {
-				Err(e) => return (Err(e), weight.saturating_mul(count)),
-				Ok(_) => continue,
-			}
+			)?;
 		}
 
-		(Ok(()), weight.saturating_mul(count))
+		Ok(())
 	}
 
 	/// Retrieves the IDs of the routers set for a domain and queues the

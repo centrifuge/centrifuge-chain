@@ -517,18 +517,31 @@ pub mod pallet {
 					domain_address,
 					message,
 					router_id,
-				} => Self::process_inbound_message(domain_address, message, router_id),
+				} => {
+					let mut counter = 0;
+
+					let res = Self::process_inbound_message(
+						domain_address,
+						message,
+						router_id,
+						&mut counter,
+					);
+
+					let weight = match counter {
+						0 => LP_DEFENSIVE_WEIGHT / 10,
+						n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
+					};
+
+					(res, weight)
+				}
 				GatewayMessage::Outbound {
 					sender,
 					message,
 					router_id,
 				} => {
-					let weight = LP_DEFENSIVE_WEIGHT;
+					let res = T::MessageSender::send(router_id, sender, message.serialize());
 
-					match T::MessageSender::send(router_id, sender, message.serialize()) {
-						Ok(_) => (Ok(()), weight),
-						Err(e) => (Err(e), weight),
-					}
+					(res, LP_DEFENSIVE_WEIGHT)
 				}
 			}
 		}
