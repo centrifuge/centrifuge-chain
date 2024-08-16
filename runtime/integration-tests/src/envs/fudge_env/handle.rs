@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cfg_primitives::{AuraId, Balance, Header};
+use cfg_primitives::{AccountId, AuraId, Balance, Header};
 use cumulus_primitives_core::CollectCollationInfo;
 use fudge::{
 	digest::{DigestCreator as DigestCreatorT, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
@@ -80,12 +80,12 @@ pub type RelayClient<ConstructApi> = TFullClient<RelayBlock, ConstructApi, TWasm
 pub type ParachainClient<Block, ConstructApi> = TFullClient<Block, ConstructApi, TWasmExecutor>;
 
 pub trait FudgeHandle<T: Runtime> {
-	type RelayRuntime: frame_system::Config<AccountId = AccountId32>
+	type RelayRuntime: frame_system::Config<AccountId = AccountId>
 		+ polkadot_runtime_parachains::paras::Config
 		+ polkadot_runtime_parachains::session_info::Config
 		+ polkadot_runtime_parachains::initializer::Config
 		+ polkadot_runtime_parachains::hrmp::Config
-		+ pallet_session::Config<ValidatorId = AccountId32>
+		+ pallet_session::Config<ValidatorId = AccountId>
 		+ pallet_xcm::Config
 		+ pallet_balances::Config<Balance = Balance>;
 

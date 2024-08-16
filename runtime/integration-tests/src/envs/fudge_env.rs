@@ -118,14 +118,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	}
 }
 
-type ApiRefOf<'a, T> = ApiRef<
-	'a,
-	<ParachainClient<
-		<T as Runtime>::BlockExt,
-		<<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::ParachainConstructApi,
-	> as sp_api::ProvideRuntimeApi<<T as Runtime>::BlockExt>>::Api,
->;
-
 /// Specialized fudge methods
 impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 	pub fn chain_state_mut<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
@@ -138,7 +130,10 @@ impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 
 	pub fn with_api<F>(&self, exec: F)
 	where
-		F: FnOnce(ApiRefOf<T>, H256),
+		F: FnOnce(
+			ApiRef<'_, <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::ParachainApi>,
+			H256,
+		),
 	{
 		let client = self.handle.parachain().client();
 		let best_hash = client.info().best_hash;
