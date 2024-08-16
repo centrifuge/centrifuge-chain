@@ -193,7 +193,7 @@ impl BatchMessages {
 	}
 }
 
-/// A message type that can not be forwarded.
+/// A message type that cannot be forwarded.
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 
@@ -565,6 +565,10 @@ pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessag
 		/// The amount of tranche tokens which should be redeemed.
 		amount: u128,
 	},
+	/// A wrapped Message which was forwarded from the source domain via the
+	/// contract.
+	///
+	/// Directionality: Centrifuge <-> EVM Domain.
 	Forwarded {
 		source_domain: SerializableDomain,
 		forwarding_contract: H160,
@@ -574,7 +578,6 @@ pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessag
 
 impl LpMessage for Message {
 	type Domain = Domain;
-	type SerializableDomain = SerializableDomain;
 
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()

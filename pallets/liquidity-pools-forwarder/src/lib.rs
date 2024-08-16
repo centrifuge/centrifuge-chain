@@ -11,12 +11,22 @@
 // GNU General Public License for more details.
 //
 //! # Liquidity Pools Forwarder Pallet.
+//!
+//! The Forwarder pallet acts as middleware for incoming and outgoing Liquidity
+//! Pools messages by wrapping them, if they are forwarded ones.
+//!
+//! For incoming messages, it extracts the payload from forwarded messages.
+//!
+//! For outgoing messages, it wraps the payload based on the configured router
+//! info.
+//!
+//! Assumptions: The EVM side ensures that incoming forwarded messages are
+//! valid.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// TODO: Docs
 use cfg_traits::liquidity_pools::{
-	ForwardMessageReceiver, ForwardMessageSender, LpMessage as LpMessageT, MessageReceiver,
-	MessageSender, RouterProvider,
+	LpMessage as LpMessageT, MessageReceiver, MessageSender, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -70,13 +80,17 @@ pub mod pallet {
 			+ TypeInfo
 			+ FullCodec;
 
-		/// The target of the messages coming from this chain
-		type Sender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
+		/// The entity of the messages coming from this chain.
+		type Sender: MessageSender<
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+			Message = Vec<u8>,
+		>;
 
-		/// The target of the messages coming from other chains
+		/// The entity which acts on unwrapped messages.
 		type Receiver: MessageReceiver<Middleware = Self::RouterId, Origin = Domain>;
 
-		/// An identification of a router
+		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
 
 		/// The type that provides the router available for a domain.
@@ -88,11 +102,13 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Forwarding info was set
 		ForwarderSet {
 			router_id: T::RouterId,
 			source_domain: Domain,
 			forwarding_contract: H160,
 		},
+		/// Forwarding info was removed
 		ForwarderRemoved {
 			router_id: T::RouterId,
 			source_domain: Domain,
@@ -100,21 +116,27 @@ pub mod pallet {
 		},
 	}
 
+	/// Maps a router id to its forwarding info.
+	///
+	/// Can only be mutated via admin origin.
 	#[pallet::storage]
-	pub type Forwarding<T: Config> =
+	pub type RouterForwarding<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RouterId, ForwardInfo, OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
 		/// The router id does not have any forwarder info stored
 		ForwardInfoNotFound,
-		/// The forwarder origin of the message is invalid
-		InvalidForwarderOrigin,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(0)]
+		/// Set forwarding info for the given router id.
+		///
+		/// Origin: Admin.
+		///
+		/// NOTE: Simple weight due to origin requirement.
+		#[pallet::weight(T::DbWeight::get().writes(1))]
 		#[pallet::call_index(0)]
 		pub fn set_forwarder(
 			origin: OriginFor<T>,
@@ -124,7 +146,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			Forwarding::<T>::insert(
+			RouterForwarding::<T>::insert(
 				&router_id,
 				ForwardInfo {
 					source_domain: source_domain.clone(),
@@ -141,12 +163,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		/// Remove the forwarding info for the given router id.
+		///
+		/// Origin: Admin.
+		///
+		/// NOTE: Simple weight due to origin requirement.
+		#[pallet::weight(T::DbWeight::get().writes(1))]
 		#[pallet::call_index(1)]
 		pub fn remove_forwarder(origin: OriginFor<T>, router_id: T::RouterId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			if let Some(info) = Forwarding::<T>::take(&router_id) {
+			if let Some(info) = RouterForwarding::<T>::take(&router_id) {
 				Self::deposit_event(Event::<T>::ForwarderRemoved {
 					router_id,
 					source_domain: info.source_domain,
@@ -158,17 +185,17 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ForwardMessageSender for Pallet<T> {
+	impl<T: Config> MessageSender for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
 		type Origin = DomainAddress;
 
-		fn forward(
+		fn send(
 			router_id: T::RouterId,
 			origin: DomainAddress,
 			message: T::Message,
 		) -> DispatchResult {
-			let payload = if let Some(info) = Forwarding::<T>::get(&router_id) {
+			let payload = if let Some(info) = RouterForwarding::<T>::get(&router_id) {
 				let wrapped =
 					T::Message::try_wrap_forward(info.source_domain, info.contract, message)?;
 				wrapped.serialize()
@@ -180,27 +207,24 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ForwardMessageReceiver for Pallet<T> {
+	impl<T: Config> MessageReceiver for Pallet<T> {
 		type Middleware = T::RouterId;
 		type Origin = DomainAddress;
 
-		fn forward(
+		fn receive(
 			router_id: T::RouterId,
 			domain_address: DomainAddress,
 			payload: Vec<u8>,
 		) -> DispatchResult {
 			let message = T::Message::deserialize(&payload)?;
 
+			// If message can be unwrapped, it was forwarded
 			if let Some((source_domain, _, lp_message)) = message.unwrap_forwarded() {
 				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
 				for router_id in router_ids {
-					if let Some(info) = Forwarding::<T>::get(&router_id) {
-						ensure!(
-							// TODO: Ensure this condition can be assumed, info.contract could be
-							// Forwarder != Adapter which could be domain_address.h160()
-							info.contract == domain_address.h160(),
-							Error::<T>::InvalidForwarderOrigin
-						);
+					// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
+					// that it suffices to filter for the existence of forwarding info
+					if RouterForwarding::<T>::get(&router_id).is_some() {
 						return T::Receiver::receive(
 							router_id,
 							domain_address.domain(),

@@ -57,10 +57,11 @@ impl<Routers> MessageSender for RouterDispatcher<Routers>
 where
 	Routers: pallet_axelar_router::Config,
 {
+	type Message = Vec<u8>;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 
-	fn send(router_id: RouterId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
+	fn send(router_id: RouterId, origin: Self::Origin, message: Self::Message) -> DispatchResult {
 		match router_id {
 			RouterId::Axelar(axelar_id) => {
 				pallet_axelar_router::Pallet::<Routers>::send(axelar_id, origin, message)

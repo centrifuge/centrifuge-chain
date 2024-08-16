@@ -40,10 +40,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageSender for Pallet<T> {
+		type Message = Vec<u8>;
 		type Middleware = T::Middleware;
 		type Origin = T::Origin;
 
-		fn send(a: Self::Middleware, b: Self::Origin, c: Vec<u8>) -> DispatchResult {
+		fn send(a: Self::Middleware, b: Self::Origin, c: Self::Message) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

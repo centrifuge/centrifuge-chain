@@ -319,10 +319,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageSender for Pallet<T> {
+		type Message = Vec<u8>;
 		type Middleware = AxelarId;
 		type Origin = DomainAddress;
 
-		fn send(axelar_id: AxelarId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
+		fn send(
+			axelar_id: AxelarId,
+			origin: Self::Origin,
+			message: Self::Message,
+		) -> DispatchResult {
 			let chain_name = ChainNameById::<T>::get(axelar_id)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 			let config = Configuration::<T>::get(&chain_name)
