@@ -1842,8 +1842,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToDomainAddress = AccountConverter;
-	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type MarketRatio = OrderBook;
@@ -1862,7 +1860,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 }
 
 parameter_types! {
-	pub Sender: DomainAddress = gateway::get_gateway_account::<Runtime>();
+	pub Sender: DomainAddress = gateway::get_gateway_domain_address::<Runtime>();
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const MaxRouterCount: u32 = 8;
 }

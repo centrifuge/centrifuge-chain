@@ -18,17 +18,11 @@ use frame_support::{
 	traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
 };
 use sp_core::Get;
-use sp_runtime::{
-	traits::{Convert, Zero},
-	DispatchResult,
-};
+use sp_runtime::{traits::Zero, DispatchResult};
 
 use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, Pallet};
 
-impl<T: Config> Pallet<T>
-where
-	<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
-{
+impl<T: Config> Pallet<T> {
 	/// Executes a transfer from another domain exclusively for
 	/// non-tranche-tokens.
 	///
@@ -60,8 +54,7 @@ where
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
-		let local_representation_of_receiver =
-			T::DomainAddressToAccountId::convert(receiver.clone());
+		let local_representation_of_receiver = receiver.account();
 
 		Self::validate_investor_can_transfer(
 			local_representation_of_receiver.clone(),

@@ -4,12 +4,11 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use cfg_utils::vec_to_fixed_array;
+use cfg_types::domain_address::DomainAddress;
 use ethabi::{ethereum_types::H160, Contract};
 use ethereum::ReceiptV3;
 use frame_support::traits::{fungible::Mutate, OriginTrait};
 use pallet_evm::FeeCalculator;
-use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::traits::Get;
 
 use crate::{config::Runtime, utils::ESSENTIAL};
@@ -184,21 +183,20 @@ pub fn receipt_ok(receipt: ReceiptV3) -> bool {
 	inner.status_code == 1
 }
 
-pub fn mint_balance_into_derived_account<T: Runtime>(address: impl AsRef<[u8]>, balance: u128) {
+pub fn mint_balance_into_derived_account<T: Runtime>(address: H160, balance: u128) {
 	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
-	let derived_account =
-		AccountConverter::convert_evm_address(chain_id, vec_to_fixed_array(address));
-	pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
+	let derived_account = DomainAddress::Evm(chain_id, address).account();
+	pallet_balances::Pallet::<T>::mint_into(&derived_account, balance)
 		.expect("Minting into derived EVM accounf failed.");
 }
 
-pub fn deploy_contract<T: Runtime>(address: impl AsRef<[u8]> + Clone, code: Vec<u8>) -> H160 {
+pub fn deploy_contract<T: Runtime>(address: H160, code: Vec<u8>) -> H160 {
 	let transaction_create_cost = <T as pallet_evm::Config>::config().gas_transaction_create;
 	let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 	pallet_evm::Pallet::<T>::create(
 		T::RuntimeOriginExt::root(),
-		H160::from(vec_to_fixed_array(address)),
+		address,
 		code,
 		sp_core::U256::from(0),
 		transaction_create_cost * 10,
@@ -217,7 +215,7 @@ pub fn deploy_contract<T: Runtime>(address: impl AsRef<[u8]> + Clone, code: Vec<
 		.map_err(|_| ())
 		.expect("Last event is coming from pallet-evm")
 	{
-		pallet_evm::Event::<T>::Created { address } => H160::from(address.0),
+		pallet_evm::Event::<T>::Created { address } => address,
 		_ => panic!("Last event is Created event. qed"),
 	}
 }

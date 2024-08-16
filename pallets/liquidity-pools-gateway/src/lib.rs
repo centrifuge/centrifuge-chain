@@ -380,7 +380,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
-			DomainHookAddress::<T>::insert(domain.clone(), hook_address);
+			DomainHookAddress::<T>::insert(domain, hook_address);
 
 			Self::deposit_event(Event::DomainHookAddressSet {
 				domain,
@@ -495,7 +495,7 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
+			PackedMessage::<T>::mutate((&from, destination), |batch| match batch {
 				Some(batch) => batch.pack_with(message),
 				None => Self::queue_outbound_message(destination, message),
 			})

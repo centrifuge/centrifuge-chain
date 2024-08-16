@@ -244,7 +244,7 @@ pub mod pallet {
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
-						DomainAddress::EVM(chain_id, source_address_bytes),
+						DomainAddress::Evm(chain_id, source_address_bytes.into()),
 						payload.to_vec(),
 					)
 				}
@@ -330,8 +330,6 @@ pub mod pallet {
 
 			match config.domain {
 				DomainConfig::Evm(evm_config) => {
-					let sender_evm_address = H160::from_slice(&origin.address()[0..20]);
-
 					let message = wrap_into_axelar_msg(
 						message,
 						chain_name.into_inner(),
@@ -340,7 +338,7 @@ pub mod pallet {
 					.map_err(DispatchError::Other)?;
 
 					T::Transactor::call(
-						sender_evm_address,
+						origin.h160(),
 						evm_config.target_contract_address,
 						message.as_slice(),
 						evm_config.fee_values.value,
