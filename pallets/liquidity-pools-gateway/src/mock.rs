@@ -102,17 +102,18 @@ impl LPMessage for Message {
 		Self::Pack(vec![])
 	}
 
-	fn get_message_hash(&self) -> Option<MessageHash> {
-		match self {
-			Message::Proof(p) => Some(p.clone()),
-			_ => None,
-		}
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::Proof(..))
+	}
+
+	fn get_message_hash(&self) -> MessageHash {
+		MESSAGE_HASH
 	}
 
 	fn to_proof_message(&self) -> Self {
 		match self {
 			Message::Proof(_) => self.clone(),
-			_ => Message::Proof(MESSAGE_HASH),
+			_ => Message::Proof(self.get_message_hash()),
 		}
 	}
 

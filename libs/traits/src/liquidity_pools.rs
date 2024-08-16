@@ -35,8 +35,11 @@ pub trait LPMessage: Sized {
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
 
+	/// Returns whether the message is a proof or not.
+	fn is_proof_message(&self) -> bool;
+
 	/// Retrieves the message hash, if the message is a proof type.
-	fn get_message_hash(&self) -> Option<MessageHash>;
+	fn get_message_hash(&self) -> MessageHash;
 
 	/// Converts the message into a message proof type.
 	fn to_proof_message(&self) -> Self;

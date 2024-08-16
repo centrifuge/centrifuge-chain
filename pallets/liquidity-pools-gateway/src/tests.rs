@@ -836,7 +836,7 @@ mod extrinsics {
 		}
 
 		#[test]
-		fn expected_message_proof_type() {
+		fn expected_message_hash_type() {
 			new_test_ext().execute_with(|| {
 				let domain_address = TEST_DOMAIN_ADDRESS;
 				let session_id = 1;
@@ -1166,7 +1166,7 @@ mod implementations {
 				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
-				let message_proof = msg.to_proof_message().get_message_hash().unwrap();
+				let message_hash = msg.get_message_hash();
 
 				assert_ok!(LiquidityPoolsGateway::set_routers(
 					RuntimeOrigin::root(),
@@ -1180,7 +1180,7 @@ mod implementations {
 						}
 						GatewayMessage::Outbound { message, .. } => match message {
 							Message::Proof(p) => {
-								assert_eq!(p, message_proof);
+								assert_eq!(p, message_hash);
 							}
 							_ => {}
 						},
@@ -1416,7 +1416,7 @@ mod implementations {
 				fn success() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_message_hash().unwrap();
+						let message_hash = message.get_message_hash();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
@@ -1445,7 +1445,7 @@ mod implementations {
 						assert_eq!(handler.times(), 1);
 
 						assert!(
-							PendingInboundEntries::<Runtime>::get(message_proof, router_id)
+							PendingInboundEntries::<Runtime>::get(message_hash, router_id)
 								.is_none()
 						);
 					});
@@ -1494,10 +1494,10 @@ mod implementations {
 				}
 
 				#[test]
-				fn expected_message_proof_type() {
+				fn expected_message_hash_type() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_message_hash().unwrap();
+						let message_hash = message.get_message_hash();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
@@ -1512,7 +1512,7 @@ mod implementations {
 						);
 						SessionIdStore::<Runtime>::set(session_id);
 						PendingInboundEntries::<Runtime>::insert(
-							message_proof,
+							message_hash,
 							router_id,
 							InboundEntry::Proof(ProofEntry {
 								session_id,
@@ -3844,7 +3844,7 @@ mod implementations {
 			}
 
 			#[test]
-			fn expected_message_proof_type() {
+			fn expected_message_hash_type() {
 				new_test_ext().execute_with(|| {
 					let inbound_entry: InboundEntry<Runtime> = ProofEntry {
 						session_id: 1,
@@ -4221,7 +4221,7 @@ mod inbound_entry {
 		}
 
 		#[test]
-		fn expected_message_proof_type() {
+		fn expected_message_hash_type() {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,

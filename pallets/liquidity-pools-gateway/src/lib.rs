@@ -44,7 +44,10 @@ use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_runtime::SaturatedConversion;
 use sp_std::{convert::TryInto, vec::Vec};
 
-use crate::{message_processing::InboundEntry, weights::WeightInfo};
+use crate::{
+	message_processing::{InboundEntry, ProofEntry},
+	weights::WeightInfo,
+};
 
 mod origin;
 pub use origin::*;
@@ -63,7 +66,6 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use crate::message_processing::ProofEntry;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -162,6 +164,27 @@ pub mod pallet {
 			hook_address: [u8; 20],
 		},
 
+		/// An inbound message was processed.
+		InboundMessageProcessed {
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message proof was processed.
+		InboundProofProcessed {
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message was executed.
+		InboundMessageExecuted { message_hash: MessageHash },
+
+		/// An outbound message was sent.
+		OutboundMessageSent {
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
 		/// Message recovery was executed.
 		MessageRecoveryExecuted {
 			message_hash: MessageHash,
@@ -182,11 +205,6 @@ pub mod pallet {
 			message_hash: MessageHash,
 			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
-		},
-
-		/// A message has been processed.
-		ProcessedMessage {
-			message: GatewayMessage<T::Message, T::RouterId>,
 		},
 	}
 
@@ -616,10 +634,6 @@ pub mod pallet {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
-			Self::deposit_event(Event::<T>::ProcessedMessage {
-				message: msg.clone(),
-			});
-
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,

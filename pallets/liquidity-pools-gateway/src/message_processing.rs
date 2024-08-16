@@ -13,7 +13,8 @@ use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use crate::{
-	message::GatewayMessage, Config, Error, Pallet, PendingInboundEntries, Routers, SessionIdStore,
+	message::GatewayMessage, Config, Error, Event, Pallet, PendingInboundEntries, Routers,
+	SessionIdStore,
 };
 
 /// Type that holds the information needed for inbound message entries.
@@ -92,17 +93,18 @@ impl<T: Config> InboundEntry<T> {
 		domain_address: DomainAddress,
 		expected_proof_count: u32,
 	) -> Self {
-		match message.get_message_hash() {
-			None => InboundEntry::Message(MessageEntry {
+		if message.is_proof_message() {
+			InboundEntry::Message(MessageEntry {
 				session_id,
 				domain_address,
 				message,
 				expected_proof_count,
-			}),
-			Some(_) => InboundEntry::Proof(ProofEntry {
+			})
+		} else {
+			InboundEntry::Proof(ProofEntry {
 				session_id,
 				current_count: 1,
-			}),
+			})
 		}
 	}
 
@@ -290,17 +292,6 @@ impl<T: Config> Pallet<T> {
 		Ok(expected_proof_count.saturated_into())
 	}
 
-	/// Gets the message proof for a message.
-	pub(crate) fn get_message_hash(message: T::Message) -> MessageHash {
-		match message.get_message_hash() {
-			None => message
-				.to_proof_message()
-				.get_message_hash()
-				.expect("message hash ensured by 'to_proof_message'"),
-			Some(proof) => proof,
-		}
-	}
-
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
@@ -360,6 +351,8 @@ impl<T: Config> Pallet<T> {
 			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
 			T::InboundMessageHandler::handle(domain_address, msg)?;
+
+			Self::deposit_event(Event::<T>::InboundMessageExecuted { message_hash })
 		}
 
 		Ok(())
@@ -413,7 +406,7 @@ impl<T: Config> Pallet<T> {
 		for submessage in message.submessages() {
 			counter.ensure_add_assign(1)?;
 
-			let message_hash = Self::get_message_hash(submessage.clone());
+			let message_hash = submessage.get_message_hash();
 
 			let inbound_entry: InboundEntry<T> = InboundEntry::create(
 				submessage,
@@ -423,7 +416,7 @@ impl<T: Config> Pallet<T> {
 			);
 
 			inbound_entry.validate(&router_ids, &router_id.clone())?;
-			Self::upsert_pending_entry(message_proof, &router_id, inbound_entry)?;
+			Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
 
 			Self::execute_if_requirements_are_met(
 				message_hash,
@@ -435,6 +428,24 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(())
+	}
+
+	fn deposit_processing_event(
+		message: T::Message,
+		message_hash: MessageHash,
+		router_id: T::RouterId,
+	) {
+		if message.is_proof_message() {
+			Self::deposit_event(Event::<T>::InboundProofProcessed {
+				message_hash,
+				router_id,
+			})
+		} else {
+			Self::deposit_event(Event::<T>::InboundMessageProcessed {
+				message_hash,
+				router_id,
+			})
+		}
 	}
 
 	/// Retrieves the IDs of the routers set for a domain and queues the

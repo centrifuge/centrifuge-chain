@@ -562,17 +562,18 @@ impl LPMessage for Message {
 		Message::Batch(BatchMessages::default())
 	}
 
-	fn get_message_hash(&self) -> Option<MessageHash> {
-		match self {
-			Message::MessageProof { hash } => Some(*hash),
-			_ => None,
-		}
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::MessageProof { .. })
+	}
+
+	fn get_message_hash(&self) -> MessageHash {
+		keccak_256(&LPMessage::serialize(self))
 	}
 
 	fn to_proof_message(&self) -> Self {
-		let hash = keccak_256(&LPMessage::serialize(self));
-
-		Message::MessageProof { hash }
+		Message::MessageProof {
+			hash: self.get_message_hash(),
+		}
 	}
 
 	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
