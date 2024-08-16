@@ -1,6 +1,11 @@
+use std::fmt::{Debug, Formatter};
+
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LPEncoding, RouterSupport};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterProvider};
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	EVMChainId,
+};
 use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -10,16 +15,36 @@ use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
+pub const TEST_SESSION_ID: u32 = 1;
+pub const TEST_EVM_CHAIN: EVMChainId = 1;
+pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(TEST_EVM_CHAIN, [1; 20]);
+
+pub const ROUTER_ID_1: RouterId = RouterId(1);
+pub const ROUTER_ID_2: RouterId = RouterId(2);
+pub const ROUTER_ID_3: RouterId = RouterId(3);
+
 pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 
 pub const MAX_PACKED_MESSAGES_ERR: &str = "packed limit error";
 pub const MAX_PACKED_MESSAGES: usize = 10;
 
-#[derive(Default, Debug, Eq, PartialEq, Clone, Encode, Decode, TypeInfo)]
+pub const MESSAGE_PROOF: [u8; 32] = [1; 32];
+
+#[derive(Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
 pub enum Message {
-	#[default]
 	Simple,
 	Pack(Vec<Message>),
+	Proof([u8; 32]),
+}
+
+impl Debug for Message {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Message::Simple => write!(f, "Simple"),
+			Message::Pack(p) => write!(f, "Pack - {:?}", p),
+			Message::Proof(_) => write!(f, "Proof"),
+		}
+	}
 }
 
 /// Avoiding automatic infinity loop with the MaxEncodedLen derive
@@ -32,8 +57,8 @@ impl MaxEncodedLen for Message {
 impl LPEncoding for Message {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
-			Self::Simple => vec![0x42],
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
+			_ => vec![0x42],
 		}
 	}
 
@@ -47,10 +72,6 @@ impl LPEncoding for Message {
 
 	fn pack_with(&mut self, other: Self) -> DispatchResult {
 		match self {
-			Self::Simple => {
-				*self = Self::Pack(vec![Self::Simple, other]);
-				Ok(())
-			}
 			Self::Pack(list) if list.len() == MAX_PACKED_MESSAGES => {
 				Err(MAX_PACKED_MESSAGES_ERR.into())
 			}
@@ -58,27 +79,52 @@ impl LPEncoding for Message {
 				list.push(other);
 				Ok(())
 			}
+			_ => {
+				*self = Self::Pack(vec![self.clone(), other]);
+				Ok(())
+			}
 		}
 	}
 
 	fn submessages(&self) -> Vec<Self> {
 		match self {
-			Self::Simple => vec![Self::Simple],
 			Self::Pack(list) => list.clone(),
+			_ => vec![self.clone()],
 		}
 	}
 
 	fn empty() -> Self {
 		Self::Pack(vec![])
 	}
+
+	fn get_proof(&self) -> Option<Proof> {
+		match self {
+			Message::Proof(p) => Some(p.clone()),
+			_ => None,
+		}
+	}
+
+	fn to_proof_message(&self) -> Self {
+		match self {
+			Message::Proof(_) => self.clone(),
+			_ => Message::Proof(MESSAGE_PROOF),
+		}
+	}
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub struct RouterId(u32);
+#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
+pub struct RouterId(pub u32);
 
-impl RouterSupport<Domain> for RouterId {
-	fn for_domain(_domain: Domain) -> Vec<RouterId> {
-		vec![] // TODO
+pub struct TestRouterProvider;
+
+impl RouterProvider<Domain> for TestRouterProvider {
+	type RouterId = RouterId;
+
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
+		match domain {
+			Domain::Centrifuge => vec![],
+			Domain::EVM(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
+		}
 	}
 }
 
@@ -106,7 +152,7 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 }
 
 impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<Message>;
+	type Message = GatewayMessage<Message, RouterId>;
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
@@ -115,9 +161,10 @@ impl cfg_mocks::router_message::pallet::Config for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes()).into());
+	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(123).to_fixed_bytes()).into());
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
+	pub const MaxRouterCount: u32 = 8;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -125,18 +172,19 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundMessageHandler = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type MessageSender = MockMessageSender;
 	type RouterId = RouterId;
+	type RouterProvider = TestRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
+	type SessionId = u32;
 	type WeightInfo = ();
 }
 
-/*
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	System::externalities()
 }
-*/

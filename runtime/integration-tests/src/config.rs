@@ -137,7 +137,7 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Ratio,
 	> + pallet_liquidity_pools_gateway::Config<RouterId = RouterId, Message = Message>
-	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<Message>>
+	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<Message, RouterId>>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config

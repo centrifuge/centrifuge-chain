@@ -1,5 +1,5 @@
 use cfg_traits::{
-	liquidity_pools::{MessageSender, RouterSupport},
+	liquidity_pools::{MessageSender, RouterProvider},
 	PreConditions,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -37,8 +37,13 @@ impl From<RouterId> for Domain {
 	}
 }
 
-impl RouterSupport<Domain> for RouterId {
-	fn for_domain(domain: Domain) -> Vec<Self> {
+/// Static router provider used in the LP gateway.
+pub struct LPGatewayRouterProvider;
+
+impl RouterProvider<Domain> for LPGatewayRouterProvider {
+	type RouterId = RouterId;
+
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
 		match domain {
 			Domain::EVM(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
 			Domain::Centrifuge => vec![],

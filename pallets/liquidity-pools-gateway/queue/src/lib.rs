@@ -38,7 +38,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The message type.
-		type Message: Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec + Default;
+		type Message: Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// Type used for message identification.
 		type MessageNonce: Parameter

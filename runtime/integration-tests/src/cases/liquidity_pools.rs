@@ -22,6 +22,7 @@ use frame_support::{
 		OriginTrait, PalletInfo,
 	},
 };
+use pallet_axelar_router::AxelarId;
 use pallet_foreign_investments::ForeignInvestmentInfo;
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
@@ -30,7 +31,7 @@ use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
-	xcm::general_key,
+	routing::RouterId, xcm::general_key,
 };
 use sp_core::Get;
 use sp_runtime::{
@@ -77,6 +78,7 @@ pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
+pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(MOONBEAM_EVM_CHAIN_ID));
 
 pub type LiquidityPoolMessage = Message;
 
@@ -287,6 +289,11 @@ pub mod utils {
 				GLMR_CURRENCY_ID,
 				DEFAULT_BALANCE_GLMR,
 				0,
+			));
+
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				<T as frame_system::Config>::RuntimeOrigin::root(),
+				BoundedVec::try_from(vec![DEFAULT_ROUTER_ID]).unwrap(),
 			));
 		});
 	}
@@ -1038,7 +1045,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -1142,7 +1149,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: Message::FulfilledDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -1235,7 +1242,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -1270,14 +1277,11 @@ mod foreign_investments {
 									message:
 										GatewayMessage::Outbound {
 											sender: event_sender,
-											destination: event_domain,
+											router_id: event_router_id,
 											message: Message::FulfilledDepositRequest { .. },
 										},
 									..
-								} => {
-									event_sender == sender
-										&& event_domain == DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()
-								}
+								} => event_sender == sender && event_router_id == DEFAULT_ROUTER_ID,
 								_ => false,
 							}
 						} else {
@@ -1520,7 +1524,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledRedeemRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -1610,7 +1614,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledRedeemRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -1965,7 +1969,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -2117,7 +2121,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),
@@ -2229,7 +2233,7 @@ mod foreign_investments {
 							nonce,
 							message: GatewayMessage::Outbound {
 								sender: sender.clone(),
-								destination: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 									pool_id,
 									tranche_id: default_tranche_id::<T>(pool_id),

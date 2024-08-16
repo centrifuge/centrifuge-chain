@@ -27,7 +27,7 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
-	LPGatewayQueueMessageNonce,
+	LPGatewayQueueMessageNonce, LPGatewaySessionId,
 };
 use cfg_traits::{investments::OrderManager, Millis, PoolUpdateGuard, Seconds};
 use cfg_types::{
@@ -117,7 +117,7 @@ use runtime_common::{
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
-	routing::{EvmAccountCodeChecker, RouterDispatcher, RouterId},
+	routing::{EvmAccountCodeChecker, LPGatewayRouterProvider, RouterDispatcher, RouterId},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -1757,8 +1757,9 @@ impl pallet_liquidity_pools::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub Sender: DomainAddress = gateway::get_gateway_account::<Runtime>();
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub const MaxRouterCount: u32 = 8;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -1766,18 +1767,21 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundMessageHandler = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
 	type MessageSender = RouterDispatcher<Runtime>;
 	type RouterId = RouterId;
+	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
+	type SessionId = LPGatewaySessionId;
 	type WeightInfo = ();
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<pallet_liquidity_pools::Message>;
+	type Message = GatewayMessage<pallet_liquidity_pools::Message, RouterId>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
