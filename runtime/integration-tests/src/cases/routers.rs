@@ -7,12 +7,12 @@ use cfg_types::{
 use ethabi::{Function, Param, ParamType, Token};
 use frame_support::{assert_ok, dispatch::RawOrigin};
 use orml_traits::MultiCurrency;
-use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
+use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use runtime_common::{
 	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
-	gateway::get_gateway_domain_address,
+	gateway::get_gateway_domain_address, routing::RouterId,
 };
 use sp_core::{Get, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -30,12 +30,15 @@ use crate::{
 };
 
 mod axelar_evm {
+	use frame_support::BoundedVec;
+
 	use super::*;
 
 	const CHAIN_NAME: &str = "Ethereum";
 	const INITIAL: Balance = 100;
 	const CHAIN_ID: EVMChainId = 1;
 	const TEST_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
+	const TEST_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
 	const AXELAR_CONTRACT_CODE: &[u8] = &[0, 0, 0];
 	const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
 	const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
@@ -130,9 +133,14 @@ mod axelar_evm {
 				Box::new(base_config::<T>()),
 			));
 
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				RawOrigin::Root.into(),
+				BoundedVec::try_from(vec![TEST_ROUTER_ID]).unwrap(),
+			));
+
 			let gateway_message = GatewayMessage::Outbound {
 				sender: T::Sender::get(),
-				destination: TEST_DOMAIN,
+				router_id: TEST_ROUTER_ID,
 				message: Message::Invalid,
 			};
 
@@ -160,6 +168,11 @@ mod axelar_evm {
 				RawOrigin::Root.into(),
 				Vec::from(CHAIN_NAME).try_into().unwrap(),
 				Box::new(base_config::<T>()),
+			));
+
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				RawOrigin::Root.into(),
+				BoundedVec::try_from(vec![TEST_ROUTER_ID]).unwrap(),
 			));
 
 			let message = Message::TransferAssets {

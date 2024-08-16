@@ -13,7 +13,7 @@
 use std::{cmp::min, fmt::Debug};
 
 use cfg_primitives::{AccountId, Balance, TrancheId};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::DomainAddress;
 use ethabi::ethereum_types::{H160, H256, U256};
 use fp_evm::CallInfo;
 use frame_support::traits::{OriginTrait, PalletInfo};
@@ -31,7 +31,7 @@ use staging_xcm::{
 };
 
 use crate::{
-	cases::lp::{EVM_DOMAIN_CHAIN_ID, POOL_A, POOL_B, POOL_C},
+	cases::lp::{EVM_DOMAIN_CHAIN_ID, EVM_ROUTER_ID, POOL_A, POOL_B, POOL_C},
 	config::Runtime,
 	utils::{accounts::Keyring, evm::receipt_ok, last_event, pool::get_tranche_ids},
 };
@@ -141,14 +141,14 @@ pub fn process_gateway_message<T: Runtime>(
 			GatewayMessage::Inbound { message, .. } => verifier(message),
 			GatewayMessage::Outbound {
 				sender,
-				destination,
+				router_id,
 				message,
 			} => {
 				assert_eq!(
 					sender,
 					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
 				);
-				assert_eq!(destination, Domain::Evm(EVM_DOMAIN_CHAIN_ID));
+				assert_eq!(router_id, EVM_ROUTER_ID);
 				verifier(message)
 			}
 		}

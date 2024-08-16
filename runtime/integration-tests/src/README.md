@@ -19,3 +19,13 @@ Both environment uses the "same" interface so jumping from one to the another sh
   without hidden initializations.
 - You can add any utility that helps to initialize states for others under `utils` folder.
   Again, focus in simplity but without side effects or hidden / non-obvious state changes.
+
+## Logging
+If you want to add logs to your use case for debugging purposes, simply add
+
+```rust
+crate::utils::logs::init_logs();
+```
+
+on the top of the test case
+

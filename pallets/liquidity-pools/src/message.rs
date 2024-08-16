@@ -5,7 +5,10 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
+use cfg_traits::{
+	liquidity_pools::{LPEncoding, Proof},
+	Seconds,
+};
 use cfg_types::domain_address::Domain;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -15,6 +18,7 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
+use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
 use sp_std::{vec, vec::Vec};
 
@@ -556,6 +560,19 @@ impl LPEncoding for Message {
 
 	fn empty() -> Message {
 		Message::Batch(BatchMessages::default())
+	}
+
+	fn get_proof(&self) -> Option<Proof> {
+		match self {
+			Message::MessageProof { hash } => Some(*hash),
+			_ => None,
+		}
+	}
+
+	fn to_proof_message(&self) -> Self {
+		let hash = keccak_256(&LPEncoding::serialize(self));
+
+		Message::MessageProof { hash }
 	}
 }
 

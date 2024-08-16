@@ -127,7 +127,7 @@ impl DomainAddress {
 	}
 
 	/// Returns the current address as plain bytes
-	pub fn bytes(&self) -> [u8; 32] {
+	pub fn bytes(&self) -> [u8; MAX_ADDRESS_SIZE] {
 		self.account().into()
 	}
 }

@@ -10,6 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_core::bounded_vec::BoundedVec;
+
 use super::*;
 use crate::cases::lp::utils::pool_c_tranche_1_id;
 
@@ -89,6 +91,11 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 			RawOrigin::Root.into(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, H160(EVM_LP_INSTANCE))
+		));
+
+		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+			RawOrigin::Root.into(),
+			BoundedVec::try_from(vec![EVM_ROUTER_ID]).unwrap(),
 		));
 
 		assert_ok!(

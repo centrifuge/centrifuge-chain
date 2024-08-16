@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use cfg_primitives::{Balance, BlockNumber, Nonce};
 use fudge::primitives::Chain;
-use handle::{FudgeHandle, ParachainClient};
+use handle::FudgeHandle;
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::H256;
@@ -46,8 +46,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		parachain_storage: Storage,
 		sibling_storage: Storage,
 	) -> Self {
-		crate::utils::logs::init_logs();
-
 		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();
