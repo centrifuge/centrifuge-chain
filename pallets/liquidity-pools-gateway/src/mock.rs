@@ -17,6 +17,7 @@ use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessag
 
 pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
+pub const TEST_DOMAIN: Domain = Domain::EVM(TEST_EVM_CHAIN);
 pub const TEST_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(TEST_EVM_CHAIN, H160::repeat_byte(1));
 
@@ -29,7 +30,7 @@ pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 pub const MAX_PACKED_MESSAGES_ERR: &str = "packed limit error";
 pub const MAX_PACKED_MESSAGES: usize = 10;
 
-pub const MESSAGE_PROOF: [u8; 32] = [1; 32];
+pub const MESSAGE_HASH: [u8; 32] = [1; 32];
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
 pub enum Message {
@@ -111,7 +112,7 @@ impl LPMessage for Message {
 	fn to_proof_message(&self) -> Self {
 		match self {
 			Message::Proof(_) => self.clone(),
-			_ => Message::Proof(MESSAGE_PROOF),
+			_ => Message::Proof(MESSAGE_HASH),
 		}
 	}
 
