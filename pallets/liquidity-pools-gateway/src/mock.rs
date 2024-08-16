@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterProvider};
+use cfg_traits::liquidity_pools::{LPMessage, MessageHash, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -36,6 +36,8 @@ pub enum Message {
 	Simple,
 	Pack(Vec<Message>),
 	Proof([u8; 32]),
+	InitiateMessageRecovery(([u8; 32], [u8; 20])),
+	DisputeMessageRecovery(([u8; 32], [u8; 20])),
 }
 
 impl Debug for Message {
@@ -44,6 +46,7 @@ impl Debug for Message {
 			Message::Simple => write!(f, "Simple"),
 			Message::Pack(p) => write!(f, "Pack - {:?}", p),
 			Message::Proof(_) => write!(f, "Proof"),
+			other => write!(f, "{:?}", other),
 		}
 	}
 }
@@ -55,7 +58,7 @@ impl MaxEncodedLen for Message {
 	}
 }
 
-impl LPEncoding for Message {
+impl LPMessage for Message {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
@@ -98,7 +101,7 @@ impl LPEncoding for Message {
 		Self::Pack(vec![])
 	}
 
-	fn get_proof(&self) -> Option<Proof> {
+	fn get_message_hash(&self) -> Option<MessageHash> {
 		match self {
 			Message::Proof(p) => Some(p.clone()),
 			_ => None,
@@ -110,6 +113,14 @@ impl LPEncoding for Message {
 			Message::Proof(_) => self.clone(),
 			_ => Message::Proof(MESSAGE_PROOF),
 		}
+	}
+
+	fn initiate_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+		Self::InitiateMessageRecovery((hash, router))
+	}
+
+	fn dispute_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+		Self::DisputeMessageRecovery((hash, router))
 	}
 }
 

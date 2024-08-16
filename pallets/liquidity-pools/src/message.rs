@@ -6,7 +6,7 @@
 //! representation for each message variant.
 
 use cfg_traits::{
-	liquidity_pools::{LPEncoding, Proof},
+	liquidity_pools::{LPMessage, MessageHash},
 	Seconds,
 };
 use cfg_types::domain_address::Domain;
@@ -226,7 +226,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
 		/// The address of the router
-		address: Address,
+		router: [u8; 20],
 	},
 	/// Dispute the recovery of a message.
 	///
@@ -235,9 +235,9 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
-		message: [u8; 32],
+		hash: [u8; 32],
 		/// The address of the router
-		router: [u8; 32],
+		router: [u8; 20],
 	},
 	/// A batch of ordered messages.
 	/// Don't allow nested batch messages.
@@ -532,7 +532,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	},
 }
 
-impl LPEncoding for Message {
+impl LPMessage for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -562,7 +562,7 @@ impl LPEncoding for Message {
 		Message::Batch(BatchMessages::default())
 	}
 
-	fn get_proof(&self) -> Option<Proof> {
+	fn get_message_hash(&self) -> Option<MessageHash> {
 		match self {
 			Message::MessageProof { hash } => Some(*hash),
 			_ => None,
@@ -570,9 +570,17 @@ impl LPEncoding for Message {
 	}
 
 	fn to_proof_message(&self) -> Self {
-		let hash = keccak_256(&LPEncoding::serialize(self));
+		let hash = keccak_256(&LPMessage::serialize(self));
 
 		Message::MessageProof { hash }
+	}
+
+	fn initiate_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+		Message::InitiateMessageRecovery { hash, router }
+	}
+
+	fn dispute_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+		Message::DisputeMessageRecovery { hash, router }
 	}
 }
 

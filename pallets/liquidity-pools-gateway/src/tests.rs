@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor, OutboundMessageHandler};
+use cfg_traits::liquidity_pools::{LPMessage, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
@@ -690,7 +690,7 @@ mod extrinsics {
 				));
 
 				event_exists(Event::<Runtime>::MessageRecoveryExecuted {
-					proof: MESSAGE_PROOF,
+					message_hash: MESSAGE_PROOF,
 					router_id: ROUTER_ID_2,
 				});
 
@@ -734,7 +734,7 @@ mod extrinsics {
 				));
 
 				event_exists(Event::<Runtime>::MessageRecoveryExecuted {
-					proof: MESSAGE_PROOF,
+					message_hash: MESSAGE_PROOF,
 					router_id: ROUTER_ID_2,
 				});
 
@@ -886,7 +886,7 @@ mod implementations {
 				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
-				let message_proof = msg.to_proof_message().get_proof().unwrap();
+				let message_proof = msg.to_proof_message().get_message_hash().unwrap();
 
 				assert_ok!(LiquidityPoolsGateway::set_routers(
 					RuntimeOrigin::root(),
@@ -1143,7 +1143,7 @@ mod implementations {
 				fn success() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_proof().unwrap();
+						let message_proof = message.to_proof_message().get_message_hash().unwrap();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
@@ -1224,7 +1224,7 @@ mod implementations {
 				fn expected_message_proof_type() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_proof().unwrap();
+						let message_proof = message.to_proof_message().get_message_hash().unwrap();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;

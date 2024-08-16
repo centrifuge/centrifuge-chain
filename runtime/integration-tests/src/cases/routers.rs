@@ -1,5 +1,5 @@
 use cfg_primitives::Balance;
-use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor};
+use cfg_traits::liquidity_pools::{LPMessage, MessageProcessor};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,

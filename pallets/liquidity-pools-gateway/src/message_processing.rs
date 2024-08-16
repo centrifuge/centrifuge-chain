@@ -1,5 +1,5 @@
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageQueue, Proof, RouterProvider,
+	InboundMessageHandler, LPMessage, MessageHash, MessageQueue, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
@@ -92,7 +92,7 @@ impl<T: Config> InboundEntry<T> {
 		domain_address: DomainAddress,
 		expected_proof_count: u32,
 	) -> Self {
-		match message.get_proof() {
+		match message.get_message_hash() {
 			None => InboundEntry::Message(MessageEntry {
 				session_id,
 				domain_address,
@@ -291,11 +291,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Gets the message proof for a message.
-	pub(crate) fn get_message_proof(message: T::Message) -> Proof {
-		match message.get_proof() {
+	pub(crate) fn get_message_proof(message: T::Message) -> MessageHash {
+		match message.get_message_hash() {
 			None => message
 				.to_proof_message()
-				.get_proof()
+				.get_message_hash()
 				.expect("message proof ensured by 'to_message_proof'"),
 			Some(proof) => proof,
 		}
@@ -304,7 +304,7 @@ impl<T: Config> Pallet<T> {
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
-		message_proof: Proof,
+		message_proof: MessageHash,
 		router_id: &T::RouterId,
 		new_inbound_entry: InboundEntry<T>,
 	) -> DispatchResult {
@@ -326,7 +326,7 @@ impl<T: Config> Pallet<T> {
 	/// were received, and if so, decreases the counts accordingly and executes
 	/// the message.
 	pub(crate) fn execute_if_requirements_are_met(
-		message_proof: Proof,
+		message_proof: MessageHash,
 		router_ids: &[T::RouterId],
 		session_id: T::SessionId,
 		expected_proof_count: u32,
@@ -368,7 +368,7 @@ impl<T: Config> Pallet<T> {
 	/// Decreases the counts for inbound entries and removes them if the
 	/// counts reach 0.
 	pub(crate) fn execute_post_voting_dispatch(
-		message_proof: Proof,
+		message_proof: MessageHash,
 		router_ids: &[T::RouterId],
 		expected_proof_count: u32,
 	) -> DispatchResult {
