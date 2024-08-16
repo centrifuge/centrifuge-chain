@@ -212,9 +212,9 @@ impl TryFrom<Message> for NonForwardMessage {
 	}
 }
 
-impl Into<Message> for NonForwardMessage {
-	fn into(self) -> Message {
-		*self.0
+impl From<NonForwardMessage> for Message {
+	fn from(value: NonForwardMessage) -> Self {
+		*value.0
 	}
 }
 

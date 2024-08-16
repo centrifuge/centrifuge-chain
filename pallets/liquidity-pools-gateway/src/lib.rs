@@ -105,7 +105,11 @@ pub mod pallet {
 			+ FullCodec;
 
 		/// The target of the messages coming from this chain
-		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
+		type MessageSender: MessageSender<
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+			Message = Self::Message,
+		>;
 
 		/// An identification of a router
 		type RouterId: Parameter + MaxEncodedLen;
@@ -525,7 +529,7 @@ pub mod pallet {
 				} => {
 					let weight = LP_DEFENSIVE_WEIGHT;
 
-					match T::MessageSender::send(router_id, sender, message.serialize()) {
+					match T::MessageSender::send(router_id, sender, message) {
 						Ok(_) => (Ok(()), weight),
 						Err(e) => (Err(e), weight),
 					}

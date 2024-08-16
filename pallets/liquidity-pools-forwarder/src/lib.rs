@@ -81,14 +81,14 @@ pub mod pallet {
 			+ FullCodec;
 
 		/// The entity of the messages coming from this chain.
-		type Sender: MessageSender<
+		type MessageSender: MessageSender<
 			Middleware = Self::RouterId,
 			Origin = DomainAddress,
 			Message = Vec<u8>,
 		>;
 
 		/// The entity which acts on unwrapped messages.
-		type Receiver: MessageReceiver<Middleware = Self::RouterId, Origin = Domain>;
+		type MessageReceiver: MessageReceiver<Middleware = Self::RouterId, Origin = DomainAddress>;
 
 		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
@@ -149,7 +149,7 @@ pub mod pallet {
 			RouterForwarding::<T>::insert(
 				&router_id,
 				ForwardInfo {
-					source_domain: source_domain.clone(),
+					source_domain,
 					contract: forwarding_contract,
 				},
 			);
@@ -203,7 +203,7 @@ pub mod pallet {
 				message.serialize()
 			};
 
-			T::Sender::send(router_id, origin, payload)
+			T::MessageSender::send(router_id, origin, payload)
 		}
 	}
 
@@ -225,9 +225,9 @@ pub mod pallet {
 					// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
 					// that it suffices to filter for the existence of forwarding info
 					if RouterForwarding::<T>::get(&router_id).is_some() {
-						return T::Receiver::receive(
+						return T::MessageReceiver::receive(
 							router_id,
-							domain_address.domain(),
+							domain_address,
 							lp_message.serialize(),
 						);
 					}
@@ -235,7 +235,7 @@ pub mod pallet {
 
 				Err(Error::<T>::ForwardInfoNotFound.into())
 			} else {
-				T::Receiver::receive(router_id, domain_address.domain(), payload)
+				T::MessageReceiver::receive(router_id, domain_address, payload)
 			}
 		}
 	}

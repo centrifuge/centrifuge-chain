@@ -1843,6 +1843,16 @@ parameter_types! {
 	pub const MaxRouterCount: u32 = 8;
 }
 
+impl pallet_liquidity_pools_forwarder::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type Message = pallet_liquidity_pools::Message;
+	type MessageReceiver = LiquidityPoolsGateway;
+	type MessageSender = RouterDispatcher<Runtime>;
+	type RouterId = RouterId;
+	type RouterProvider = LPGatewayRouterProvider;
+	type RuntimeEvent = RuntimeEvent;
+}
+
 parameter_types! {
 	// A temporary admin account for the LP logic
 	// This is a multi-sig controlled pure proxy on mainnet
@@ -1867,7 +1877,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type MessageSender = RouterDispatcher<Runtime>;
+	type MessageSender = LiquidityPoolsForwarder;
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
@@ -1992,7 +2002,7 @@ impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
 	type Middleware = RouterId;
-	type Receiver = LiquidityPoolsGateway;
+	type Receiver = LiquidityPoolsForwarder;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }
@@ -2096,6 +2106,7 @@ construct_runtime!(
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
+		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
