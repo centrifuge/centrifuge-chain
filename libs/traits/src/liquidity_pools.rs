@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use frame_support::{dispatch::DispatchResult, weights::Weight};
-use sp_runtime::DispatchError;
+use sp_runtime::{app_crypto::sp_core::H160, DispatchError};
 use sp_std::vec::Vec;
 
 pub type Proof = [u8; 32];
@@ -20,6 +20,9 @@ pub type Proof = [u8; 32];
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
 pub trait LpMessage: Sized {
+	type Domain;
+	type SerializableDomain;
+
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
@@ -39,6 +42,16 @@ pub trait LpMessage: Sized {
 
 	/// Converts the message into a message proof type.
 	fn to_proof_message(&self) -> Self;
+
+	/// Unwraps a forwarded message
+	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)>;
+
+	/// Attempts to wrap into a forwarded message
+	fn try_wrap_forward(
+		domain: Self::Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError>;
 }
 
 pub trait RouterProvider<Domain>: Sized {
@@ -128,4 +141,39 @@ pub trait InboundMessageHandler {
 
 	/// Handle an inbound message.
 	fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
+}
+
+/// The behavior of an entity that can forward outbound messages
+pub trait ForwardMessageSender {
+	/// The middleware by where this message is sent
+	type Middleware;
+
+	/// The originator of the message to be sent
+	type Origin;
+
+	/// The message that will be forwarded
+	type Message;
+
+	/// Forwards a message for origin to destination
+	fn forward(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Self::Message,
+	) -> DispatchResult;
+}
+
+/// The behavior of an entity that can forward received messages
+pub trait ForwardMessageReceiver {
+	/// The middleware by where this message is received
+	type Middleware;
+
+	/// The originator of the received message
+	type Origin;
+
+	/// Forwards a received message from origin
+	fn forward(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Vec<u8>,
+	) -> DispatchResult;
 }
