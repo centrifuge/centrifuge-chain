@@ -329,7 +329,6 @@ mod with_pool_currency {
 
 mod with_foreign_currency {
 	use cfg_types::fixed_point::Quantity;
-	use cfg_utils::vec_to_fixed_array;
 	use pallet_foreign_investments::Action;
 	use pallet_liquidity_pools::Message;
 	use sp_runtime::{
@@ -486,9 +485,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
@@ -598,9 +596,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
@@ -695,9 +692,8 @@ mod with_foreign_currency {
 					Message::FulfilledDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
@@ -761,9 +757,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
