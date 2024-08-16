@@ -172,7 +172,7 @@ pub mod pallet {
 		MessageRecoveryInitiated {
 			domain: Domain,
 			message_hash: MessageHash,
-			recovery_router: [u8; 20],
+			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		},
 
@@ -180,7 +180,7 @@ pub mod pallet {
 		MessageRecoveryDisputed {
 			domain: Domain,
 			message_hash: MessageHash,
-			recovery_router: [u8; 20],
+			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		},
 	}
@@ -513,14 +513,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			domain: Domain,
 			message_hash: MessageHash,
-			recovery_router: [u8; 20],
+			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
 
-			Self::send_recovery_message(domain.clone(), message, messaging_router.clone())?;
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryInitiated {
 				domain,
@@ -542,14 +542,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			domain: Domain,
 			message_hash: MessageHash,
-			recovery_router: [u8; 20],
+			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
 
-			Self::send_recovery_message(domain.clone(), message, messaging_router.clone())?;
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryDisputed {
 				domain,

@@ -17,7 +17,7 @@ use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessag
 
 pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
-pub const TEST_DOMAIN: Domain = Domain::EVM(TEST_EVM_CHAIN);
+pub const TEST_DOMAIN: Domain = Domain::Evm(TEST_EVM_CHAIN);
 pub const TEST_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(TEST_EVM_CHAIN, H160::repeat_byte(1));
 
@@ -37,8 +37,8 @@ pub enum Message {
 	Simple,
 	Pack(Vec<Message>),
 	Proof([u8; 32]),
-	InitiateMessageRecovery(([u8; 32], [u8; 20])),
-	DisputeMessageRecovery(([u8; 32], [u8; 20])),
+	InitiateMessageRecovery(([u8; 32], [u8; 32])),
+	DisputeMessageRecovery(([u8; 32], [u8; 32])),
 }
 
 impl Debug for Message {
@@ -116,11 +116,11 @@ impl LPMessage for Message {
 		}
 	}
 
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
 		Self::InitiateMessageRecovery((hash, router))
 	}
 
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
 	}
 }

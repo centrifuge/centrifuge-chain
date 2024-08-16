@@ -1026,15 +1026,12 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = T::Sender::get();
-
 				// Clearing of foreign InvestState should be dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
@@ -1130,14 +1127,11 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = T::Sender::get();
-
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: Message::FulfilledDepositRequest {
 									pool_id,
@@ -1230,7 +1224,6 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
@@ -1265,12 +1258,11 @@ mod foreign_investments {
 								pallet_liquidity_pools_gateway_queue::Event::MessageSubmitted {
 									message:
 										GatewayMessage::Outbound {
-											sender: event_sender,
 											router_id: event_router_id,
 											message: Message::FulfilledDepositRequest { .. },
 										},
 									..
-								} => event_sender == sender && event_router_id == DEFAULT_ROUTER_ID,
+								} => event_router_id == DEFAULT_ROUTER_ID,
 								_ => false,
 							}
 						} else {
@@ -1502,14 +1494,11 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = T::Sender::get();
-
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledRedeemRequest {
 									pool_id,
@@ -1599,7 +1588,6 @@ mod foreign_investments {
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledRedeemRequest {
 									pool_id,
@@ -1940,14 +1928,11 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = T::Sender::get();
-
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledDepositRequest {
 									pool_id,
@@ -2091,14 +2076,11 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 									pool_id,
@@ -2202,14 +2184,11 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
-
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
 						== pallet_liquidity_pools_gateway_queue::Event::<T>::MessageSubmitted {
 							nonce,
 							message: GatewayMessage::Outbound {
-								sender: sender.clone(),
 								router_id: DEFAULT_ROUTER_ID,
 								message: LiquidityPoolMessage::FulfilledCancelDepositRequest {
 									pool_id,

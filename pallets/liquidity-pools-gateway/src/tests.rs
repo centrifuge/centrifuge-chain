@@ -875,7 +875,7 @@ mod extrinsics {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
@@ -911,7 +911,7 @@ mod extrinsics {
 		#[test]
 		fn bad_origin() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
@@ -929,7 +929,7 @@ mod extrinsics {
 		#[test]
 		fn not_enough_routers_for_domain() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
@@ -947,7 +947,7 @@ mod extrinsics {
 		#[test]
 		fn messaging_router_not_found() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
@@ -979,7 +979,7 @@ mod extrinsics {
 		#[test]
 		fn message_sender_error() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
@@ -1017,7 +1017,7 @@ mod extrinsics {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
@@ -1053,7 +1053,7 @@ mod extrinsics {
 		#[test]
 		fn bad_origin() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
@@ -1071,7 +1071,7 @@ mod extrinsics {
 		#[test]
 		fn not_enough_routers_for_domain() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
@@ -1089,7 +1089,7 @@ mod extrinsics {
 		#[test]
 		fn messaging_router_not_found() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
@@ -1121,7 +1121,7 @@ mod extrinsics {
 		#[test]
 		fn message_sender_error() {
 			new_test_ext().execute_with(|| {
-				let recovery_router = [1u8; 20];
+				let recovery_router = [1u8; 32];
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 

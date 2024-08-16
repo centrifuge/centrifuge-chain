@@ -139,15 +139,7 @@ pub fn process_gateway_message<T: Runtime>(
 
 		match msg {
 			GatewayMessage::Inbound { message, .. } => verifier(message),
-			GatewayMessage::Outbound {
-				sender,
-				router_id,
-				message,
-			} => {
-				assert_eq!(
-					sender,
-					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
-				);
+			GatewayMessage::Outbound { router_id, message } => {
 				assert_eq!(router_id, EVM_ROUTER_ID);
 				verifier(message)
 			}

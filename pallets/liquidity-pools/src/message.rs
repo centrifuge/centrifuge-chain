@@ -226,7 +226,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
 		/// The address of the router
-		router: [u8; 20],
+		router: [u8; 32],
 	},
 	/// Dispute the recovery of a message.
 	///
@@ -237,7 +237,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The hash of the message which shall be disputed
 		hash: [u8; 32],
 		/// The address of the router
-		router: [u8; 20],
+		router: [u8; 32],
 	},
 	/// A batch of ordered messages.
 	/// Don't allow nested batch messages.
@@ -575,11 +575,11 @@ impl LPMessage for Message {
 		Message::MessageProof { hash }
 	}
 
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
 		Message::InitiateMessageRecovery { hash, router }
 	}
 
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
 		Message::DisputeMessageRecovery { hash, router }
 	}
 }
