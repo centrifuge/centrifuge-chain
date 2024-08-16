@@ -189,20 +189,18 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			payload: Vec<u8>,
 		) -> DispatchResult {
-			// TODO: Retrieve router id from source domain via X
-
 			let message = T::Message::deserialize(&payload)?;
-			if let Some((source_domain, forward_contract, lp_message)) = message.unwrap_forwarded()
-			{
+
+			if let Some((source_domain, _, lp_message)) = message.unwrap_forwarded() {
 				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
 				for router_id in router_ids {
 					if let Some(info) = Forwarding::<T>::get(&router_id) {
-						// TODO: Finish after merging <https://github.com/centrifuge/centrifuge-chain/pull/1969>
-						// let eth_domain_address: [u8; 20] = &domain_address.clone()[..20];
-						// ensure!(
-						// 	&forward_contract.into() == eth_domain_address,
-						// 	Error::<T>::InvalidForwarderOrigin
-						// );
+						ensure!(
+							// TODO: Ensure this condition can be assumed, info.contract could be
+							// Forwarder != Adapter which could be domain_address.h160()
+							info.contract == domain_address.h160(),
+							Error::<T>::InvalidForwarderOrigin
+						);
 						return T::Receiver::receive(
 							router_id,
 							domain_address.domain(),
@@ -210,6 +208,7 @@ pub mod pallet {
 						);
 					}
 				}
+
 				Err(Error::<T>::ForwardInfoNotFound.into())
 			} else {
 				T::Receiver::receive(router_id, domain_address.domain(), payload)
