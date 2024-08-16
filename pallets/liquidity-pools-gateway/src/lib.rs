@@ -183,6 +183,11 @@ pub mod pallet {
 			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		},
+
+		/// A message has been processed.
+		ProcessedMessage {
+			message: GatewayMessage<T::Message, T::RouterId>,
+		},
 	}
 
 	/// Storage for routers.
@@ -611,6 +616,10 @@ pub mod pallet {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
+			Self::deposit_event(Event::<T>::ProcessedMessage {
+				message: msg.clone(),
+			});
+
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,
