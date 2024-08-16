@@ -20,6 +20,7 @@ use crate::EVMChainId;
 
 const MAX_ADDRESS_SIZE: usize = 32;
 
+/// By just clamping the value to a smaller address
 pub fn account_to_eth_address(address: AccountId32) -> H160 {
 	let bytes: [u8; 32] = address.into();
 	H160::from(
@@ -30,6 +31,7 @@ pub fn account_to_eth_address(address: AccountId32) -> H160 {
 	)
 }
 
+/// By adding chain information to the new added bytes
 pub fn eth_address_to_account(chain_id: u64, address: H160) -> AccountId32 {
 	// We use a custom encoding here rather than relying on
 	// `AccountIdConversion` for a couple of reasons:
@@ -113,7 +115,6 @@ impl DomainAddress {
 			Self::Centrifuge(x) => x,
 			Self::Evm(chain_id, x) => eth_address_to_account(chain_id, x),
 		}
-		.into()
 	}
 
 	/// Returns the current address as an ethrerum address,
@@ -123,7 +124,6 @@ impl DomainAddress {
 			Self::Centrifuge(x) => account_to_eth_address(x),
 			Self::Evm(_, x) => x,
 		}
-		.into()
 	}
 
 	/// Returns the current address as plain bytes
