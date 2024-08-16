@@ -115,11 +115,11 @@ impl LPMessage for Message {
 		}
 	}
 
-	fn initiate_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
 		Self::InitiateMessageRecovery((hash, router))
 	}
 
-	fn dispute_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
 	}
 }

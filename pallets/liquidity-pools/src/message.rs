@@ -212,7 +212,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	// --- Gateway ---
 	/// Proof a message has been executed.
 	///
-	/// Directionality: Centrifuge -> EVM Domain.
+	/// Directionality: Centrifuge <-> EVM Domain.
 	MessageProof {
 		// Hash of the message for which the proof is provided
 		hash: [u8; 32],
@@ -575,11 +575,11 @@ impl LPMessage for Message {
 		Message::MessageProof { hash }
 	}
 
-	fn initiate_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
 		Message::InitiateMessageRecovery { hash, router }
 	}
 
-	fn dispute_message_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 20]) -> Self {
 		Message::DisputeMessageRecovery { hash, router }
 	}
 }

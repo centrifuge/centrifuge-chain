@@ -518,8 +518,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let message =
-				T::Message::initiate_message_recovery_message(message_hash, recovery_router);
+			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
 
 			Self::send_message_recovery_message(domain.clone(), message, messaging_router.clone())?;
 
@@ -537,7 +536,7 @@ pub mod pallet {
 		/// messaging router.
 		///
 		/// Can only be called by `AdminOrigin`.
-		#[pallet::weight(T::WeightInfo::initiate_message_recovery())]
+		#[pallet::weight(T::WeightInfo::dispute_message_recovery())]
 		#[pallet::call_index(13)]
 		pub fn dispute_message_recovery(
 			origin: OriginFor<T>,
@@ -548,8 +547,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let message =
-				T::Message::dispute_message_recovery_message(message_hash, recovery_router);
+			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
 
 			Self::send_message_recovery_message(domain.clone(), message, messaging_router.clone())?;
 
@@ -565,7 +563,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn send_message_recovery_message(
+		fn send_recovery_message(
 			domain: Domain,
 			message: T::Message,
 			messaging_router: T::RouterId,
