@@ -7,7 +7,7 @@ use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
 };
-use pallet_axelar_router::AxelarId;
+pub use pallet_axelar_router::AxelarId;
 use sp_core::{H160, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
@@ -32,7 +32,7 @@ impl From<AxelarId> for RouterId {
 impl From<RouterId> for Domain {
 	fn from(router_id: RouterId) -> Self {
 		match router_id {
-			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::EVM(chain_id),
+			RouterId::Axelar(AxelarId::Evm(chain_id)) => Domain::Evm(chain_id),
 		}
 	}
 }
@@ -45,7 +45,7 @@ impl RouterProvider<Domain> for LPGatewayRouterProvider {
 
 	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
 		match domain {
-			Domain::EVM(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
+			Domain::Evm(chain_id) => vec![RouterId::Axelar(AxelarId::Evm(chain_id))],
 			Domain::Centrifuge => vec![],
 		}
 	}

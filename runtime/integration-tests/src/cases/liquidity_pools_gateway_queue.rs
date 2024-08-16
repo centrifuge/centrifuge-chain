@@ -1,16 +1,20 @@
+use cfg_primitives::AccountId;
 use cfg_traits::liquidity_pools::MessageQueue;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{assert_ok, traits::OriginTrait};
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use runtime_common::routing::{AxelarId, RouterId};
+use sp_core::H160;
 use sp_runtime::{traits::One, BoundedVec};
 
 use crate::{
-	cases::liquidity_pools::{DEFAULT_DOMAIN_ADDRESS_MOONBEAM, DEFAULT_ROUTER_ID},
 	config::Runtime,
 	env::{Blocks, Env},
 	envs::fudge_env::{FudgeEnv, FudgeSupport},
 };
+
+pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(1));
 
 /// NOTE - we're using fudge here because in a non-fudge environment, the event
 /// can only be read before block finalization. The LP gateway queue is
@@ -32,7 +36,7 @@ fn inbound<T: Runtime + FudgeSupport>() {
 
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
-			domain_address: DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			domain_address: DomainAddress::Evm(1, H160::repeat_byte(2)),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
@@ -68,7 +72,7 @@ fn outbound<T: Runtime + FudgeSupport>() {
 
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: DomainAddress::Centrifuge([1; 32]),
+			sender: DomainAddress::Centrifuge(AccountId::new([1; 32])),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};

@@ -10,22 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use polkadot_parachain_primitives::primitives::Sibling;
-use sp_core::{crypto::AccountId32, H160};
-use sp_runtime::traits::AccountIdConversion;
+use sp_core::crypto::AccountId32;
+use sp_runtime::traits::{AccountIdConversion, Get};
 
-use crate::account_conversion::AccountConverter;
-
-pub fn get_gateway_h160_account<T: staging_parachain_info::Config>() -> H160 {
+pub fn get_gateway_domain_address<T>() -> DomainAddress
+where
+	T: pallet_evm_chain_id::Config + staging_parachain_info::Config,
+{
+	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
 	let para_id = staging_parachain_info::Pallet::<T>::parachain_id();
-	let sender_account = Sibling::from(para_id).into_account_truncating();
-	H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender_account)[0..20])
-}
+	let sender_account: AccountId32 = Sibling::from(para_id).into_account_truncating();
 
-pub fn get_gateway_account<T: pallet_evm_chain_id::Config + staging_parachain_info::Config>(
-) -> DomainAddress {
-	DomainAddress::Centrifuge(
-		AccountConverter::evm_address_to_account::<T>(get_gateway_h160_account::<T>()).into(),
-	)
+	DomainAddress::new(Domain::Evm(chain_id), sender_account.into())
 }

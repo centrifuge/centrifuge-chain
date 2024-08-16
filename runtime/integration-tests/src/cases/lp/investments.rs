@@ -78,8 +78,8 @@ mod utils {
 			"requestDeposit",
 			Some(&[
 				Token::Uint(DEFAULT_INVESTMENT_AMOUNT.into()),
-				Token::Address(who.into()),
-				Token::Address(who.into()),
+				Token::Address(who.in_eth()),
+				Token::Address(who.in_eth()),
 			]),
 		)
 		.unwrap();
@@ -91,7 +91,7 @@ mod utils {
 			Default::default(),
 			lp_pool,
 			"cancelDepositRequest",
-			Some(&[Token::Uint(U256::from(0)), Token::Address(who.into())]),
+			Some(&[Token::Uint(U256::from(0)), Token::Address(who.in_eth())]),
 		)
 		.unwrap();
 	}
@@ -183,7 +183,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -228,10 +228,10 @@ mod with_pool_currency {
 						Keyring::TrancheInvestor(1),
 						names::POOL_C_T_1_USDC,
 						"maxDeposit",
-						Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+						Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 					))),
-					Token::Address(Keyring::TrancheInvestor(1).into()),
-					Token::Address(Keyring::TrancheInvestor(1).into()),
+					Token::Address(Keyring::TrancheInvestor(1).in_eth()),
+					Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 				]),
 			)
 			.unwrap();
@@ -241,7 +241,7 @@ mod with_pool_currency {
 					Keyring::TrancheInvestor(1),
 					names::POOL_C_T_1,
 					"balanceOf",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				// Same amount as price is 1.
 				DEFAULT_INVESTMENT_AMOUNT
@@ -252,7 +252,7 @@ mod with_pool_currency {
 					Keyring::TrancheInvestor(1),
 					names::POOL_C_T_1_USDC,
 					"maxDeposit",
-					Some(&[Token::Address(Keyring::TrancheInvestor(1).into())]),
+					Some(&[Token::Address(Keyring::TrancheInvestor(1).in_eth())]),
 				)),
 				0
 			);
@@ -287,7 +287,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -318,7 +318,7 @@ mod with_pool_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -329,7 +329,6 @@ mod with_pool_currency {
 
 mod with_foreign_currency {
 	use cfg_types::fixed_point::Quantity;
-	use cfg_utils::vec_to_fixed_array;
 	use pallet_foreign_investments::Action;
 	use pallet_liquidity_pools::Message;
 	use sp_runtime::{
@@ -370,7 +369,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -401,7 +400,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -450,7 +449,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -486,9 +485,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
@@ -503,7 +501,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -549,7 +547,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -578,7 +576,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -598,9 +596,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT,
@@ -615,7 +612,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0
@@ -665,7 +662,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				DEFAULT_INVESTMENT_AMOUNT
@@ -695,9 +692,8 @@ mod with_foreign_currency {
 					Message::FulfilledDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: partial_amount,
 						tranche_tokens_payout: partial_amount,
@@ -712,7 +708,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				remaining_amount
@@ -737,7 +733,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				remaining_amount
@@ -761,9 +757,8 @@ mod with_foreign_currency {
 					Message::FulfilledCancelDepositRequest {
 						pool_id: POOL_A,
 						tranche_id: pool_a_tranche_1_id::<T>(),
-						investor: vec_to_fixed_array(lp::utils::remote_account_of::<T>(
-							Keyring::TrancheInvestor(1)
-						)),
+						investor: lp::utils::remote_account_of::<T>(Keyring::TrancheInvestor(1))
+							.into(),
 						currency: utils::index_lp(evm, names::USDC),
 						currency_payout: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
 						fulfilled_invest_amount: DEFAULT_INVESTMENT_AMOUNT - partial_amount,
@@ -778,7 +773,7 @@ mod with_foreign_currency {
 					"pendingDepositRequest",
 					Some(&[
 						Token::Uint(Uint::zero()),
-						Token::Address(Keyring::TrancheInvestor(1).into()),
+						Token::Address(Keyring::TrancheInvestor(1).in_eth()),
 					]),
 				)),
 				0

@@ -10,14 +10,15 @@ use frame_support::{derive_impl, weights::constants::RocksDbWeight};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::{crypto::AccountId32, H256};
+use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
 
 pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
-pub const TEST_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(TEST_EVM_CHAIN, [1; 20]);
+pub const TEST_DOMAIN_ADDRESS: DomainAddress =
+	DomainAddress::Evm(TEST_EVM_CHAIN, H160::repeat_byte(1));
 
 pub const ROUTER_ID_1: RouterId = RouterId(1);
 pub const ROUTER_ID_2: RouterId = RouterId(2);
@@ -123,7 +124,7 @@ impl RouterProvider<Domain> for TestRouterProvider {
 	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
 		match domain {
 			Domain::Centrifuge => vec![],
-			Domain::EVM(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
+			Domain::Evm(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
 		}
 	}
 }
@@ -161,7 +162,7 @@ impl cfg_mocks::router_message::pallet::Config for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from(H256::from_low_u64_be(123).to_fixed_bytes()).into());
+	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from([1; 32]));
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 	pub const MaxRouterCount: u32 = 8;

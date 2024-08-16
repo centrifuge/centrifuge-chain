@@ -45,7 +45,17 @@ impl Keyring {
 
 	/// NOTE: Needs to be executed in an externalities environment
 	pub fn id_ecdsa<T: pallet_evm_chain_id::Config>(self) -> AccountId32 {
-		AccountConverter::evm_address_to_account::<T>(self.into())
+		AccountConverter::evm_address_to_account::<T>(self.in_eth())
+	}
+
+	/// Returns the Ethereum address.
+	/// The H160 retrived is NOT the local representation of that account in our
+	/// chain, it's the real address in ethereum.
+	pub fn in_eth(self) -> H160 {
+		let pair: ecdsa::Pair = self.into();
+		H160::from(H256::from(
+			sp_core::KeccakHasher::hash(&pair.public().as_ref()).0,
+		))
 	}
 
 	pub fn as_multi(self) -> sp_runtime::MultiSigner {
@@ -120,23 +130,6 @@ impl From<Keyring> for AccountId32 {
 impl From<Keyring> for [u8; 32] {
 	fn from(value: Keyring) -> Self {
 		value.id().into()
-	}
-}
-
-impl From<Keyring> for H160 {
-	fn from(value: Keyring) -> Self {
-		H160::from(H256::from(
-			sp_core::KeccakHasher::hash(&Into::<ecdsa::Pair>::into(value).public().as_ref()).0,
-		))
-	}
-}
-
-impl From<Keyring> for [u8; 20] {
-	fn from(value: Keyring) -> Self {
-		sp_core::H160::from(sp_core::H256::from(sp_core::KeccakHasher::hash(
-			&Into::<ecdsa::Pair>::into(value).public().as_ref(),
-		)))
-		.0
 	}
 }
 

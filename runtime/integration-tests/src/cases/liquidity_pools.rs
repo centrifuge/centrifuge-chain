@@ -30,12 +30,11 @@ use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use pallet_liquidity_pools_gateway_queue::MessageNonceStore;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
-	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
-	routing::RouterId, xcm::general_key,
+	foreign_investments::IdentityPoolCurrencyConverter, routing::RouterId, xcm::general_key,
 };
-use sp_core::Get;
+use sp_core::{Get, H160};
 use sp_runtime::{
-	traits::{AccountIdConversion, Convert, EnsureAdd, One, Zero},
+	traits::{AccountIdConversion, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
 };
 use staging_xcm::{
@@ -70,15 +69,14 @@ pub const GLMR_ED: Balance = 1_000_000;
 pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
 pub const POOL_ADMIN: Keyring = Keyring::Bob;
 pub const POOL_ID: PoolId = 42;
-pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
-pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
+pub const CHAIN_ID: u64 = 1284;
 pub const DEFAULT_VALIDITY: Seconds = 2555583502;
-pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
+pub const DOMAIN_MOONBEAM: Domain = Domain::Evm(CHAIN_ID);
 pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
-	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
+	DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(99));
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
-	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
-pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(MOONBEAM_EVM_CHAIN_ID));
+	DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(0));
+pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
 
 pub type LiquidityPoolMessage = Message;
 
@@ -247,15 +245,14 @@ pub mod utils {
 	/// Enables `LiquidityPoolsTransferable` in the custom asset metadata
 	/// for the given currency_id.
 	///
-	/// NOTE: Sets the location to the `MOONBEAM_EVM_CHAIN_ID` with dummy
+	/// NOTE: Sets the location to the `CHAIN_ID` with dummy
 	/// address as the location is required for LiquidityPoolsWrappedToken
 	/// conversions.
 	pub fn enable_liquidity_pool_transferability<T: Runtime>(currency_id: CurrencyId) {
 		let metadata = orml_asset_registry::Metadata::<T>::get(currency_id)
 			.expect("Currency should be registered");
 		let location = Some(Some(liquidity_pools_transferable_multilocation::<T>(
-			MOONBEAM_EVM_CHAIN_ID,
-			// Value of evm_address is irrelevant here
+			CHAIN_ID, // Value of evm_address is irrelevant here
 			[1u8; 20],
 		)));
 
@@ -282,10 +279,7 @@ pub mod utils {
 
 			assert_ok!(orml_tokens::Pallet::<T>::set_balance(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
-				AccountId::from(
-					<T as pallet_liquidity_pools_gateway::Config>::Sender::get().address()
-				)
-				.into(),
+				T::Sender::get().account().into(),
 				GLMR_CURRENCY_ID,
 				DEFAULT_BALANCE_GLMR,
 				0,
@@ -516,7 +510,7 @@ pub mod utils {
 		assert_eq!(
 			orml_tokens::Pallet::<T>::balance(
 				default_investment_id::<T>().into(),
-				&AccountConverter::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
+				&DEFAULT_OTHER_DOMAIN_ADDRESS.account(),
 			),
 			0
 		);
@@ -690,8 +684,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -738,8 +731,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount: u128 = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -828,8 +820,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -928,8 +919,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -1036,7 +1026,7 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
+				let sender = T::Sender::get();
 
 				// Clearing of foreign InvestState should be dispatched
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
@@ -1074,8 +1064,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let invest_amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -1141,7 +1130,7 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
+				let sender = T::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -1308,8 +1297,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 
@@ -1361,8 +1349,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let sending_domain_locator =
@@ -1456,8 +1443,7 @@ mod foreign_investments {
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
 				let redeem_amount = 10 * decimals(12);
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let currency_id = AUSD_CURRENCY_ID;
 				let currency_decimals = currency_decimals::AUSD;
 				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
@@ -1516,7 +1502,7 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
+				let sender = T::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -1649,10 +1635,8 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
+						let investor =
+							DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -1729,10 +1713,8 @@ mod foreign_investments {
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
 						let amount: u128 = 10 * decimals(12);
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
+						let investor =
+							DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 						let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -1819,10 +1801,8 @@ mod foreign_investments {
 
 					env.parachain_state_mut(|| {
 						let pool_id = POOL_ID;
-						let investor = AccountConverter::domain_account_to_account(
-							DOMAIN_MOONBEAM,
-							Keyring::Bob.id(),
-						);
+						let investor =
+							DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 						let pool_currency = AUSD_CURRENCY_ID;
 						let currency_decimals = currency_decimals::AUSD;
 						let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1881,8 +1861,7 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
@@ -1961,7 +1940,7 @@ mod foreign_investments {
 
 				let nonce = MessageNonceStore::<T>::get();
 
-				let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
+				let sender = T::Sender::get();
 
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -2003,8 +1982,7 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let trader: AccountId = Keyring::Alice.into();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -2151,8 +2129,7 @@ mod foreign_investments {
 
 			env.parachain_state_mut(|| {
 				let pool_id = POOL_ID;
-				let investor =
-					AccountConverter::domain_account_to_account(DOMAIN_MOONBEAM, Keyring::Bob.id());
+				let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;

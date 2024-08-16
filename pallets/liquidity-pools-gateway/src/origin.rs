@@ -14,8 +14,6 @@ use cfg_types::domain_address::DomainAddress;
 use frame_support::traits::EnsureOrigin;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-#[cfg(feature = "runtime-benchmarks")]
-use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
@@ -34,9 +32,6 @@ impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> fo
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
-		Ok(O::from(GatewayOrigin::Domain(DomainAddress::EVM(
-			1,
-			H160::from_low_u64_be(1).into(),
-		))))
+		unimplemented!()
 	}
 }

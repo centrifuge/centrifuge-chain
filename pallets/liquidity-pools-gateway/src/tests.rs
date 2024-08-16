@@ -134,7 +134,7 @@ mod extrinsics {
 		fn success() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_ok!(LiquidityPoolsGateway::add_instance(
 					RuntimeOrigin::root(),
@@ -156,7 +156,7 @@ mod extrinsics {
 		fn bad_origin() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_noop!(
 					LiquidityPoolsGateway::add_instance(
@@ -197,7 +197,7 @@ mod extrinsics {
 		fn instance_already_added() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_ok!(LiquidityPoolsGateway::add_instance(
 					RuntimeOrigin::root(),
@@ -224,7 +224,7 @@ mod extrinsics {
 		fn success() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_ok!(LiquidityPoolsGateway::add_instance(
 					RuntimeOrigin::root(),
@@ -251,7 +251,7 @@ mod extrinsics {
 		fn bad_origin() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_noop!(
 					LiquidityPoolsGateway::remove_instance(
@@ -267,7 +267,7 @@ mod extrinsics {
 		fn instance_not_found() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 
 				assert_noop!(
 					LiquidityPoolsGateway::remove_instance(
@@ -287,7 +287,7 @@ mod extrinsics {
 		fn success() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 				let message = Message::Simple;
 
 				let router_id = ROUTER_ID_1;
@@ -360,7 +360,7 @@ mod extrinsics {
 		fn unknown_instance() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 				let encoded_msg = Message::Simple.serialize();
 				let router_id = ROUTER_ID_1;
 
@@ -379,7 +379,7 @@ mod extrinsics {
 		fn message_queue_error() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(0, address.into());
+				let domain_address = DomainAddress::Evm(0, address);
 				let message = Message::Simple;
 
 				let router_id = ROUTER_ID_1;
@@ -422,7 +422,7 @@ mod extrinsics {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let domain = Domain::EVM(0);
+				let domain = Domain::Evm(0);
 
 				assert_ok!(LiquidityPoolsGateway::set_domain_hook_address(
 					RuntimeOrigin::root(),
@@ -435,7 +435,7 @@ mod extrinsics {
 		#[test]
 		fn bad_origin() {
 			new_test_ext().execute_with(|| {
-				let domain = Domain::EVM(0);
+				let domain = Domain::Evm(0);
 
 				assert_noop!(
 					LiquidityPoolsGateway::set_domain_hook_address(
@@ -470,7 +470,7 @@ mod extrinsics {
 
 		const USER: AccountId32 = AccountId32::new([1; 32]);
 		const OTHER: AccountId32 = AccountId32::new([2; 32]);
-		const DOMAIN: Domain = Domain::EVM(TEST_EVM_CHAIN);
+		const DOMAIN: Domain = Domain::Evm(TEST_EVM_CHAIN);
 
 		#[test]
 		fn pack_empty() {
@@ -511,7 +511,7 @@ mod extrinsics {
 				// Not batched, it belongs to EVM 2
 				assert_ok!(LiquidityPoolsGateway::handle(
 					USER,
-					Domain::EVM(2),
+					Domain::Evm(2),
 					Message::Simple
 				));
 
@@ -591,7 +591,7 @@ mod extrinsics {
 		fn process_inbound() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(TEST_EVM_CHAIN, address.into());
+				let domain_address = DomainAddress::Evm(TEST_EVM_CHAIN, address);
 
 				let router_id_1 = ROUTER_ID_1;
 
@@ -621,7 +621,7 @@ mod extrinsics {
 		fn process_inbound_with_errors() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::EVM(1, address.into());
+				let domain_address = DomainAddress::Evm(1, address);
 
 				let router_id_1 = ROUTER_ID_1;
 
@@ -883,7 +883,7 @@ mod implementations {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let domain = Domain::EVM(0);
+				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
 				let message_proof = msg.to_proof_message().get_proof().unwrap();
@@ -937,7 +937,7 @@ mod implementations {
 		#[test]
 		fn routers_not_found() {
 			new_test_ext().execute_with(|| {
-				let domain = Domain::EVM(0);
+				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
 
@@ -951,7 +951,7 @@ mod implementations {
 		#[test]
 		fn message_queue_error() {
 			new_test_ext().execute_with(|| {
-				let domain = Domain::EVM(0);
+				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
 
@@ -1145,7 +1145,7 @@ mod implementations {
 						let message = Message::Simple;
 						let message_proof = message.to_proof_message().get_proof().unwrap();
 						let session_id = 1;
-						let domain_address = DomainAddress::EVM(1, [1; 20]);
+						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: domain_address.clone(),
@@ -1182,7 +1182,7 @@ mod implementations {
 				fn multi_router_not_found() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let domain_address = DomainAddress::EVM(1, [1; 20]);
+						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_hash = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: domain_address.clone(),
@@ -1200,7 +1200,7 @@ mod implementations {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
 						let session_id = 1;
-						let domain_address = DomainAddress::EVM(1, [1; 20]);
+						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_hash = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: domain_address.clone(),
@@ -1226,7 +1226,7 @@ mod implementations {
 						let message = Message::Simple;
 						let message_proof = message.to_proof_message().get_proof().unwrap();
 						let session_id = 1;
-						let domain_address = DomainAddress::EVM(1, [1; 20]);
+						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
 							domain_address: domain_address.clone(),
@@ -3132,7 +3132,7 @@ mod implementations {
 			#[test]
 			fn inbound_message_handler_error() {
 				new_test_ext().execute_with(|| {
-					let domain_address = DomainAddress::EVM(1, [1; 20]);
+					let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 
 					Routers::<Runtime>::set(
 						BoundedVec::try_from(vec![ROUTER_ID_1.clone()]).unwrap(),

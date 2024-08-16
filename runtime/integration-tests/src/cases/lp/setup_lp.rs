@@ -43,7 +43,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.load_contracts();
 
 		// Fund gateway sender
-		give_balance::<T>(T::Sender::get().address().into(), DEFAULT_BALANCE * CFG);
+		give_balance::<T>(T::Sender::get().account(), DEFAULT_BALANCE * CFG);
 
 		// Register general local pool-currency
 		register_currency::<T>(LocalUSDC, |_| {});
@@ -90,7 +90,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
 			RawOrigin::Root.into(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, EVM_LP_INSTANCE)
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, H160(EVM_LP_INSTANCE))
 		));
 
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -101,7 +101,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		assert_ok!(
 			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_hook_address(
 				RawOrigin::Root.into(),
-				Domain::EVM(EVM_DOMAIN_CHAIN_ID),
+				Domain::Evm(EVM_DOMAIN_CHAIN_ID),
 				LOCAL_RESTRICTION_MANAGER_ADDRESS.into(),
 			)
 		);
@@ -235,7 +235,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
 			tranche_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -278,7 +278,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_B,
 			tranche_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -321,7 +321,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_B,
 			utils::pool_b_tranche_2_id::<T>(),
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -364,7 +364,7 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_C,
 			tranche_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -410,7 +410,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_A,
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
 
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -420,7 +420,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_B,
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
 
 	crate::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL_C, USDC.id());
@@ -428,7 +428,7 @@ pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_C,
-		Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
 
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -473,7 +473,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -484,7 +484,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -495,7 +495,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::USDC,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -535,7 +535,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -546,7 +546,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -557,7 +557,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::FRAX,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -597,7 +597,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Alice.into()),
+			Token::Address(Keyring::Alice.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -608,7 +608,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Bob.into()),
+			Token::Address(Keyring::Bob.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -619,7 +619,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		names::DAI,
 		"mint",
 		Some(&[
-			Token::Address(Keyring::Charlie.into()),
+			Token::Address(Keyring::Charlie.in_eth()),
 			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 		]),
 	)
@@ -674,7 +674,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		);
 		// Centrifuge Chain setup: Add permissions and dispatch LP message
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -682,7 +682,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -694,7 +694,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -702,7 +702,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -714,7 +714,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_B,
 			PoolRole::TrancheInvestor(pool_b_tranche_2_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -722,7 +722,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -734,7 +734,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()).account(),
 			POOL_C,
 			PoolRole::TrancheInvestor(utils::pool_c_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -742,7 +742,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			investor.as_origin(),
 			POOL_C,
 			utils::pool_c_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, investor.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -754,7 +754,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				currency,
 				"mint",
 				Some(&[
-					Token::Address(investor.into()),
+					Token::Address(investor.in_eth()),
 					Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
 				]),
 			)
@@ -766,7 +766,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 						investor,
 						currency,
 						"balanceOf",
-						Some(&[Token::Address(investor.into())])
+						Some(&[Token::Address(investor.in_eth())])
 					)
 					.unwrap()
 					.value
@@ -937,7 +937,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			currency_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
@@ -952,7 +952,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
 			currency_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
 			pallet_foreign_investments::pool_currency_of::<T>((POOL_B, pool_b_tranche_2_id::<T>()))
@@ -966,7 +966,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
 			currency_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
@@ -981,7 +981,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			POOL_C,
 			pool_c_tranche_1_id::<T>(),
 			currency_id,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 	}
 }

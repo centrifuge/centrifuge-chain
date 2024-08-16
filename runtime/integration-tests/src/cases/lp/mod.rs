@@ -26,7 +26,7 @@ use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_evm::FeeCalculator;
-use runtime_common::{account_conversion::AccountConverter, routing::RouterId};
+use runtime_common::routing::RouterId;
 pub use setup_lp::*;
 use sp_core::Get;
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -86,7 +86,7 @@ pub const EVM_DOMAIN_STR: &str = "TestDomain";
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
-pub const EVM_DOMAIN: Domain = Domain::EVM(EVM_DOMAIN_CHAIN_ID);
+pub const EVM_DOMAIN: Domain = Domain::Evm(EVM_DOMAIN_CHAIN_ID);
 
 pub const EVM_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(EVM_DOMAIN_CHAIN_ID));
 
