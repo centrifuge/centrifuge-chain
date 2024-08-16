@@ -350,9 +350,12 @@ impl<T: Config> Pallet<T> {
 		if let Some(msg) = message {
 			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
-			T::InboundMessageHandler::handle(domain_address, msg)?;
+			T::InboundMessageHandler::handle(domain_address.clone(), msg)?;
 
-			Self::deposit_event(Event::<T>::InboundMessageExecuted { message_hash })
+			Self::deposit_event(Event::<T>::InboundMessageExecuted {
+				domain_address,
+				message_hash,
+			})
 		}
 
 		Ok(())
@@ -431,17 +434,20 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn deposit_processing_event(
+		domain_address: DomainAddress,
 		message: T::Message,
 		message_hash: MessageHash,
 		router_id: T::RouterId,
 	) {
 		if message.is_proof_message() {
 			Self::deposit_event(Event::<T>::InboundProofProcessed {
+				domain_address,
 				message_hash,
 				router_id,
 			})
 		} else {
 			Self::deposit_event(Event::<T>::InboundMessageProcessed {
+				domain_address,
 				message_hash,
 				router_id,
 			})

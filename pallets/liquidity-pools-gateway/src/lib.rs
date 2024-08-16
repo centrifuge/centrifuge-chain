@@ -166,21 +166,27 @@ pub mod pallet {
 
 		/// An inbound message was processed.
 		InboundMessageProcessed {
+			domain_address: DomainAddress,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message proof was processed.
 		InboundProofProcessed {
+			domain_address: DomainAddress,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message was executed.
-		InboundMessageExecuted { message_hash: MessageHash },
+		InboundMessageExecuted {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+		},
 
 		/// An outbound message was sent.
 		OutboundMessageSent {
+			domain_address: DomainAddress,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
