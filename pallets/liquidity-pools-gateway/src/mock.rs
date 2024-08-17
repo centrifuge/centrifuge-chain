@@ -142,6 +142,12 @@ impl RouterProvider<Domain> for TestRouterProvider {
 	}
 }
 
+impl Into<Domain> for RouterId {
+	fn into(self) -> Domain {
+		Domain::Evm(self.0.into())
+	}
+}
+
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
