@@ -11,7 +11,7 @@ use sp_runtime::{traits::One, BoundedVec};
 use crate::{
 	config::Runtime,
 	env::{Blocks, Env},
-	envs::fudge_env::{FudgeEnv, FudgeSupport},
+	envs::runtime_env::RuntimeEnv,
 };
 
 pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(1));
@@ -25,8 +25,8 @@ pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(1));
 /// Confirm that an inbound messages reaches its destination:
 /// LP pallet
 #[test_runtimes(all)]
-fn inbound<T: Runtime + FudgeSupport>() {
-	let mut env = FudgeEnv::<T>::default();
+fn inbound<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -54,15 +54,15 @@ fn inbound<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
-		limit: 3,
+		limit: 1,
 	});
 }
 
 /// Confirm that an inbound messages reaches its destination:
 /// LP gateway pallet
 #[test_runtimes(all)]
-fn outbound<T: Runtime + FudgeSupport>() {
-	let mut env = FudgeEnv::<T>::default();
+fn outbound<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -90,6 +90,6 @@ fn outbound<T: Runtime + FudgeSupport>() {
 
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
-		limit: 3,
+		limit: 1,
 	});
 }
