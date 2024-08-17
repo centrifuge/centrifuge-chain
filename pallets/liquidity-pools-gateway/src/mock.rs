@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Formatter};
 
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
+use cfg_mocks::pallet_mock_liquidity_pools;
 use cfg_traits::liquidity_pools::{LPEncoding, Proof, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -133,7 +133,7 @@ frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
-		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
+		MockLiquidityPoolsGatewayQueue: cfg_mocks::queue::pallet,
 		MockMessageSender: cfg_mocks::router_message::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
@@ -152,7 +152,7 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 	type Message = Message;
 }
 
-impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
+impl cfg_mocks::queue::pallet::Config for Runtime {
 	type Message = GatewayMessage<Message, RouterId>;
 }
 

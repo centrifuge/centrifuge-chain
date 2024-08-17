@@ -1,5 +1,5 @@
 use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
+use cfg_traits::queue::MessageQueue as _;
 use frame_support::{
 	assert_noop, assert_ok, dispatch::RawOrigin, pallet_prelude::Hooks, weights::Weight,
 };

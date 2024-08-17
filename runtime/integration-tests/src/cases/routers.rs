@@ -1,5 +1,5 @@
 use cfg_primitives::Balance;
-use cfg_traits::liquidity_pools::{LPEncoding, MessageProcessor};
+use cfg_traits::{liquidity_pools::LPEncoding, queue::MessageProcessor};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -144,6 +144,8 @@ mod axelar_evm {
 				message: Message::Invalid,
 			};
 
+			// If the message is correctly processed, it means that the router sends
+			// correcly the message
 			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::process(gateway_message).0);
 		});
 	}

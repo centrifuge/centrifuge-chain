@@ -29,9 +29,12 @@
 use core::fmt::Debug;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, MessageReceiver,
-	MessageSender, OutboundMessageHandler, Proof, RouterProvider,
+use cfg_traits::{
+	liquidity_pools::{
+		InboundMessageHandler, LPEncoding, MessageReceiver, MessageSender, OutboundMessageHandler,
+		Proof, RouterProvider,
+	},
+	queue::{MessageProcessor, MessageQueue},
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};

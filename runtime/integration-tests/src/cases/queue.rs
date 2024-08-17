@@ -1,5 +1,5 @@
 use cfg_primitives::AccountId;
-use cfg_traits::liquidity_pools::MessageQueue;
+use cfg_traits::queue::MessageQueue;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{assert_ok, traits::OriginTrait};
 use pallet_liquidity_pools::Message;
@@ -16,16 +16,10 @@ use crate::{
 
 pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(1));
 
-/// NOTE - we're using fudge here because in a non-fudge environment, the event
-/// can only be read before block finalization. The LP gateway queue is
-/// processing messages during the `on_idle` hook, just before the block is
-/// finished, after the message is processed, the block is finalized and the
-/// event resets.
-
 /// Confirm that an inbound messages reaches its destination:
 /// LP pallet
 #[test_runtimes(all)]
-fn inbound<T: Runtime>() {
+fn queue_and_dequeue_inbound<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
@@ -34,13 +28,14 @@ fn inbound<T: Runtime>() {
 			BoundedVec::try_from(vec![DEFAULT_ROUTER_ID]).unwrap(),
 		));
 
-		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
+		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
 			domain_address: DomainAddress::Evm(1, H160::repeat_byte(2)),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
 
+		// Here we enqueue
 		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
 			message.clone()
 		));
@@ -52,16 +47,17 @@ fn inbound<T: Runtime>() {
 		}
 	});
 
+	// Here we dequeue
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
 		limit: 1,
 	});
 }
 
-/// Confirm that an inbound messages reaches its destination:
-/// LP gateway pallet
+/// Confirm that an outbound messages reaches its destination:
+/// The routers
 #[test_runtimes(all)]
-fn outbound<T: Runtime>() {
+fn queue_and_dequeue_outbound<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
@@ -70,13 +66,14 @@ fn outbound<T: Runtime>() {
 			BoundedVec::try_from(vec![DEFAULT_ROUTER_ID]).unwrap(),
 		));
 
-		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
+		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
 			sender: DomainAddress::Centrifuge(AccountId::new([1; 32])),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
 
+		// Here we enqueue
 		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
 			message.clone()
 		));
@@ -88,6 +85,7 @@ fn outbound<T: Runtime>() {
 		}
 	});
 
+	// Here we dequeue
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
 		limit: 1,
