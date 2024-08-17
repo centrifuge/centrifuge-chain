@@ -6,7 +6,7 @@
 //! representation for each message variant.
 
 use cfg_traits::{
-	liquidity_pools::{LPEncoding, Proof},
+	liquidity_pools::{LPMessage, MessageHash},
 	Seconds,
 };
 use cfg_types::domain_address::Domain;
@@ -212,7 +212,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	// --- Gateway ---
 	/// Proof a message has been executed.
 	///
-	/// Directionality: Centrifuge -> EVM Domain.
+	/// Directionality: Centrifuge <-> EVM Domain.
 	MessageProof {
 		// Hash of the message for which the proof is provided
 		hash: [u8; 32],
@@ -226,7 +226,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
 		/// The address of the router
-		address: Address,
+		router: [u8; 32],
 	},
 	/// Dispute the recovery of a message.
 	///
@@ -235,7 +235,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
-		message: [u8; 32],
+		hash: [u8; 32],
 		/// The address of the router
 		router: [u8; 32],
 	},
@@ -532,7 +532,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	},
 }
 
-impl LPEncoding for Message {
+impl LPMessage for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -562,17 +562,26 @@ impl LPEncoding for Message {
 		Message::Batch(BatchMessages::default())
 	}
 
-	fn get_proof(&self) -> Option<Proof> {
-		match self {
-			Message::MessageProof { hash } => Some(*hash),
-			_ => None,
-		}
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::MessageProof { .. })
+	}
+
+	fn get_message_hash(&self) -> MessageHash {
+		keccak_256(&LPMessage::serialize(self))
 	}
 
 	fn to_proof_message(&self) -> Self {
-		let hash = keccak_256(&LPEncoding::serialize(self));
+		Message::MessageProof {
+			hash: self.get_message_hash(),
+		}
+	}
 
-		Message::MessageProof { hash }
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+		Message::InitiateMessageRecovery { hash, router }
+	}
+
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+		Message::DisputeMessageRecovery { hash, router }
 	}
 }
 

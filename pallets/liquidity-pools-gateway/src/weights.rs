@@ -23,6 +23,8 @@ pub trait WeightInfo {
 	fn end_batch_message() -> Weight;
 	fn set_domain_hook_address() -> Weight;
 	fn execute_message_recovery() -> Weight;
+	fn initiate_message_recovery() -> Weight;
+	fn dispute_message_recovery() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -137,6 +139,28 @@ impl WeightInfo for () {
 	}
 
 	fn execute_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn initiate_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn dispute_message_recovery() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
