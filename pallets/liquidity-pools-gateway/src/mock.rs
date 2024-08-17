@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
-use cfg_traits::liquidity_pools::{LpMessage, Proof, RouterProvider};
+use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -17,6 +17,7 @@ use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessag
 
 pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
+pub const TEST_DOMAIN: Domain = Domain::Evm(TEST_EVM_CHAIN);
 pub const TEST_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(TEST_EVM_CHAIN, H160::repeat_byte(1));
 
@@ -29,13 +30,15 @@ pub const LP_ADMIN_ACCOUNT: AccountId32 = AccountId32::new([u8::MAX; 32]);
 pub const MAX_PACKED_MESSAGES_ERR: &str = "packed limit error";
 pub const MAX_PACKED_MESSAGES: usize = 10;
 
-pub const MESSAGE_PROOF: [u8; 32] = [1; 32];
+pub const MESSAGE_HASH: [u8; 32] = [1; 32];
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode, TypeInfo, Hash)]
 pub enum Message {
 	Simple,
 	Pack(Vec<Message>),
 	Proof([u8; 32]),
+	InitiateMessageRecovery(([u8; 32], [u8; 32])),
+	DisputeMessageRecovery(([u8; 32], [u8; 32])),
 }
 
 impl Debug for Message {
@@ -44,6 +47,7 @@ impl Debug for Message {
 			Message::Simple => write!(f, "Simple"),
 			Message::Pack(p) => write!(f, "Pack - {:?}", p),
 			Message::Proof(_) => write!(f, "Proof"),
+			other => write!(f, "{:?}", other),
 		}
 	}
 }
@@ -100,18 +104,27 @@ impl LpMessage for Message {
 		Self::Pack(vec![])
 	}
 
-	fn get_proof(&self) -> Option<Proof> {
-		match self {
-			Message::Proof(p) => Some(p.clone()),
-			_ => None,
-		}
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::Proof(..))
+	}
+
+	fn get_message_hash(&self) -> MessageHash {
+		MESSAGE_HASH
 	}
 
 	fn to_proof_message(&self) -> Self {
 		match self {
 			Message::Proof(_) => self.clone(),
-			_ => Message::Proof(MESSAGE_PROOF),
+			_ => Message::Proof(self.get_message_hash()),
 		}
+	}
+
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+		Self::InitiateMessageRecovery((hash, router))
+	}
+
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+		Self::DisputeMessageRecovery((hash, router))
 	}
 
 	fn is_forwarded(&self) -> bool {

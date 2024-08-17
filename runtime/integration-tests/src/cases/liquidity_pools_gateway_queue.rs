@@ -1,4 +1,3 @@
-use cfg_primitives::AccountId;
 use cfg_traits::liquidity_pools::MessageQueue;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{assert_ok, traits::OriginTrait};
@@ -72,7 +71,6 @@ fn outbound<T: Runtime + FudgeSupport>() {
 
 		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: DomainAddress::Centrifuge(AccountId::new([1; 32])),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};

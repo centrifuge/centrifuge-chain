@@ -1,4 +1,4 @@
-use cfg_traits::liquidity_pools::{LpMessage, Proof, RouterProvider};
+use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	derive_impl,
@@ -63,11 +63,23 @@ impl LpMessage for Message {
 		unimplemented!("out of scope")
 	}
 
-	fn get_proof(&self) -> Option<Proof> {
+	fn to_proof_message(&self) -> Self {
 		unimplemented!("out of scope")
 	}
 
-	fn to_proof_message(&self) -> Self {
+	fn is_proof_message(&self) -> bool {
+		unimplemented!("out of scope")
+	}
+
+	fn get_message_hash(&self) -> MessageHash {
+		unimplemented!("out of scope")
+	}
+
+	fn initiate_recovery_message(_: [u8; 32], _: [u8; 32]) -> Self {
+		unimplemented!("out of scope")
+	}
+
+	fn dispute_recovery_message(_: [u8; 32], _: [u8; 32]) -> Self {
 		unimplemented!("out of scope")
 	}
 
