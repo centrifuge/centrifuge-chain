@@ -1885,7 +1885,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MessageQueue = LiquidityPoolsGatewayQueue;
 	type MessageSender = LiquidityPoolsForwarder;
 	type RouterId = RouterId;
-	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;

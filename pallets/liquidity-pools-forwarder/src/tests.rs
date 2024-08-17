@@ -13,13 +13,13 @@ mod set_forwarder {
 		System::externalities().execute_with(|| {
 			assert_ok!(LiquidityPoolsForwarder::set_forwarder(
 				RuntimeOrigin::root(),
-				FORWARD_ROUTER_ID,
+				ROUTER_ID,
 				SOURCE_DOMAIN,
 				FORWARD_CONTRACT
 			));
 
 			assert_eq!(
-				RouterForwarding::<Runtime>::get(FORWARD_ROUTER_ID),
+				RouterForwarding::<Runtime>::get(ROUTER_ID),
 				Some(ForwardInfo {
 					contract: FORWARD_CONTRACT,
 					source_domain: SOURCE_DOMAIN
@@ -28,7 +28,7 @@ mod set_forwarder {
 
 			System::assert_last_event(RuntimeEvent::LiquidityPoolsForwarder(
 				crate::Event::ForwarderSet {
-					router_id: FORWARD_ROUTER_ID,
+					router_id: ROUTER_ID,
 					source_domain: SOURCE_DOMAIN,
 					forwarding_contract: FORWARD_CONTRACT,
 				},
@@ -42,14 +42,14 @@ mod set_forwarder {
 			assert_noop!(
 				LiquidityPoolsForwarder::set_forwarder(
 					RuntimeOrigin::signed(AccountId32::new([1u8; 32])),
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					SOURCE_DOMAIN,
 					FORWARD_CONTRACT
 				),
 				DispatchError::BadOrigin
 			);
 
-			assert!(RouterForwarding::<Runtime>::get(FORWARD_ROUTER_ID).is_none());
+			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
 		})
 	}
 }
@@ -65,21 +65,21 @@ mod remove_forwarder {
 		System::externalities().execute_with(|| {
 			assert_ok!(LiquidityPoolsForwarder::set_forwarder(
 				RuntimeOrigin::root(),
-				FORWARD_ROUTER_ID,
+				ROUTER_ID,
 				SOURCE_DOMAIN,
 				FORWARD_CONTRACT
 			));
 
 			assert_ok!(LiquidityPoolsForwarder::remove_forwarder(
 				RuntimeOrigin::root(),
-				FORWARD_ROUTER_ID,
+				ROUTER_ID,
 			));
 
-			assert!(RouterForwarding::<Runtime>::get(FORWARD_ROUTER_ID).is_none());
+			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
 
 			System::assert_last_event(RuntimeEvent::LiquidityPoolsForwarder(
 				crate::Event::ForwarderRemoved {
-					router_id: FORWARD_ROUTER_ID,
+					router_id: ROUTER_ID,
 					source_domain: SOURCE_DOMAIN,
 					forwarding_contract: FORWARD_CONTRACT,
 				},
@@ -90,12 +90,12 @@ mod remove_forwarder {
 	#[test]
 	fn success_silent() {
 		System::externalities().execute_with(|| {
-			assert!(RouterForwarding::<Runtime>::get(FORWARD_ROUTER_ID).is_none());
+			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
 			assert_ok!(LiquidityPoolsForwarder::remove_forwarder(
 				RuntimeOrigin::root(),
-				FORWARD_ROUTER_ID,
+				ROUTER_ID,
 			));
-			assert!(RouterForwarding::<Runtime>::get(FORWARD_ROUTER_ID).is_none());
+			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
 			assert!(System::events().is_empty());
 		})
 	}
@@ -106,7 +106,7 @@ mod remove_forwarder {
 			assert_noop!(
 				LiquidityPoolsForwarder::set_forwarder(
 					RuntimeOrigin::signed(AccountId32::new([1u8; 32])),
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					SOURCE_DOMAIN,
 					FORWARD_CONTRACT
 				),
@@ -121,14 +121,23 @@ mod send_message {
 
 	use super::*;
 
-	fn config_mocks(msg: Message) {
+	fn config_mocks(msg: Message, set_forwarding_info: bool) {
 		MockSenderReceiver::mock_send(move |router_id, sender, message| {
-			assert_eq!(router_id, FORWARD_ROUTER_ID);
+			assert_eq!(router_id, ROUTER_ID);
 			assert_eq!(sender, FORWARDER_DOMAIN_ADDRESS);
 			assert_eq!(&message, &msg.serialize());
 
 			Ok(())
 		});
+
+		if set_forwarding_info {
+			assert_ok!(LiquidityPoolsForwarder::set_forwarder(
+				RuntimeOrigin::root(),
+				ROUTER_ID,
+				SOURCE_DOMAIN,
+				FORWARD_CONTRACT
+			));
+		}
 	}
 
 	mod success {
@@ -137,16 +146,10 @@ mod send_message {
 		#[test]
 		fn with_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::Forward);
-				assert_ok!(LiquidityPoolsForwarder::set_forwarder(
-					RuntimeOrigin::root(),
-					FORWARD_ROUTER_ID,
-					SOURCE_DOMAIN,
-					FORWARD_CONTRACT
-				));
+				config_mocks(Message::Forward, true);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
 				));
@@ -156,10 +159,10 @@ mod send_message {
 		#[test]
 		fn without_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::NonForward);
+				config_mocks(Message::NonForward, false);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
 				));
@@ -181,11 +184,11 @@ mod send_message {
 		/// expected
 		fn with_missing_forward_info() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::Forward);
+				config_mocks(Message::Forward, false);
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageSender>::send(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
 					),
@@ -200,16 +203,10 @@ mod send_message {
 		/// because `Message::NonForward` serialization is expected
 		fn with_expected_non_forward_serialization() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::NonForward);
-				assert_ok!(LiquidityPoolsForwarder::set_forwarder(
-					RuntimeOrigin::root(),
-					FORWARD_ROUTER_ID,
-					SOURCE_DOMAIN,
-					FORWARD_CONTRACT
-				));
+				config_mocks(Message::NonForward, true);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
 				));
@@ -222,10 +219,10 @@ mod send_message {
 		/// because `Message::Forward` serialization is expected
 		fn with_expected_forward_serialization() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::Forward);
+				config_mocks(Message::Forward, false);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
 				));
@@ -235,17 +232,11 @@ mod send_message {
 		#[test]
 		fn with_nesting() {
 			System::externalities().execute_with(|| {
-				config_mocks(Message::Forward);
-				assert_ok!(LiquidityPoolsForwarder::set_forwarder(
-					RuntimeOrigin::root(),
-					FORWARD_ROUTER_ID,
-					SOURCE_DOMAIN,
-					FORWARD_CONTRACT
-				));
+				config_mocks(Message::Forward, true);
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageSender>::send(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
 					),
@@ -257,11 +248,12 @@ mod send_message {
 		#[test]
 		fn non_forward_with_message_receiver_err() {
 			System::externalities().execute_with(|| {
+				config_mocks(Message::Forward, true);
 				MockSenderReceiver::mock_send(|_, _, _| Err(ERROR));
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageSender>::send(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::NonForward
 					),
@@ -277,13 +269,22 @@ mod receive_message {
 
 	use super::*;
 
-	fn config_mocks() {
+	fn config_mocks(set_forwarding_info: bool) {
 		MockSenderReceiver::mock_receive(move |middleware, origin, message| {
-			assert_eq!(middleware, FORWARD_ROUTER_ID);
+			assert_eq!(middleware, ROUTER_ID);
 			assert_eq!(origin, FORWARDER_DOMAIN_ADDRESS);
 			assert_eq!(&message, &NON_FORWARD_SERIALIZED_MESSAGE_BYTES);
 			Ok(())
 		});
+
+		if set_forwarding_info {
+			assert_ok!(LiquidityPoolsForwarder::set_forwarder(
+				RuntimeOrigin::root(),
+				ROUTER_ID,
+				SOURCE_DOMAIN,
+				FORWARD_CONTRACT
+			));
+		}
 	}
 
 	mod success {
@@ -294,16 +295,10 @@ mod receive_message {
 		#[test]
 		fn with_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks();
-				assert_ok!(LiquidityPoolsForwarder::set_forwarder(
-					RuntimeOrigin::root(),
-					FORWARD_ROUTER_ID,
-					SOURCE_DOMAIN,
-					FORWARD_CONTRACT
-				));
+				config_mocks(true);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::Forward.serialize()
 				));
@@ -313,10 +308,10 @@ mod receive_message {
 		#[test]
 		fn without_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks();
+				config_mocks(false);
 
 				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
-					FORWARD_ROUTER_ID,
+					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward.serialize()
 				));
@@ -335,11 +330,11 @@ mod receive_message {
 		#[test]
 		fn with_missing_forward_info() {
 			System::externalities().execute_with(|| {
-				config_mocks();
+				config_mocks(false);
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward.serialize()
 					),
@@ -349,19 +344,30 @@ mod receive_message {
 		}
 
 		#[test]
-		fn forward_with_message_receiver_err() {
+		fn with_failed_unwrapping() {
 			System::externalities().execute_with(|| {
-				MockSenderReceiver::mock_receive(|_, _, _| Err(ERROR));
-				assert_ok!(LiquidityPoolsForwarder::set_forwarder(
-					RuntimeOrigin::root(),
-					FORWARD_ROUTER_ID,
-					SOURCE_DOMAIN,
-					FORWARD_CONTRACT
-				));
+				config_mocks(true);
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
+						FORWARDER_DOMAIN_ADDRESS,
+						Message::NonForward.serialize()
+					),
+					Error::<Runtime>::UnwrappingFailed
+				);
+			});
+		}
+
+		#[test]
+		fn forward_with_message_receiver_err() {
+			System::externalities().execute_with(|| {
+				config_mocks(true);
+				MockSenderReceiver::mock_receive(|_, _, _| Err(ERROR));
+
+				assert_noop!(
+					<LiquidityPoolsForwarder as MessageReceiver>::receive(
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward.serialize()
 					),
@@ -376,7 +382,7 @@ mod receive_message {
 
 				assert_noop!(
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
-						FORWARD_ROUTER_ID,
+						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::NonForward.serialize()
 					),

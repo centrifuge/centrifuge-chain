@@ -31,9 +31,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use cfg_traits::liquidity_pools::{
-	LpMessage as LpMessageT, MessageReceiver, MessageSender, RouterProvider,
-};
+use cfg_traits::liquidity_pools::{LpMessage as LpMessageT, MessageReceiver, MessageSender};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
@@ -98,11 +96,6 @@ pub mod pallet {
 
 		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
-
-		/// The type that provides the router available for a domain.
-		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
-
-		// type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -133,6 +126,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// The router id does not have any forwarder info stored
 		ForwardInfoNotFound,
+		/// Failed to unwrap a message which should be a forwarded one
+		UnwrappingFailed,
 	}
 
 	#[pallet::call]
@@ -226,23 +221,19 @@ pub mod pallet {
 			let message = T::Message::deserialize(&payload)?;
 
 			// Message can be unwrapped iff it was forwarded
-			if let Some((source_domain, _, lp_message)) = message.unwrap_forwarded() {
-				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
-				for router_id in router_ids {
-					// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
-					// that it suffices to filter for the existence of forwarding info
-					if RouterForwarding::<T>::get(&router_id).is_some() {
-						return T::MessageReceiver::receive(
-							router_id,
-							domain_address,
-							lp_message.serialize(),
-						);
-					}
+			//
+			// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
+			// that it suffices to filter for the existence of forwarding info
+			match (
+				RouterForwarding::<T>::get(&router_id).is_some(),
+				message.unwrap_forwarded(),
+			) {
+				(true, Some((_domain, _contract, lp_message))) => {
+					T::MessageReceiver::receive(router_id, domain_address, lp_message.serialize())
 				}
-
-				Err(Error::<T>::ForwardInfoNotFound.into())
-			} else {
-				T::MessageReceiver::receive(router_id, domain_address, payload)
+				(true, None) => Err(Error::<T>::UnwrappingFailed.into()),
+				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound.into()),
+				(false, None) => T::MessageReceiver::receive(router_id, domain_address, payload),
 			}
 		}
 	}
