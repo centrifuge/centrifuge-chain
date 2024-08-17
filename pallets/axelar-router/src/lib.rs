@@ -132,7 +132,11 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// The target of the messages coming from other chains
-		type Receiver: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
+		type Receiver: MessageReceiver<
+			Middleware = Self::Middleware,
+			Origin = DomainAddress,
+			Message = Vec<u8>,
+		>;
 
 		/// Middleware used by the gateway
 		type Middleware: From<AxelarId>;

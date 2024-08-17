@@ -117,7 +117,7 @@ mod remove_forwarder {
 }
 
 mod send_message {
-	use cfg_traits::liquidity_pools::{LpMessage, MessageSender};
+	use cfg_traits::liquidity_pools::MessageSender;
 
 	use super::*;
 
@@ -125,7 +125,7 @@ mod send_message {
 		MockSenderReceiver::mock_send(move |router_id, sender, message| {
 			assert_eq!(router_id, ROUTER_ID);
 			assert_eq!(sender, FORWARDER_DOMAIN_ADDRESS);
-			assert_eq!(&message, &msg.serialize());
+			assert_eq!(message, msg);
 
 			Ok(())
 		});
@@ -265,7 +265,7 @@ mod send_message {
 }
 
 mod receive_message {
-	use cfg_traits::liquidity_pools::{LpMessage, MessageReceiver};
+	use cfg_traits::liquidity_pools::MessageReceiver;
 
 	use super::*;
 
@@ -273,7 +273,7 @@ mod receive_message {
 		MockSenderReceiver::mock_receive(move |middleware, origin, message| {
 			assert_eq!(middleware, ROUTER_ID);
 			assert_eq!(origin, FORWARDER_DOMAIN_ADDRESS);
-			assert_eq!(&message, &NON_FORWARD_SERIALIZED_MESSAGE_BYTES);
+			assert_eq!(message, Message::NonForward);
 			Ok(())
 		});
 
@@ -288,7 +288,7 @@ mod receive_message {
 	}
 
 	mod success {
-		use cfg_traits::liquidity_pools::{LpMessage, MessageReceiver};
+		use cfg_traits::liquidity_pools::MessageReceiver;
 
 		use super::*;
 
@@ -300,7 +300,7 @@ mod receive_message {
 				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
-					Message::Forward.serialize()
+					Message::Forward
 				));
 			});
 		}
@@ -313,7 +313,7 @@ mod receive_message {
 				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
-					Message::NonForward.serialize()
+					Message::NonForward
 				));
 			});
 		}
@@ -336,7 +336,7 @@ mod receive_message {
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
-						Message::Forward.serialize()
+						Message::Forward
 					),
 					Error::<Runtime>::ForwardInfoNotFound
 				);
@@ -352,7 +352,7 @@ mod receive_message {
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
-						Message::NonForward.serialize()
+						Message::NonForward
 					),
 					Error::<Runtime>::UnwrappingFailed
 				);
@@ -369,7 +369,7 @@ mod receive_message {
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
-						Message::Forward.serialize()
+						Message::Forward
 					),
 					ERROR
 				);
@@ -384,7 +384,7 @@ mod receive_message {
 					<LiquidityPoolsForwarder as MessageReceiver>::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
-						Message::NonForward.serialize()
+						Message::NonForward
 					),
 					ERROR
 				);

@@ -12,17 +12,17 @@ use sp_runtime::{traits::IdentityLookup, DispatchError};
 
 use crate::pallet as pallet_liquidity_pools_forwarder;
 
-pub const SOURCE_CHAIN_ID: u64 = 1;
-pub const FORWARDER_CHAIN_ID: u64 = 42;
+const SOURCE_CHAIN_ID: u64 = 1;
+const FORWARDER_CHAIN_ID: u64 = 42;
 pub const SOURCE_DOMAIN: Domain = Domain::Evm(SOURCE_CHAIN_ID);
-pub const FORWARDER_ADAPTER_ADDRESS: H160 = H160::repeat_byte(1);
+const FORWARDER_ADAPTER_ADDRESS: H160 = H160::repeat_byte(1);
 pub const FORWARDER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(FORWARDER_CHAIN_ID, FORWARDER_ADAPTER_ADDRESS);
 pub const FORWARD_CONTRACT: H160 = H160::repeat_byte(2);
 
 pub const ROUTER_ID: RouterId = RouterId(1);
-pub const FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x42];
-pub const NON_FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x43];
+const FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x42];
+const NON_FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x43];
 pub const ERROR_NESTING: DispatchError = DispatchError::Other("Nesting forward msg not allowed");
 
 #[derive(Eq, PartialEq, Debug, Clone, Encode, Decode, TypeInfo, MaxEncodedLen, Hash)]
@@ -120,9 +120,10 @@ impl frame_system::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
-	type Message = Vec<u8>;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
+	type ReceiverMessage = Message;
+	type SenderMessage = Message;
 }
 
 impl pallet_liquidity_pools_forwarder::Config for Runtime {

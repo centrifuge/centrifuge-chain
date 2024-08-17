@@ -38,7 +38,7 @@ use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_core::H160;
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::convert::TryInto;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ForwardInfo {
@@ -88,11 +88,15 @@ pub mod pallet {
 		type MessageSender: MessageSender<
 			Middleware = Self::RouterId,
 			Origin = DomainAddress,
-			Message = Vec<u8>,
+			Message = Self::Message,
 		>;
 
 		/// The entity which acts on unwrapped messages.
-		type MessageReceiver: MessageReceiver<Middleware = Self::RouterId, Origin = DomainAddress>;
+		type MessageReceiver: MessageReceiver<
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+			Message = Self::Message,
+		>;
 
 		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
@@ -196,45 +200,45 @@ pub mod pallet {
 			origin: DomainAddress,
 			message: T::Message,
 		) -> DispatchResult {
-			let payload = if let Some(info) = RouterForwarding::<T>::get(&router_id) {
-				let wrapped =
-					T::Message::try_wrap_forward(info.source_domain, info.contract, message)?;
-				wrapped.serialize()
-			} else {
-				ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
-				message.serialize()
-			};
+			let msg = RouterForwarding::<T>::get(&router_id)
+				.map(|info| {
+					T::Message::try_wrap_forward(info.source_domain, info.contract, message.clone())
+				})
+				.unwrap_or({
+					ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
+					Ok(message)
+				})?;
 
-			T::MessageSender::send(router_id, origin, payload)
+			T::MessageSender::send(router_id, origin, msg)
 		}
 	}
 
 	impl<T: Config> MessageReceiver for Pallet<T> {
+		type Message = T::Message;
 		type Middleware = T::RouterId;
 		type Origin = DomainAddress;
 
 		fn receive(
 			router_id: T::RouterId,
 			domain_address: DomainAddress,
-			payload: Vec<u8>,
+			message: T::Message,
 		) -> DispatchResult {
-			let message = T::Message::deserialize(&payload)?;
-
 			// Message can be unwrapped iff it was forwarded
 			//
 			// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
 			// that it suffices to filter for the existence of forwarding info
-			match (
+			let lp_message = match (
 				RouterForwarding::<T>::get(&router_id).is_some(),
-				message.unwrap_forwarded(),
+				message.clone().unwrap_forwarded(),
 			) {
-				(true, Some((_domain, _contract, lp_message))) => {
-					T::MessageReceiver::receive(router_id, domain_address, lp_message.serialize())
-				}
-				(true, None) => Err(Error::<T>::UnwrappingFailed.into()),
-				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound.into()),
-				(false, None) => T::MessageReceiver::receive(router_id, domain_address, payload),
+				(false, None) => Ok(message),
+				(true, Some((_domain, _contract, lp_message))) => Ok(lp_message),
+				(true, None) => Err(Error::<T>::UnwrappingFailed),
+				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
 			}
+			.map_err(|e: Error<T>| e)?;
+
+			T::MessageReceiver::receive(router_id, domain_address, lp_message)
 		}
 	}
 }

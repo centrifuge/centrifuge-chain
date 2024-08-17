@@ -117,7 +117,10 @@ use runtime_common::{
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
-	routing::{EvmAccountCodeChecker, LPGatewayRouterProvider, RouterDispatcher, RouterId},
+	routing::{
+		EvmAccountCodeChecker, LPGatewayRouterProvider, MessageSerializer, RouterDispatcher,
+		RouterId,
+	},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -1758,7 +1761,7 @@ impl pallet_liquidity_pools_forwarder::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageReceiver = LiquidityPoolsGateway;
-	type MessageSender = RouterDispatcher<Runtime>;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;
 }
@@ -1902,7 +1905,7 @@ impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
 	type Middleware = RouterId;
-	type Receiver = LiquidityPoolsForwarder;
+	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }

@@ -107,11 +107,13 @@ pub trait MessageReceiver {
 	/// The originator of the received message
 	type Origin;
 
+	type Message;
+
 	/// Sends a message for origin to destination
 	fn receive(
 		middleware: Self::Middleware,
 		origin: Self::Origin,
-		message: Vec<u8>,
+		message: Self::Message,
 	) -> DispatchResult;
 }
 

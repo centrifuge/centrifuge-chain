@@ -33,9 +33,10 @@ impl frame_system::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
-	type Message = Vec<u8>;
 	type Middleware = Middleware;
 	type Origin = DomainAddress;
+	type ReceiverMessage = Vec<u8>;
+	type SenderMessage = Vec<u8>;
 }
 
 impl cfg_mocks::ethereum_transactor::pallet::Config for Runtime {}

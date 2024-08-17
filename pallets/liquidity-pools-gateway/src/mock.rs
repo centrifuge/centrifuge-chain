@@ -184,9 +184,10 @@ impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
-	type Message = Message;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
+	type ReceiverMessage = Message;
+	type SenderMessage = Message;
 }
 
 frame_support::parameter_types! {

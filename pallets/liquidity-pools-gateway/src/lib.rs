@@ -42,7 +42,7 @@ pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_runtime::SaturatedConversion;
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::convert::TryInto;
 
 use crate::{
 	message_processing::{InboundEntry, ProofEntry},
@@ -416,7 +416,7 @@ pub mod pallet {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
 
-			Self::receive(router_id, origin_address, msg.into())
+			Self::receive(router_id, origin_address, T::Message::deserialize(&msg)?)
 		}
 
 		/// Set the address of the domain hook
@@ -687,13 +687,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageReceiver for Pallet<T> {
+		type Message = T::Message;
 		type Middleware = T::RouterId;
 		type Origin = DomainAddress;
 
 		fn receive(
 			router_id: T::RouterId,
 			origin_address: DomainAddress,
-			message: Vec<u8>,
+			message: T::Message,
 		) -> DispatchResult {
 			ensure!(
 				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
@@ -702,7 +703,7 @@ pub mod pallet {
 
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
 				domain_address: origin_address,
-				message: T::Message::deserialize(&message)?,
+				message,
 				router_id,
 			};
 
