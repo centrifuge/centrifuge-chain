@@ -621,6 +621,10 @@ impl LpMessage for Message {
 		Message::MessageProof { hash }
 	}
 
+	fn is_forwarded(&self) -> bool {
+		matches!(self, Message::Forwarded { .. })
+	}
+
 	fn unwrap_forwarded(self) -> Option<(Domain, H160, Self)> {
 		match self {
 			Self::Forwarded {

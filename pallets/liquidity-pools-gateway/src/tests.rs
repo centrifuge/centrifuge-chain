@@ -3180,7 +3180,7 @@ mod implementations {
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
 							assert_eq!(mock_sender, sender);
-							assert_eq!(mock_message, message.serialize());
+							assert_eq!(mock_message, message);
 
 							Ok(())
 						},
@@ -3211,7 +3211,7 @@ mod implementations {
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
 							assert_eq!(mock_sender, sender);
-							assert_eq!(mock_message, message.serialize());
+							assert_eq!(mock_message, message);
 
 							Err(router_err)
 						},

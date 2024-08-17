@@ -56,6 +56,8 @@ impl MaxEncodedLen for Message {
 }
 
 impl LpMessage for Message {
+	type Domain = Domain;
+
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
@@ -111,6 +113,18 @@ impl LpMessage for Message {
 			_ => Message::Proof(MESSAGE_PROOF),
 		}
 	}
+
+	fn is_forwarded(&self) -> bool {
+		unimplemented!("out of scope")
+	}
+
+	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)> {
+		unimplemented!("out of scope")
+	}
+
+	fn try_wrap_forward(_: Self::Domain, _: H160, _: Self) -> Result<Self, DispatchError> {
+		unimplemented!("out of scope")
+	}
 }
 
 #[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
@@ -157,6 +171,7 @@ impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
+	type Message = Message;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 }

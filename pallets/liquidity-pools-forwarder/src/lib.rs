@@ -25,6 +25,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 use cfg_traits::liquidity_pools::{
 	LpMessage as LpMessageT, MessageReceiver, MessageSender, RouterProvider,
 };
@@ -200,6 +206,7 @@ pub mod pallet {
 					T::Message::try_wrap_forward(info.source_domain, info.contract, message)?;
 				wrapped.serialize()
 			} else {
+				ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
 				message.serialize()
 			};
 
@@ -218,7 +225,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let message = T::Message::deserialize(&payload)?;
 
-			// If message can be unwrapped, it was forwarded
+			// Message can be unwrapped iff it was forwarded
 			if let Some((source_domain, _, lp_message)) = message.unwrap_forwarded() {
 				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
 				for router_id in router_ids {

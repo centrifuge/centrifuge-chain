@@ -42,6 +42,9 @@ pub trait LpMessage: Sized {
 	/// Converts the message into a message proof type.
 	fn to_proof_message(&self) -> Self;
 
+	/// Checks whether a message is a forwarded one.
+	fn is_forwarded(&self) -> bool;
+
 	/// Unwraps a forwarded message.
 	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)>;
 
