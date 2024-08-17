@@ -15,11 +15,12 @@ use frame_support::dispatch::DispatchResult;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-pub type Proof = [u8; 32];
+/// Type that represents the hash of an LP message.
+pub type MessageHash = [u8; 32];
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait LPEncoding: Sized {
+pub trait LPMessage: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
@@ -34,11 +35,26 @@ pub trait LPEncoding: Sized {
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
 
-	/// Retrieves the message proof hash, if the message is a proof type.
-	fn get_proof(&self) -> Option<Proof>;
+	/// Returns whether the message is a proof or not.
+	fn is_proof_message(&self) -> bool;
+
+	/// Retrieves the message hash, if the message is a proof type.
+	fn get_message_hash(&self) -> MessageHash;
 
 	/// Converts the message into a message proof type.
 	fn to_proof_message(&self) -> Self;
+
+	/// Creates a message used for initiating message recovery.
+	///
+	/// Hash - hash of the message that should be recovered.
+	/// Router - the address of the recovery router.
+	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
+
+	/// Creates a message used for disputing message recovery.
+	///
+	/// Hash - hash of the message that should be disputed.
+	/// Router - the address of the recovery router.
+	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
 }
 
 pub trait RouterProvider<Domain>: Sized {

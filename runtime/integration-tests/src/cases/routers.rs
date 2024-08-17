@@ -1,5 +1,5 @@
 use cfg_primitives::Balance;
-use cfg_traits::{liquidity_pools::LPEncoding, queue::MessageProcessor};
+use cfg_traits::{liquidity_pools::LPMessage, queue::MessageProcessor};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -14,7 +14,7 @@ use runtime_common::{
 	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
 	gateway::get_gateway_domain_address, routing::RouterId,
 };
-use sp_core::{Get, H160, H256, U256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
@@ -139,7 +139,6 @@ mod axelar_evm {
 			));
 
 			let gateway_message = GatewayMessage::Outbound {
-				sender: T::Sender::get(),
 				router_id: TEST_ROUTER_ID,
 				message: Message::Invalid,
 			};

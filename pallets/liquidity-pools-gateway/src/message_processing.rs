@@ -1,9 +1,12 @@
-use cfg_traits::liquidity_pools::{InboundMessageHandler, LPEncoding, Proof, RouterProvider};
+use cfg_traits::{
+	liquidity_pools::{InboundMessageHandler, LPMessage, MessageHash, RouterProvider},
+	queue::MessageQueue,
+};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
-	pallet_prelude::{Decode, Encode, Get, TypeInfo},
+	pallet_prelude::{Decode, Encode, TypeInfo},
 };
 use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::{EnsureAddAssign, EnsureSub, SaturatedConversion};
@@ -11,7 +14,8 @@ use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use crate::{
-	message::GatewayMessage, Config, Error, Pallet, PendingInboundEntries, Routers, SessionIdStore,
+	message::GatewayMessage, Config, Error, Event, Pallet, PendingInboundEntries, Routers,
+	SessionIdStore,
 };
 
 /// Type that holds the information needed for inbound message entries.
@@ -90,17 +94,18 @@ impl<T: Config> InboundEntry<T> {
 		domain_address: DomainAddress,
 		expected_proof_count: u32,
 	) -> Self {
-		match message.get_proof() {
-			None => InboundEntry::Message(MessageEntry {
+		if message.is_proof_message() {
+			InboundEntry::Proof(ProofEntry {
+				session_id,
+				current_count: 1,
+			})
+		} else {
+			InboundEntry::Message(MessageEntry {
 				session_id,
 				domain_address,
 				message,
 				expected_proof_count,
-			}),
-			Some(_) => InboundEntry::Proof(ProofEntry {
-				session_id,
-				current_count: 1,
-			}),
+			})
 		}
 	}
 
@@ -288,25 +293,14 @@ impl<T: Config> Pallet<T> {
 		Ok(expected_proof_count.saturated_into())
 	}
 
-	/// Gets the message proof for a message.
-	pub(crate) fn get_message_proof(message: T::Message) -> Proof {
-		match message.get_proof() {
-			None => message
-				.to_proof_message()
-				.get_proof()
-				.expect("message proof ensured by 'to_message_proof'"),
-			Some(proof) => proof,
-		}
-	}
-
 	/// Upserts an inbound entry for a particular message, increasing the
 	/// relevant counts accordingly.
 	pub(crate) fn upsert_pending_entry(
-		message_proof: Proof,
+		message_hash: MessageHash,
 		router_id: &T::RouterId,
 		new_inbound_entry: InboundEntry<T>,
 	) -> DispatchResult {
-		PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+		PendingInboundEntries::<T>::try_mutate(message_hash, router_id, |storage_entry| {
 			match storage_entry {
 				None => {
 					*storage_entry = Some(new_inbound_entry);
@@ -324,7 +318,7 @@ impl<T: Config> Pallet<T> {
 	/// were received, and if so, decreases the counts accordingly and executes
 	/// the message.
 	pub(crate) fn execute_if_requirements_are_met(
-		message_proof: Proof,
+		message_hash: MessageHash,
 		router_ids: &[T::RouterId],
 		session_id: T::SessionId,
 		expected_proof_count: u32,
@@ -334,7 +328,7 @@ impl<T: Config> Pallet<T> {
 		let mut votes = 0;
 
 		for router_id in router_ids {
-			match PendingInboundEntries::<T>::get(message_proof, router_id) {
+			match PendingInboundEntries::<T>::get(message_hash, router_id) {
 				// We expected one InboundEntry for each router, if that's not the case,
 				// we can return.
 				None => return Ok(()),
@@ -355,9 +349,14 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			Self::execute_post_voting_dispatch(message_proof, router_ids, expected_proof_count)?;
+			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
-			T::InboundMessageHandler::handle(domain_address, msg)?;
+			T::InboundMessageHandler::handle(domain_address.clone(), msg)?;
+
+			Self::deposit_event(Event::<T>::InboundMessageExecuted {
+				domain_address,
+				message_hash,
+			})
 		}
 
 		Ok(())
@@ -366,12 +365,12 @@ impl<T: Config> Pallet<T> {
 	/// Decreases the counts for inbound entries and removes them if the
 	/// counts reach 0.
 	pub(crate) fn execute_post_voting_dispatch(
-		message_proof: Proof,
+		message_hash: MessageHash,
 		router_ids: &[T::RouterId],
 		expected_proof_count: u32,
 	) -> DispatchResult {
 		for router_id in router_ids {
-			PendingInboundEntries::<T>::try_mutate(message_proof, router_id, |storage_entry| {
+			PendingInboundEntries::<T>::try_mutate(message_hash, router_id, |storage_entry| {
 				match storage_entry {
 					None => {
 						// This case cannot be reproduced in production since this function is
@@ -411,20 +410,27 @@ impl<T: Config> Pallet<T> {
 		for submessage in message.submessages() {
 			counter.ensure_add_assign(1)?;
 
-			let message_proof = Self::get_message_proof(submessage.clone());
+			let message_hash = submessage.get_message_hash();
 
 			let inbound_entry: InboundEntry<T> = InboundEntry::create(
-				submessage,
+				submessage.clone(),
 				session_id,
 				domain_address.clone(),
 				expected_proof_count,
 			);
 
 			inbound_entry.validate(&router_ids, &router_id.clone())?;
-			Self::upsert_pending_entry(message_proof, &router_id, inbound_entry)?;
+			Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
+
+			Self::deposit_processing_event(
+				domain_address.clone(),
+				submessage,
+				message_hash,
+				router_id.clone(),
+			);
 
 			Self::execute_if_requirements_are_met(
-				message_proof,
+				message_hash,
 				&router_ids,
 				session_id,
 				expected_proof_count,
@@ -435,6 +441,27 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	fn deposit_processing_event(
+		domain_address: DomainAddress,
+		message: T::Message,
+		message_hash: MessageHash,
+		router_id: T::RouterId,
+	) {
+		if message.is_proof_message() {
+			Self::deposit_event(Event::<T>::InboundProofProcessed {
+				domain_address,
+				message_hash,
+				router_id,
+			})
+		} else {
+			Self::deposit_event(Event::<T>::InboundMessageProcessed {
+				domain_address,
+				message_hash,
+				router_id,
+			})
+		}
+	}
+
 	/// Retrieves the IDs of the routers set for a domain and queues the
 	/// message and proofs accordingly.
 	pub(crate) fn queue_outbound_message(
@@ -443,7 +470,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(destination)?;
 
-		let message_proof = message.to_proof_message();
+		let proof_message = message.to_proof_message();
 		let mut message_opt = Some(message);
 
 		for router_id in router_ids {
@@ -451,18 +478,17 @@ impl<T: Config> Pallet<T> {
 			// The remaining routers will send the message proof.
 			let router_msg = match message_opt.take() {
 				Some(m) => m,
-				None => message_proof.clone(),
+				None => proof_message.clone(),
 			};
 
 			// We are using the sender specified in the pallet config so that we can
 			// ensure that the account is funded
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Outbound {
-				sender: T::Sender::get(),
 				message: router_msg,
 				router_id,
 			};
 
-			T::MessageQueue::submit(gateway_message)?;
+			T::MessageQueue::queue(gateway_message)?;
 		}
 
 		Ok(())

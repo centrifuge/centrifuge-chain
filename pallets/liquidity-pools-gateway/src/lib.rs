@@ -31,8 +31,8 @@ use core::fmt::Debug;
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::{
 	liquidity_pools::{
-		InboundMessageHandler, LPEncoding, MessageReceiver, MessageSender, OutboundMessageHandler,
-		Proof, RouterProvider,
+		InboundMessageHandler, LPMessage, MessageHash, MessageReceiver, MessageSender,
+		OutboundMessageHandler, RouterProvider,
 	},
 	queue::{MessageProcessor, MessageQueue},
 };
@@ -47,7 +47,10 @@ use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_runtime::SaturatedConversion;
 use sp_std::{convert::TryInto, vec::Vec};
 
-use crate::{message_processing::InboundEntry, weights::WeightInfo};
+use crate::{
+	message_processing::{InboundEntry, ProofEntry},
+	weights::WeightInfo,
+};
 
 mod origin;
 pub use origin::*;
@@ -66,7 +69,6 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use crate::message_processing::ProofEntry;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -98,7 +100,7 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The Liquidity Pools message type.
-		type Message: LPEncoding
+		type Message: LPMessage
 			+ Clone
 			+ Debug
 			+ PartialEq
@@ -165,10 +167,53 @@ pub mod pallet {
 			hook_address: [u8; 20],
 		},
 
+		/// An inbound message was processed.
+		InboundMessageProcessed {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message proof was processed.
+		InboundProofProcessed {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message was executed.
+		InboundMessageExecuted {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+		},
+
+		/// An outbound message was sent.
+		OutboundMessageSent {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
 		/// Message recovery was executed.
 		MessageRecoveryExecuted {
-			proof: Proof,
+			message_hash: MessageHash,
 			router_id: T::RouterId,
+		},
+
+		/// Message recovery was initiated.
+		MessageRecoveryInitiated {
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		},
+
+		/// Message recovery was disputed.
+		MessageRecoveryDisputed {
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
 		},
 	}
 
@@ -211,7 +256,7 @@ pub mod pallet {
 	pub type PendingInboundEntries<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		Proof,
+		MessageHash,
 		Blake2_128Concat,
 		T::RouterId,
 		InboundEntry<T>,
@@ -251,6 +296,9 @@ pub mod pallet {
 
 		/// Unknown router.
 		UnknownRouter,
+
+		/// Messaging router not found.
+		MessagingRouterNotFound,
 
 		/// The router that sent the message is not the first one.
 		MessageExpectedFromFirstRouter,
@@ -434,7 +482,7 @@ pub mod pallet {
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
 			domain_address: DomainAddress,
-			proof: Proof,
+			message_hash: MessageHash,
 			router_id: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
@@ -451,8 +499,10 @@ pub mod pallet {
 
 			let session_id = SessionIdStore::<T>::get();
 
-			PendingInboundEntries::<T>::try_mutate(proof, router_id.clone(), |storage_entry| {
-				match storage_entry {
+			PendingInboundEntries::<T>::try_mutate(
+				message_hash,
+				router_id.clone(),
+				|storage_entry| match storage_entry {
 					Some(stored_inbound_entry) => {
 						stored_inbound_entry.increment_proof_count(session_id)
 					}
@@ -464,22 +514,100 @@ pub mod pallet {
 
 						Ok::<(), DispatchError>(())
 					}
-				}
-			})?;
+				},
+			)?;
 
 			let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 
 			Self::execute_if_requirements_are_met(
-				proof,
+				message_hash,
 				&router_ids,
 				session_id,
 				expected_proof_count,
 				domain_address,
 			)?;
 
-			Self::deposit_event(Event::<T>::MessageRecoveryExecuted { proof, router_id });
+			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
+				message_hash,
+				router_id,
+			});
 
 			Ok(())
+		}
+
+		/// Sends a message that initiates a message recovery using the
+		/// messaging router.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::initiate_message_recovery())]
+		#[pallet::call_index(12)]
+		pub fn initiate_message_recovery(
+			origin: OriginFor<T>,
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
+
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryInitiated {
+				domain,
+				message_hash,
+				recovery_router,
+				messaging_router,
+			});
+
+			Ok(())
+		}
+
+		/// Sends a message that disputes a message recovery using the
+		/// messaging router.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::dispute_message_recovery())]
+		#[pallet::call_index(13)]
+		pub fn dispute_message_recovery(
+			origin: OriginFor<T>,
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
+
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryDisputed {
+				domain,
+				message_hash,
+				recovery_router,
+				messaging_router,
+			});
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn send_recovery_message(
+			domain: Domain,
+			message: T::Message,
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			let router_ids = Self::get_router_ids_for_domain(domain)?;
+
+			ensure!(
+				router_ids.iter().any(|x| x == &messaging_router),
+				Error::<T>::MessagingRouterNotFound
+			);
+
+			T::MessageSender::send(messaging_router, T::Sender::get(), message.serialize())
 		}
 	}
 
@@ -537,12 +665,9 @@ pub mod pallet {
 
 					(res, weight)
 				}
-				GatewayMessage::Outbound {
-					sender,
-					message,
-					router_id,
-				} => {
-					let res = T::MessageSender::send(router_id, sender, message.serialize());
+				GatewayMessage::Outbound { message, router_id } => {
+					let res =
+						T::MessageSender::send(router_id, T::Sender::get(), message.serialize());
 
 					(res, LP_DEFENSIVE_WEIGHT)
 				}

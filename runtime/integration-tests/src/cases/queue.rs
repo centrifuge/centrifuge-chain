@@ -1,4 +1,3 @@
-use cfg_primitives::AccountId;
 use cfg_traits::queue::MessageQueue;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{assert_ok, traits::OriginTrait};
@@ -35,7 +34,6 @@ fn queue_and_dequeue_inbound<T: Runtime>() {
 			message: Message::Invalid,
 		};
 
-		// Here we enqueue
 		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));
@@ -68,12 +66,10 @@ fn queue_and_dequeue_outbound<T: Runtime>() {
 
 		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
-			sender: DomainAddress::Centrifuge(AccountId::new([1; 32])),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
 
-		// Here we enqueue
 		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));

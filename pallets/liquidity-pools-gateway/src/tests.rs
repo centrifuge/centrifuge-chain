@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::{
-	liquidity_pools::{LPEncoding, OutboundMessageHandler},
+	liquidity_pools::{LPMessage, OutboundMessageHandler},
 	queue::MessageProcessor,
 };
 use cfg_types::domain_address::*;
@@ -308,7 +308,7 @@ mod extrinsics {
 					router_id: router_id.clone(),
 				};
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_message| {
 					assert_eq!(mock_message, gateway_message);
 					Ok(())
 				});
@@ -402,7 +402,7 @@ mod extrinsics {
 					router_id: router_id.clone(),
 				};
 
-				MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_message| {
 					assert_eq!(mock_message, gateway_message);
 					Err(err)
 				});
@@ -497,7 +497,7 @@ mod extrinsics {
 					DOMAIN
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				// Ok Batched
 				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -542,7 +542,7 @@ mod extrinsics {
 					DOMAIN
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				(0..MAX_PACKED_MESSAGES).for_each(|_| {
 					assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -667,7 +667,7 @@ mod extrinsics {
 				SessionIdStore::<Runtime>::set(session_id);
 
 				PendingInboundEntries::<Runtime>::insert(
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_1,
 					InboundEntry::Message(MessageEntry {
 						session_id,
@@ -688,23 +688,19 @@ mod extrinsics {
 				assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
 					TEST_DOMAIN_ADDRESS,
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_2,
 				));
 
 				event_exists(Event::<Runtime>::MessageRecoveryExecuted {
-					proof: MESSAGE_PROOF,
+					message_hash: MESSAGE_HASH,
 					router_id: ROUTER_ID_2,
 				});
 
 				assert_eq!(handler.times(), 1);
 
-				assert!(
-					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_none()
-				);
-				assert!(
-					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2).is_none()
-				);
+				assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).is_none());
+				assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_2).is_none());
 			});
 		}
 
@@ -719,7 +715,7 @@ mod extrinsics {
 				SessionIdStore::<Runtime>::set(session_id);
 
 				PendingInboundEntries::<Runtime>::insert(
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_1,
 					InboundEntry::Message(MessageEntry {
 						session_id,
@@ -732,17 +728,17 @@ mod extrinsics {
 				assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
 					TEST_DOMAIN_ADDRESS,
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_2,
 				));
 
 				event_exists(Event::<Runtime>::MessageRecoveryExecuted {
-					proof: MESSAGE_PROOF,
+					message_hash: MESSAGE_HASH,
 					router_id: ROUTER_ID_2,
 				});
 
 				assert_eq!(
-					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1),
+					PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1),
 					Some(
 						MessageEntry {
 							session_id,
@@ -754,7 +750,7 @@ mod extrinsics {
 					)
 				);
 				assert_eq!(
-					PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2),
+					PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_2),
 					Some(
 						ProofEntry {
 							session_id,
@@ -763,7 +759,7 @@ mod extrinsics {
 						.into()
 					)
 				);
-				assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_3).is_none())
+				assert!(PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_3).is_none())
 			});
 		}
 
@@ -774,7 +770,7 @@ mod extrinsics {
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
 						TEST_DOMAIN_ADDRESS,
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 					),
 					Error::<Runtime>::NotEnoughRoutersForDomain
@@ -786,7 +782,7 @@ mod extrinsics {
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
 						TEST_DOMAIN_ADDRESS,
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 					),
 					Error::<Runtime>::NotEnoughRoutersForDomain
@@ -804,7 +800,7 @@ mod extrinsics {
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
 						TEST_DOMAIN_ADDRESS,
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
 					Error::<Runtime>::UnknownRouter
@@ -822,7 +818,7 @@ mod extrinsics {
 				);
 				SessionIdStore::<Runtime>::set(session_id);
 				PendingInboundEntries::<Runtime>::insert(
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_2,
 					InboundEntry::Proof(ProofEntry {
 						session_id,
@@ -834,7 +830,7 @@ mod extrinsics {
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
 						TEST_DOMAIN_ADDRESS,
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
 					Arithmetic(Overflow)
@@ -843,7 +839,7 @@ mod extrinsics {
 		}
 
 		#[test]
-		fn expected_message_proof_type() {
+		fn expected_message_hash_type() {
 			new_test_ext().execute_with(|| {
 				let domain_address = TEST_DOMAIN_ADDRESS;
 				let session_id = 1;
@@ -853,7 +849,7 @@ mod extrinsics {
 				);
 				SessionIdStore::<Runtime>::set(session_id);
 				PendingInboundEntries::<Runtime>::insert(
-					MESSAGE_PROOF,
+					MESSAGE_HASH,
 					ROUTER_ID_2,
 					InboundEntry::Message(MessageEntry {
 						session_id,
@@ -867,10 +863,294 @@ mod extrinsics {
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
 						TEST_DOMAIN_ADDRESS,
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
 					Error::<Runtime>::ExpectedMessageProofType
+				);
+			});
+		}
+	}
+
+	mod initiate_message_recovery {
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::InitiateMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Ok(())
+				});
+
+				assert_ok!(LiquidityPoolsGateway::initiate_message_recovery(
+					RuntimeOrigin::root(),
+					TEST_DOMAIN,
+					MESSAGE_HASH,
+					recovery_router,
+					ROUTER_ID_1,
+				));
+
+				event_exists(Event::<Runtime>::MessageRecoveryInitiated {
+					domain: TEST_DOMAIN,
+					message_hash: MESSAGE_HASH,
+					recovery_router,
+					messaging_router: ROUTER_ID_1,
+				})
+			});
+		}
+
+		#[test]
+		fn bad_origin() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				assert_noop!(
+					LiquidityPoolsGateway::initiate_message_recovery(
+						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn not_enough_routers_for_domain() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				assert_noop!(
+					LiquidityPoolsGateway::initiate_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					Error::<Runtime>::NotEnoughRoutersForDomain,
+				);
+			});
+		}
+
+		#[test]
+		fn messaging_router_not_found() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::InitiateMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Ok(())
+				});
+
+				assert_noop!(
+					LiquidityPoolsGateway::initiate_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						RouterId(4),
+					),
+					Error::<Runtime>::MessagingRouterNotFound,
+				);
+			});
+		}
+
+		#[test]
+		fn message_sender_error() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				let err = DispatchError::Unavailable;
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::InitiateMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Err(err)
+				});
+
+				assert_noop!(
+					LiquidityPoolsGateway::initiate_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					err
+				);
+			});
+		}
+	}
+
+	mod dispute_message_recovery {
+		use super::*;
+
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::DisputeMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Ok(())
+				});
+
+				assert_ok!(LiquidityPoolsGateway::dispute_message_recovery(
+					RuntimeOrigin::root(),
+					TEST_DOMAIN,
+					MESSAGE_HASH,
+					recovery_router,
+					ROUTER_ID_1,
+				));
+
+				event_exists(Event::<Runtime>::MessageRecoveryDisputed {
+					domain: TEST_DOMAIN,
+					message_hash: MESSAGE_HASH,
+					recovery_router,
+					messaging_router: ROUTER_ID_1,
+				})
+			});
+		}
+
+		#[test]
+		fn bad_origin() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				assert_noop!(
+					LiquidityPoolsGateway::dispute_message_recovery(
+						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					BadOrigin
+				);
+			});
+		}
+
+		#[test]
+		fn not_enough_routers_for_domain() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				assert_noop!(
+					LiquidityPoolsGateway::dispute_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					Error::<Runtime>::NotEnoughRoutersForDomain,
+				);
+			});
+		}
+
+		#[test]
+		fn messaging_router_not_found() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::DisputeMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Ok(())
+				});
+
+				assert_noop!(
+					LiquidityPoolsGateway::dispute_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						RouterId(4),
+					),
+					Error::<Runtime>::MessagingRouterNotFound,
+				);
+			});
+		}
+
+		#[test]
+		fn message_sender_error() {
+			new_test_ext().execute_with(|| {
+				let recovery_router = [1u8; 32];
+
+				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
+
+				let err = DispatchError::Unavailable;
+
+				MockMessageSender::mock_send(move |mock_router_id, mock_sender, mock_message| {
+					assert_eq!(mock_router_id, ROUTER_ID_1);
+					assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
+					assert_eq!(
+						mock_message,
+						Message::DisputeMessageRecovery((MESSAGE_HASH, recovery_router))
+							.serialize()
+					);
+
+					Err(err)
+				});
+
+				assert_noop!(
+					LiquidityPoolsGateway::dispute_message_recovery(
+						RuntimeOrigin::root(),
+						TEST_DOMAIN,
+						MESSAGE_HASH,
+						recovery_router,
+						ROUTER_ID_1,
+					),
+					err
 				);
 			});
 		}
@@ -889,30 +1169,24 @@ mod implementations {
 				let domain = Domain::Evm(0);
 				let sender = get_test_account_id();
 				let msg = Message::Simple;
-				let message_proof = msg.to_proof_message().get_proof().unwrap();
+				let message_hash = msg.get_message_hash();
 
 				assert_ok!(LiquidityPoolsGateway::set_routers(
 					RuntimeOrigin::root(),
 					BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_msg| {
 					match mock_msg {
 						GatewayMessage::Inbound { .. } => {
 							assert!(false, "expected outbound message")
 						}
-						GatewayMessage::Outbound {
-							sender, message, ..
-						} => {
-							assert_eq!(sender, <Runtime as Config>::Sender::get());
-
-							match message {
-								Message::Proof(p) => {
-									assert_eq!(p, message_proof);
-								}
-								_ => {}
+						GatewayMessage::Outbound { message, .. } => match message {
+							Message::Proof(p) => {
+								assert_eq!(p, message_hash);
 							}
-						}
+							_ => {}
+						},
 					}
 
 					Ok(())
@@ -964,14 +1238,13 @@ mod implementations {
 				));
 
 				let gateway_message = GatewayMessage::Outbound {
-					sender: <Runtime as Config>::Sender::get(),
 					message: msg.clone(),
 					router_id: ROUTER_ID_1,
 				};
 
 				let err = DispatchError::Unavailable;
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_msg| {
 					assert_eq!(mock_msg, gateway_message);
 
 					Err(err)
@@ -1039,7 +1312,7 @@ mod implementations {
 								let expected_inbound_entry = expected_storage_entry.1;
 
 								let storage_entry = PendingInboundEntries::<Runtime>::get(
-									MESSAGE_PROOF, expected_storage_entry_router_id,
+									MESSAGE_HASH, expected_storage_entry_router_id,
 								);
 								assert_eq!(storage_entry, expected_inbound_entry, "Expected inbound entry {expected_inbound_entry:?}, found {storage_entry:?}");
 							}
@@ -1146,7 +1419,7 @@ mod implementations {
 				fn success() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_proof().unwrap();
+						let message_hash = message.get_message_hash();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
@@ -1175,7 +1448,7 @@ mod implementations {
 						assert_eq!(handler.times(), 1);
 
 						assert!(
-							PendingInboundEntries::<Runtime>::get(message_proof, router_id)
+							PendingInboundEntries::<Runtime>::get(message_hash, router_id)
 								.is_none()
 						);
 					});
@@ -1224,10 +1497,10 @@ mod implementations {
 				}
 
 				#[test]
-				fn expected_message_proof_type() {
+				fn expected_message_hash_type() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let message_proof = message.to_proof_message().get_proof().unwrap();
+						let message_hash = message.get_message_hash();
 						let session_id = 1;
 						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
@@ -1242,7 +1515,7 @@ mod implementations {
 						);
 						SessionIdStore::<Runtime>::set(session_id);
 						PendingInboundEntries::<Runtime>::insert(
-							message_proof,
+							message_hash,
 							router_id,
 							InboundEntry::Proof(ProofEntry {
 								session_id,
@@ -1265,7 +1538,7 @@ mod implementations {
 					lazy_static! {
 						static ref TEST_DATA: Vec<RouterMessage> = vec![
 							(ROUTER_ID_1, Message::Simple),
-							(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+							(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 						];
 					}
 
@@ -1304,8 +1577,8 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 0,
@@ -1327,7 +1600,7 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1339,7 +1612,7 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1399,9 +1672,9 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 0,
@@ -1424,7 +1697,7 @@ mod implementations {
 										vec![
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1448,7 +1721,7 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1473,8 +1746,8 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1495,7 +1768,7 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
 										],
@@ -1520,9 +1793,9 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1543,8 +1816,8 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1614,10 +1887,10 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 0,
@@ -1641,7 +1914,7 @@ mod implementations {
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1666,7 +1939,7 @@ mod implementations {
 										vec![
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1691,7 +1964,7 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
 										],
@@ -1716,7 +1989,7 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
@@ -1744,8 +2017,8 @@ mod implementations {
 										vec![
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 2,
@@ -1757,10 +2030,10 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 2,
@@ -1772,54 +2045,9 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_1, Message::Simple),
-										],
-										ExpectedTestResult {
-											message_submitted_times: 2,
-											expected_storage_entries: vec![
-												(ROUTER_ID_1, None),
-												(ROUTER_ID_2, None),
-											],
-										},
-									),
-									(
-										vec![
-											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										],
-										ExpectedTestResult {
-											message_submitted_times: 2,
-											expected_storage_entries: vec![
-												(ROUTER_ID_1, None),
-												(ROUTER_ID_2, None),
-											],
-										},
-									),
-									(
-										vec![
-											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_1, Message::Simple),
-										],
-										ExpectedTestResult {
-											message_submitted_times: 2,
-											expected_storage_entries: vec![
-												(ROUTER_ID_1, None),
-												(ROUTER_ID_2, None),
-											],
-										},
-									),
-									(
-										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1833,9 +2061,54 @@ mod implementations {
 									(
 										vec![
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										],
+										ExpectedTestResult {
+											message_submitted_times: 2,
+											expected_storage_entries: vec![
+												(ROUTER_ID_1, None),
+												(ROUTER_ID_2, None),
+											],
+										},
+									),
+									(
+										vec![
+											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_1, Message::Simple),
+										],
+										ExpectedTestResult {
+											message_submitted_times: 2,
+											expected_storage_entries: vec![
+												(ROUTER_ID_1, None),
+												(ROUTER_ID_2, None),
+											],
+										},
+									),
+									(
+										vec![
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_1, Message::Simple),
+										],
+										ExpectedTestResult {
+											message_submitted_times: 2,
+											expected_storage_entries: vec![
+												(ROUTER_ID_1, None),
+												(ROUTER_ID_2, None),
+											],
+										},
+									),
+									(
+										vec![
+											(ROUTER_ID_1, Message::Simple),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1856,10 +2129,10 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1880,10 +2153,10 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										],
 										ExpectedTestResult {
 											message_submitted_times: 1,
@@ -1904,9 +2177,9 @@ mod implementations {
 									),
 									(
 										vec![
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-											(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+											(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 											(ROUTER_ID_1, Message::Simple),
 										],
 										ExpectedTestResult {
@@ -1978,7 +2251,7 @@ mod implementations {
 
 							let gateway_message = GatewayMessage::Inbound {
 								domain_address: TEST_DOMAIN_ADDRESS,
-								message: Message::Proof(MESSAGE_PROOF),
+								message: Message::Proof(MESSAGE_HASH),
 								router_id: ROUTER_ID_1,
 							};
 
@@ -1995,8 +2268,8 @@ mod implementations {
 				lazy_static! {
 					static ref TEST_DATA: Vec<RouterMessage> = vec![
 						(ROUTER_ID_1, Message::Simple),
-						(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-						(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+						(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+						(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 					];
 				}
 
@@ -2036,8 +2309,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2059,8 +2332,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2082,8 +2355,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2114,8 +2387,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2147,7 +2420,7 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2181,7 +2454,7 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2214,7 +2487,7 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2248,7 +2521,7 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2283,7 +2556,7 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2364,9 +2637,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2388,9 +2661,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2414,7 +2687,7 @@ mod implementations {
 									vec![
 										(ROUTER_ID_1, Message::Simple),
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2448,287 +2721,7 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 4,
-													}
-													.into(),
-												),
-											),
-											(
-												ROUTER_ID_2,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 1,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_3, None),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(
-												ROUTER_ID_2,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_3, None),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_2, None),
-											(
-												ROUTER_ID_3,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_2, None),
-											(
-												ROUTER_ID_3,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_2, None),
-											(
-												ROUTER_ID_3,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(
-												ROUTER_ID_2,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_3, None),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 2,
-													}
-													.into(),
-												),
-											),
-											(
-												ROUTER_ID_2,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 2,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_3, None),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-									],
-									ExpectedTestResult {
-										message_submitted_times: 0,
-										expected_storage_entries: vec![
-											(
-												ROUTER_ID_1,
-												Some(
-													MessageEntry {
-														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
-														message: Message::Simple,
-														expected_proof_count: 4,
-													}
-													.into(),
-												),
-											),
-											(ROUTER_ID_2, None),
-											(
-												ROUTER_ID_3,
-												Some(
-													ProofEntry {
-														session_id: TEST_SESSION_ID,
-														current_count: 1,
-													}
-													.into(),
-												),
-											),
-										],
-									},
-								),
-								(
-									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2763,7 +2756,287 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(
+												ROUTER_ID_2,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_3, None),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_2, None),
+											(
+												ROUTER_ID_3,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_2, None),
+											(
+												ROUTER_ID_3,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_1, Message::Simple),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_2, None),
+											(
+												ROUTER_ID_3,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(
+												ROUTER_ID_2,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_3, None),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_1, Message::Simple),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 2,
+													}
+													.into(),
+												),
+											),
+											(
+												ROUTER_ID_2,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 2,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_3, None),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_2, None),
+											(
+												ROUTER_ID_3,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
+											),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_1, Message::Simple),
+									],
+									ExpectedTestResult {
+										message_submitted_times: 0,
+										expected_storage_entries: vec![
+											(
+												ROUTER_ID_1,
+												Some(
+													MessageEntry {
+														session_id: TEST_SESSION_ID,
+														domain_address: TEST_DOMAIN_ADDRESS,
+														message: Message::Simple,
+														expected_proof_count: 4,
+													}
+													.into(),
+												),
+											),
+											(
+												ROUTER_ID_2,
+												Some(
+													ProofEntry {
+														session_id: TEST_SESSION_ID,
+														current_count: 1,
+													}
+													.into(),
+												),
+											),
+											(ROUTER_ID_3, None),
+										],
+									},
+								),
+								(
+									vec![
+										(ROUTER_ID_1, Message::Simple),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2797,7 +3070,7 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 										(ROUTER_ID_1, Message::Simple),
 									],
@@ -2833,8 +3106,8 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
@@ -2847,8 +3120,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2863,8 +3136,8 @@ mod implementations {
 								(
 									vec![
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
@@ -2877,9 +3150,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
@@ -2892,8 +3165,8 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
 									],
 									ExpectedTestResult {
@@ -2907,9 +3180,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 										(ROUTER_ID_1, Message::Simple),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 1,
@@ -2922,9 +3195,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2955,9 +3228,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -2988,9 +3261,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -3021,9 +3294,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -3054,9 +3327,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -3087,9 +3360,9 @@ mod implementations {
 								),
 								(
 									vec![
-										(ROUTER_ID_2, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
-										(ROUTER_ID_3, Message::Proof(MESSAGE_PROOF)),
+										(ROUTER_ID_2, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
+										(ROUTER_ID_3, Message::Proof(MESSAGE_HASH)),
 									],
 									ExpectedTestResult {
 										message_submitted_times: 0,
@@ -3170,11 +3443,9 @@ mod implementations {
 			#[test]
 			fn success() {
 				new_test_ext().execute_with(|| {
-					let sender = TEST_DOMAIN_ADDRESS;
 					let message = Message::Simple;
 
 					let gateway_message = GatewayMessage::Outbound {
-						sender: sender.clone(),
 						message: message.clone(),
 						router_id: ROUTER_ID_1,
 					};
@@ -3182,7 +3453,7 @@ mod implementations {
 					let handler = MockMessageSender::mock_send(
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
-							assert_eq!(mock_sender, sender);
+							assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
 							assert_eq!(mock_message, message.serialize());
 
 							Ok(())
@@ -3199,11 +3470,9 @@ mod implementations {
 			#[test]
 			fn message_sender_error() {
 				new_test_ext().execute_with(|| {
-					let sender = TEST_DOMAIN_ADDRESS;
 					let message = Message::Simple;
 
 					let gateway_message = GatewayMessage::Outbound {
-						sender: sender.clone(),
 						message: message.clone(),
 						router_id: ROUTER_ID_1,
 					};
@@ -3213,7 +3482,7 @@ mod implementations {
 					MockMessageSender::mock_send(
 						move |mock_router_id, mock_sender, mock_message| {
 							assert_eq!(mock_router_id, ROUTER_ID_1);
-							assert_eq!(mock_sender, sender);
+							assert_eq!(mock_sender, <Runtime as Config>::Sender::get());
 							assert_eq!(mock_message, message.serialize());
 
 							Err(router_err)
@@ -3328,7 +3597,7 @@ mod implementations {
 							.into(),
 						),
 						(
-							Message::Proof(MESSAGE_PROOF),
+							Message::Proof(MESSAGE_HASH),
 							ProofEntry {
 								session_id,
 								current_count: 1,
@@ -3384,13 +3653,13 @@ mod implementations {
 
 					for (test_router_id, test_inbound_entry) in tests {
 						assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
-							MESSAGE_PROOF,
+							MESSAGE_HASH,
 							&test_router_id.clone(),
 							test_inbound_entry.clone(),
 						));
 
 						let res =
-							PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, test_router_id)
+							PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, test_router_id)
 								.unwrap();
 
 						assert_eq!(res, test_inbound_entry);
@@ -3410,19 +3679,19 @@ mod implementations {
 					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						inbound_entry.clone(),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						&ROUTER_ID_1,
 						inbound_entry,
 					));
 
 					let res =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
 						MessageEntry {
@@ -3440,7 +3709,7 @@ mod implementations {
 			fn message_entry_new_session() {
 				new_test_ext().execute_with(|| {
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						InboundEntry::Message(MessageEntry {
 							session_id: 1,
@@ -3451,7 +3720,7 @@ mod implementations {
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						&ROUTER_ID_1,
 						MessageEntry {
 							session_id: 2,
@@ -3463,7 +3732,7 @@ mod implementations {
 					));
 
 					let res =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
 						MessageEntry {
@@ -3489,14 +3758,14 @@ mod implementations {
 					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						inbound_entry.clone(),
 					);
 
 					assert_noop!(
 						LiquidityPoolsGateway::upsert_pending_entry(
-							MESSAGE_PROOF,
+							MESSAGE_HASH,
 							&ROUTER_ID_1,
 							InboundEntry::Proof(ProofEntry {
 								session_id: 1,
@@ -3518,19 +3787,19 @@ mod implementations {
 					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						inbound_entry.clone(),
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						&ROUTER_ID_1,
 						inbound_entry,
 					));
 
 					let res =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
 						ProofEntry {
@@ -3546,7 +3815,7 @@ mod implementations {
 			fn proof_entry_new_session() {
 				new_test_ext().execute_with(|| {
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						InboundEntry::Proof(ProofEntry {
 							session_id: 1,
@@ -3555,7 +3824,7 @@ mod implementations {
 					);
 
 					assert_ok!(LiquidityPoolsGateway::upsert_pending_entry(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						&ROUTER_ID_1,
 						ProofEntry {
 							session_id: 2,
@@ -3565,7 +3834,7 @@ mod implementations {
 					));
 
 					let res =
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).unwrap();
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).unwrap();
 					assert_eq!(
 						res,
 						ProofEntry {
@@ -3578,7 +3847,7 @@ mod implementations {
 			}
 
 			#[test]
-			fn expected_message_proof_type() {
+			fn expected_message_hash_type() {
 				new_test_ext().execute_with(|| {
 					let inbound_entry: InboundEntry<Runtime> = ProofEntry {
 						session_id: 1,
@@ -3587,14 +3856,14 @@ mod implementations {
 					.into();
 
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						inbound_entry.clone(),
 					);
 
 					assert_noop!(
 						LiquidityPoolsGateway::upsert_pending_entry(
-							MESSAGE_PROOF,
+							MESSAGE_HASH,
 							&ROUTER_ID_1,
 							InboundEntry::Message(MessageEntry {
 								session_id: 1,
@@ -3621,7 +3890,7 @@ mod implementations {
 					let expected_proof_count = 2;
 
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_1,
 						InboundEntry::Message(MessageEntry {
 							session_id: 1,
@@ -3631,7 +3900,7 @@ mod implementations {
 						}),
 					);
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_2,
 						InboundEntry::Proof(ProofEntry {
 							session_id: 2,
@@ -3639,7 +3908,7 @@ mod implementations {
 						}),
 					);
 					PendingInboundEntries::<Runtime>::insert(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						ROUTER_ID_3,
 						InboundEntry::Proof(ProofEntry {
 							session_id: 3,
@@ -3648,20 +3917,20 @@ mod implementations {
 					);
 
 					assert_ok!(LiquidityPoolsGateway::execute_if_requirements_are_met(
-						MESSAGE_PROOF,
+						MESSAGE_HASH,
 						&router_ids,
 						session_id,
 						expected_proof_count,
 						domain_address,
 					));
 					assert!(
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_1).is_some()
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).is_some()
 					);
 					assert!(
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_2).is_some()
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_2).is_some()
 					);
 					assert!(
-						PendingInboundEntries::<Runtime>::get(MESSAGE_PROOF, ROUTER_ID_3).is_some()
+						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_3).is_some()
 					);
 				});
 			}
@@ -3678,7 +3947,7 @@ mod implementations {
 
 					assert_noop!(
 						LiquidityPoolsGateway::execute_post_voting_dispatch(
-							MESSAGE_PROOF,
+							MESSAGE_HASH,
 							&router_ids,
 							expected_proof_count,
 						),
@@ -3955,7 +4224,7 @@ mod inbound_entry {
 		}
 
 		#[test]
-		fn expected_message_proof_type() {
+		fn expected_message_hash_type() {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
