@@ -581,7 +581,7 @@ pub mod pallet {
 				router_id,
 			};
 
-			T::MessageQueue::submit(gateway_message)
+			T::MessageQueue::queue(gateway_message)
 		}
 	}
 }

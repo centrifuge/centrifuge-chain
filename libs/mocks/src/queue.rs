@@ -16,7 +16,7 @@ pub mod pallet {
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_submit(f: impl Fn(T::Message) -> DispatchResult + 'static) -> CallHandler {
+		pub fn mock_queue(f: impl Fn(T::Message) -> DispatchResult + 'static) -> CallHandler {
 			register_call!(f)
 		}
 	}
@@ -24,7 +24,7 @@ pub mod pallet {
 	impl<T: Config> MessageQueue for Pallet<T> {
 		type Message = T::Message;
 
-		fn submit(msg: Self::Message) -> DispatchResult {
+		fn queue(msg: Self::Message) -> DispatchResult {
 			execute_call!(msg)
 		}
 	}

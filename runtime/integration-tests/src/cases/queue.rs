@@ -36,7 +36,7 @@ fn queue_and_dequeue_inbound<T: Runtime>() {
 		};
 
 		// Here we enqueue
-		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));
 
@@ -74,7 +74,7 @@ fn queue_and_dequeue_outbound<T: Runtime>() {
 		};
 
 		// Here we enqueue
-		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));
 

@@ -1,7 +1,4 @@
-use cfg_traits::{
-	liquidity_pools::{InboundMessageHandler, LPEncoding, Proof, RouterProvider},
-	queue::MessageQueue,
-};
+use cfg_traits::liquidity_pools::{InboundMessageHandler, LPEncoding, Proof, RouterProvider};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::DispatchResult,

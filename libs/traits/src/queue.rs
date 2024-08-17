@@ -6,10 +6,10 @@ pub trait MessageQueue {
 	type Message;
 
 	/// Submit a message to the queue.
-	fn submit(msg: Self::Message) -> DispatchResult;
+	fn queue(msg: Self::Message) -> DispatchResult;
 }
 
-/// The trait required for processing queued messages.
+/// The trait required for processing dequeued messages.
 pub trait MessageProcessor {
 	/// The message type.
 	type Message;
