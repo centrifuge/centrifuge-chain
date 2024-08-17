@@ -59,6 +59,7 @@ mod remove_forwarder {
 	use sp_runtime::DispatchError;
 
 	use super::*;
+	use crate::Error;
 
 	#[test]
 	fn success() {
@@ -88,15 +89,13 @@ mod remove_forwarder {
 	}
 
 	#[test]
-	fn success_silent() {
+	fn erroring_out_with_not_found() {
 		System::externalities().execute_with(|| {
 			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
-			assert_ok!(LiquidityPoolsForwarder::remove_forwarder(
-				RuntimeOrigin::root(),
-				ROUTER_ID,
-			));
-			assert!(RouterForwarding::<Runtime>::get(ROUTER_ID).is_none());
-			assert!(System::events().is_empty());
+			assert_noop!(
+				LiquidityPoolsForwarder::remove_forwarder(RuntimeOrigin::root(), ROUTER_ID,),
+				Error::<Runtime>::ForwardInfoNotFound
+			);
 		})
 	}
 

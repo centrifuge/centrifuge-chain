@@ -21,7 +21,7 @@ use serde::{
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
-use sp_std::{vec, vec::Vec};
+use sp_std::{boxed::Box, vec, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -194,9 +194,7 @@ impl BatchMessages {
 }
 
 /// A message type that cannot be forwarded.
-
 #[derive(Encode, Decode, Serialize, Deserialize, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-
 pub struct NonForwardMessage(Box<Message>);
 
 impl TryFrom<Message> for NonForwardMessage {

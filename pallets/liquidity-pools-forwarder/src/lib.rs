@@ -31,6 +31,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use core::fmt::Debug;
+
 use cfg_traits::liquidity_pools::{LpMessage as LpMessageT, MessageReceiver, MessageSender};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -54,10 +56,8 @@ pub struct ForwardInfo {
 	pub(crate) contract: H160,
 }
 
-#[frame_support::pallet(dev_mode)]
+#[frame_support::pallet]
 pub mod pallet {
-	use std::fmt::Debug;
-
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -178,15 +178,15 @@ pub mod pallet {
 		pub fn remove_forwarder(origin: OriginFor<T>, router_id: T::RouterId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			if let Some(info) = RouterForwarding::<T>::take(&router_id) {
-				Self::deposit_event(Event::<T>::ForwarderRemoved {
-					router_id,
-					source_domain: info.source_domain,
-					forwarding_contract: info.contract,
-				});
-			}
-
-			Ok(())
+			RouterForwarding::<T>::take(&router_id)
+				.map(|info| {
+					Self::deposit_event(Event::<T>::ForwarderRemoved {
+						router_id,
+						source_domain: info.source_domain,
+						forwarding_contract: info.contract,
+					});
+				})
+				.ok_or(Error::<T>::ForwardInfoNotFound.into())
 		}
 	}
 
@@ -202,9 +202,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let msg = RouterForwarding::<T>::get(&router_id)
 				.map(|info| {
+					dbg!(&info);
 					T::Message::try_wrap_forward(info.source_domain, info.contract, message.clone())
 				})
-				.unwrap_or({
+				.unwrap_or_else(|| {
 					ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
 					Ok(message)
 				})?;
@@ -231,9 +232,9 @@ pub mod pallet {
 				RouterForwarding::<T>::get(&router_id).is_some(),
 				message.clone().unwrap_forwarded(),
 			) {
-				(false, None) => Ok(message),
 				(true, Some((_domain, _contract, lp_message))) => Ok(lp_message),
 				(true, None) => Err(Error::<T>::UnwrappingFailed),
+				(false, None) => Ok(message),
 				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
 			}
 			.map_err(|e: Error<T>| e)?;
