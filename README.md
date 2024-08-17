@@ -30,8 +30,10 @@ Centrifuge is the infrastructure that facilitates the decentralized financing of
 On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation:
 
 - [**anchors**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors) ([docs](https://reference.centrifuge.io/pallet_anchors/index.html)): Storing hashes of documents on-chain. The documents are stored in the Private Off-chain Data (POD) node network.
-- 
+-
 - [**anchors-v2**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors-v2) ([docs](https://reference.centrifuge.io/pallet_anchors_v2/index.html)): Second version of the pallet used to store document hashes on-chain.
+
+- [**axelar-routers**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/pallet-axelar-router) ([docs](https://reference.centrifuge.io/pallet-axelar-router/index.html)): Pallet that communicates with other chains through axelar.
 
 - [**block-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/block-rewards) ([docs](https://reference.centrifuge.io/pallet_block_rewards/index.html)): Provides means of configuring and distributing block rewards to collators as well as the annual treasury inflation.
 
@@ -54,12 +56,8 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 - [**liquidity-pools**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools/index.html)): Provides the toolset to enable foreign investments on foreign domains.
 
 - [**liquidity-pools-gateway**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools_gateway/index.html)): The main handler of incoming and outgoing Liquidity Pools messages.
-- 
+-
 - [**liquidity-pools-gateway-queue**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/queue) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools_gateway_queue/index.html)): The queue used by the Liquidity Pools Gateway for processing inbound/outbound messages.
-
-- [**liquidity-pools-gateway-routers**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/routers) ([docs](https://reference.centrifuge.io/liquidity_pools_gateway_routers/index.html)): This crate contains the `DomainRouters` used by the Liquidity Pools Gateway pallet.
-
-- [**axelar-gateway-precompile**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/axelar-gateway-precompile) ([docs](https://reference.centrifuge.io/axelar_gateway_precompile/index.html)): Pallet that serves as an EVM precompile for incoming Liquidity Pools messages from the Axelar network.
 
 - [**liquidity-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-rewards) ([docs](https://reference.centrifuge.io/pallet_liquidity_rewards/index.html)): Epoch based reward system.
 
