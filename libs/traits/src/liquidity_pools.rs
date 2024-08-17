@@ -48,13 +48,13 @@ pub trait LPMessage: Sized {
 	///
 	/// Hash - hash of the message that should be recovered.
 	/// Router - the address of the recovery router.
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
 
 	/// Creates a message used for disputing message recovery.
 	///
 	/// Hash - hash of the message that should be disputed.
 	/// Router - the address of the recovery router.
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
 }
 
 pub trait RouterProvider<Domain>: Sized {

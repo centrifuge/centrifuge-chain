@@ -117,11 +117,11 @@ impl LPMessage for Message {
 		}
 	}
 
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::InitiateMessageRecovery((hash, router))
 	}
 
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
 	}
 }
@@ -139,6 +139,12 @@ impl RouterProvider<Domain> for TestRouterProvider {
 			Domain::Centrifuge => vec![],
 			Domain::Evm(_) => vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3],
 		}
+	}
+}
+
+impl Into<Domain> for RouterId {
+	fn into(self) -> Domain {
+		Domain::Evm(self.0.into())
 	}
 }
 

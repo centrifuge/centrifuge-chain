@@ -896,7 +896,6 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::initiate_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN,
 					MESSAGE_HASH,
 					recovery_router,
 					ROUTER_ID_1,
@@ -919,7 +918,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -937,7 +935,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -969,7 +966,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						RouterId(4),
@@ -1003,7 +999,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -1038,7 +1033,6 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::dispute_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN,
 					MESSAGE_HASH,
 					recovery_router,
 					ROUTER_ID_1,
@@ -1061,7 +1055,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -1079,7 +1072,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -1111,7 +1103,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						RouterId(4),
@@ -1145,7 +1136,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
