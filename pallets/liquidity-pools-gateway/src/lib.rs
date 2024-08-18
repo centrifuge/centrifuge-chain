@@ -49,17 +49,15 @@ use crate::{
 	weights::WeightInfo,
 };
 
-mod origin;
-pub use origin::*;
-
 pub mod message;
 
 pub mod weights;
 
+mod message_processing;
+
 #[cfg(test)]
 mod mock;
 
-mod message_processing;
 #[cfg(test)]
 mod tests;
 
@@ -73,24 +71,10 @@ pub mod pallet {
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
-	#[pallet::origin]
-	pub type Origin = GatewayOrigin;
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The origin type.
-		type RuntimeOrigin: Into<Result<GatewayOrigin, <Self as frame_system::Config>::RuntimeOrigin>>
-			+ From<GatewayOrigin>;
-
 		/// The event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
-		/// The LocalOrigin ensures that some calls can only be performed from a
-		/// local context i.e. a different pallet.
-		type LocalEVMOrigin: EnsureOrigin<
-			<Self as frame_system::Config>::RuntimeOrigin,
-			Success = GatewayOrigin,
-		>;
 
 		/// The AdminOrigin ensures that some calls can only be performed by
 		/// admins.

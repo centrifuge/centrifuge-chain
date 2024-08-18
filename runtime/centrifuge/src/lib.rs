@@ -1874,7 +1874,6 @@ parameter_types! {
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type InboundMessageHandler = LiquidityPools;
-	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
@@ -1883,7 +1882,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type SessionId = LPGatewaySessionId;
 	type WeightInfo = ();
@@ -2099,7 +2097,7 @@ construct_runtime!(
 		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 104,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 105,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 106,
-		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 107,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T> } = 107,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 108,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 109,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>, HoldReason} = 110,
