@@ -1,6 +1,6 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::queue::MessageQueue;
+	use cfg_traits::liquidity_pools::MessageQueue;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call, CallHandler};
 

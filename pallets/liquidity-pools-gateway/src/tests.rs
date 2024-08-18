@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::{
-	liquidity_pools::{LPMessage, OutboundMessageHandler},
-	queue::MessageProcessor,
-};
+use cfg_traits::liquidity_pools::{LPMessage, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;

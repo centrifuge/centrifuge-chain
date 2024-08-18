@@ -1,4 +1,4 @@
-use cfg_traits::queue::MessageQueue as _;
+use cfg_traits::liquidity_pools::MessageQueue as _;
 use frame_support::{
 	assert_noop, assert_ok, dispatch::RawOrigin, pallet_prelude::Hooks, weights::Weight,
 };

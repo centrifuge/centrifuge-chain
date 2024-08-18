@@ -38,7 +38,6 @@ pub mod fees;
 pub mod interest;
 pub mod investments;
 pub mod liquidity_pools;
-pub mod queue;
 pub mod rewards;
 pub mod swaps;
 

@@ -14,7 +14,7 @@
 
 use core::fmt::Debug;
 
-use cfg_traits::queue::{MessageProcessor, MessageQueue as MessageQueueT};
+use cfg_traits::liquidity_pools::{MessageProcessor, MessageQueue as MessageQueueT};
 use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;

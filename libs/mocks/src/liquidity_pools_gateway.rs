@@ -1,6 +1,6 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::{liquidity_pools::OutboundMessageHandler, queue::MessageProcessor};
+	use cfg_traits::liquidity_pools::{MessageProcessor, OutboundMessageHandler};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call, CallHandler};
 	use orml_traits::GetByKey;

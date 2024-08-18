@@ -1,4 +1,4 @@
-use cfg_traits::queue::MessageQueue;
+use cfg_traits::liquidity_pools::MessageQueue;
 use cfg_types::domain_address::DomainAddress;
 use frame_support::{assert_ok, traits::OriginTrait};
 use pallet_liquidity_pools::Message;
