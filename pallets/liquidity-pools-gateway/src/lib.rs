@@ -402,22 +402,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Process an inbound message.
-		#[pallet::weight(T::WeightInfo::receive_message())]
-		#[pallet::call_index(5)]
-		pub fn receive_message(
-			origin: OriginFor<T>,
-			router_id: T::RouterId,
-			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
-		) -> DispatchResult {
-			let GatewayOrigin::Domain(origin_address) = T::LocalEVMOrigin::ensure_origin(origin)?;
-
-			if let DomainAddress::Centrifuge(_) = origin_address {
-				return Err(Error::<T>::InvalidMessageOrigin.into());
-			}
-
-			Self::receive(router_id, origin_address, T::Message::deserialize(&msg)?)
-		}
+		// Deprecated: receive_message with call_index(5)
+		//
+		// NOTE: If required, should be exposed by router.
 
 		/// Set the address of the domain hook
 		///
