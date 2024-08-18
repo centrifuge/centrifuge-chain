@@ -20,8 +20,10 @@
 //! For outgoing messages, it wraps the payload based on the configured router
 //! info.
 //!
-//! Assumptions: The EVM side ensures that incoming forwarded messages are
-//! valid.
+//! Assumptions:
+//! 	* The EVM side ensures that incoming forwarded messages are valid.
+//! 	* Nesting forwarded messages is not allowed, e.g. messages from A are
+//!    forwarded exactly via one intermediary domain B to reciepient C
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -229,19 +231,24 @@ pub mod pallet {
 			message: T::Message,
 		) -> DispatchResult {
 			// Message can be unwrapped iff it was forwarded
+			//
+			// NOTE: Contract address irrelevant here because it is only necessary for
+			// outbound forwarded messages
 			if let Some((source_domain, _contract, lp_message)) = message.clone().unwrap_forwarded()
 			{
 				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
 				for router_id in router_ids {
-					// NOTE: It suffices to check for forwarding existence without need to check the
-					// forwarding contract address. For that, we can rely on EVM side to ensure
-					// forwarded messages are valid
-					if RouterForwarding::<T>::get(&router_id).is_some() {
+					// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
+					// that we don't need to do checks on the forwarder router id or contract
+					if let Some(info) = RouterForwarding::<T>::get(&router_id) {
 						return T::MessageReceiver::receive(
-							// Since message was sent from forwarder router id, Gateway needs to
-							// check whether that id is whitelisted, not the source domain
-							forwarder_router_id,
-							forwarder_domain_address,
+							router_id,
+							DomainAddress::Evm(
+								info.source_domain
+									.get_evm_chain_id()
+									.expect("Domain not Centrifuge; qed"),
+								info.contract,
+							),
 							lp_message,
 						);
 					}

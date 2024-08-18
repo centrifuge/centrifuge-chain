@@ -19,6 +19,8 @@ pub const SOURCE_DOMAIN: Domain = Domain::Evm(SOURCE_CHAIN_ID);
 const FORWARDER_ADAPTER_ADDRESS: H160 = H160::repeat_byte(1);
 pub const FORWARDER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(FORWARDER_CHAIN_ID, FORWARDER_ADAPTER_ADDRESS);
+pub const SOURCE_DOMAIN_ADDRESS: DomainAddress =
+	DomainAddress::Evm(SOURCE_CHAIN_ID, FORWARD_CONTRACT);
 pub const FORWARD_CONTRACT: H160 = H160::repeat_byte(2);
 
 pub const ROUTER_ID: RouterId = 1;

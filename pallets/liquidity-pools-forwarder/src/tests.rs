@@ -268,10 +268,14 @@ mod receive_message {
 
 	use super::*;
 
-	fn config_mocks(set_forwarding_info: bool) {
+	fn config_mocks(was_forwarded: bool, set_forwarding_info: bool) {
 		MockSenderReceiver::mock_receive(move |middleware, origin, message| {
 			assert_eq!(middleware, ROUTER_ID);
-			assert_eq!(origin, FORWARDER_DOMAIN_ADDRESS);
+			if was_forwarded {
+				assert_eq!(origin, SOURCE_DOMAIN_ADDRESS);
+			} else {
+				assert_eq!(origin, FORWARDER_DOMAIN_ADDRESS);
+			}
 			assert_eq!(message, Message::NonForward);
 			Ok(())
 		});
@@ -294,7 +298,7 @@ mod receive_message {
 		#[test]
 		fn with_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks(true);
+				config_mocks(true, true);
 
 				assert_ok!(LiquidityPoolsForwarder::receive(
 					ROUTER_ID,
@@ -307,7 +311,7 @@ mod receive_message {
 		#[test]
 		fn without_forwarding() {
 			System::externalities().execute_with(|| {
-				config_mocks(false);
+				config_mocks(false, false);
 
 				assert_ok!(LiquidityPoolsForwarder::receive(
 					ROUTER_ID,
@@ -329,7 +333,7 @@ mod receive_message {
 		#[test]
 		fn with_missing_forward_info() {
 			System::externalities().execute_with(|| {
-				config_mocks(false);
+				config_mocks(true, false);
 
 				assert_noop!(
 					LiquidityPoolsForwarder::receive(
@@ -345,7 +349,7 @@ mod receive_message {
 		#[test]
 		fn forward_with_message_receiver_err() {
 			System::externalities().execute_with(|| {
-				config_mocks(true);
+				config_mocks(true, true);
 				MockSenderReceiver::mock_receive(|_, _, _| Err(ERROR));
 
 				assert_noop!(
