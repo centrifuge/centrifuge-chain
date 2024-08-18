@@ -147,7 +147,7 @@ mod send_message {
 			System::externalities().execute_with(|| {
 				config_mocks(Message::Forward, true);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
+				assert_ok!(LiquidityPoolsForwarder::send(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
@@ -160,7 +160,7 @@ mod send_message {
 			System::externalities().execute_with(|| {
 				config_mocks(Message::NonForward, false);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
+				assert_ok!(LiquidityPoolsForwarder::send(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
@@ -186,7 +186,7 @@ mod send_message {
 				config_mocks(Message::Forward, false);
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageSender>::send(
+					LiquidityPoolsForwarder::send(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
@@ -204,7 +204,7 @@ mod send_message {
 			System::externalities().execute_with(|| {
 				config_mocks(Message::NonForward, true);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
+				assert_ok!(LiquidityPoolsForwarder::send(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
@@ -220,7 +220,7 @@ mod send_message {
 			System::externalities().execute_with(|| {
 				config_mocks(Message::Forward, false);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageSender>::send(
+				assert_ok!(LiquidityPoolsForwarder::send(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
@@ -234,7 +234,7 @@ mod send_message {
 				config_mocks(Message::Forward, true);
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageSender>::send(
+					LiquidityPoolsForwarder::send(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
@@ -251,7 +251,7 @@ mod send_message {
 				MockSenderReceiver::mock_send(|_, _, _| Err(ERROR));
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageSender>::send(
+					LiquidityPoolsForwarder::send(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::NonForward
@@ -296,7 +296,7 @@ mod receive_message {
 			System::externalities().execute_with(|| {
 				config_mocks(true);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
+				assert_ok!(LiquidityPoolsForwarder::receive(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::Forward
@@ -309,7 +309,7 @@ mod receive_message {
 			System::externalities().execute_with(|| {
 				config_mocks(false);
 
-				assert_ok!(<LiquidityPoolsForwarder as MessageReceiver>::receive(
+				assert_ok!(LiquidityPoolsForwarder::receive(
 					ROUTER_ID,
 					FORWARDER_DOMAIN_ADDRESS,
 					Message::NonForward
@@ -332,7 +332,7 @@ mod receive_message {
 				config_mocks(false);
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageReceiver>::receive(
+					LiquidityPoolsForwarder::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
@@ -348,7 +348,7 @@ mod receive_message {
 				config_mocks(true);
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageReceiver>::receive(
+					LiquidityPoolsForwarder::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::NonForward
@@ -365,7 +365,7 @@ mod receive_message {
 				MockSenderReceiver::mock_receive(|_, _, _| Err(ERROR));
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageReceiver>::receive(
+					LiquidityPoolsForwarder::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::Forward
@@ -380,7 +380,7 @@ mod receive_message {
 				MockSenderReceiver::mock_receive(|_, _, _| Err(ERROR));
 
 				assert_noop!(
-					<LiquidityPoolsForwarder as MessageReceiver>::receive(
+					LiquidityPoolsForwarder::receive(
 						ROUTER_ID,
 						FORWARDER_DOMAIN_ADDRESS,
 						Message::NonForward
