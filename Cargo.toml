@@ -23,6 +23,7 @@ members = [
   "pallets/liquidity-pools",
   "pallets/liquidity-pools-gateway",
   "pallets/liquidity-pools-gateway-queue",
+  "pallets/liquidity-pools-forwarder",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -236,6 +237,7 @@ pallet-keystore = { path = "pallets/keystore", default-features = false }
 pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = false }
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-pools-gateway-queue = { path = "pallets/liquidity-pools-gateway-queue", default-features = false }
+pallet-liquidity-pools-forwarder = { path = "pallets/liquidity-pools-forwarder", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }

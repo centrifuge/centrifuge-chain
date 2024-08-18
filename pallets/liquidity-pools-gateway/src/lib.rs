@@ -30,7 +30,7 @@ use core::fmt::Debug;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPMessage, MessageHash, MessageProcessor, MessageQueue, MessageReceiver,
+	InboundMessageHandler, LpMessage, MessageHash, MessageProcessor, MessageQueue, MessageReceiver,
 	MessageSender, OutboundMessageHandler, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -42,7 +42,7 @@ pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
 use sp_runtime::SaturatedConversion;
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::convert::TryInto;
 
 use crate::{
 	message_processing::{InboundEntry, ProofEntry},
@@ -97,7 +97,7 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The Liquidity Pools message type.
-		type Message: LPMessage
+		type Message: LpMessage
 			+ Clone
 			+ Debug
 			+ PartialEq
@@ -107,7 +107,11 @@ pub mod pallet {
 			+ FullCodec;
 
 		/// The target of the messages coming from this chain
-		type MessageSender: MessageSender<Middleware = Self::RouterId, Origin = DomainAddress>;
+		type MessageSender: MessageSender<
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+			Message = Self::Message,
+		>;
 
 		/// An identification of a router
 		type RouterId: Parameter + MaxEncodedLen + Into<Domain>;
@@ -398,22 +402,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Process an inbound message.
-		#[pallet::weight(T::WeightInfo::receive_message())]
-		#[pallet::call_index(5)]
-		pub fn receive_message(
-			origin: OriginFor<T>,
-			router_id: T::RouterId,
-			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
-		) -> DispatchResult {
-			let GatewayOrigin::Domain(origin_address) = T::LocalEVMOrigin::ensure_origin(origin)?;
-
-			if let DomainAddress::Centrifuge(_) = origin_address {
-				return Err(Error::<T>::InvalidMessageOrigin.into());
-			}
-
-			Self::receive(router_id, origin_address, msg.into())
-		}
+		// Deprecated: receive_message with call_index(5)
+		//
+		// NOTE: If required, should be exposed by router.
 
 		/// Set the address of the domain hook
 		///
@@ -606,7 +597,7 @@ pub mod pallet {
 				Error::<T>::MessagingRouterNotFound
 			);
 
-			T::MessageSender::send(messaging_router, T::Sender::get(), message.serialize())
+			T::MessageSender::send(messaging_router, T::Sender::get(), message)
 		}
 	}
 
@@ -665,8 +656,7 @@ pub mod pallet {
 					(res, weight)
 				}
 				GatewayMessage::Outbound { message, router_id } => {
-					let res =
-						T::MessageSender::send(router_id, T::Sender::get(), message.serialize());
+					let res = T::MessageSender::send(router_id, T::Sender::get(), message);
 
 					(res, LP_DEFENSIVE_WEIGHT)
 				}
@@ -686,13 +676,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageReceiver for Pallet<T> {
+		type Message = T::Message;
 		type Middleware = T::RouterId;
 		type Origin = DomainAddress;
 
 		fn receive(
 			router_id: T::RouterId,
 			origin_address: DomainAddress,
-			message: Vec<u8>,
+			message: T::Message,
 		) -> DispatchResult {
 			ensure!(
 				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
@@ -701,7 +692,7 @@ pub mod pallet {
 
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
 				domain_address: origin_address,
-				message: T::Message::deserialize(&message)?,
+				message,
 				router_id,
 			};
 

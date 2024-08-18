@@ -6,7 +6,7 @@
 //! representation for each message variant.
 
 use cfg_traits::{
-	liquidity_pools::{LPMessage, MessageHash},
+	liquidity_pools::{LpMessage, MessageHash},
 	Seconds,
 };
 use cfg_types::domain_address::Domain;
@@ -18,9 +18,10 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
+use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
-use sp_std::{vec, vec::Vec};
+use sp_std::{boxed::Box, vec, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -79,9 +80,9 @@ impl TryInto<Domain> for SerializableDomain {
 
 /// A message type that can not be a batch.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct NoBatchMessage(Message);
+pub struct NonBatchMessage(Message);
 
-impl TryFrom<Message> for NoBatchMessage {
+impl TryFrom<Message> for NonBatchMessage {
 	type Error = DispatchError;
 
 	fn try_from(message: Message) -> Result<Self, DispatchError> {
@@ -92,16 +93,16 @@ impl TryFrom<Message> for NoBatchMessage {
 	}
 }
 
-impl MaxEncodedLen for NoBatchMessage {
+impl MaxEncodedLen for NonBatchMessage {
 	fn max_encoded_len() -> usize {
-		// This message use a non batch message version to obtain the encoded
-		// len to avoid an infite recursion: message -> batch -> message -> batch ...
+		// This message uses a non-batch message version to obtain the encoded
+		// len to avoid an infinite recursion: message -> batch -> message -> batch ...
 		Message::<()>::max_encoded_len()
 	}
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen, Default)]
-pub struct BatchMessages(BoundedVec<NoBatchMessage, ConstU32<MAX_BATCH_MESSAGES>>);
+pub struct BatchMessages(BoundedVec<NonBatchMessage, ConstU32<MAX_BATCH_MESSAGES>>);
 
 impl Serialize for BatchMessages {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -192,6 +193,38 @@ impl BatchMessages {
 	}
 }
 
+/// A message type that cannot be forwarded.
+#[derive(Encode, Decode, Serialize, Deserialize, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct NonForwardMessage(Box<Message>);
+
+impl TryFrom<Message> for NonForwardMessage {
+	type Error = DispatchError;
+
+	fn try_from(message: Message) -> Result<Self, DispatchError> {
+		match message {
+			Message::Forwarded { .. } => Err(DispatchError::Other(
+				"A submessage can not be a forwarded one",
+			)),
+			_ => Ok(Self(message.into())),
+		}
+	}
+}
+
+impl From<NonForwardMessage> for Message {
+	fn from(value: NonForwardMessage) -> Self {
+		*value.0
+	}
+}
+
+impl MaxEncodedLen for NonForwardMessage {
+	fn max_encoded_len() -> usize {
+		// This message uses a non-forwarded message version to obtain the encoded
+		// len to avoid an infinite recursion: message -> forward -> message -> forward
+		// ...
+		Message::<()>::max_encoded_len()
+	}
+}
+
 /// A LiquidityPools Message
 #[derive(
 	Encode,
@@ -206,7 +239,7 @@ impl BatchMessages {
 	MaxEncodedLen,
 	Default,
 )]
-pub enum Message<BatchContent = BatchMessages> {
+pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessage> {
 	#[default]
 	Invalid,
 	// --- Gateway ---
@@ -530,9 +563,20 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The amount of tranche tokens which should be redeemed.
 		amount: u128,
 	},
+	/// A wrapped Message which was forwarded from the source domain via the
+	/// contract.
+	///
+	/// Directionality: Centrifuge <-> EVM Domain.
+	Forwarded {
+		source_domain: SerializableDomain,
+		forwarding_contract: H160,
+		message: ForwardContent,
+	},
 }
 
-impl LPMessage for Message {
+impl LpMessage for Message {
+	type Domain = Domain;
+
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -567,7 +611,7 @@ impl LPMessage for Message {
 	}
 
 	fn get_message_hash(&self) -> MessageHash {
-		keccak_256(&LPMessage::serialize(self))
+		keccak_256(&LpMessage::serialize(self))
 	}
 
 	fn to_proof_message(&self) -> Self {
@@ -582,6 +626,40 @@ impl LPMessage for Message {
 
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Message::DisputeMessageRecovery { hash, router }
+	}
+
+	fn is_forwarded(&self) -> bool {
+		matches!(self, Message::Forwarded { .. })
+	}
+
+	fn unwrap_forwarded(self) -> Option<(Domain, H160, Self)> {
+		match self {
+			Self::Forwarded {
+				source_domain,
+				forwarding_contract,
+				message,
+			} => source_domain
+				.try_into()
+				.ok()
+				.map(|domain| (domain, forwarding_contract, message.into())),
+			_ => None,
+		}
+	}
+
+	fn try_wrap_forward(
+		source_domain: Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError> {
+		Ok(Self::Forwarded {
+			source_domain: source_domain.into(),
+			forwarding_contract,
+			message: message.try_into().map_err(|_| {
+				DispatchError::Other(
+					"Failed to convert LpMessage {message:?} into NonForwardMessage",
+				)
+			})?,
+		})
 	}
 }
 

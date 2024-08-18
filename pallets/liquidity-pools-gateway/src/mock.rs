@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::pallet_mock_liquidity_pools;
-use cfg_traits::liquidity_pools::{LPMessage, MessageHash, RouterProvider};
+use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -59,7 +59,9 @@ impl MaxEncodedLen for Message {
 	}
 }
 
-impl LPMessage for Message {
+impl LpMessage for Message {
+	type Domain = Domain;
+
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
@@ -124,6 +126,18 @@ impl LPMessage for Message {
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
 	}
+
+	fn is_forwarded(&self) -> bool {
+		unimplemented!("out of scope")
+	}
+
+	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)> {
+		unimplemented!("out of scope")
+	}
+
+	fn try_wrap_forward(_: Self::Domain, _: H160, _: Self) -> Result<Self, DispatchError> {
+		unimplemented!("out of scope")
+	}
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
@@ -176,6 +190,7 @@ impl cfg_mocks::queue::pallet::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
+	type Message = Message;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 }

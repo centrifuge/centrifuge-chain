@@ -1,5 +1,5 @@
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPMessage, MessageHash, MessageQueue, RouterProvider,
+	InboundMessageHandler, LpMessage, MessageHash, MessageQueue, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{

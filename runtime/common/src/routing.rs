@@ -1,5 +1,5 @@
 use cfg_traits::{
-	liquidity_pools::{MessageSender, RouterProvider},
+	liquidity_pools::{LpMessage, MessageReceiver, MessageSender, RouterProvider},
 	PreConditions,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -8,6 +8,7 @@ use frame_support::{
 	pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
 };
 pub use pallet_axelar_router::AxelarId;
+use pallet_liquidity_pools::Message;
 use sp_core::{H160, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
@@ -57,10 +58,11 @@ impl<Routers> MessageSender for RouterDispatcher<Routers>
 where
 	Routers: pallet_axelar_router::Config,
 {
+	type Message = Vec<u8>;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 
-	fn send(router_id: RouterId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
+	fn send(router_id: RouterId, origin: Self::Origin, message: Self::Message) -> DispatchResult {
 		match router_id {
 			RouterId::Axelar(axelar_id) => {
 				pallet_axelar_router::Pallet::<Routers>::send(axelar_id, origin, message)
@@ -76,5 +78,42 @@ impl<Runtime: pallet_evm::Config> PreConditions<(H160, H256)> for EvmAccountCode
 	fn check((contract_address, contract_hash): (H160, H256)) -> bool {
 		let code = pallet_evm::AccountCodes::<Runtime>::get(contract_address);
 		BlakeTwo256::hash_of(&code) == contract_hash
+	}
+}
+
+pub struct MessageSerializer<Sender, Receiver>(PhantomData<(Sender, Receiver)>);
+
+impl<Sender, Receiver> MessageSender for MessageSerializer<Sender, Receiver>
+where
+	Sender: MessageSender<Message = Vec<u8>, Middleware = RouterId, Origin = DomainAddress>,
+{
+	type Message = Message;
+	type Middleware = RouterId;
+	type Origin = DomainAddress;
+
+	fn send(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Self::Message,
+	) -> DispatchResult {
+		Sender::send(middleware, origin, message.serialize())
+	}
+}
+
+impl<Sender, Receiver> MessageReceiver for MessageSerializer<Sender, Receiver>
+where
+	Receiver: MessageReceiver<Middleware = RouterId, Origin = DomainAddress, Message = Message>,
+{
+	type Message = Vec<u8>;
+	type Middleware = RouterId;
+	type Origin = DomainAddress;
+
+	fn receive(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		payload: Self::Message,
+	) -> DispatchResult {
+		let message = Message::deserialize(&payload)?;
+		Receiver::receive(middleware, origin, message)
 	}
 }

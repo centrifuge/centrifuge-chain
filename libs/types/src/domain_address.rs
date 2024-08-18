@@ -64,6 +64,13 @@ impl Domain {
 	pub fn into_account<AccountId: Encode + Decode>(&self) -> AccountId {
 		self.into_account_truncating()
 	}
+
+	pub fn get_evm_chain_id(&self) -> Option<EVMChainId> {
+		match self {
+			Domain::Centrifuge => None,
+			Domain::Evm(id) => Some(*id),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]

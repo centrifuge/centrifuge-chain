@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use frame_support::{dispatch::DispatchResult, weights::Weight};
-use sp_runtime::DispatchError;
+use sp_runtime::{app_crypto::sp_core::H160, DispatchError};
 use sp_std::vec::Vec;
 
 /// Type that represents the hash of an LP message.
@@ -20,7 +20,9 @@ pub type MessageHash = [u8; 32];
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait LPMessage: Sized {
+pub trait LpMessage: Sized {
+	type Domain;
+
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
@@ -55,6 +57,19 @@ pub trait LPMessage: Sized {
 	/// Hash - hash of the message that should be disputed.
 	/// Router - the address of the recovery router.
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
+
+	/// Checks whether a message is a forwarded one.
+	fn is_forwarded(&self) -> bool;
+
+	/// Unwraps a forwarded message.
+	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)>;
+
+	/// Attempts to wrap into a forwarded message.
+	fn try_wrap_forward(
+		domain: Self::Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError>;
 }
 
 pub trait RouterProvider<Domain>: Sized {
@@ -73,9 +88,15 @@ pub trait MessageSender {
 	/// The originator of the message to be sent
 	type Origin;
 
+	/// The type of the message
+	type Message;
+
 	/// Sends a message for origin to destination
-	fn send(middleware: Self::Middleware, origin: Self::Origin, message: Vec<u8>)
-		-> DispatchResult;
+	fn send(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Self::Message,
+	) -> DispatchResult;
 }
 
 /// The behavior of an entity that can receive messages
@@ -86,11 +107,13 @@ pub trait MessageReceiver {
 	/// The originator of the received message
 	type Origin;
 
+	type Message;
+
 	/// Sends a message for origin to destination
 	fn receive(
 		middleware: Self::Middleware,
 		origin: Self::Origin,
-		message: Vec<u8>,
+		message: Self::Message,
 	) -> DispatchResult;
 }
 
