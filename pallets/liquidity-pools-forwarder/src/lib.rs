@@ -33,7 +33,9 @@ mod tests;
 
 use core::fmt::Debug;
 
-use cfg_traits::liquidity_pools::{LpMessage as LpMessageT, MessageReceiver, MessageSender};
+use cfg_traits::liquidity_pools::{
+	LpMessage as LpMessageT, MessageReceiver, MessageSender, RouterProvider,
+};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
@@ -100,6 +102,9 @@ pub mod pallet {
 
 		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
+
+		/// The type that provides the router available for a domain.
+		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 	}
 
 	#[pallet::event]
@@ -219,26 +224,32 @@ pub mod pallet {
 		type Origin = DomainAddress;
 
 		fn receive(
-			router_id: T::RouterId,
-			domain_address: DomainAddress,
+			forwarder_router_id: T::RouterId,
+			forwarder_domain_address: DomainAddress,
 			message: T::Message,
 		) -> DispatchResult {
 			// Message can be unwrapped iff it was forwarded
-			//
-			// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
-			// that it suffices to filter for the existence of forwarding info
-			let lp_message = match (
-				RouterForwarding::<T>::get(&router_id).is_some(),
-				message.clone().unwrap_forwarded(),
-			) {
-				(true, Some((_domain, _contract, lp_message))) => Ok(lp_message),
-				(true, None) => Err(Error::<T>::UnwrappingFailed),
-				(false, None) => Ok(message),
-				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
+			if let Some((source_domain, _contract, lp_message)) = message.clone().unwrap_forwarded()
+			{
+				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
+				for router_id in router_ids {
+					// NOTE: It suffices to check for forwarding existence without need to check the
+					// forwarding contract address. For that, we can rely on EVM side to ensure
+					// forwarded messages are valid
+					if RouterForwarding::<T>::get(&router_id).is_some() {
+						return T::MessageReceiver::receive(
+							// Since message was sent from forwarder router id, Gateway needs to
+							// check whether that id is whitelisted, not the source domain
+							forwarder_router_id,
+							forwarder_domain_address,
+							lp_message,
+						);
+					}
+				}
+				Err(Error::<T>::ForwardInfoNotFound.into())
+			} else {
+				T::MessageReceiver::receive(forwarder_router_id, forwarder_domain_address, message)
 			}
-			.map_err(|e: Error<T>| e)?;
-
-			T::MessageReceiver::receive(router_id, domain_address, lp_message)
 		}
 	}
 }

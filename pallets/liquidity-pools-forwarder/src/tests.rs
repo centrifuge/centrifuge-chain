@@ -343,22 +343,6 @@ mod receive_message {
 		}
 
 		#[test]
-		fn with_failed_unwrapping() {
-			System::externalities().execute_with(|| {
-				config_mocks(true);
-
-				assert_noop!(
-					LiquidityPoolsForwarder::receive(
-						ROUTER_ID,
-						FORWARDER_DOMAIN_ADDRESS,
-						Message::NonForward
-					),
-					Error::<Runtime>::UnwrappingFailed
-				);
-			});
-		}
-
-		#[test]
 		fn forward_with_message_receiver_err() {
 			System::externalities().execute_with(|| {
 				config_mocks(true);

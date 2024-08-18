@@ -1,4 +1,4 @@
-use cfg_traits::liquidity_pools::{LpMessage, MessageHash};
+use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	derive_impl,
@@ -12,6 +12,7 @@ use sp_runtime::{traits::IdentityLookup, DispatchError};
 
 use crate::pallet as pallet_liquidity_pools_forwarder;
 
+pub type RouterId = u32;
 const SOURCE_CHAIN_ID: u64 = 1;
 const FORWARDER_CHAIN_ID: u64 = 42;
 pub const SOURCE_DOMAIN: Domain = Domain::Evm(SOURCE_CHAIN_ID);
@@ -20,7 +21,8 @@ pub const FORWARDER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(FORWARDER_CHAIN_ID, FORWARDER_ADAPTER_ADDRESS);
 pub const FORWARD_CONTRACT: H160 = H160::repeat_byte(2);
 
-pub const ROUTER_ID: RouterId = RouterId(1);
+pub const ROUTER_ID: RouterId = 1;
+const UNCONFIGURED_ROUTER_ID: RouterId = 2;
 const FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x42];
 const NON_FORWARD_SERIALIZED_MESSAGE_BYTES: [u8; 1] = [0x43];
 pub const ERROR_NESTING: DispatchError = DispatchError::Other("Nesting forward msg not allowed");
@@ -100,8 +102,18 @@ impl LpMessage for Message {
 	}
 }
 
-#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
-pub struct RouterId(pub u32);
+pub struct TestRouterProvider;
+
+impl RouterProvider<Domain> for TestRouterProvider {
+	type RouterId = RouterId;
+
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId> {
+		match domain {
+			Domain::Centrifuge => vec![],
+			Domain::Evm(_) => vec![ROUTER_ID, UNCONFIGURED_ROUTER_ID],
+		}
+	}
+}
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -131,5 +143,6 @@ impl pallet_liquidity_pools_forwarder::Config for Runtime {
 	type MessageReceiver = MockSenderReceiver;
 	type MessageSender = MockSenderReceiver;
 	type RouterId = RouterId;
+	type RouterProvider = TestRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
 }
