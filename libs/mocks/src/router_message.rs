@@ -8,8 +8,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Middleware;
 		type Origin;
-		type ReceiverMessage;
-		type SenderMessage;
+		type Message;
 	}
 
 	#[pallet::pallet]
@@ -20,20 +19,20 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_receive(
-			f: impl Fn(T::Middleware, T::Origin, T::ReceiverMessage) -> DispatchResult + 'static,
+			f: impl Fn(T::Middleware, T::Origin, T::Message) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		pub fn mock_send(
-			f: impl Fn(T::Middleware, T::Origin, T::SenderMessage) -> DispatchResult + 'static,
+			f: impl Fn(T::Middleware, T::Origin, T::Message) -> DispatchResult + 'static,
 		) -> CallHandler {
 			register_call!(move |(a, b, c)| f(a, b, c))
 		}
 	}
 
 	impl<T: Config> MessageReceiver for Pallet<T> {
-		type Message = T::ReceiverMessage;
+		type Message = T::Message;
 		type Middleware = T::Middleware;
 		type Origin = T::Origin;
 
@@ -43,7 +42,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageSender for Pallet<T> {
-		type Message = T::SenderMessage;
+		type Message = T::Message;
 		type Middleware = T::Middleware;
 		type Origin = T::Origin;
 

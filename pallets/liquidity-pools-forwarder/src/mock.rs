@@ -120,10 +120,9 @@ impl frame_system::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
+	type Message = Message;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
-	type ReceiverMessage = Message;
-	type SenderMessage = Message;
 }
 
 impl pallet_liquidity_pools_forwarder::Config for Runtime {
