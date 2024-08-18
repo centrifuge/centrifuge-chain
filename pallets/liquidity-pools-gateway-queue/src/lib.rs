@@ -253,7 +253,7 @@ pub mod pallet {
 	impl<T: Config> MessageQueueT for Pallet<T> {
 		type Message = T::Message;
 
-		fn submit(message: Self::Message) -> DispatchResult {
+		fn queue(message: Self::Message) -> DispatchResult {
 			let nonce = <MessageNonceStore<T>>::try_mutate(|n| {
 				n.ensure_add_assign(T::MessageNonce::one())?;
 				Ok::<T::MessageNonce, DispatchError>(*n)

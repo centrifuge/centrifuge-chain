@@ -68,7 +68,11 @@ fn transfer_balance<T: Runtime>() {
 }
 
 // Identical to `transfer_balance()` test but using fudge.
-#[test_runtimes([development, altair, centrifuge], ignore = "uncomment to run the example")]
+//
+// NOTE: this test fails checking the events if compiled in debug
+// (which implies using std in the runtimes), compiling this in release (which
+// implies using no-std in the runtimes) works. TODO: investigate why.
+#[test_runtimes([development, altair, centrifuge])]
 fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;

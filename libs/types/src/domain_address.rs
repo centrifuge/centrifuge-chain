@@ -85,12 +85,6 @@ impl TypeId for DomainAddress {
 	const TYPE_ID: [u8; 4] = crate::ids::DOMAIN_ADDRESS_ID;
 }
 
-impl Default for DomainAddress {
-	fn default() -> Self {
-		DomainAddress::Centrifuge(AccountId32::new([0; 32]))
-	}
-}
-
 impl From<DomainAddress> for Domain {
 	fn from(x: DomainAddress) -> Self {
 		match x {

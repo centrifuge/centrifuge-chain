@@ -62,12 +62,6 @@ pub enum AxelarId {
 	Evm(EVMChainId),
 }
 
-impl Default for AxelarId {
-	fn default() -> Self {
-		Self::Evm(1)
-	}
-}
-
 /// Configuration for outbound messages though axelar
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarConfig {
@@ -242,9 +236,8 @@ pub mod pallet {
 
 			match config.domain {
 				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
-					let source_address_bytes =
-						cfg_utils::decode_var_source::<EVM_ADDRESS_LEN>(source_address)
-							.ok_or(Error::<T>::InvalidSourceAddress)?;
+					let source_address_bytes = decode_var_source::<EVM_ADDRESS_LEN>(source_address)
+						.ok_or(Error::<T>::InvalidSourceAddress)?;
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
@@ -431,4 +424,65 @@ pub fn wrap_into_axelar_msg(
 	.map_err(|_| "cannot encode input for Axelar contract function")?;
 
 	Ok(encoded_axelar_contract)
+}
+
+/// Decodes the source address which can be:
+/// - a 20 bytes array
+/// - an hexadecimal character secuence (40 characters)
+/// - an hexadecimal character secuence (40 characters) with 0x prefix
+pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
+	source_address: &[u8],
+) -> Option<[u8; EXPECTED_SOURCE_ADDRESS_SIZE]> {
+	const HEX_PREFIX: &str = "0x";
+
+	let mut address = [0u8; EXPECTED_SOURCE_ADDRESS_SIZE];
+
+	if source_address.len() == EXPECTED_SOURCE_ADDRESS_SIZE {
+		address.copy_from_slice(source_address);
+		return Some(address);
+	}
+
+	let try_bytes = match sp_std::str::from_utf8(source_address) {
+		Ok(res) => res.as_bytes(),
+		Err(_) => source_address,
+	};
+
+	// Attempt to hex decode source address.
+	let bytes = match hex::decode(try_bytes) {
+		Ok(res) => Some(res),
+		Err(_) => {
+			// Strip 0x prefix.
+			let res = try_bytes.strip_prefix(HEX_PREFIX.as_bytes())?;
+
+			hex::decode(res).ok()
+		}
+	}?;
+
+	if bytes.len() == EXPECTED_SOURCE_ADDRESS_SIZE {
+		address.copy_from_slice(bytes.as_slice());
+		Some(address)
+	} else {
+		None
+	}
+}
+
+#[cfg(test)]
+mod test_decode_var_source {
+	const EXPECTED: usize = 20;
+	use super::*;
+
+	#[test]
+	fn success() {
+		assert!(decode_var_source::<EXPECTED>(&[1; 20]).is_some());
+
+		assert!(decode_var_source::<EXPECTED>(
+			"d47ed02acbbb66ee8a3fe0275bd98add0aa607c3".as_bytes()
+		)
+		.is_some());
+
+		assert!(decode_var_source::<EXPECTED>(
+			"0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3".as_bytes()
+		)
+		.is_some());
+	}
 }

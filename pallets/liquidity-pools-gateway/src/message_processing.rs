@@ -487,7 +487,7 @@ impl<T: Config> Pallet<T> {
 				router_id,
 			};
 
-			T::MessageQueue::submit(gateway_message)?;
+			T::MessageQueue::queue(gateway_message)?;
 		}
 
 		Ok(())

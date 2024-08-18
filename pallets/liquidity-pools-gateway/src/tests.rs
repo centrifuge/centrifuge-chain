@@ -357,7 +357,7 @@ mod extrinsics {
 					DOMAIN
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				// Ok Batched
 				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -402,7 +402,7 @@ mod extrinsics {
 					DOMAIN
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(|_| Ok(()));
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				(0..MAX_PACKED_MESSAGES).for_each(|_| {
 					assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
@@ -755,7 +755,6 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::initiate_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN,
 					MESSAGE_HASH,
 					recovery_router,
 					ROUTER_ID_1,
@@ -778,7 +777,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -796,7 +794,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -827,7 +824,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						RouterId(4),
@@ -860,7 +856,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::initiate_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -894,7 +889,6 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::dispute_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN,
 					MESSAGE_HASH,
 					recovery_router,
 					ROUTER_ID_1,
@@ -917,7 +911,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::signed(AccountId32::new([0u8; 32])),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -935,7 +928,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -966,7 +958,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						RouterId(4),
@@ -999,7 +990,6 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::dispute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN,
 						MESSAGE_HASH,
 						recovery_router,
 						ROUTER_ID_1,
@@ -1030,7 +1020,7 @@ mod implementations {
 					BoundedVec::try_from(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]).unwrap(),
 				));
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_msg| {
 					match mock_msg {
 						GatewayMessage::Inbound { .. } => {
 							assert!(false, "expected outbound message")
@@ -1098,7 +1088,7 @@ mod implementations {
 
 				let err = DispatchError::Unavailable;
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_msg| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_msg| {
 					assert_eq!(mock_msg, gateway_message);
 
 					Err(err)
@@ -3375,7 +3365,7 @@ mod implementations {
 					router_id: router_id.clone(),
 				};
 
-				let handler = MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_message| {
 					assert_eq!(mock_message, gateway_message);
 					Ok(())
 				});
@@ -3439,7 +3429,7 @@ mod implementations {
 					router_id: router_id.clone(),
 				};
 
-				MockLiquidityPoolsGatewayQueue::mock_submit(move |mock_message| {
+				MockLiquidityPoolsGatewayQueue::mock_queue(move |mock_message| {
 					assert_eq!(mock_message, gateway_message);
 					Err(err)
 				});

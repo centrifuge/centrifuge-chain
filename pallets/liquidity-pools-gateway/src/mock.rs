@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Formatter};
 
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_liquidity_pools_gateway_queue};
+use cfg_mocks::pallet_mock_liquidity_pools;
 use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -119,11 +119,11 @@ impl LpMessage for Message {
 		}
 	}
 
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::InitiateMessageRecovery((hash, router))
 	}
 
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
 	}
 
@@ -140,7 +140,7 @@ impl LpMessage for Message {
 	}
 }
 
-#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
 pub struct RouterId(pub u32);
 
 pub struct TestRouterProvider;
@@ -156,11 +156,17 @@ impl RouterProvider<Domain> for TestRouterProvider {
 	}
 }
 
+impl Into<Domain> for RouterId {
+	fn into(self) -> Domain {
+		Domain::Evm(self.0.into())
+	}
+}
+
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
-		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
+		MockLiquidityPoolsGatewayQueue: cfg_mocks::queue::pallet,
 		MockMessageSender: cfg_mocks::router_message::pallet,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
@@ -179,7 +185,7 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 	type Message = Message;
 }
 
-impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
+impl cfg_mocks::queue::pallet::Config for Runtime {
 	type Message = GatewayMessage<Message, RouterId>;
 }
 

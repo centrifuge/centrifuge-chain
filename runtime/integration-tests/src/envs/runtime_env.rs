@@ -178,7 +178,9 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	fn __priv_build_block(&mut self, i: BlockNumber) {
 		self.process_pending_extrinsics();
 		self.parachain_state_mut(|| {
-			T::Api::finalize_block();
+			if i == 0 {
+				T::Api::finalize_block();
+			}
 			Self::prepare_block(i);
 		});
 	}
@@ -251,6 +253,8 @@ impl<T: Runtime> RuntimeEnv<T> {
 		for extrinsic in inherent_extrinsics {
 			T::Api::apply_extrinsic(extrinsic).unwrap().unwrap();
 		}
+
+		T::Api::finalize_block();
 	}
 
 	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCallExt {

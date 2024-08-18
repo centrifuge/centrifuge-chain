@@ -114,7 +114,7 @@ pub mod pallet {
 		>;
 
 		/// An identification of a router
-		type RouterId: Parameter + MaxEncodedLen;
+		type RouterId: Parameter + MaxEncodedLen + Into<Domain>;
 
 		/// The type that provides the router available for a domain.
 		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
@@ -531,12 +531,13 @@ pub mod pallet {
 		#[pallet::call_index(12)]
 		pub fn initiate_message_recovery(
 			origin: OriginFor<T>,
-			domain: Domain,
 			message_hash: MessageHash,
 			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
+
+			let domain = messaging_router.clone().into();
 
 			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
 
@@ -560,12 +561,13 @@ pub mod pallet {
 		#[pallet::call_index(13)]
 		pub fn dispute_message_recovery(
 			origin: OriginFor<T>,
-			domain: Domain,
 			message_hash: MessageHash,
 			recovery_router: [u8; 32],
 			messaging_router: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
+
+			let domain = messaging_router.clone().into();
 
 			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
 
@@ -694,7 +696,7 @@ pub mod pallet {
 				router_id,
 			};
 
-			T::MessageQueue::submit(gateway_message)
+			T::MessageQueue::queue(gateway_message)
 		}
 	}
 }

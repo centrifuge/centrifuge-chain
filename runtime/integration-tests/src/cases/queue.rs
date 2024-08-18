@@ -10,22 +10,16 @@ use sp_runtime::{traits::One, BoundedVec};
 use crate::{
 	config::Runtime,
 	env::{Blocks, Env},
-	envs::fudge_env::{FudgeEnv, FudgeSupport},
+	envs::runtime_env::RuntimeEnv,
 };
 
 pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(1));
 
-/// NOTE - we're using fudge here because in a non-fudge environment, the event
-/// can only be read before block finalization. The LP gateway queue is
-/// processing messages during the `on_idle` hook, just before the block is
-/// finished, after the message is processed, the block is finalized and the
-/// event resets.
-
 /// Confirm that an inbound messages reaches its destination:
 /// LP pallet
 #[test_runtimes(all)]
-fn inbound<T: Runtime + FudgeSupport>() {
-	let mut env = FudgeEnv::<T>::default();
+fn queue_and_dequeue_inbound<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -33,14 +27,14 @@ fn inbound<T: Runtime + FudgeSupport>() {
 			BoundedVec::try_from(vec![DEFAULT_ROUTER_ID]).unwrap(),
 		));
 
-		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
+		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
 			domain_address: DomainAddress::Evm(1, H160::repeat_byte(2)),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
 
-		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));
 
@@ -51,17 +45,18 @@ fn inbound<T: Runtime + FudgeSupport>() {
 		}
 	});
 
+	// Here we dequeue
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
-		limit: 3,
+		limit: 1,
 	});
 }
 
-/// Confirm that an inbound messages reaches its destination:
-/// LP gateway pallet
+/// Confirm that an outbound messages reaches its destination:
+/// The routers
 #[test_runtimes(all)]
-fn outbound<T: Runtime + FudgeSupport>() {
-	let mut env = FudgeEnv::<T>::default();
+fn queue_and_dequeue_outbound<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::default();
 
 	let expected_event = env.parachain_state_mut(|| {
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -69,13 +64,13 @@ fn outbound<T: Runtime + FudgeSupport>() {
 			BoundedVec::try_from(vec![DEFAULT_ROUTER_ID]).unwrap(),
 		));
 
-		let nonce = <T as pallet_liquidity_pools_gateway_queue::Config>::MessageNonce::one();
+		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Outbound {
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};
 
-		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::submit(
+		assert_ok!(pallet_liquidity_pools_gateway_queue::Pallet::<T>::queue(
 			message.clone()
 		));
 
@@ -86,8 +81,9 @@ fn outbound<T: Runtime + FudgeSupport>() {
 		}
 	});
 
+	// Here we dequeue
 	env.pass(Blocks::UntilEvent {
 		event: expected_event.into(),
-		limit: 3,
+		limit: 1,
 	});
 }

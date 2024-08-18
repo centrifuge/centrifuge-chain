@@ -50,13 +50,13 @@ pub trait LpMessage: Sized {
 	///
 	/// Hash - hash of the message that should be recovered.
 	/// Router - the address of the recovery router.
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
 
 	/// Creates a message used for disputing message recovery.
 	///
 	/// Hash - hash of the message that should be disputed.
 	/// Router - the address of the recovery router.
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self;
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
 
 	/// Checks whether a message is a forwarded one.
 	fn is_forwarded(&self) -> bool;
@@ -123,10 +123,10 @@ pub trait MessageQueue {
 	type Message;
 
 	/// Submit a message to the queue.
-	fn submit(msg: Self::Message) -> DispatchResult;
+	fn queue(msg: Self::Message) -> DispatchResult;
 }
 
-/// The trait required for processing queued messages.
+/// The trait required for processing dequeued messages.
 pub trait MessageProcessor {
 	/// The message type.
 	type Message;
@@ -134,7 +134,7 @@ pub trait MessageProcessor {
 	/// Process a message.
 	fn process(msg: Self::Message) -> (DispatchResult, Weight);
 
-	/// Process a message.
+	/// Max weight that processing a message can take
 	fn max_processing_weight(msg: &Self::Message) -> Weight;
 }
 

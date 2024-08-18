@@ -10,10 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
+use cfg_primitives::{AccountId, Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
 use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	fixed_point::Ratio,
+	oracles::OracleKey,
 	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
@@ -26,10 +28,10 @@ use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_evm::FeeCalculator;
-use runtime_common::routing::RouterId;
+use runtime_common::{oracle::Feeder, routing::RouterId};
 pub use setup_lp::*;
-use sp_core::Get;
-use sp_runtime::traits::{BlakeTwo256, Hash};
+use sp_core::{bounded_vec::BoundedVec, Get};
+use sp_runtime::traits::{BlakeTwo256, Hash, One};
 
 use crate::{
 	cases::lp::utils::{pool_a_tranche_1_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},

@@ -10,8 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use sp_core::bounded_vec::BoundedVec;
-
 use super::*;
 use crate::cases::lp::utils::pool_c_tranche_1_id;
 
@@ -920,12 +918,34 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
+/// Adds bidirectional trading pairs with conversion ratio one.
+pub fn enable_symmetric_trading_pair<T: Runtime>(
+	currency_1: CurrencyId,
+	currency_2: CurrencyId,
+	pool_admin: AccountId,
+	pool_id: PoolId,
+) {
+	assert_ok!(pallet_order_book::Pallet::<T>::set_market_feeder(
+		<T as frame_system::Config>::RuntimeOrigin::root(),
+		Feeder::root(),
+	));
+	crate::utils::oracle::update_feeders::<T>(pool_admin, pool_id, [Feeder::root()]);
+	crate::utils::oracle::feed_from_root::<T>(
+		OracleKey::ConversionRatio(currency_1, currency_2),
+		Ratio::one(),
+	);
+	crate::utils::oracle::feed_from_root::<T>(
+		OracleKey::ConversionRatio(currency_2, currency_1),
+		Ratio::one(),
+	);
+}
+
 /// Setup symmetric trading pairs and market ratios
 ///
 /// NOTE: Necessary in order to be able to invest
 pub fn setup_market_ratios<T: Runtime>() {
 	for currency_id in [USDC.id(), FRAX.id(), DAI.id()] {
-		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+		enable_symmetric_trading_pair::<T>(
 			pallet_foreign_investments::pool_currency_of::<T>((POOL_A, pool_a_tranche_1_id::<T>()))
 				.unwrap(),
 			currency_id,
@@ -940,7 +960,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+		enable_symmetric_trading_pair::<T>(
 			pallet_foreign_investments::pool_currency_of::<T>((POOL_B, pool_b_tranche_1_id::<T>()))
 				.unwrap(),
 			currency_id,
@@ -954,7 +974,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			currency_id,
 			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
-		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+		enable_symmetric_trading_pair::<T>(
 			pallet_foreign_investments::pool_currency_of::<T>((POOL_B, pool_b_tranche_2_id::<T>()))
 				.unwrap(),
 			currency_id,
@@ -969,7 +989,7 @@ pub fn setup_market_ratios<T: Runtime>() {
 			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
-		crate::cases::liquidity_pools::utils::enable_symmetric_trading_pair::<T>(
+		enable_symmetric_trading_pair::<T>(
 			pallet_foreign_investments::pool_currency_of::<T>((POOL_C, pool_c_tranche_1_id::<T>()))
 				.unwrap(),
 			currency_id,

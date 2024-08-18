@@ -620,11 +620,11 @@ impl LpMessage for Message {
 		}
 	}
 
-	fn initiate_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Message::InitiateMessageRecovery { hash, router }
 	}
 
-	fn dispute_recovery_message(hash: [u8; 32], router: [u8; 32]) -> Self {
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Message::DisputeMessageRecovery { hash, router }
 	}
 
