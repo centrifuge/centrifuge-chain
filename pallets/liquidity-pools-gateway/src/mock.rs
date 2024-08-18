@@ -1,7 +1,10 @@
 use std::fmt::{Debug, Formatter};
 
 use cfg_mocks::pallet_mock_liquidity_pools;
-use cfg_traits::liquidity_pools::{LpMessage, MessageHash, RouterProvider};
+use cfg_traits::liquidity_pools::{
+	LpMessageBatch, LpMessageHash, LpMessageProof, LpMessageRecovery, LpMessageSerializer,
+	MessageHash, RouterProvider,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
@@ -59,9 +62,7 @@ impl MaxEncodedLen for Message {
 	}
 }
 
-impl LpMessage for Message {
-	type Domain = Domain;
-
+impl LpMessageSerializer for Message {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Pack(list) => list.iter().map(|_| 0x42).collect(),
@@ -76,7 +77,9 @@ impl LpMessage for Message {
 			n => Self::Pack(sp_std::iter::repeat(Self::Simple).take(n).collect()),
 		})
 	}
+}
 
+impl LpMessageBatch for Message {
 	fn pack_with(&mut self, other: Self) -> DispatchResult {
 		match self {
 			Self::Pack(list) if list.len() == MAX_PACKED_MESSAGES => {
@@ -103,13 +106,17 @@ impl LpMessage for Message {
 	fn empty() -> Self {
 		Self::Pack(vec![])
 	}
+}
 
-	fn is_proof_message(&self) -> bool {
-		matches!(self, Message::Proof(..))
-	}
-
+impl LpMessageHash for Message {
 	fn get_message_hash(&self) -> MessageHash {
 		MESSAGE_HASH
+	}
+}
+
+impl LpMessageProof for Message {
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::Proof(..))
 	}
 
 	fn to_proof_message(&self) -> Self {
@@ -118,25 +125,15 @@ impl LpMessage for Message {
 			_ => Message::Proof(self.get_message_hash()),
 		}
 	}
+}
 
+impl LpMessageRecovery for Message {
 	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::InitiateMessageRecovery((hash, router))
 	}
 
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Self::DisputeMessageRecovery((hash, router))
-	}
-
-	fn is_forwarded(&self) -> bool {
-		unimplemented!("out of scope")
-	}
-
-	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)> {
-		unimplemented!("out of scope")
-	}
-
-	fn try_wrap_forward(_: Self::Domain, _: H160, _: Self) -> Result<Self, DispatchError> {
-		unimplemented!("out of scope")
 	}
 }
 

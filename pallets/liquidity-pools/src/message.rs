@@ -6,7 +6,10 @@
 //! representation for each message variant.
 
 use cfg_traits::{
-	liquidity_pools::{LpMessage, MessageHash},
+	liquidity_pools::{
+		LpMessageBatch, LpMessageForwarded, LpMessageHash, LpMessageProof, LpMessageRecovery,
+		LpMessageSerializer, MessageHash,
+	},
 	Seconds,
 };
 use cfg_types::domain_address::Domain;
@@ -574,9 +577,7 @@ pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessag
 	},
 }
 
-impl LpMessage for Message {
-	type Domain = Domain;
-
+impl LpMessageSerializer for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -584,7 +585,9 @@ impl LpMessage for Message {
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
 	}
+}
 
+impl LpMessageBatch for Message {
 	fn pack_with(&mut self, other: Self) -> Result<(), DispatchError> {
 		match self {
 			Message::Batch(content) => content.try_add(other),
@@ -605,13 +608,17 @@ impl LpMessage for Message {
 	fn empty() -> Message {
 		Message::Batch(BatchMessages::default())
 	}
+}
 
+impl LpMessageHash for Message {
+	fn get_message_hash(&self) -> MessageHash {
+		keccak_256(&LpMessageSerializer::serialize(self))
+	}
+}
+
+impl LpMessageProof for Message {
 	fn is_proof_message(&self) -> bool {
 		matches!(self, Message::MessageProof { .. })
-	}
-
-	fn get_message_hash(&self) -> MessageHash {
-		keccak_256(&LpMessage::serialize(self))
 	}
 
 	fn to_proof_message(&self) -> Self {
@@ -619,7 +626,9 @@ impl LpMessage for Message {
 			hash: self.get_message_hash(),
 		}
 	}
+}
 
+impl LpMessageRecovery for Message {
 	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Message::InitiateMessageRecovery { hash, router }
 	}
@@ -627,6 +636,10 @@ impl LpMessage for Message {
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
 		Message::DisputeMessageRecovery { hash, router }
 	}
+}
+
+impl LpMessageForwarded for Message {
+	type Domain = Domain;
 
 	fn is_forwarded(&self) -> bool {
 		matches!(self, Message::Forwarded { .. })

@@ -30,8 +30,9 @@ use core::fmt::Debug;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LpMessage, MessageHash, MessageProcessor, MessageQueue, MessageReceiver,
-	MessageSender, OutboundMessageHandler, RouterProvider,
+	InboundMessageHandler, LpMessageBatch, LpMessageProof, LpMessageRecovery, LpMessageSerializer,
+	MessageHash, MessageProcessor, MessageQueue, MessageReceiver, MessageSender,
+	OutboundMessageHandler, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -81,7 +82,10 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The Liquidity Pools message type.
-		type Message: LpMessage
+		type Message: LpMessageSerializer
+			+ LpMessageBatch
+			+ LpMessageProof
+			+ LpMessageRecovery
 			+ Clone
 			+ Debug
 			+ PartialEq
