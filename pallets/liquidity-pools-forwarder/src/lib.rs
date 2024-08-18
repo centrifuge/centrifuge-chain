@@ -137,8 +137,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// The router id does not have any forwarder info stored
 		ForwardInfoNotFound,
-		/// Failed to unwrap a message which should be a forwarded one
-		UnwrappingFailed,
 	}
 
 	#[pallet::call]
