@@ -21,9 +21,9 @@
 //! info.
 //!
 //! Assumptions:
-//! 	* The EVM side ensures that incoming forwarded messages are valid.
-//! 	* Nesting forwarded messages is not allowed, e.g. messages from A are
-//!    forwarded exactly via one intermediary domain B to reciepient C
+//!  * The EVM side ensures that incoming forwarded messages are valid.
+//!  * Nesting forwarded messages is not allowed, e.g. messages from A are
+//!    forwarded exactly via one intermediary domain B to recipient C
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
