@@ -20,12 +20,16 @@ pub type MessageHash = [u8; 32];
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait LpMessage: Sized {
-	type Domain;
-
+pub trait LpMessageSerializer: Sized {
+	/// Serialize the message
 	fn serialize(&self) -> Vec<u8>;
-	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
+	/// Deserialize the message
+	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
+}
+
+/// Behavior or a message that can be batched
+pub trait LpMessageBatch: Sized {
 	/// Extend this message with a new one
 	fn pack_with(&mut self, other: Self) -> DispatchResult;
 
@@ -36,16 +40,25 @@ pub trait LpMessage: Sized {
 	/// Creates an empty message.
 	/// It's the identity message for composing messages with pack_with
 	fn empty() -> Self;
+}
 
+/// Support for hashing
+pub trait LpMessageHash {
+	/// Retrieves the message hash, if the message is a proof type.
+	fn get_message_hash(&self) -> MessageHash;
+}
+
+/// Behavior of a message that can support proofs
+pub trait LpMessageProof: LpMessageHash {
 	/// Returns whether the message is a proof or not.
 	fn is_proof_message(&self) -> bool;
 
-	/// Retrieves the message hash, if the message is a proof type.
-	fn get_message_hash(&self) -> MessageHash;
-
 	/// Converts the message into a message proof type.
 	fn to_proof_message(&self) -> Self;
+}
 
+//Behavior of a message that support recovery
+pub trait LpMessageRecovery: LpMessageHash {
 	/// Creates a message used for initiating message recovery.
 	///
 	/// Hash - hash of the message that should be recovered.
@@ -57,6 +70,11 @@ pub trait LpMessage: Sized {
 	/// Hash - hash of the message that should be disputed.
 	/// Router - the address of the recovery router.
 	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
+}
+
+/// Behavior of a message that can be forwarded
+pub trait LpMessageForwarded: Sized {
+	type Domain;
 
 	/// Checks whether a message is a forwarded one.
 	fn is_forwarded(&self) -> bool;

@@ -35,7 +35,7 @@ mod tests;
 
 use core::fmt::Debug;
 
-use cfg_traits::liquidity_pools::{LpMessage as LpMessageT, MessageReceiver, MessageSender};
+use cfg_traits::liquidity_pools::{LpMessageForwarded, MessageReceiver, MessageSender};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
@@ -77,7 +77,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The Liquidity Pools message type.
-		type Message: LpMessageT<Domain = Domain>
+		type Message: LpMessageForwarded<Domain = Domain>
 			+ Clone
 			+ Debug
 			+ PartialEq
