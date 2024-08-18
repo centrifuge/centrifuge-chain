@@ -1885,6 +1885,8 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
+	type MessageDeserializer =
+		MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
 	type MessageSender = LiquidityPoolsForwarder;
 	type RouterId = RouterId;

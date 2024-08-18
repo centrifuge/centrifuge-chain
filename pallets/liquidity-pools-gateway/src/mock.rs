@@ -6,7 +6,11 @@ use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	EVMChainId,
 };
-use frame_support::{derive_impl, weights::constants::RocksDbWeight};
+use frame_support::{
+	derive_impl,
+	instances::{Instance1, Instance2},
+	weights::constants::RocksDbWeight,
+};
 use frame_system::EnsureRoot;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -161,7 +165,8 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockLiquidityPoolsGatewayQueue: pallet_mock_liquidity_pools_gateway_queue,
-		MockMessageSender: cfg_mocks::router_message::pallet,
+		MockMessageSender: cfg_mocks::router_message::pallet::<Instance1>,
+		MockMessageReceiver: cfg_mocks::router_message::pallet::<Instance2>,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
 );
@@ -183,8 +188,14 @@ impl pallet_mock_liquidity_pools_gateway_queue::Config for Runtime {
 	type Message = GatewayMessage<Message, RouterId>;
 }
 
-impl cfg_mocks::router_message::pallet::Config for Runtime {
+impl cfg_mocks::router_message::pallet::Config<Instance1> for Runtime {
 	type Message = Message;
+	type Middleware = RouterId;
+	type Origin = DomainAddress;
+}
+
+impl cfg_mocks::router_message::pallet::Config<Instance2> for Runtime {
+	type Message = Vec<u8>;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
 }
@@ -203,6 +214,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
+	type MessageDeserializer = MockMessageReceiver;
 	type MessageQueue = MockLiquidityPoolsGatewayQueue;
 	type MessageSender = MockMessageSender;
 	type RouterId = RouterId;

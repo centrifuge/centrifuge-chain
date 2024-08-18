@@ -281,11 +281,24 @@ mod extrinsics {
 	}
 
 	mod receive_message {
+		use cfg_traits::liquidity_pools::MessageReceiver;
+
 		use super::*;
+
+		fn config_mocks() {
+			MockMessageReceiver::mock_receive(|router_id, domain_address, message| {
+				LiquidityPoolsGateway::receive(
+					router_id,
+					domain_address,
+					Message::deserialize(&message).unwrap(),
+				)
+			});
+		}
 
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
+				config_mocks();
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 				let domain_address = DomainAddress::Evm(0, address);
 				let message = Message::Simple;
@@ -359,6 +372,7 @@ mod extrinsics {
 		#[test]
 		fn unknown_instance() {
 			new_test_ext().execute_with(|| {
+				config_mocks();
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 				let domain_address = DomainAddress::Evm(0, address);
 				let encoded_msg = Message::Simple.serialize();
@@ -378,6 +392,7 @@ mod extrinsics {
 		#[test]
 		fn message_queue_error() {
 			new_test_ext().execute_with(|| {
+				config_mocks();
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 				let domain_address = DomainAddress::Evm(0, address);
 				let message = Message::Simple;

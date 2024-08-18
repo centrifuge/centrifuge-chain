@@ -139,6 +139,13 @@ pub mod pallet {
 		/// Type used for queueing messages.
 		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::Message, Self::RouterId>>;
 
+		// /// Type used for deserializing messages which are manually processed.
+		type MessageDeserializer: MessageReceiver<
+			Message = Vec<u8>,
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+		>;
+
 		/// Maximum number of routers allowed for a domain.
 		#[pallet::constant]
 		type MaxRouterCount: Get<u32>;
@@ -416,7 +423,7 @@ pub mod pallet {
 				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
 
-			Self::receive(router_id, origin_address, T::Message::deserialize(&msg)?)
+			T::MessageDeserializer::receive(router_id, origin_address, msg.into_inner())
 		}
 
 		/// Set the address of the domain hook
