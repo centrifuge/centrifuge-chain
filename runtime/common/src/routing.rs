@@ -1,5 +1,5 @@
 use cfg_traits::{
-	liquidity_pools::{LpMessage, MessageReceiver, MessageSender, RouterProvider},
+	liquidity_pools::{LpMessageSerializer, MessageReceiver, MessageSender, RouterProvider},
 	PreConditions,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
@@ -71,6 +71,7 @@ where
 	}
 }
 
+/// A precondition to ensure an evm account code is configured for a contract
 pub struct EvmAccountCodeChecker<Runtime>(PhantomData<Runtime>);
 impl<Runtime: pallet_evm::Config> PreConditions<(H160, H256)> for EvmAccountCodeChecker<Runtime> {
 	type Result = bool;
@@ -81,6 +82,7 @@ impl<Runtime: pallet_evm::Config> PreConditions<(H160, H256)> for EvmAccountCode
 	}
 }
 
+/// Entity in charge of serializing and deserializing messages
 pub struct MessageSerializer<Sender, Receiver>(PhantomData<(Sender, Receiver)>);
 
 impl<Sender, Receiver> MessageSender for MessageSerializer<Sender, Receiver>
