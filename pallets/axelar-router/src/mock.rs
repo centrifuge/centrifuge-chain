@@ -33,6 +33,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl cfg_mocks::router_message::pallet::Config for Runtime {
+	type Message = Vec<u8>;
 	type Middleware = Middleware;
 	type Origin = DomainAddress;
 }

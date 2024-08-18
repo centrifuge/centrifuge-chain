@@ -131,13 +131,17 @@ pub mod pallet {
 		/// messages from
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// The target of the messages comming from other chains
-		type Receiver: MessageReceiver<Middleware = Self::Middleware, Origin = DomainAddress>;
+		/// The target of the messages coming from other chains
+		type Receiver: MessageReceiver<
+			Middleware = Self::Middleware,
+			Origin = DomainAddress,
+			Message = Vec<u8>,
+		>;
 
 		/// Middleware used by the gateway
 		type Middleware: From<AxelarId>;
 
-		/// The target of the messages comming from this chain
+		/// The target of the messages coming from this chain
 		type Transactor: EthereumTransactor;
 
 		/// Checker to ensure an evm account code is registered
@@ -319,10 +323,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageSender for Pallet<T> {
+		type Message = Vec<u8>;
 		type Middleware = AxelarId;
 		type Origin = DomainAddress;
 
-		fn send(axelar_id: AxelarId, origin: Self::Origin, message: Vec<u8>) -> DispatchResult {
+		fn send(
+			axelar_id: AxelarId,
+			origin: Self::Origin,
+			message: Self::Message,
+		) -> DispatchResult {
 			let chain_name = ChainNameById::<T>::get(axelar_id)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 			let config = Configuration::<T>::get(&chain_name)
