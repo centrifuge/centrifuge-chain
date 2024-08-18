@@ -35,9 +35,7 @@ mod tests;
 
 use core::fmt::Debug;
 
-use cfg_traits::liquidity_pools::{
-	LpMessage as LpMessageT, MessageReceiver, MessageSender, RouterProvider,
-};
+use cfg_traits::liquidity_pools::{LpMessage as LpMessageT, MessageReceiver, MessageSender};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
@@ -104,9 +102,6 @@ pub mod pallet {
 
 		/// An identification of a router.
 		type RouterId: Parameter + MaxEncodedLen;
-
-		/// The type that provides the router available for a domain.
-		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 	}
 
 	#[pallet::event]
@@ -137,6 +132,15 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// The router id does not have any forwarder info stored
 		ForwardInfoNotFound,
+		/// Failed to unwrap a message which should be a forwarded one
+		UnwrappingFailed,
+		/// Received a forwarded message from source domain `A` which contradics
+		/// the corresponding stored forwarding info that expects source domain
+		/// `B`
+		///
+		/// NOTE: Should never occur because we can assume EVM ensures message
+		/// validity
+		SourceDomainMismatch,
 	}
 
 	#[pallet::call]
@@ -224,37 +228,39 @@ pub mod pallet {
 		type Origin = DomainAddress;
 
 		fn receive(
-			forwarder_router_id: T::RouterId,
-			forwarder_domain_address: DomainAddress,
+			router_id: T::RouterId,
+			forwarding_domain_address: DomainAddress,
 			message: T::Message,
 		) -> DispatchResult {
 			// Message can be unwrapped iff it was forwarded
 			//
 			// NOTE: Contract address irrelevant here because it is only necessary for
 			// outbound forwarded messages
-			if let Some((source_domain, _contract, lp_message)) = message.clone().unwrap_forwarded()
-			{
-				let router_ids = T::RouterProvider::routers_for_domain(source_domain);
-				for router_id in router_ids {
-					// NOTE: We can rely on EVM side to ensure forwarded messages are valid such
-					// that we don't need to do checks on the forwarder router id or contract
-					if let Some(info) = RouterForwarding::<T>::get(&router_id) {
-						return T::MessageReceiver::receive(
-							router_id,
-							DomainAddress::Evm(
-								info.source_domain
-									.get_evm_chain_id()
-									.expect("Domain not Centrifuge; qed"),
-								info.contract,
-							),
-							lp_message,
-						);
-					}
+			let (lp_message, domain_address) = match (
+				RouterForwarding::<T>::get(&router_id),
+				message.clone().unwrap_forwarded(),
+			) {
+				(Some(info), Some((source_domain, _contract, lp_message))) => {
+					ensure!(
+						info.source_domain == source_domain,
+						Error::<T>::SourceDomainMismatch
+					);
+
+					let domain_address = DomainAddress::Evm(
+						info.source_domain
+							.get_evm_chain_id()
+							.expect("Domain not Centrifuge; qed"),
+						info.contract,
+					);
+					Ok((lp_message, domain_address))
 				}
-				Err(Error::<T>::ForwardInfoNotFound.into())
-			} else {
-				T::MessageReceiver::receive(forwarder_router_id, forwarder_domain_address, message)
+				(Some(_), None) => Err(Error::<T>::UnwrappingFailed),
+				(None, None) => Ok((message, forwarding_domain_address)),
+				(None, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
 			}
+			.map_err(|e: Error<T>| e)?;
+
+			T::MessageReceiver::receive(router_id, domain_address, lp_message)
 		}
 	}
 }
