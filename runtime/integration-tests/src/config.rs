@@ -277,8 +277,7 @@ pub trait Runtime:
 		+ Clone
 		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall, AccountId = AccountId>
 		+ From<pallet_ethereum::RawOrigin>
-		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
-		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;
+		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>;
 
 	/// Block used by the runtime
 	type BlockExt: Block<

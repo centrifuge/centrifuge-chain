@@ -16,7 +16,7 @@ use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{traits::IdentityLookup, DispatchError, DispatchResult};
 
-use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal, GatewayMessage};
+use crate::{pallet as pallet_liquidity_pools_gateway, GatewayMessage};
 
 pub const TEST_SESSION_ID: u32 = 1;
 pub const TEST_EVM_CHAIN: EVMChainId = 1;
@@ -202,7 +202,6 @@ frame_support::parameter_types! {
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundMessageHandler = MockLiquidityPools;
-	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type MaxRouterCount = MaxRouterCount;
 	type Message = Message;
@@ -211,7 +210,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RouterId = RouterId;
 	type RouterProvider = TestRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type SessionId = u32;
 	type WeightInfo = ();
