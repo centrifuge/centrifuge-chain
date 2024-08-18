@@ -62,12 +62,6 @@ pub enum AxelarId {
 	Evm(EVMChainId),
 }
 
-impl Default for AxelarId {
-	fn default() -> Self {
-		Self::Evm(1)
-	}
-}
-
 /// Configuration for outbound messages though axelar
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarConfig {

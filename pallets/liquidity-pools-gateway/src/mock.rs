@@ -126,7 +126,7 @@ impl LPMessage for Message {
 	}
 }
 
-#[derive(Default, Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen, Hash)]
 pub struct RouterId(pub u32);
 
 pub struct TestRouterProvider;
