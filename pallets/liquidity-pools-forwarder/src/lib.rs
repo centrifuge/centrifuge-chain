@@ -210,9 +210,7 @@ pub mod pallet {
 			message: T::Message,
 		) -> DispatchResult {
 			let msg = RouterForwarding::<T>::get(&router_id)
-				.map(|info| {
-					T::Message::try_wrap_forward(info.source_domain, info.contract, message.clone())
-				})
+				.map(|info| T::Message::try_wrap_forward(info.contract, message.clone()))
 				.unwrap_or_else(|| {
 					ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
 					Ok(message)

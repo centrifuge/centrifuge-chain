@@ -83,11 +83,7 @@ pub trait LpMessageForwarded: Sized {
 	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)>;
 
 	/// Attempts to wrap into a forwarded message.
-	fn try_wrap_forward(
-		domain: Self::Domain,
-		forwarding_contract: H160,
-		message: Self,
-	) -> Result<Self, DispatchError>;
+	fn try_wrap_forward(forwarding_contract: H160, message: Self) -> Result<Self, DispatchError>;
 }
 
 pub trait RouterProvider<Domain>: Sized {
