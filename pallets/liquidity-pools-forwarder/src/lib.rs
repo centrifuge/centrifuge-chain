@@ -87,11 +87,7 @@ pub mod pallet {
 			+ FullCodec;
 
 		/// The entity of the messages coming from this chain.
-		type MessageSender: MessageSender<
-			Middleware = Self::RouterId,
-			Origin = DomainAddress,
-			Message = Self::Message,
-		>;
+		type MessageSender: MessageSender<Middleware = Self::RouterId, Message = Self::Message>;
 
 		/// The entity which acts on unwrapped messages.
 		type MessageReceiver: MessageReceiver<
@@ -202,11 +198,11 @@ pub mod pallet {
 	impl<T: Config> MessageSender for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
-		type Origin = DomainAddress;
+		type Origin = <T::MessageSender as MessageSender>::Origin;
 
 		fn send(
 			router_id: T::RouterId,
-			origin: DomainAddress,
+			origin: Self::Origin,
 			message: T::Message,
 		) -> DispatchResult {
 			let msg = RouterForwarding::<T>::get(&router_id)

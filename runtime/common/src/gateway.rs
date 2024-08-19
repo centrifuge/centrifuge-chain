@@ -10,18 +10,19 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_primitives::AccountId;
+use cfg_types::domain_address::truncate_into_eth_address;
 use polkadot_parachain_primitives::primitives::Sibling;
-use sp_core::crypto::AccountId32;
-use sp_runtime::traits::{AccountIdConversion, Get};
+use sp_runtime::traits::AccountIdConversion;
 
-pub fn get_gateway_domain_address<T>() -> DomainAddress
+use crate::account_conversion::AccountConverter;
+
+pub fn get_gateway_account<T>() -> AccountId
 where
 	T: pallet_evm_chain_id::Config + staging_parachain_info::Config,
 {
-	let chain_id = pallet_evm_chain_id::Pallet::<T>::get();
 	let para_id = staging_parachain_info::Pallet::<T>::parachain_id();
-	let sender_account: AccountId32 = Sibling::from(para_id).into_account_truncating();
+	let sender_account: AccountId = Sibling::from(para_id).into_account_truncating();
 
-	DomainAddress::new(Domain::Evm(chain_id), sender_account.into())
+	AccountConverter::evm_address_to_account::<T>(truncate_into_eth_address(sender_account))
 }

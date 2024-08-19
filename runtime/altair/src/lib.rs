@@ -31,7 +31,6 @@ use cfg_primitives::{
 };
 use cfg_traits::{investments::OrderManager, Millis, PoolUpdateGuard, Seconds};
 use cfg_types::{
-	domain_address::DomainAddress,
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
@@ -1767,7 +1766,7 @@ impl pallet_liquidity_pools_forwarder::Config for Runtime {
 }
 
 parameter_types! {
-	pub Sender: DomainAddress = gateway::get_gateway_domain_address::<Runtime>();
+	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const MaxRouterCount: u32 = 8;
 }

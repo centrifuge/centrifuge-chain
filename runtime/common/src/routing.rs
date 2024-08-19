@@ -1,3 +1,4 @@
+use cfg_primitives::AccountId;
 use cfg_traits::{
 	liquidity_pools::{LpMessageSerializer, MessageReceiver, MessageSender, RouterProvider},
 	PreConditions,
@@ -60,7 +61,7 @@ where
 {
 	type Message = Vec<u8>;
 	type Middleware = RouterId;
-	type Origin = DomainAddress;
+	type Origin = AccountId;
 
 	fn send(router_id: RouterId, origin: Self::Origin, message: Self::Message) -> DispatchResult {
 		match router_id {
@@ -87,11 +88,11 @@ pub struct MessageSerializer<Sender, Receiver>(PhantomData<(Sender, Receiver)>);
 
 impl<Sender, Receiver> MessageSender for MessageSerializer<Sender, Receiver>
 where
-	Sender: MessageSender<Message = Vec<u8>, Middleware = RouterId, Origin = DomainAddress>,
+	Sender: MessageSender<Message = Vec<u8>, Middleware = RouterId, Origin = AccountId>,
 {
 	type Message = Message;
 	type Middleware = RouterId;
-	type Origin = DomainAddress;
+	type Origin = AccountId;
 
 	fn send(
 		middleware: Self::Middleware,

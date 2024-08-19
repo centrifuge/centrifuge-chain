@@ -1,7 +1,7 @@
 use cfg_primitives::Balance;
 use cfg_traits::liquidity_pools::{LpMessageSerializer, MessageProcessor};
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::{truncate_into_eth_address, Domain, DomainAddress},
 	EVMChainId,
 };
 use ethabi::{Function, Param, ParamType, Token};
@@ -11,8 +11,8 @@ use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeV
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use runtime_common::{
-	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
-	gateway::get_gateway_domain_address, routing::RouterId,
+	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY, gateway,
+	routing::RouterId,
 };
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
@@ -123,7 +123,7 @@ mod axelar_evm {
 
 			utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
 			utils::evm::mint_balance_into_derived_account::<T>(
-				get_gateway_domain_address::<T>().h160(),
+				truncate_into_eth_address(gateway::get_gateway_account::<T>()),
 				cfg(1),
 			);
 

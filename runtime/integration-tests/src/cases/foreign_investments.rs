@@ -32,7 +32,7 @@ use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	foreign_investments::IdentityPoolCurrencyConverter, routing::RouterId, xcm::general_key,
 };
-use sp_core::{Get, H160};
+use sp_core::H160;
 use sp_runtime::{
 	traits::{AccountIdConversion, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
@@ -48,13 +48,6 @@ use crate::{
 	envs::{fudge_env::handle::SIBLING_ID, runtime_env::RuntimeEnv},
 	utils::{accounts::Keyring, genesis, genesis::Genesis, orml_asset_registry},
 };
-
-// ------------------
-//       NOTE
-// This file only contains foreign investments tests, but the name must remain
-// as it is until feature lpv2 is merged to avoid conflicts:
-// (https://github.com/centrifuge/centrifuge-chain/pull/1909)
-// ------------------
 
 /// The AUSD asset id
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
@@ -276,14 +269,6 @@ pub mod utils {
 		env.parachain_state_mut(|| {
 			register_ausd::<T>();
 			register_glmr::<T>();
-
-			assert_ok!(orml_tokens::Pallet::<T>::set_balance(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				T::Sender::get().account().into(),
-				GLMR_CURRENCY_ID,
-				DEFAULT_BALANCE_GLMR,
-				0,
-			));
 
 			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
 				<T as frame_system::Config>::RuntimeOrigin::root(),

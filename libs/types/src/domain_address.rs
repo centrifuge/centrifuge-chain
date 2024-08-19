@@ -21,7 +21,7 @@ use crate::EVMChainId;
 const MAX_ADDRESS_SIZE: usize = 32;
 
 /// By just clamping the value to a smaller address
-pub fn account_to_eth_address(address: AccountId32) -> H160 {
+pub fn truncate_into_eth_address(address: AccountId32) -> H160 {
 	let bytes: [u8; 32] = address.into();
 	H160::from(
 		*(bytes)
@@ -99,7 +99,7 @@ impl DomainAddress {
 		match domain {
 			Domain::Centrifuge => DomainAddress::Centrifuge(address.into()),
 			Domain::Evm(chain_id) => {
-				DomainAddress::Evm(chain_id, account_to_eth_address(address.into()))
+				DomainAddress::Evm(chain_id, truncate_into_eth_address(address.into()))
 			}
 		}
 	}
@@ -122,7 +122,7 @@ impl DomainAddress {
 	/// clamping the inner address if needed.
 	pub fn h160(&self) -> H160 {
 		match self.clone() {
-			Self::Centrifuge(x) => account_to_eth_address(x),
+			Self::Centrifuge(x) => truncate_into_eth_address(x),
 			Self::Evm(_, x) => x,
 		}
 	}

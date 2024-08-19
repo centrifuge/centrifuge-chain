@@ -20,7 +20,10 @@ use cfg_traits::{
 	liquidity_pools::{MessageReceiver, MessageSender},
 	PreConditions,
 };
-use cfg_types::{domain_address::DomainAddress, EVMChainId};
+use cfg_types::{
+	domain_address::{truncate_into_eth_address, DomainAddress},
+	EVMChainId,
+};
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use fp_evm::PrecompileHandle;
 use frame_support::{
@@ -32,7 +35,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use precompile_utils::prelude::*;
 use scale_info::prelude::{format, string::String};
-use sp_core::{H160, H256, U256};
+use sp_core::{crypto::AccountId32, H160, H256, U256};
 use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 
 #[cfg(test)]
@@ -318,7 +321,7 @@ pub mod pallet {
 	impl<T: Config> MessageSender for Pallet<T> {
 		type Message = Vec<u8>;
 		type Middleware = AxelarId;
-		type Origin = DomainAddress;
+		type Origin = AccountId32;
 
 		fn send(
 			axelar_id: AxelarId,
@@ -340,7 +343,7 @@ pub mod pallet {
 					.map_err(DispatchError::Other)?;
 
 					T::Transactor::call(
-						origin.h160(),
+						truncate_into_eth_address(origin),
 						evm_config.target_contract_address,
 						message.as_slice(),
 						evm_config.fee_values.value,

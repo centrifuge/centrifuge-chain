@@ -13,7 +13,7 @@
 use std::{cmp::min, fmt::Debug};
 
 use cfg_primitives::{AccountId, Balance, TrancheId};
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{truncate_into_eth_address, DomainAddress};
 use ethabi::ethereum_types::{H160, H256, U256};
 use fp_evm::CallInfo;
 use frame_support::traits::{OriginTrait, PalletInfo};
@@ -92,7 +92,7 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 		.clone();
 
 	// The sender is the sender account on the gateway
-	assert_eq!(T::Sender::get().h160(), status.from);
+	assert_eq!(truncate_into_eth_address(T::Sender::get()), status.from);
 	assert_eq!(status.to.unwrap().0, to.0);
 	assert!(!receipt_ok(receipt));
 	assert!(matches!(

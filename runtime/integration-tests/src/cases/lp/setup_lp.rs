@@ -41,7 +41,7 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		evm.load_contracts();
 
 		// Fund gateway sender
-		give_balance::<T>(T::Sender::get().account(), DEFAULT_BALANCE * CFG);
+		give_balance::<T>(T::Sender::get(), DEFAULT_BALANCE * CFG);
 
 		// Register general local pool-currency
 		register_currency::<T>(LocalUSDC, |_| {});

@@ -189,11 +189,11 @@ impl cfg_mocks::queue::pallet::Config for Runtime {
 impl cfg_mocks::router_message::pallet::Config for Runtime {
 	type Message = Message;
 	type Middleware = RouterId;
-	type Origin = DomainAddress;
+	type Origin = AccountId32;
 }
 
 frame_support::parameter_types! {
-	pub Sender: DomainAddress = DomainAddress::Centrifuge(AccountId32::from([1; 32]));
+	pub const Sender: AccountId32 = AccountId32::new([1; 32]);
 	pub const MaxIncomingMessageSize: u32 = 1024;
 	pub const LpAdminAccount: AccountId32 = LP_ADMIN_ACCOUNT;
 	pub const MaxRouterCount: u32 = 8;

@@ -97,7 +97,7 @@ pub mod pallet {
 		/// The target of the messages coming from this chain
 		type MessageSender: MessageSender<
 			Middleware = Self::RouterId,
-			Origin = DomainAddress,
+			Origin = Self::AccountId,
 			Message = Self::Message,
 		>;
 
@@ -122,7 +122,7 @@ pub mod pallet {
 		/// The sender account that will be used in the OutboundQueue
 		/// implementation.
 		#[pallet::constant]
-		type Sender: Get<DomainAddress>;
+		type Sender: Get<Self::AccountId>;
 
 		/// Type used for queueing messages.
 		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::Message, Self::RouterId>>;
