@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::Seconds;
 use cfg_traits::{AssetMetadataOf, PoolMetadata};
 use cfg_types::pools::TrancheMetadata;
 use frame_support::{assert_noop, assert_ok, BoundedVec};
@@ -42,7 +43,7 @@ fn update_pool() {
 			let changes = PoolChanges {
 				tranches: Change::NoChange,
 				tranche_metadata: Change::NoChange,
-				min_epoch_time: Change::NewValue(10),
+				min_epoch_time: Change::NewValue(Seconds::new(10)),
 				max_nav_age: Change::NoChange,
 			};
 
