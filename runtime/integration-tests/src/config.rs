@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, ItemId, LoanId, Nonce,
-	OrderId, PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, CollectionId, Header, IBalance, InvestmentId, ItemId,
+	LoanId, Nonce, OrderId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -11,7 +11,7 @@ use cfg_types::{
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
-	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
+	tokens::{AssetStringLimit, CurrencyId, CustomMetadata, FilterCurrency},
 };
 use fp_evm::PrecompileSet;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
@@ -20,8 +20,8 @@ use frame_support::{
 	traits::{IsSubType, IsType, OriginTrait},
 	Parameter,
 };
-use liquidity_pools_gateway_routers::DomainRouter;
 use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use pallet_transaction_payment::CurrencyAdapter;
 use parity_scale_codec::Codec;
 use runtime_common::{
@@ -33,6 +33,7 @@ use runtime_common::{
 	oracle::Feeder,
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
+	routing::RouterId,
 };
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
@@ -72,22 +73,20 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
 		MaxTranches = Self::MaxTranchesExt,
-		TrancheCurrency = TrancheCurrency,
+		TrancheCurrency = InvestmentId,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
+		TrancheId = TrancheId,
 		InterestRate = Rate,
 		Balance = Balance,
 		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
-	+ pallet_investments::Config<
-		InvestmentId = <Self as pallet_pool_system::Config>::TrancheCurrency,
-		Amount = Balance,
-		BalanceRatio = Ratio,
-	> + pallet_loans::Config<
+	+ pallet_investments::Config<InvestmentId = InvestmentId, Amount = Balance, BalanceRatio = Ratio>
+	+ pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
 		LoanId = LoanId,
@@ -109,7 +108,6 @@ pub trait Runtime:
 	+ pallet_authorship::Config
 	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
-		AccountId = AccountId,
 		WeightToFee = WeightToFee,
 		OnChargeTransaction = CurrencyAdapter<pallet_balances::Pallet<Self>, DealWithFees<Self>>,
 	> + pallet_restricted_tokens::Config<
@@ -136,9 +134,9 @@ pub trait Runtime:
 		Balance = Balance,
 		PoolId = PoolId,
 		TrancheId = TrancheId,
-		TrancheCurrency = TrancheCurrency,
 		BalanceRatio = Ratio,
-	> + pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>, Message = Message>
+	> + pallet_liquidity_pools_gateway::Config<RouterId = RouterId, Message = Message>
+	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<Message, RouterId>>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
@@ -149,13 +147,13 @@ pub trait Runtime:
 		OrderIdNonce = u64,
 		Ratio = Ratio,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
-	> + pallet_swaps::Config<OrderId = OrderId, SwapId = pallet_foreign_investments::SwapId<Self>>
-	+ pallet_foreign_investments::Config<
+	> + pallet_foreign_investments::Config<
 		ForeignBalance = Balance,
 		PoolBalance = Balance,
 		TrancheBalance = Balance,
-		InvestmentId = TrancheCurrency,
+		InvestmentId = InvestmentId,
 		CurrencyId = CurrencyId,
+		OrderId = OrderId,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
@@ -184,7 +182,7 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
-	> + axelar_gateway_precompile::Config
+	> + pallet_axelar_router::Config
 	+ pallet_token_mux::Config<
 		BalanceIn = Balance,
 		BalanceOut = Balance,
@@ -220,6 +218,7 @@ pub trait Runtime:
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
 		+ From<pallet_liquidity_pools_gateway::Call<Self>>
+		+ From<pallet_liquidity_pools_gateway_queue::Call<Self>>
 		+ From<pallet_remarks::Call<Self>>
 		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_utility::Call<Self>>
@@ -242,6 +241,7 @@ pub trait Runtime:
 		+ TryInto<pallet_loans::Event<Self>>
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
+		+ TryInto<pallet_liquidity_pools_gateway_queue::Event<Self>>
 		+ TryInto<pallet_proxy::Event<Self>>
 		+ TryInto<pallet_ethereum::Event>
 		+ TryInto<pallet_evm::Event<Self>>
@@ -260,6 +260,7 @@ pub trait Runtime:
 		+ From<pallet_collator_selection::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
 		+ From<pallet_liquidity_pools_gateway::Event<Self>>
+		+ From<pallet_liquidity_pools_gateway_queue::Event<Self>>
 		+ From<pallet_order_book::Event<Self>>
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
@@ -276,8 +277,7 @@ pub trait Runtime:
 		+ Clone
 		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall, AccountId = AccountId>
 		+ From<pallet_ethereum::RawOrigin>
-		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
-		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;
+		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>;
 
 	/// Block used by the runtime
 	type BlockExt: Block<
@@ -323,7 +323,7 @@ pub trait Runtime:
 		> + apis::runtime_decl_for_investments_api::InvestmentsApiV1<
 			Self::BlockExt,
 			AccountId,
-			TrancheCurrency,
+			InvestmentId,
 			InvestmentPortfolio<Balance, CurrencyId>,
 		> + apis::runtime_decl_for_account_conversion_api::AccountConversionApiV1<
 			Self::BlockExt,

@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::fmt::Debug;
 
 /// A trait for converting from a PoolId and a TranchId
@@ -22,6 +22,20 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 	fn of_pool(&self) -> PoolId;
 
 	fn of_tranche(&self) -> TrancheId;
+}
+
+impl<PoolId: Clone, TrancheId: Clone> TrancheCurrency<PoolId, TrancheId> for (PoolId, TrancheId) {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		(pool_id, tranche_id)
+	}
+
+	fn of_pool(&self) -> PoolId {
+		self.0.clone()
+	}
+
+	fn of_tranche(&self) -> TrancheId {
+		self.1.clone()
+	}
 }
 
 /// A trait, when implemented allows to invest into
@@ -209,7 +223,6 @@ pub trait ForeignInvestment<AccountId> {
 	type Amount;
 	type TrancheAmount;
 	type CurrencyId;
-	type Error: Debug;
 	type InvestmentId;
 
 	/// Initiates the increment of a foreign investment amount in
@@ -225,9 +238,9 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
-	/// Initiates the decrement of a foreign investment amount in
+	/// Initiates a cancellation of a foreign investment in
 	/// `foreign_payment_currency` of who into the investment class
 	/// `pool_currency` to amount.
 	///
@@ -235,12 +248,11 @@ pub trait ForeignInvestment<AccountId> {
 	/// mismatch and that swapping one into the other happens asynchronously. In
 	/// that case, the finalization of updating the investment needs to be
 	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
-	fn decrease_foreign_investment(
+	fn cancel_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
 	/// Initiates the increment of a foreign redemption amount for the given
 	/// investment id.
@@ -253,61 +265,55 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::TrancheAmount,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> DispatchResult;
 
-	/// Initiates the decrement of a foreign redemption amount.
+	/// Initiates the cancellation of a foreign redemption.
+	/// Returns the cancelled tranche tokens amount.
 	///
 	/// NOTES:
 	/// * The decrementing redemption amount is bound by the previously
 	///   incremented redemption amount.
 	/// * The `foreign_payout_currency` is only required for the potential
 	///   dispatch of a response message.
-	fn decrease_foreign_redemption(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		amount: Self::TrancheAmount,
-		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
-
-	/// Collect the results of a user's foreign invest orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	fn collect_foreign_investment(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		foreign_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
-
-	/// Collect the results of a user's foreign redeem orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	///
-	/// NOTE: The currency of the collected amount will be `pool_currency`
-	/// whereas the user eventually wants to receive it in
-	/// `foreign_payout_currency`.
-	fn collect_foreign_redemption(
+	fn cancel_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(), Self::Error>;
+	) -> Result<Self::TrancheAmount, DispatchError>;
+}
 
-	/// Returns, if possible, the currently unprocessed investment amount (in
-	/// pool currency) of who into the given investment class.
-	///
-	/// NOTE: If the investment was (partially) processed, the unprocessed
-	/// amount is only updated upon collecting.
-	fn investment(
+/// Trait used to receive information asynchronously from a ForeignInvestment
+/// implementation
+pub trait ForeignInvestmentHooks<AccountId> {
+	type Amount;
+	type TrancheAmount;
+	type CurrencyId;
+	type InvestmentId;
+
+	/// An async cancellation has been done
+	fn fulfill_cancel_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
+		currency_id: Self::CurrencyId,
+		amount_cancelled: Self::Amount,
+		fulfilled: Self::Amount,
+	) -> DispatchResult;
 
-	/// Returns, if possible, the currently unprocessed redemption amount (in
-	/// tranche tokens) of who into the given investment class.
-	///
-	/// NOTE: If the redemption was (partially) processed, the unprocessed
-	/// amount is only updated upon collecting.
-	fn redemption(
+	/// An async investment collection has been done
+	fn fulfill_collect_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::TrancheAmount, Self::Error>;
+		currency_id: Self::CurrencyId,
+		amount_collected: Self::Amount,
+		tranche_tokens_payout: Self::TrancheAmount,
+	) -> DispatchResult;
+
+	/// An async redemption collection has been done
+	fn fulfill_collect_redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		currency_id: Self::CurrencyId,
+		tranche_tokens_collected: Self::TrancheAmount,
+		amount_payout: Self::Amount,
+	) -> DispatchResult;
 }

@@ -13,7 +13,7 @@ use crate::{
 	utils::{accounts::Keyring, genesis::Genesis},
 };
 
-#[test_runtimes([development, altair, centrifuge])]
+#[test_runtimes([development, altair, centrifuge], ignore = "uncomment to run the example")]
 fn transfer_balance<T: Runtime>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
@@ -68,6 +68,10 @@ fn transfer_balance<T: Runtime>() {
 }
 
 // Identical to `transfer_balance()` test but using fudge.
+//
+// NOTE: this test fails checking the events if compiled in debug
+// (which implies using std in the runtimes), compiling this in release (which
+// implies using no-std in the runtimes) works. TODO: investigate why.
 #[test_runtimes([development, altair, centrifuge])]
 fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const TRANSFER: Balance = 1000 * CFG;
@@ -127,7 +131,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	});
 }
 
-#[test_runtimes(all)]
+#[test_runtimes(all, ignore = "uncomment to run the example")]
 fn call_api<T: Runtime>() {
 	let env = RuntimeEnv::<T>::default();
 
@@ -141,7 +145,7 @@ fn call_api<T: Runtime>() {
 	})
 }
 
-#[test_runtimes(all)]
+#[test_runtimes(all, ignore = "uncomment to run the example")]
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	let env = FudgeEnv::<T>::default();
 
@@ -158,7 +162,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	})
 }
 
-#[test_runtimes(all)]
+#[test_runtimes(all, ignore = "uncomment to run the example")]
 fn pass_time_one_block<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 

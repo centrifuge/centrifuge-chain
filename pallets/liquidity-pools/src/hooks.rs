@@ -11,153 +11,113 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
-};
-use cfg_types::{
-	domain_address::DomainAddress,
-	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
-};
-use frame_support::{
-	traits::{
-		fungibles::Mutate,
-		tokens::{Fortitude, Precision, Preservation},
-	},
-	transactional,
+use cfg_traits::{investments::ForeignInvestmentHooks, liquidity_pools::OutboundMessageHandler};
+use cfg_types::domain_address::Domain;
+use frame_support::traits::{
+	fungibles::Mutate,
+	tokens::{Fortitude, Precision, Preservation},
 };
 use sp_core::Get;
-use sp_runtime::{DispatchError, DispatchResult};
-use sp_std::marker::PhantomData;
+use sp_runtime::DispatchResult;
 
 use crate::{pallet::Config, Message, Pallet};
 
-/// The hook struct which acts upon a finalized investment decrement.
-pub struct DecreasedForeignInvestOrderHook<T>(PhantomData<T>);
+impl<T: Config> ForeignInvestmentHooks<T::AccountId> for Pallet<T> {
+	type Amount = T::Balance;
+	type CurrencyId = T::CurrencyId;
+	type InvestmentId = (T::PoolId, T::TrancheId);
+	type TrancheAmount = T::Balance;
 
-impl<T: Config> StatusNotificationHook for DecreasedForeignInvestOrderHook<T>
-where
-	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
-{
-	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
-	type Status = ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>;
-
-	#[transactional]
-	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
-		status: ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>,
+	fn fulfill_cancel_investment(
+		who: &T::AccountId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
+		currency_id: Self::CurrencyId,
+		amount_cancelled: Self::Amount,
+		fulfilled: Self::Amount,
 	) -> DispatchResult {
-		let currency = Pallet::<T>::try_get_general_index(status.foreign_currency)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.foreign_currency)?;
-		let domain_address: DomainAddress = wrapped_token.into();
+		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
 
 		T::Tokens::burn_from(
-			status.foreign_currency,
-			&investor,
-			status.amount_decreased,
+			currency_id,
+			who,
+			amount_cancelled,
 			Precision::Exact,
 			Fortitude::Polite,
 		)?;
 
-		let message = Message::ExecutedDecreaseInvestOrder {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
-			investor: investor.into(),
+		let message = Message::FulfilledCancelDepositRequest {
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
+			investor: who.clone().into(),
 			currency,
-			currency_payout: status.amount_decreased.into(),
-			remaining_invest_amount: status.amount_remaining.into(),
-		};
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
-
-		Ok(())
-	}
-}
-
-/// The hook struct which acts upon a finalized redemption collection.
-
-pub struct CollectedForeignRedemptionHook<T>(PhantomData<T>);
-
-impl<T: Config> StatusNotificationHook for CollectedForeignRedemptionHook<T>
-where
-	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
-{
-	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
-	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
-
-	#[transactional]
-	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
-		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
-	) -> DispatchResult {
-		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
-		let domain_address: DomainAddress = wrapped_token.into();
-
-		T::Tokens::burn_from(
-			status.currency,
-			&investor,
-			status.amount_currency_payout,
-			Precision::Exact,
-			Fortitude::Polite,
-		)?;
-
-		let message = Message::ExecutedCollectRedeem {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
-			investor: investor.into(),
-			currency,
-			currency_payout: status.amount_currency_payout.into(),
-			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
-			remaining_redeem_amount: status.amount_remaining.into(),
+			currency_payout: amount_cancelled.into(),
+			fulfilled_invest_amount: fulfilled.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
-
-		Ok(())
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
 	}
-}
 
-/// The hook struct which acts upon a finalized investment collection.
-pub struct CollectedForeignInvestmentHook<T>(PhantomData<T>);
-
-impl<T: Config> StatusNotificationHook for CollectedForeignInvestmentHook<T>
-where
-	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
-{
-	type Error = DispatchError;
-	type Id = (T::AccountId, T::TrancheCurrency);
-	type Status = ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>;
-
-	#[transactional]
-	fn notify_status_change(
-		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
-		status: ExecutedForeignCollect<T::Balance, T::Balance, T::Balance, T::CurrencyId>,
+	fn fulfill_collect_investment(
+		who: &T::AccountId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
+		currency_id: Self::CurrencyId,
+		amount_collected: Self::Amount,
+		tranche_tokens_payout: Self::TrancheAmount,
 	) -> DispatchResult {
-		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
-		let domain_address: DomainAddress = wrapped_token.into();
+		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
 
 		T::Tokens::transfer(
-			investment_id.clone().into(),
-			&investor,
-			&domain_address.domain().into_account(),
-			status.amount_tranche_tokens_payout,
+			(pool_id, tranche_id).into(),
+			who,
+			&domain.into_account(),
+			tranche_tokens_payout,
 			Preservation::Expendable,
 		)?;
 
-		let message = Message::ExecutedCollectInvest {
-			pool_id: investment_id.of_pool().into(),
-			tranche_id: investment_id.of_tranche().into(),
-			investor: investor.into(),
+		let message = Message::FulfilledDepositRequest {
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
+			investor: who.clone().into(),
 			currency,
-			currency_payout: status.amount_currency_payout.into(),
-			tranche_tokens_payout: status.amount_tranche_tokens_payout.into(),
-			remaining_invest_amount: status.amount_remaining.into(),
+			currency_payout: amount_collected.into(),
+			tranche_tokens_payout: tranche_tokens_payout.into(),
 		};
 
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
+	}
 
-		Ok(())
+	fn fulfill_collect_redemption(
+		who: &T::AccountId,
+		(pool_id, tranche_id): (T::PoolId, T::TrancheId),
+		currency_id: Self::CurrencyId,
+		tranche_tokens_collected: Self::TrancheAmount,
+		amount_payout: Self::Amount,
+	) -> DispatchResult {
+		let currency = Pallet::<T>::try_get_general_index(currency_id)?;
+		let (chain_id, ..) = Pallet::<T>::try_get_wrapped_token(&currency_id)?;
+		let domain = Domain::Evm(chain_id);
+
+		T::Tokens::burn_from(
+			currency_id,
+			who,
+			amount_payout,
+			Precision::Exact,
+			Fortitude::Polite,
+		)?;
+
+		let message = Message::FulfilledRedeemRequest {
+			pool_id: pool_id.into(),
+			tranche_id: tranche_id.into(),
+			investor: who.clone().into(),
+			currency,
+			currency_payout: amount_payout.into(),
+			tranche_tokens_payout: tranche_tokens_collected.into(),
+		};
+
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), domain, message)
 	}
 }

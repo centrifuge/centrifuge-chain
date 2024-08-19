@@ -125,7 +125,7 @@ pub trait Env<T: Runtime>: Default {
 
 		if let Blocks::UntilEvent { event, limit } = blocks.clone() {
 			if !found_event {
-				panic!("Event {event:?} was not found producing {limit} blocks");
+				panic!("The event:\n{event:#?}\nwas not found producing {limit} blocks");
 			}
 		}
 	}
@@ -155,7 +155,8 @@ pub trait Env<T: Runtime>: Default {
 	fn check_event(&self, event: impl Into<T::RuntimeEventExt>) -> Option<()> {
 		self.parachain_state(|| {
 			let event = event.into();
-			frame_system::Pallet::<T>::events()
+			let events = frame_system::Pallet::<T>::events();
+			events
 				.into_iter()
 				.rev()
 				.find(|record| record.event == event)
@@ -221,7 +222,7 @@ pub trait EvmEnv<T: Runtime> {
 		&self,
 		caller: Keyring,
 		value: U256,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError>;
@@ -229,7 +230,7 @@ pub trait EvmEnv<T: Runtime> {
 	fn view(
 		&self,
 		caller: Keyring,
-		contract: impl Into<String>,
+		contract: impl Into<String> + Clone,
 		function: impl Into<String>,
 		args: Option<&[Token]>,
 	) -> Result<CallInfo, DispatchError>;

@@ -10,6 +10,7 @@ members = [
   "libs/utils",
   "pallets/anchors",
   "pallets/anchors-v2",
+  "pallets/axelar-router",
   "pallets/bridge",
   "pallets/block-rewards",
   "pallets/collator-allowlist",
@@ -21,8 +22,8 @@ members = [
   "pallets/keystore",
   "pallets/liquidity-pools",
   "pallets/liquidity-pools-gateway",
-  "pallets/liquidity-pools-gateway/axelar-gateway-precompile",
-  "pallets/liquidity-pools-gateway/routers",
+  "pallets/liquidity-pools-gateway-queue",
+  "pallets/liquidity-pools-forwarder",
   "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/oracle-feed",
@@ -35,7 +36,6 @@ members = [
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
   "pallets/rewards",
-  "pallets/swaps",
   "pallets/token-mux",
   "pallets/transfer-allowlist",
   "runtime/altair",
@@ -53,7 +53,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
-version = "0.13.0"
+version = "0.14.0"
 
 [workspace.dependencies]
 hex-literal = { version = "0.4.1" }
@@ -86,10 +86,10 @@ impl-trait-for-tuples = "0.2.2"
 num-traits = { version = "0.2.17", default-features = false }
 num_enum = { version = "0.5.3", default-features = false }
 chrono = { version = "0.4", default-features = false }
+itertools = { version = "0.13.0", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
-cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.7.2" }
@@ -222,10 +222,9 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2" }
 
 # Centrifuge pallets
-axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
-liquidity-pools-gateway-routers = { path = "pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-anchors-v2 = { path = "pallets/anchors-v2", default-features = false }
+pallet-axelar-router = { path = "pallets/axelar-router", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
@@ -237,6 +236,8 @@ pallet-investments = { path = "pallets/investments", default-features = false }
 pallet-keystore = { path = "pallets/keystore", default-features = false }
 pallet-liquidity-pools = { path = "pallets/liquidity-pools", default-features = false }
 pallet-liquidity-pools-gateway = { path = "pallets/liquidity-pools-gateway", default-features = false }
+pallet-liquidity-pools-gateway-queue = { path = "pallets/liquidity-pools-gateway-queue", default-features = false }
+pallet-liquidity-pools-forwarder = { path = "pallets/liquidity-pools-forwarder", default-features = false }
 pallet-liquidity-rewards = { path = "pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "pallets/loans", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
@@ -249,7 +250,6 @@ pallet-pool-system = { path = "pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-features = false }
 pallet-restricted-xtokens = { path = "pallets/restricted-xtokens", default-features = false }
 pallet-rewards = { path = "pallets/rewards", default-features = false }
-pallet-swaps = { path = "pallets/swaps", default-features = false }
 pallet-token-mux = { path = "pallets/token-mux", default-features = false }
 pallet-transfer-allowlist = { path = "pallets/transfer-allowlist", default-features = false }
 

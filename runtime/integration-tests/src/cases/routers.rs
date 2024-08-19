@@ -1,147 +1,56 @@
 use cfg_primitives::Balance;
-use cfg_traits::liquidity_pools::OutboundQueue;
+use cfg_traits::liquidity_pools::{LpMessageSerializer, MessageProcessor};
 use cfg_types::{
-	domain_address::Domain,
-	tokens::{AssetMetadata, CurrencyId},
+	domain_address::{Domain, DomainAddress},
+	EVMChainId,
 };
+use ethabi::{Function, Param, ParamType, Token};
 use frame_support::{assert_ok, dispatch::RawOrigin};
-use liquidity_pools_gateway_routers::{
-	AxelarEVMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, EVMRouter, EthereumXCMRouter,
-	FeeValues, XCMRouter, XcmDomain,
-};
+use orml_traits::MultiCurrency;
+use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_liquidity_pools::Message;
-use polkadot_core_primitives::BlakeTwo256;
-use runtime_common::gateway::get_gateway_h160_account;
-use sp_core::{Get, H160, U256};
-use sp_runtime::{
-	traits::{Hash, One},
-	BoundedVec,
+use pallet_liquidity_pools_gateway::message::GatewayMessage;
+use runtime_common::{
+	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
+	gateway::get_gateway_domain_address, routing::RouterId,
 };
-use staging_xcm::v4::{Junction::*, Location};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	config::Runtime,
 	env::{Blocks, Env},
-	envs::fudge_env::{handle::SIBLING_ID, FudgeEnv, FudgeSupport},
+	envs::runtime_env::RuntimeEnv,
 	utils::{
 		self,
-		accounts::Keyring,
-		currency::{cfg, CurrencyInfo, CustomCurrency},
+		currency::{cfg, usd18, CurrencyInfo, Usd18},
 		genesis,
 		genesis::Genesis,
-		xcm::{enable_para_to_sibling_communication, transferable_metadata},
 	},
 };
 
-const INITIAL: Balance = 100;
-const TEST_DOMAIN: Domain = Domain::EVM(1);
+mod axelar_evm {
+	use frame_support::BoundedVec;
 
-const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
-const AXELAR_CONTRACT_CODE: &[u8] = &[0, 0, 0];
+	use super::*;
 
-lazy_static::lazy_static! {
-	static ref CURR: CustomCurrency = CustomCurrency(
-		CurrencyId::ForeignAsset(1),
-		AssetMetadata {
-			decimals: 18,
-			..transferable_metadata(Some(SIBLING_ID))
-		},
-	);
-}
+	const CHAIN_NAME: &str = "Ethereum";
+	const INITIAL: Balance = 100;
+	const CHAIN_ID: EVMChainId = 1;
+	const TEST_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
+	const TEST_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
+	const AXELAR_CONTRACT_CODE: &[u8] = &[0, 0, 0];
+	const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
+	const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
+	const SOURCE_ADDRESS: H160 = H160::repeat_byte(3);
+	const RECEIVER_ADDRESS: H160 = H160::repeat_byte(4);
+	const TRANSFER_AMOUNT: Balance = usd18(100);
 
-fn xcm_router<T: Runtime>() -> XCMRouter<T> {
-	XCMRouter {
-		xcm_domain: XcmDomain {
-			location: Box::new(Location::new(1, Parachain(SIBLING_ID)).into()),
-			ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
-			contract_address: H160::from_low_u64_be(11),
-			max_gas_limit: 700_000,
-			transact_required_weight_at_most: Default::default(),
-			overall_weight: Default::default(),
-			fee_currency: CURR.id(),
-			fee_amount: CURR.val(1),
-		},
-	}
-}
-
-fn environment_for_evm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
-	let mut env = FudgeEnv::<T>::from_parachain_storage(
-		Genesis::default()
-			.add(genesis::balances::<T>(cfg(1_000)))
-			.storage(),
-	);
-
-	env.parachain_state_mut(|| {
-		pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
-
-		utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
-		utils::evm::mint_balance_into_derived_account::<T>(get_gateway_h160_account::<T>(), cfg(1));
-	});
-
-	env
-}
-
-fn environment_for_xcm<T: Runtime + FudgeSupport>() -> FudgeEnv<T> {
-	let mut env = FudgeEnv::<T>::from_parachain_storage(
-		Genesis::default()
-			.add(genesis::balances::<T>(cfg(1_000)))
-			.add(genesis::assets::<T>([(CURR.id(), CURR.metadata())]))
-			.storage(),
-	);
-
-	enable_para_to_sibling_communication::<T>(&mut env);
-
-	env.parachain_state_mut(|| {
-		utils::give_tokens::<T>(T::Sender::get(), CURR.id(), CURR.val(50));
-	});
-
-	env
-}
-
-fn check_submission<T: Runtime>(mut env: impl Env<T>, domain_router: DomainRouter<T>) {
-	let expected_event = env.parachain_state_mut(|| {
-		assert_ok!(
-			pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
-				RawOrigin::Root.into(),
-				TEST_DOMAIN,
-				domain_router,
-			)
-		);
-
-		let msg = Message::Transfer {
-			currency: 0,
-			sender: Keyring::Alice.into(),
-			receiver: Keyring::Bob.into(),
-			amount: 1_000,
-		};
-
-		assert_ok!(
-			<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
-				Keyring::Alice.into(),
-				TEST_DOMAIN,
-				msg.clone(),
-			)
-		);
-
-		pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
-			sender: T::Sender::get(),
-			domain: TEST_DOMAIN,
-			message: msg,
-			nonce: T::OutboundMessageNonce::one(),
-		}
-	});
-
-	env.pass(Blocks::UntilEvent {
-		event: expected_event.into(),
-		limit: 3,
-	});
-}
-
-#[test_runtimes(all)]
-fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
-	let router = DomainRouter::AxelarEVM(AxelarEVMRouter::<T> {
-		router: EVMRouter {
-			evm_domain: EVMDomain {
+	fn base_config<T: Runtime>() -> AxelarConfig {
+		AxelarConfig {
+			liquidity_pools_contract_address: LP_CONTRACT_ADDRESS,
+			domain: DomainConfig::Evm(EvmConfig {
+				chain_id: CHAIN_ID,
 				target_contract_address: AXELAR_CONTRACT_ADDRESS,
 				target_contract_hash: BlakeTwo256::hash_of(&AXELAR_CONTRACT_CODE),
 				fee_values: FeeValues {
@@ -149,32 +58,147 @@ fn submit_by_axelar_evm<T: Runtime + FudgeSupport>() {
 					gas_limit: U256::from(T::config().gas_transaction_call + 1_000_000),
 					gas_price: U256::from(10),
 				},
-			},
-			_marker: Default::default(),
-		},
-		evm_chain: Vec::from(b"ethereum").try_into().unwrap(),
-		liquidity_pools_contract_address: H160::from_low_u64_be(2),
-	});
+			}),
+		}
+	}
 
-	check_submission(environment_for_evm::<T>(), router);
-}
+	fn send_ethereum_message_through_axelar_to_centrifuge<T: Runtime>(message: Message) {
+		#[allow(deprecated)] // Due `constant` field. Can be remove in future ethabi
+		let eth_function_encoded = Function {
+			name: "execute".into(),
+			inputs: vec![
+				Param {
+					name: "commandId".into(),
+					kind: ParamType::FixedBytes(32),
+					internal_type: None,
+				},
+				Param {
+					name: "sourceChain".into(),
+					kind: ParamType::String,
+					internal_type: None,
+				},
+				Param {
+					name: "sourceAddress".into(),
+					kind: ParamType::String,
+					internal_type: None,
+				},
+				Param {
+					name: "payload".into(),
+					kind: ParamType::Bytes,
+					internal_type: None,
+				},
+			],
+			outputs: vec![],
+			constant: Some(false),
+			state_mutability: Default::default(),
+		}
+		.encode_input(&[
+			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
+			Token::String(CHAIN_NAME.into()),
+			Token::String(String::from_utf8(SOURCE_ADDRESS.as_fixed_bytes().to_vec()).unwrap()),
+			Token::Bytes(message.serialize()),
+		])
+		.expect("cannot encode input for test contract function");
 
-#[test_runtimes(all)]
-fn submit_by_ethereum_xcm<T: Runtime + FudgeSupport>() {
-	let router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
-		router: xcm_router(),
-	});
+		assert_ok!(pallet_evm::Pallet::<T>::call(
+			RawOrigin::Root.into(),
+			LP_CONTRACT_ADDRESS,
+			H160::from_low_u64_be(LP_AXELAR_GATEWAY),
+			eth_function_encoded.to_vec(),
+			U256::from(0),
+			0x100000,
+			U256::from(1_000_000_000),
+			None,
+			Some(U256::from(0)),
+			Vec::new(),
+		));
+	}
 
-	check_submission(environment_for_xcm::<T>(), router);
-}
+	#[test_runtimes(all)]
+	fn send<T: Runtime>() {
+		let mut env = RuntimeEnv::<T>::default();
 
-#[test_runtimes(all)]
-fn submit_by_axelar_xcm<T: Runtime + FudgeSupport>() {
-	let router = DomainRouter::AxelarXCM(AxelarXCMRouter::<T> {
-		router: xcm_router(),
-		axelar_target_chain: Vec::from(b"ethereum").try_into().unwrap(),
-		axelar_target_contract: AXELAR_CONTRACT_ADDRESS,
-	});
+		env.parachain_state_mut(|| {
+			pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
 
-	check_submission(environment_for_xcm::<T>(), router);
+			utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
+			utils::evm::mint_balance_into_derived_account::<T>(
+				get_gateway_domain_address::<T>().h160(),
+				cfg(1),
+			);
+
+			assert_ok!(pallet_axelar_router::Pallet::<T>::set_config(
+				RawOrigin::Root.into(),
+				Vec::from(CHAIN_NAME).try_into().unwrap(),
+				Box::new(base_config::<T>()),
+			));
+
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				RawOrigin::Root.into(),
+				BoundedVec::try_from(vec![TEST_ROUTER_ID]).unwrap(),
+			));
+
+			let gateway_message = GatewayMessage::Outbound {
+				router_id: TEST_ROUTER_ID,
+				message: Message::Invalid,
+			};
+
+			// If the message is correctly processed, it means that the router sends
+			// correcly the message
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::process(gateway_message).0);
+		});
+	}
+
+	#[test_runtimes(all)]
+	fn receive<T: Runtime>() {
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
+			Genesis::default()
+				.add(genesis::assets::<T>([(Usd18.id(), &Usd18.metadata())]))
+				.storage(),
+		);
+
+		let derived_receiver_account =
+			env.parachain_state(|| AccountConverter::evm_address_to_account::<T>(RECEIVER_ADDRESS));
+
+		env.parachain_state_mut(|| {
+			pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
+
+			utils::evm::mint_balance_into_derived_account::<T>(LP_CONTRACT_ADDRESS, cfg(1));
+
+			assert_ok!(pallet_axelar_router::Pallet::<T>::set_config(
+				RawOrigin::Root.into(),
+				Vec::from(CHAIN_NAME).try_into().unwrap(),
+				Box::new(base_config::<T>()),
+			));
+
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				RawOrigin::Root.into(),
+				BoundedVec::try_from(vec![TEST_ROUTER_ID]).unwrap(),
+			));
+
+			let message = Message::TransferAssets {
+				currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(Usd18.id())
+					.unwrap(),
+				receiver: derived_receiver_account.clone().into(),
+				amount: TRANSFER_AMOUNT,
+			};
+
+			pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
+				RawOrigin::Root.into(),
+				DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS),
+			)
+			.unwrap();
+
+			send_ethereum_message_through_axelar_to_centrifuge::<T>(message);
+		});
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.parachain_state(|| {
+			assert_eq!(
+				orml_tokens::Pallet::<T>::free_balance(Usd18.id(), &derived_receiver_account),
+				TRANSFER_AMOUNT
+			);
+		});
+	}
 }

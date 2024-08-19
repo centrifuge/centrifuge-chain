@@ -14,7 +14,7 @@ ethabi = { workspace = true, features = ["std", "full-serde"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
 fudge-core = { workspace = true }
-hex = { workspace = true }
+hex = { workspace = true, features = ["std"] }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
 parity-scale-codec = { workspace = true }
@@ -80,12 +80,10 @@ cfg-traits = { workspace = true, features = ["std"] }
 cfg-types = { workspace = true, features = ["std"] }
 cfg-utils = { workspace = true, features = ["std"] }
 development-runtime = { workspace = true, features = ["std"] }
-liquidity-pools-gateway-routers = { workspace = true, features = ["std"] }
 runtime-common = { workspace = true, features = ["std"] }
 runtime-integration-tests-proc-macro = { workspace = true }
 
 # Pallet list
-axelar-gateway-precompile = { workspace = true, features = ["std"] }
 chainbridge = { workspace = true, features = ["std"] }
 cumulus-pallet-aura-ext = { workspace = true, features = ["std"] }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
@@ -98,6 +96,7 @@ orml-xtokens = { workspace = true, features = ["std"] }
 pallet-anchors = { workspace = true, features = ["std"] }
 pallet-aura = { workspace = true, features = ["std"] }
 pallet-authorship = { workspace = true, features = ["std"] }
+pallet-axelar-router = { workspace = true, features = ["std"] }
 pallet-balances = { workspace = true, features = ["std"] }
 pallet-base-fee = { workspace = true, features = ["std"] }
 pallet-block-rewards = { workspace = true, features = ["std"] }
@@ -119,6 +118,7 @@ pallet-investments = { workspace = true, features = ["std"] }
 pallet-keystore = { workspace = true, features = ["std"] }
 pallet-liquidity-pools = { workspace = true, features = ["std"] }
 pallet-liquidity-pools-gateway = { workspace = true, features = ["std"] }
+pallet-liquidity-pools-gateway-queue = { workspace = true, features = ["std"] }
 pallet-liquidity-rewards = { workspace = true, features = ["std"] }
 pallet-loans = { workspace = true, features = ["std"] }
 pallet-membership = { workspace = true, features = ["std"] }
@@ -138,7 +138,6 @@ pallet-rewards = { workspace = true, features = ["std"] }
 pallet-scheduler = { workspace = true, features = ["std"] }
 pallet-session = { workspace = true, features = ["std"] }
 pallet-sudo = { workspace = true, features = ["std"] }
-pallet-swaps = { workspace = true, features = ["std"] }
 pallet-timestamp = { workspace = true, features = ["std"] }
 pallet-token-mux = { workspace = true, features = ["std"] }
 pallet-transaction-payment = { workspace = true, features = ["std"] }

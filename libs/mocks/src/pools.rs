@@ -25,7 +25,6 @@ pub mod pallet {
 		type Balance;
 		type BalanceRatio;
 		type CurrencyId;
-		type TrancheCurrency;
 	}
 
 	#[pallet::pallet]
@@ -65,21 +64,28 @@ pub mod pallet {
 
 		pub fn mock_info(
 			f: impl Fn(
-					T::TrancheCurrency,
+					(T::PoolId, T::TrancheId),
 				) -> Result<
-					InvestmentInfo<T::AccountId, T::CurrencyId, T::TrancheCurrency>,
+					InvestmentInfo<T::AccountId, T::CurrencyId, (T::PoolId, T::TrancheId)>,
 					DispatchError,
 				> + 'static,
 		) {
 			register_call!(f);
 		}
 
-		pub fn mock_balance(f: impl Fn(T::TrancheCurrency, &T::AccountId) -> T::Balance + 'static) {
+		pub fn mock_balance(
+			f: impl Fn((T::PoolId, T::TrancheId), &T::AccountId) -> T::Balance + 'static,
+		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_transfer(
-			f: impl Fn(T::TrancheCurrency, &T::AccountId, &T::AccountId, T::Balance) -> DispatchResult
+			f: impl Fn(
+					(T::PoolId, T::TrancheId),
+					&T::AccountId,
+					&T::AccountId,
+					T::Balance,
+				) -> DispatchResult
 				+ 'static,
 		) {
 			register_call!(move |(a, b, c, d)| f(a, b, c, d));
@@ -93,21 +99,21 @@ pub mod pallet {
 
 		#[allow(non_snake_case)]
 		pub fn mock_InvestmentAccountant_deposit(
-			f: impl Fn(&T::AccountId, T::TrancheCurrency, T::Balance) -> DispatchResult + 'static,
+			f: impl Fn(&T::AccountId, (T::PoolId, T::TrancheId), T::Balance) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		#[allow(non_snake_case)]
 		pub fn mock_InvestmentAccountant_withdraw(
-			f: impl Fn(&T::AccountId, T::TrancheCurrency, T::Balance) -> DispatchResult + 'static,
+			f: impl Fn(&T::AccountId, (T::PoolId, T::TrancheId), T::Balance) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
 		pub fn mock_bench_default_investment_id(
-			f: impl Fn(T::PoolId) -> T::TrancheCurrency + 'static,
+			f: impl Fn(T::PoolId) -> (T::PoolId, T::TrancheId) + 'static,
 		) {
 			register_call!(f);
 		}
@@ -138,7 +144,7 @@ pub mod pallet {
 	impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		type Amount = T::Balance;
 		type Error = DispatchError;
-		type InvestmentId = T::TrancheCurrency;
+		type InvestmentId = (T::PoolId, T::TrancheId);
 		type InvestmentInfo = InvestmentInfo<T::AccountId, T::CurrencyId, Self::InvestmentId>;
 
 		fn info(a: Self::InvestmentId) -> Result<Self::InvestmentInfo, DispatchError> {
@@ -219,7 +225,7 @@ pub mod pallet {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> cfg_traits::benchmarking::InvestmentIdBenchmarkHelper for Pallet<T> {
-		type InvestmentId = T::TrancheCurrency;
+		type InvestmentId = (T::PoolId, T::TrancheId);
 		type PoolId = T::PoolId;
 
 		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {

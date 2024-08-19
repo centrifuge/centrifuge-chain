@@ -22,12 +22,8 @@ pub mod tokens;
 pub mod xcm;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
-use cfg_traits::{investments::TrancheCurrency as _, Seconds, TimeAsSecs};
-use cfg_types::{
-	fixed_point::Ratio,
-	oracles::OracleKey,
-	tokens::{CurrencyId, TrancheCurrency},
-};
+use cfg_traits::{Seconds, TimeAsSecs};
+use cfg_types::{fixed_point::Ratio, oracles::OracleKey, tokens::CurrencyId};
 use frame_system::RawOrigin;
 use pallet_oracle_collection::types::CollectionInfo;
 use runtime_common::oracle::Feeder;
@@ -187,7 +183,7 @@ pub fn invest<T: Runtime>(
 ) {
 	pallet_investments::Pallet::<T>::update_invest_order(
 		RawOrigin::Signed(investor).into(),
-		TrancheCurrency::generate(pool_id, tranche_id),
+		(pool_id, tranche_id),
 		amount,
 	)
 	.unwrap();
@@ -201,7 +197,7 @@ pub fn redeem<T: Runtime>(
 ) {
 	pallet_investments::Pallet::<T>::update_redeem_order(
 		RawOrigin::Signed(investor).into(),
-		TrancheCurrency::generate(pool_id, tranche_id),
+		(pool_id, tranche_id),
 		amount,
 	)
 	.unwrap();
@@ -214,7 +210,7 @@ pub fn collect_investments<T: Runtime>(
 ) {
 	pallet_investments::Pallet::<T>::collect_investments(
 		RawOrigin::Signed(investor).into(),
-		TrancheCurrency::generate(pool_id, tranche_id),
+		(pool_id, tranche_id),
 	)
 	.unwrap();
 }
@@ -226,7 +222,7 @@ pub fn collect_redemptions<T: Runtime>(
 ) {
 	pallet_investments::Pallet::<T>::collect_redemptions(
 		RawOrigin::Signed(investor).into(),
-		TrancheCurrency::generate(pool_id, tranche_id),
+		(pool_id, tranche_id),
 	)
 	.unwrap();
 }

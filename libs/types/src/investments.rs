@@ -142,46 +142,6 @@ impl<Collected: EnsureAddAssign + Copy, Payment: EnsureAddAssign + Copy>
 	}
 }
 
-/// A representation of an executed investment decrement.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
-	/// The currency in which `DecreaseInvestOrder` was realised
-	pub foreign_currency: Currency,
-	/// The amount of `currency` that was actually executed in the original
-	/// `DecreaseInvestOrder` message, i.e., the amount by which the
-	/// investment order was actually decreased by.
-	pub amount_decreased: Balance,
-	/// The unprocessed plus processed but not yet collected investment amount
-	/// denominated in `foreign` payment currency
-	pub amount_remaining: Balance,
-}
-
-/// A representation of an executed collected foreign investment or redemption.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExecutedForeignCollect<Balance, TrancheTokens, Remaining, Currency> {
-	/// The foreign currency in which ...
-	/// * If investment: the payment took place
-	/// * If redemption: the payout takes place
-	pub currency: Currency,
-
-	/// The amount of `currency`...
-	/// * If investment: that was collected
-	/// * If redemption: paid out to the investor
-	pub amount_currency_payout: Balance,
-
-	/// The amount of tranche tokens...
-	/// * If investment: received for the investment made
-	/// * If redemption: which were actually redeemed
-	pub amount_tranche_tokens_payout: TrancheTokens,
-
-	/// The unprocessed ...
-	/// * If investment: investment amount of `currency` (denominated in foreign
-	///   currency)
-	/// * If redemption: redemption amount of tranche tokens (denominated in
-	///   pool currency)
-	pub amount_remaining: Remaining,
-}
-
 /// A representation of an investment portfolio consisting of free, pending and
 /// claimable pool currency as well as tranche tokens.
 #[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

@@ -33,19 +33,15 @@
 //!   completion.
 //! - The pallet's associated `TreasuryAccount` holds sufficient balance for the
 //!   corresponding fee currencies of all possible recipient domains for the
-//!   following outgoing messages: [`Message::ExecutedDecreaseInvestOrder`],
-//!   [`Message::ExecutedDecreaseRedeemOrder`],
-//!   [`Message::ExecutedCollectInvest`], [`Message::ExecutedCollectRedeem`],
+//!   following outgoing messages: [`Message::FulfilledCancelDepositRequest`],
+//!   [`Message::FulfilledCancelRedeemRequest`],
+//!   [`Message::FulfilledDepositRequest`], [`Message::FulfilledRedeemRequest`],
 //!   [`Message::ScheduleUpgrade`].
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{
-	liquidity_pools::{InboundQueue, OutboundQueue},
-	swaps::TokenSwaps,
-	PreConditions,
-};
+use cfg_traits::{liquidity_pools::OutboundMessageHandler, swaps::TokenSwaps, PreConditions};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
@@ -58,10 +54,14 @@ use frame_support::{
 	},
 	transactional,
 };
-use orml_traits::asset_registry::{self, Inspect as _};
+use orml_traits::{
+	asset_registry::{self, Inspect as _},
+	GetByKey,
+};
 pub use pallet::*;
+use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Convert, EnsureMul},
+	traits::{AtLeast32BitUnsigned, EnsureMul},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
@@ -69,6 +69,8 @@ use staging_xcm::{
 	v4::{Junction::*, NetworkId},
 	VersionedLocation,
 };
+
+use crate::message::UpdateRestrictionMessage;
 
 // NOTE: Should be replaced with generated weights in the future. For now, let's
 // be defensive.
@@ -81,6 +83,8 @@ mod gmpf {
 	mod ser;
 
 	pub use de::from_slice;
+	#[cfg(test)]
+	pub use error::Error;
 	pub use ser::to_vec;
 }
 
@@ -104,8 +108,8 @@ pub type GeneralCurrencyIndexOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
+		investments::ForeignInvestment, liquidity_pools::InboundMessageHandler, CurrencyInspect,
+		Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -118,6 +122,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
+	use sp_core::U256;
 	use sp_runtime::{traits::Zero, DispatchError};
 
 	use super::*;
@@ -127,7 +132,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config<AccountId = AccountId32> {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -204,11 +209,6 @@ pub mod pallet {
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
-		/// The currency type of investments.
-		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
-			+ Clone;
-
 		/// Enables investing and redeeming into investment classes with foreign
 		/// currencies.
 		type ForeignInvestment: ForeignInvestment<
@@ -216,8 +216,7 @@ pub mod pallet {
 			Amount = Self::Balance,
 			TrancheAmount = Self::Balance,
 			CurrencyId = Self::CurrencyId,
-			Error = DispatchError,
-			InvestmentId = <Self as Config>::TrancheCurrency,
+			InvestmentId = (Self::PoolId, Self::TrancheId),
 		>;
 
 		/// The source of truth for the transferability of assets via the
@@ -239,27 +238,23 @@ pub mod pallet {
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			// Enables checking whether currency is tranche token
-			+ CurrencyInspect<CurrencyId = Self::CurrencyId>;
+			+ CurrencyInspect<CurrencyId = Self::CurrencyId>
+			+ From<(Self::PoolId, Self::TrancheId)>;
 
-		/// The converter from a DomainAddress to a Substrate AccountId.
-		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
-
-		/// The converter from a Domain and a 32 byte array to DomainAddress.
-		type DomainAccountToDomainAddress: Convert<(Domain, [u8; 32]), DomainAddress>;
-
-		/// The type for processing outgoing messages.
-		type OutboundQueue: OutboundQueue<
-			Sender = Self::AccountId,
-			Message = Message,
-			Destination = Domain,
-		>;
+		/// The type for processing outgoing messages and retrieving the domain
+		/// hook address.
+		type OutboundMessageHandler: OutboundMessageHandler<
+				Sender = Self::AccountId,
+				Message = Message,
+				Destination = Domain,
+			> + GetByKey<Domain, Option<[u8; 20]>>;
 
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
 		/// The type for paying the transaction fees for the dispatch of
-		/// `Executed*` and `ScheduleUpgrade` messages.
+		/// `Fulfilled*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
@@ -336,16 +331,26 @@ pub mod pallet {
 		/// The account derived from the [Domain] and [DomainAddress] has not
 		/// been whitelisted as a TrancheInvestor.
 		InvestorDomainAddressNotAMember,
+		/// The account derived from the [Domain] and [DomainAddress] is frozen
+		/// and cannot transfer tranche tokens therefore.
+		InvestorDomainAddressFrozen,
+		/// The account derived from the [Domain] and [DomainAddress] is not
+		/// frozen and cannot be unfrozen therefore.
+		InvestorDomainAddressNotFrozen,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
+		/// The domain hook address could not be found.
+		DomainHookAddressNotFound,
+		/// This pallet does not expect to receive direclty a batch message,
+		/// instead it expects several calls to it with different messages.
+		UnsupportedBatchMessage,
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
-	{
-		/// Add a pool to a given domain
+	impl<T: Config> Pallet<T> {
+		/// Add a pool to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
 		pub fn add_pool(
@@ -369,7 +374,7 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
 				Message::AddPool {
@@ -379,7 +384,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a tranche to a given domain
+		/// Add a tranche to a given domain.
+		///
+		/// Origin: Pool admin
 		#[pallet::weight(T::WeightInfo::add_tranche())]
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
@@ -406,8 +413,16 @@ pub mod pallet {
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
+			// Determine hook from EVM chain id and 20 byte hook stored in Gateway
+			let hook_bytes = T::OutboundMessageHandler::get(&domain)
+				.ok_or(Error::<T>::DomainHookAddressNotFound)?;
+			let evm_chain_id = match domain {
+				Domain::Evm(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+
 			// Send the message to the domain
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
 				Message::AddTranche {
@@ -416,10 +431,7 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
-					// only available option. We will design a dynamic approach going forward where
-					// this value can be set on a per-tranche-token basis on storage.
-					restriction_set: 1,
+					hook: DomainAddress::Evm(evm_chain_id, hook_bytes.into()).bytes(),
 				},
 			)?;
 
@@ -455,16 +467,16 @@ pub mod pallet {
 			// Check that the registered asset location matches the destination
 			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
 			ensure!(
-				Domain::EVM(chain_id) == destination,
+				Domain::Evm(chain_id) == destination,
 				Error::<T>::InvalidDomain
 			);
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				destination,
-				Message::UpdateTrancheTokenPrice {
+				Message::UpdateTranchePrice {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					currency,
@@ -476,7 +488,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update a member
+		/// Inform the recipient domain about a new or changed investor
+		/// validity.
 		#[pallet::weight(T::WeightInfo::update_member())]
 		#[pallet::call_index(5)]
 		pub fn update_member(
@@ -506,20 +519,22 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					T::DomainAddressToAccountId::convert(domain_address.clone()),
+					domain_address.account(),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain_address.domain(),
-				Message::UpdateMember {
+				Message::UpdateRestriction {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
-					valid_until,
-					member: domain_address.address(),
+					update: UpdateRestrictionMessage::UpdateMember {
+						member: domain_address.bytes(),
+						valid_until,
+					},
 				},
 			)?;
 
@@ -544,23 +559,11 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					T::DomainAddressToAccountId::convert(domain_address.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
-				),
-				Error::<T>::UnauthorizedTransfer
-			);
+			Self::validate_investor_can_transfer(domain_address.account(), pool_id, tranche_id)?;
 
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-
-			T::PreTransferFilter::check((
-				who.clone(),
-				domain_address.clone(),
-				invest_id.clone().into(),
-			))?;
+			T::PreTransferFilter::check((who.clone(), domain_address.clone(), invest_id.into()))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -572,7 +575,7 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who.clone(),
 				domain_address.domain(),
 				Message::TransferTrancheTokens {
@@ -580,8 +583,7 @@ pub mod pallet {
 					tranche_id: tranche_id.into(),
 					amount: amount.into(),
 					domain: domain_address.domain().into(),
-					sender: who.into(),
-					receiver: domain_address.address(),
+					receiver: domain_address.bytes(),
 				},
 			)?;
 
@@ -614,7 +616,7 @@ pub mod pallet {
 			// Check that the registered asset location matches the destination
 			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
 			ensure!(
-				Domain::EVM(chain_id) == receiver.domain(),
+				Domain::Evm(chain_id) == receiver.domain(),
 				Error::<T>::InvalidDomain
 			);
 
@@ -646,14 +648,13 @@ pub mod pallet {
 				Fortitude::Polite,
 			)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who.clone(),
 				receiver.domain(),
-				Message::Transfer {
+				Message::TransferAssets {
 					amount: amount.into(),
 					currency,
-					sender: who.into(),
-					receiver: receiver.address(),
+					receiver: receiver.bytes(),
 				},
 			)?;
 
@@ -662,7 +663,9 @@ pub mod pallet {
 
 		/// Add a currency to the set of known currencies on the domain derived
 		/// from the given currency.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		///
+		/// Origin: Anyone because transmitted data is queried from chain.
+		#[pallet::weight(T::WeightInfo::add_currency())]
 		#[pallet::call_index(8)]
 		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -671,12 +674,12 @@ pub mod pallet {
 
 			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
-				Domain::EVM(chain_id),
-				Message::AddCurrency {
+				Domain::Evm(chain_id),
+				Message::AddAsset {
 					currency,
-					evm_address,
+					evm_address: evm_address.0,
 				},
 			)?;
 
@@ -685,16 +688,17 @@ pub mod pallet {
 
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin for now
+		/// NOTE: In the future should be permissioned by new trait, see spec
+		/// <https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency>
 		#[pallet::call_index(9)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(T::WeightInfo::allow_investment_currency())]
 		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
-			// TODO(future): In the future, should be permissioned by trait which
-			// does not exist yet.
-			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
 			ensure!(
@@ -708,10 +712,10 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
-				Domain::EVM(chain_id),
-				Message::AllowInvestmentCurrency {
+				Domain::Evm(chain_id),
+				Message::AllowAsset {
 					pool_id: pool_id.into(),
 					currency,
 				},
@@ -720,8 +724,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(<T as Config>::WeightInfo::schedule_upgrade())]
+		/// Schedule an upgrade of an EVM-based liquidity pool contract
+		/// instance.
+		///
+		/// Origin: root
+		#[pallet::weight(T::WeightInfo::schedule_upgrade())]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
@@ -730,14 +737,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				T::TreasuryAccount::get(),
-				Domain::EVM(evm_chain_id),
+				Domain::Evm(evm_chain_id),
 				Message::ScheduleUpgrade { contract },
 			)
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		///
+		/// Origin: root
 		#[pallet::weight(T::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
 		pub fn cancel_upgrade(
@@ -747,9 +756,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				T::TreasuryAccount::get(),
-				Domain::EVM(evm_chain_id),
+				Domain::Evm(evm_chain_id),
 				Message::CancelUpgrade { contract },
 			)
 		}
@@ -758,7 +767,7 @@ pub mod pallet {
 		///
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
-		/// beforehand.
+		/// beforehand. Therefore, no restrictions on calling origin.
 		#[pallet::weight(T::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
 		pub fn update_tranche_token_metadata(
@@ -769,21 +778,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
-			);
-
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
 				domain,
-				Message::UpdateTrancheTokenMetadata {
+				Message::UpdateTrancheMetadata {
 					pool_id: pool_id.into(),
 					tranche_id: tranche_id.into(),
 					token_name,
@@ -794,8 +798,10 @@ pub mod pallet {
 
 		/// Disallow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
+		///
+		/// Origin: Pool admin
 		#[pallet::call_index(13)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::weight(T::WeightInfo::disallow_investment_currency())]
 		pub fn disallow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -814,12 +820,214 @@ pub mod pallet {
 
 			let (currency, chain_id) = Self::validate_investment_currency(currency_id)?;
 
-			T::OutboundQueue::submit(
+			T::OutboundMessageHandler::handle(
 				who,
-				Domain::EVM(chain_id),
-				Message::DisallowInvestmentCurrency {
+				Domain::Evm(chain_id),
+				Message::DisallowAsset {
 					pool_id: pool_id.into(),
 					currency,
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Block a remote investor from performing investment tasks until lock
+		/// is removed.
+		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect frozenness beforehand.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(14)]
+		#[pallet::weight(T::WeightInfo::freeze_investor())]
+		pub fn freeze_investor(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+			Self::validate_investor_status(
+				domain_address.account(),
+				pool_id,
+				tranche_id,
+				T::Time::now(),
+				true,
+			)?;
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain_address.domain(),
+				Message::UpdateRestriction {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					update: UpdateRestrictionMessage::Freeze {
+						address: domain_address.bytes(),
+					},
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Unblock a previously locked remote investor from performing
+		/// investment tasks.
+		///
+		/// NOTE: Assumes the remote investor's permissions have been updated to
+		/// reflect an unfrozen state beforehand.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(15)]
+		#[pallet::weight(T::WeightInfo::unfreeze_investor())]
+		pub fn unfreeze_investor(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+			Self::validate_investor_status(
+				domain_address.account(),
+				pool_id,
+				tranche_id,
+				T::Time::now(),
+				false,
+			)?;
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain_address.domain(),
+				Message::UpdateRestriction {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					update: UpdateRestrictionMessage::Unfreeze {
+						address: domain_address.bytes(),
+					},
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Notify the specified destination domain about a tranche hook address
+		/// update.
+		///
+		/// Origin: Pool admin
+		#[pallet::call_index(16)]
+		#[pallet::weight(T::WeightInfo::update_tranche_hook())]
+		pub fn update_tranche_hook(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain: Domain,
+			hook: [u8; 20],
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
+			let evm_chain_id = match domain {
+				Domain::Evm(id) => Ok(id),
+				_ => Err(Error::<T>::InvalidDomain),
+			}?;
+
+			T::OutboundMessageHandler::handle(
+				who,
+				domain,
+				Message::UpdateTrancheHook {
+					pool_id: pool_id.into(),
+					tranche_id: tranche_id.into(),
+					hook: DomainAddress::Evm(evm_chain_id, hook.into()).bytes(),
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Initiate the recovery of assets which were sent to an incorrect
+		/// contract by the account represented by `domain_address`.
+		///
+		/// NOTE: Asset and contract addresses in 32 bytes in order to support
+		/// future non-EVM chains.
+		///
+		/// Origin: Root.
+		#[pallet::call_index(17)]
+		#[pallet::weight(T::WeightInfo::update_tranche_hook())]
+		pub fn recover_assets(
+			origin: OriginFor<T>,
+			domain_address: DomainAddress,
+			incorrect_contract: [u8; 32],
+			asset: [u8; 32],
+			// NOTE: Solidity balance is `U256` per default
+			amount: U256,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			ensure!(
+				matches!(domain_address.domain(), Domain::Evm(_)),
+				Error::<T>::InvalidDomain
+			);
+
+			T::OutboundMessageHandler::handle(
+				T::TreasuryAccount::get(),
+				domain_address.domain(),
+				Message::RecoverAssets {
+					contract: incorrect_contract,
+					asset,
+					recipient: domain_address.bytes(),
+					amount: amount.into(),
 				},
 			)?;
 
@@ -869,7 +1077,7 @@ pub mod pallet {
 		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_token(
 			currency_id: &T::CurrencyId,
-		) -> Result<(EVMChainId, [u8; 20]), DispatchError> {
+		) -> Result<(EVMChainId, H160), DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_liquidity_pools(),
@@ -895,7 +1103,7 @@ pub mod pallet {
 						network: None,
 						key: address,
 					}],
-				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address)),
+				) if Some(pallet_instance.into()) == pallet_index => Ok((chain_id, address.into())),
 				_ => Err(Error::<T>::AssetNotLiquidityPoolsWrappedToken.into()),
 			}
 		}
@@ -905,7 +1113,7 @@ pub mod pallet {
 		pub fn derive_invest_id(
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
+		) -> Result<(T::PoolId, T::TrancheId), DispatchError> {
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
@@ -915,7 +1123,7 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			Ok(TrancheCurrency::generate(pool_id, tranche_id))
+			Ok((pool_id, tranche_id))
 		}
 
 		/// Performs multiple checks for the provided currency and returns its
@@ -923,6 +1131,10 @@ pub mod pallet {
 		pub fn validate_investment_currency(
 			currency_id: T::CurrencyId,
 		) -> Result<(u128, EVMChainId), DispatchError> {
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
+
 			// Ensure the currency is enabled as pool_currency
 			let metadata =
 				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
@@ -931,35 +1143,81 @@ pub mod pallet {
 				Error::<T>::AssetMetadataNotPoolCurrency
 			);
 
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let (chain_id, ..) = Self::try_get_wrapped_token(&currency_id)?;
-
 			Ok((currency, chain_id))
 		}
 
-		fn domain_account_to_account_id(domain_account: (Domain, [u8; 32])) -> T::AccountId {
-			let domain_address = T::DomainAccountToDomainAddress::convert(domain_account);
-			T::DomainAddressToAccountId::convert(domain_address)
+		/// Checks whether the given address has investor permissions with at
+		/// least the given validity timestamp. Moreover, checks whether the
+		/// investor is frozen or not.
+		pub fn validate_investor_status(
+			investor: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			valid_until: Seconds,
+			is_frozen: bool,
+		) -> DispatchResult {
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
+				),
+				Error::<T>::InvestorDomainAddressNotAMember
+			);
+			ensure!(
+				is_frozen
+					== T::Permission::has(
+						PermissionScope::Pool(pool_id),
+						investor,
+						Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id))
+					),
+				Error::<T>::InvestorDomainAddressFrozen
+			);
+
+			Ok(())
+		}
+
+		/// Checks whether the given address has investor permissions at least
+		/// to the current timestamp and whether it is not frozen.
+		pub fn validate_investor_can_transfer(
+			investor: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+		) -> DispatchResult {
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
+				),
+				Error::<T>::UnauthorizedTransfer
+			);
+			ensure!(
+				!T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					investor,
+					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id))
+				),
+				Error::<T>::InvestorDomainAddressFrozen
+			);
+
+			Ok(())
 		}
 	}
 
-	impl<T: Config> InboundQueue for Pallet<T>
-	where
-		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
-	{
+	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = Message;
 		type Sender = DomainAddress;
 
 		#[transactional]
-		fn submit(sender: DomainAddress, msg: Message) -> DispatchResult {
+		fn handle(sender: DomainAddress, msg: Message) -> DispatchResult {
 			Self::deposit_event(Event::<T>::IncomingMessage {
 				sender: sender.clone(),
 				message: msg.clone(),
 			});
 
 			match msg {
-				Message::Transfer {
+				Message::TransferAssets {
 					currency,
 					receiver,
 					amount,
@@ -976,108 +1234,60 @@ pub mod pallet {
 					pool_id.into(),
 					tranche_id.into(),
 					sender.domain(),
-					T::DomainAccountToDomainAddress::convert((domain.try_into()?, receiver)),
+					DomainAddress::new(domain.try_into()?, receiver),
 					amount.into(),
 				),
-				Message::IncreaseInvestOrder {
+				Message::DepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
 					amount,
-				} => Self::handle_increase_invest_order(
+				} => Self::handle_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
+					DomainAddress::new(sender.domain(), investor).account(),
 					currency.into(),
 					amount.into(),
 				),
-				Message::DecreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::handle_decrease_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-					amount.into(),
-				),
-				Message::IncreaseRedeemOrder {
+				Message::RedeemRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					amount,
 					currency,
-				} => Self::handle_increase_redeem_order(
+				} => Self::handle_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
+					DomainAddress::new(sender.domain(), investor).account(),
 					amount.into(),
 					currency.into(),
 					sender,
 				),
-				Message::DecreaseRedeemOrder {
+				Message::CancelDepositRequest {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
-					amount,
-				} => Self::handle_decrease_redeem_order(
+				} => Self::handle_cancel_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					amount.into(),
+					DomainAddress::new(sender.domain(), investor).account(),
+					currency.into(),
+				),
+				Message::CancelRedeemRequest {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+				} => Self::handle_cancel_redeem_request(
+					pool_id.into(),
+					tranche_id.into(),
+					DomainAddress::new(sender.domain(), investor).account(),
 					currency.into(),
 					sender,
 				),
-				Message::CollectInvest {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_investment(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CollectRedeem {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_collect_redemption(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_invest_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-				),
-				Message::CancelRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-				} => Self::handle_cancel_redeem_order(
-					pool_id.into(),
-					tranche_id.into(),
-					Self::domain_account_to_account_id((sender.domain(), investor)),
-					currency.into(),
-					sender,
-				),
+				Message::Batch(_) => Err(Error::<T>::UnsupportedBatchMessage.into()),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

@@ -23,22 +23,6 @@ pub struct Swap<Amount, Currency> {
 	pub amount_out: Amount,
 }
 
-impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
-	pub fn has_same_currencies(&self) -> bool {
-		self.currency_in == self.currency_out
-	}
-
-	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
-		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
-			Ok(true)
-		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
-			Ok(false)
-		} else {
-			Err(DispatchError::Other("Swap contains different currencies"))
-		}
-	}
-}
-
 /// The information of a swap order
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct OrderInfo<Balance, Currency, Ratio> {
@@ -121,65 +105,4 @@ pub struct SwapInfo<AmountIn, AmountOut, Currency, Ratio> {
 
 	/// Ratio used to swap `swapped_out` into `swapped_in`
 	pub ratio: Ratio,
-}
-
-/// Used as result of `Pallet::apply_swap()`
-/// Amounts are donominated referenced by the `new_swap` paramenter given to
-/// `apply_swap()`
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SwapStatus<Amount> {
-	/// The incoming amount already swapped and available to use.
-	pub swapped: Amount,
-
-	/// The outgoing amount pending to be swapped
-	pub pending: Amount,
-}
-
-/// Trait to perform swaps without handling directly an order book
-pub trait Swaps<AccountId> {
-	type Amount;
-	type CurrencyId;
-	type SwapId;
-
-	/// Apply a swap over a current possible swap state.
-	/// - If there was no previous swap, it adds it.
-	/// - If there was a swap in the same direction, it increments it.
-	/// - If there was a swap in the opposite direction:
-	///   - If the amount is smaller, it decrements it.
-	///   - If the amount is the same, it removes the inverse swap.
-	///   - If the amount is greater, it removes the inverse swap and create
-	///     another with the excess
-	///
-	/// The returned status contains the swapped amount after this call
-	/// (denominated in the incoming currency) and the pending amounts to be
-	/// swapped.
-	fn apply_swap(
-		who: &AccountId,
-		swap_id: Self::SwapId,
-		swap: Swap<Self::Amount, Self::CurrencyId>,
-	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
-
-	/// Cancel a swap partially or completely. The amount should be expressed in
-	/// the same currency as the the currency_out of the pending amount.
-	/// - If there was no previous swap, it errors outs.
-	/// - If there was a swap with other currency out, it errors outs.
-	/// - If there was a swap with same currency out:
-	///   - If the amount is smaller, it decrements it.
-	///   - If the amount is the same, it removes the inverse swap.
-	///   - If the amount is greater, it errors out
-	fn cancel_swap(
-		who: &AccountId,
-		swap_id: Self::SwapId,
-		amount: Self::Amount,
-		currency_id: Self::CurrencyId,
-	) -> DispatchResult;
-
-	/// Returns the pending amount for a pending swap. The direction of the swap
-	/// is determined by the `from_currency` parameter. The amount returned is
-	/// denominated in the same currency as the given `from_currency`.
-	fn pending_amount(
-		who: &AccountId,
-		swap_id: Self::SwapId,
-		from_currency: Self::CurrencyId,
-	) -> Result<Self::Amount, DispatchError>;
 }

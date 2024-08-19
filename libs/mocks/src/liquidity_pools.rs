@@ -1,8 +1,8 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::liquidity_pools::InboundQueue;
+	use cfg_traits::liquidity_pools::InboundMessageHandler;
 	use frame_support::pallet_prelude::*;
-	use mock_builder::{execute_call, register_call};
+	use mock_builder::{execute_call, register_call, CallHandler};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -17,16 +17,18 @@ pub mod pallet {
 	type CallIds<T: Config> = StorageMap<_, _, String, mock_builder::CallId>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_submit(f: impl Fn(T::DomainAddress, T::Message) -> DispatchResult + 'static) {
-			register_call!(move |(sender, msg)| f(sender, msg));
+		pub fn mock_handle(
+			f: impl Fn(T::DomainAddress, T::Message) -> DispatchResult + 'static,
+		) -> CallHandler {
+			register_call!(move |(sender, msg)| f(sender, msg))
 		}
 	}
 
-	impl<T: Config> InboundQueue for Pallet<T> {
+	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = T::Message;
 		type Sender = T::DomainAddress;
 
-		fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
+		fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
 			execute_call!((sender, msg))
 		}
 	}

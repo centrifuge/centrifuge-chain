@@ -21,8 +21,10 @@ use cfg_types::{
 };
 use cumulus_primitives_core::WeightLimit;
 use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin, traits::PalletInfo};
-use runtime_common::remarks::Remark;
-use sp_runtime::traits::Zero;
+use pallet_axelar_router::AxelarId;
+use runtime_common::{remarks::Remark, routing::RouterId};
+use sp_core::H160;
+use sp_runtime::{traits::Zero, BoundedVec};
 use staging_xcm::{
 	v4::{Junction::*, Location, NetworkId},
 	VersionedLocation,
@@ -360,7 +362,8 @@ mod eth_address {
 
 	const TRANSFER: u32 = 10;
 	const CHAIN_ID: u64 = 1;
-	const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
+	const CONTRACT_ACCOUNT: H160 = H160::repeat_byte(1);
+	const ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
 
 	#[test_runtimes(all)]
 	fn restrict_lp_eth_transfer<T: Runtime>() {
@@ -376,7 +379,7 @@ mod eth_address {
 						GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
 						AccountKey20 {
 							network: None,
-							key: CONTRACT_ACCOUNT,
+							key: CONTRACT_ACCOUNT.into(),
 						},
 					],
 				))),
@@ -397,7 +400,12 @@ mod eth_address {
 		);
 
 		env.parachain_state_mut(|| {
-			let curr_contract = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
+			let curr_contract = DomainAddress::Evm(CHAIN_ID, CONTRACT_ACCOUNT);
+
+			assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
+				RawOrigin::Root.into(),
+				BoundedVec::try_from(vec![ROUTER_ID]).unwrap(),
+			));
 
 			assert_ok!(
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
@@ -411,23 +419,19 @@ mod eth_address {
 				pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					curr.id(),
-					DomainAddress::EVM(CHAIN_ID, [2; 20]), // Not the allowed contract account
+					DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(2)), /* Not the allowed
+					                                                     * contract account */
 					curr.val(TRANSFER),
 				),
 				pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
 			);
 
-			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::transfer(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					curr.id(),
-					curr_contract,
-					curr.val(TRANSFER),
-				),
-				// But it's ok, we do not care about the router transaction in this context.
-				// Is already checked at `liquidity_pools.rs`
-				pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
-			);
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
+				RawOrigin::Signed(Keyring::Alice.into()).into(),
+				curr.id(),
+				curr_contract,
+				curr.val(TRANSFER),
+			));
 		});
 	}
 }

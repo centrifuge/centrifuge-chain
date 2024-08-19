@@ -13,14 +13,18 @@
 use frame_support::weights::{constants::RocksDbWeight, Weight};
 
 pub trait WeightInfo {
-	fn set_domain_router() -> Weight;
+	fn set_routers() -> Weight;
 	fn add_instance() -> Weight;
 	fn remove_instance() -> Weight;
 	fn add_relayer() -> Weight;
 	fn remove_relayer() -> Weight;
-	fn process_msg() -> Weight;
-	fn process_outbound_message() -> Weight;
-	fn process_failed_outbound_message() -> Weight;
+	fn receive_message() -> Weight;
+	fn start_batch_message() -> Weight;
+	fn end_batch_message() -> Weight;
+	fn set_domain_hook_address() -> Weight;
+	fn execute_message_recovery() -> Weight;
+	fn initiate_message_recovery() -> Weight;
+	fn dispute_message_recovery() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -29,7 +33,7 @@ pub trait WeightInfo {
 const N: u64 = 4;
 
 impl WeightInfo for () {
-	fn set_domain_router() -> Weight {
+	fn set_routers() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
@@ -84,7 +88,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn process_msg() -> Weight {
+	fn receive_message() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		//
@@ -101,18 +105,18 @@ impl WeightInfo for () {
 			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
-	fn process_outbound_message() -> Weight {
+	fn start_batch_message() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
 		Weight::from_parts(30_117_000, 5991)
-			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().reads(1))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
-	fn process_failed_outbound_message() -> Weight {
+	fn end_batch_message() -> Weight {
 		// TODO: BENCHMARK CORRECTLY
 		//
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
@@ -120,6 +124,50 @@ impl WeightInfo for () {
 		//       read for `AdminOrigin`
 		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn set_domain_hook_address() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn execute_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn initiate_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+
+	fn dispute_message_recovery() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(2))
 	}
 }

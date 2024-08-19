@@ -10,29 +10,35 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::AccountId;
-use sp_core::parameter_types;
-use sp_std::{vec, vec::Vec};
+use crate::Runtime;
 
-parameter_types! {
-	// Alice
-	pub InitialTcMembers: Vec<AccountId> = vec![AccountId::new(hex_literal::hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"))];
-}
-
-/// The migration set for Development & Demo.
-/// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeDevelopment1300 = (
-	// Initialize OpenGov Technical Committee with Alice
-	runtime_common::migrations::technical_comittee::InitMigration<crate::Runtime, InitialTcMembers>,
-	runtime_common::migrations::increase_storage_version::Migration<crate::Referenda, 0, 1>,
-	runtime_common::migrations::increase_storage_version::Migration<
-		crate::TechnicalCommittee,
+pub type UpgradeDevelopment1401 = (
+	// Clear OutboundMessageNonceStore
+	frame_support::migrations::VersionedMigration<
 		0,
-		4,
+		1,
+		runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>,
+		pallet_liquidity_pools_gateway::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Remove undecodable ForeignInvestmentInfo v0 entries
+	runtime_common::migrations::foreign_investments_v2::Migration<Runtime>,
+	// Bump to v1
 	runtime_common::migrations::increase_storage_version::Migration<
-		crate::TechnicalCommitteeMembership,
+		pallet_foreign_investments::Pallet<Runtime>,
+		1,
+		2,
+	>,
+	// Migrate TrancheInvestor permission role and storage version from v0 to v1
+	frame_support::migrations::VersionedMigration<
 		0,
-		4,
+		1,
+		runtime_common::migrations::permissions_v1::Migration<
+			Runtime,
+			crate::MinDelay,
+			crate::MaxTranches,
+		>,
+		pallet_permissions::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
 	>,
 );

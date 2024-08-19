@@ -121,16 +121,14 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "altair-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
  "chainbridge",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -150,7 +148,6 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal",
- "liquidity-pools-gateway-routers",
  "log",
  "orml-asset-registry",
  "orml-tokens",
@@ -161,6 +158,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -182,7 +180,9 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-forwarder",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -205,7 +205,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -934,29 +933,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
-name = "axelar-gateway-precompile"
-version = "0.1.0"
-dependencies = [
- "cfg-traits",
- "cfg-types",
- "cfg-utils",
- "ethabi",
- "fp-evm",
- "frame-support",
- "frame-system",
- "hex",
- "pallet-evm",
- "pallet-liquidity-pools-gateway",
- "parity-scale-codec",
- "precompile-utils",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
-]
-
-[[package]]
 name = "backtrace"
 version = "0.3.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1377,7 +1353,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1470,15 +1446,13 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "chainbridge",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -1498,7 +1472,6 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal",
- "liquidity-pools-gateway-routers",
  "log",
  "orml-asset-registry",
  "orml-tokens",
@@ -1509,6 +1482,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -1529,7 +1503,9 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-forwarder",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -1551,7 +1527,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -2553,24 +2528,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cumulus-pallet-dmp-queue"
-version = "0.7.0"
-source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#e73d252e3e13b27a1127bde9a7c47febf70cc9ab"
-dependencies = [
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
- "staging-xcm",
-]
-
-[[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.7.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#e73d252e3e13b27a1127bde9a7c47febf70cc9ab"
@@ -3100,16 +3057,14 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
  "chainbridge",
  "cumulus-pallet-aura-ext",
- "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
@@ -3129,7 +3084,6 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal",
- "liquidity-pools-gateway-routers",
  "log",
  "orml-asset-registry",
  "orml-tokens",
@@ -3141,6 +3095,7 @@ dependencies = [
  "pallet-anchors-v2",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -3162,7 +3117,9 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-forwarder",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -3185,7 +3142,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",
@@ -5498,6 +5454,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6315,41 +6280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "liquidity-pools-gateway-routers"
-version = "0.0.1"
-dependencies = [
- "cfg-mocks",
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "cumulus-primitives-core",
- "ethabi",
- "frame-support",
- "frame-system",
- "hex",
- "lazy_static",
- "orml-traits",
- "pallet-balances",
- "pallet-ethereum",
- "pallet-ethereum-transaction",
- "pallet-evm",
- "pallet-evm-chain-id",
- "pallet-evm-precompile-simple",
- "pallet-timestamp",
- "pallet-xcm-transactor",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
- "staging-xcm",
- "staging-xcm-builder",
- "staging-xcm-executor",
- "xcm-primitives",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6678,8 +6608,8 @@ dependencies = [
 
 [[package]]
 name = "mock-builder"
-version = "0.2.0"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.7.2#8ca5efb3e1eaeb87cc2cdc1a4c3057f15b899907"
+version = "0.3.0"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.7.2#818b74dea62974d23da75206105b97dc82df66f8"
 
 [[package]]
 name = "mockall"
@@ -7524,6 +7454,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-axelar-router"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "cfg-utils",
+ "ethabi",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "parity-scale-codec",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-babe"
 version = "28.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2#e73d252e3e13b27a1127bde9a7c47febf70cc9ab"
@@ -8107,7 +8060,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-swaps",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -8281,6 +8233,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-liquidity-pools-forwarder"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "pallet-liquidity-pools-gateway"
 version = "0.0.1"
 dependencies = [
@@ -8293,11 +8264,33 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "itertools 0.13.0",
+ "lazy_static",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "pallet-liquidity-pools-gateway-queue"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
  "pallet-balances",
  "parity-scale-codec",
- "rand",
  "scale-info",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -8782,7 +8775,7 @@ dependencies = [
 [[package]]
 name = "pallet-remarks"
 version = "0.0.1"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.7.2#8ca5efb3e1eaeb87cc2cdc1a4c3057f15b899907"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v1.7.2#818b74dea62974d23da75206105b97dc82df66f8"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -9019,21 +9012,6 @@ source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot
 dependencies = [
  "docify",
  "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.2)",
-]
-
-[[package]]
-name = "pallet-swaps"
-version = "1.0.0"
-dependencies = [
- "cfg-mocks",
- "cfg-traits",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -11650,7 +11628,6 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
- "axelar-gateway-precompile",
  "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
@@ -11678,6 +11655,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -11760,7 +11738,6 @@ name = "runtime-integration-tests"
 version = "0.1.0"
 dependencies = [
  "altair-runtime",
- "axelar-gateway-precompile",
  "centrifuge-runtime",
  "cfg-primitives",
  "cfg-traits",
@@ -11787,7 +11764,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "lazy_static",
- "liquidity-pools-gateway-routers",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -11796,6 +11772,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-aura",
  "pallet-authorship",
+ "pallet-axelar-router",
  "pallet-babe",
  "pallet-balances",
  "pallet-base-fee",
@@ -11820,6 +11797,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -11839,7 +11817,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-sudo",
- "pallet-swaps",
  "pallet-timestamp",
  "pallet-token-mux",
  "pallet-transaction-payment",

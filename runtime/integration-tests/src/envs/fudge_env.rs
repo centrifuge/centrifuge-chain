@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use cfg_primitives::{Balance, BlockNumber, Nonce};
 use fudge::primitives::Chain;
-use handle::{FudgeHandle, ParachainClient};
+use handle::FudgeHandle;
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::H256;
@@ -46,8 +46,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		parachain_storage: Storage,
 		sibling_storage: Storage,
 	) -> Self {
-		crate::utils::logs::init_logs();
-
 		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();
@@ -118,14 +116,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	}
 }
 
-type ApiRefOf<'a, T> = ApiRef<
-	'a,
-	<ParachainClient<
-		<T as Runtime>::BlockExt,
-		<<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::ParachainConstructApi,
-	> as sp_api::ProvideRuntimeApi<<T as Runtime>::BlockExt>>::Api,
->;
-
 /// Specialized fudge methods
 impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 	pub fn chain_state_mut<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
@@ -138,7 +128,10 @@ impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 
 	pub fn with_api<F>(&self, exec: F)
 	where
-		F: FnOnce(ApiRefOf<T>, H256),
+		F: FnOnce(
+			ApiRef<'_, <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>::ParachainApi>,
+			H256,
+		),
 	{
 		let client = self.handle.parachain().client();
 		let best_hash = client.info().best_hash;

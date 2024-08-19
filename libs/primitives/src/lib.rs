@@ -124,6 +124,9 @@ pub mod types {
 	/// A representation of a tranche identifier
 	pub type TrancheId = [u8; 16];
 
+	/// A representation of an investment
+	pub type InvestmentId = (PoolId, TrancheId);
+
 	/// A representation of a tranche weight, used to weight
 	/// importance of a tranche
 	#[derive(Encode, Decode, Copy, Debug, Default, Clone, PartialEq, Eq, TypeInfo, CompactAs)]
@@ -156,8 +159,11 @@ pub mod types {
 	/// The representation of a pool fee identifier
 	pub type PoolFeeId = u64;
 
-	/// The type for outbound LP message nonces.
-	pub type OutboundMessageNonce = u64;
+	/// The type for LP gateway message nonces.
+	pub type LPGatewayQueueMessageNonce = u64;
+
+	/// The type for LP gateway session IDs.
+	pub type LPGatewaySessionId = u64;
 }
 
 /// Common constants for all runtimes
@@ -278,6 +284,14 @@ pub mod constants {
 	pub const TRACK_INDEX_REF_CANCELLER: u16 = 20;
 	/// The index of the referendum killer OpenGov track
 	pub const TRACK_INDEX_REF_KILLER: u16 = 21;
+
+	/// Defensive weight parts that are used in LP related pallets.
+	pub const LP_DEFENSIVE_WEIGHT_REF_TIME: u64 = 5_000_000_000;
+	pub const LP_DEFENSIVE_WEIGHT_POV: u64 = 4096;
+
+	/// Defensive weight for processing LP messages;
+	pub const LP_DEFENSIVE_WEIGHT: Weight =
+		Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV);
 }
 
 /// Listing of parachains we integrate with.

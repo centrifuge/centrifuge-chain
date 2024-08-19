@@ -33,11 +33,11 @@ pallet-balances = { workspace = true, optional = true }
 pallet-permissions = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-types = { workspace = true, default_features = true }
-orml-tokens = { workspace = true, default_features = true }
-orml-traits = { workspace = true, default_features = true }
-pallet-balances = { workspace = true, default_features = true }
-sp-io = { workspace = true, default_features = true }
+cfg-types = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

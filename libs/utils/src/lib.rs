@@ -16,6 +16,26 @@
 use parity_scale_codec::Encode;
 use sp_std::cmp::min;
 
+pub struct BufferReader<'a>(pub &'a [u8]);
+
+impl<'a> BufferReader<'a> {
+	pub fn read_bytes(&mut self, bytes: usize) -> Option<&[u8]> {
+		if self.0.len() < bytes {
+			return None;
+		}
+
+		let (consumed, remaining) = self.0.split_at(bytes);
+		self.0 = remaining;
+		Some(consumed)
+	}
+
+	pub fn read_array<const N: usize>(&mut self) -> Option<&[u8; N]> {
+		let (consumed, remaining) = self.0.split_first_chunk::<N>()?;
+		self.0 = remaining;
+		Some(consumed)
+	}
+}
+
 /// Build a fixed-size array using as many elements from `src` as possible
 /// without overflowing and ensuring that the array is 0 padded in the case
 /// where `src.len()` is smaller than S.
@@ -48,42 +68,6 @@ pub fn set_block_number_timestamp<T>(
 	frame_system::Pallet::<T>::initialize(&block_number, &Default::default(), &digest);
 	pallet_aura::Pallet::<T>::on_initialize(block_number);
 	pallet_timestamp::Pallet::<T>::set_timestamp(timestamp);
-}
-
-pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
-	source_address: &[u8],
-) -> Option<[u8; EXPECTED_SOURCE_ADDRESS_SIZE]> {
-	const HEX_PREFIX: &str = "0x";
-
-	let mut address = [0u8; EXPECTED_SOURCE_ADDRESS_SIZE];
-
-	if source_address.len() == EXPECTED_SOURCE_ADDRESS_SIZE {
-		address.copy_from_slice(source_address);
-		return Some(address);
-	}
-
-	let try_bytes = match sp_std::str::from_utf8(source_address) {
-		Ok(res) => res.as_bytes(),
-		Err(_) => source_address,
-	};
-
-	// Attempt to hex decode source address.
-	let bytes = match hex::decode(try_bytes) {
-		Ok(res) => Some(res),
-		Err(_) => {
-			// Strip 0x prefix.
-			let res = try_bytes.strip_prefix(HEX_PREFIX.as_bytes())?;
-
-			hex::decode(res).ok()
-		}
-	}?;
-
-	if bytes.len() == EXPECTED_SOURCE_ADDRESS_SIZE {
-		address.copy_from_slice(bytes.as_slice());
-		Some(address)
-	} else {
-		None
-	}
 }
 
 pub mod math {
@@ -212,28 +196,6 @@ pub mod math {
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	mod get_source_address_bytes {
-		const EXPECTED: usize = 20;
-		use super::*;
-
-		#[test]
-		fn get_source_address_bytes_works() {
-			let hash = [1u8; 20];
-
-			decode_var_source::<EXPECTED>(&hash).expect("address bytes from H160 works");
-
-			let str = String::from("d47ed02acbbb66ee8a3fe0275bd98add0aa607c3");
-
-			decode_var_source::<EXPECTED>(str.as_bytes())
-				.expect("address bytes from un-prefixed hex works");
-
-			let str = String::from("0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3");
-
-			decode_var_source::<EXPECTED>(str.as_bytes())
-				.expect("address bytes from prefixed hex works");
-		}
-	}
 
 	mod vec_to_fixed_array {
 		use super::*;
