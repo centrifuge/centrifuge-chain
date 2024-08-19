@@ -21,7 +21,7 @@ use cfg_traits::{
 	PreConditions,
 };
 use cfg_types::{
-	domain_address::{truncate_into_eth_address, DomainAddress},
+	domain_address::{truncate_into_eth_address, Domain},
 	EVMChainId,
 };
 use ethabi::{Contract, Function, Param, ParamType, Token};
@@ -131,7 +131,7 @@ pub mod pallet {
 		/// The target of the messages coming from other chains
 		type Receiver: MessageReceiver<
 			Middleware = Self::Middleware,
-			Origin = DomainAddress,
+			Origin = Domain,
 			Message = Vec<u8>,
 		>;
 
@@ -239,12 +239,13 @@ pub mod pallet {
 
 			match config.domain {
 				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
-					let source_address_bytes = decode_var_source::<EVM_ADDRESS_LEN>(source_address)
-						.ok_or(Error::<T>::InvalidSourceAddress)?;
+					let _source_address_bytes =
+						decode_var_source::<EVM_ADDRESS_LEN>(source_address)
+							.ok_or(Error::<T>::InvalidSourceAddress)?;
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
-						DomainAddress::Evm(chain_id, source_address_bytes.into()),
+						Domain::Evm(chain_id),
 						payload.to_vec(),
 					)
 				}

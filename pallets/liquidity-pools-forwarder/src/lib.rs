@@ -36,7 +36,7 @@ mod tests;
 use core::fmt::Debug;
 
 use cfg_traits::liquidity_pools::{LpMessageForwarded, MessageReceiver, MessageSender};
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::Domain;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
@@ -46,11 +46,6 @@ use sp_std::convert::TryInto;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ForwardInfo {
-	/// Refers to the chain from which the message originates.
-	///
-	/// Example: Assume a three-hop A -> B -> C, then this refers to the domain
-	/// of A.
-	pub(crate) source_domain: Domain,
 	/// Refers to contract on forwarding chain.
 	///
 	/// Example: Assume A -> B -> C, then this refers to the forwarding
@@ -92,7 +87,7 @@ pub mod pallet {
 		/// The entity which acts on unwrapped messages.
 		type MessageReceiver: MessageReceiver<
 			Middleware = Self::RouterId,
-			Origin = DomainAddress,
+			Origin = Domain,
 			Message = Self::Message,
 		>;
 
@@ -106,13 +101,11 @@ pub mod pallet {
 		/// Forwarding info was set
 		ForwarderSet {
 			router_id: T::RouterId,
-			source_domain: Domain,
 			forwarding_contract: H160,
 		},
 		/// Forwarding info was removed
 		ForwarderRemoved {
 			router_id: T::RouterId,
-			source_domain: Domain,
 			forwarding_contract: H160,
 		},
 	}
@@ -151,7 +144,6 @@ pub mod pallet {
 		pub fn set_forwarder(
 			origin: OriginFor<T>,
 			router_id: T::RouterId,
-			source_domain: Domain,
 			forwarding_contract: H160,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
@@ -159,14 +151,12 @@ pub mod pallet {
 			RouterForwarding::<T>::insert(
 				&router_id,
 				ForwardInfo {
-					source_domain,
 					contract: forwarding_contract,
 				},
 			);
 
 			Self::deposit_event(Event::<T>::ForwarderSet {
 				router_id,
-				source_domain,
 				forwarding_contract,
 			});
 
@@ -187,7 +177,6 @@ pub mod pallet {
 				.map(|info| {
 					Self::deposit_event(Event::<T>::ForwarderRemoved {
 						router_id,
-						source_domain: info.source_domain,
 						forwarding_contract: info.contract,
 					});
 				})
@@ -207,7 +196,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let msg = RouterForwarding::<T>::get(&router_id)
 				.map(|info| {
-					T::Message::try_wrap_forward(info.source_domain, info.contract, message.clone())
+					T::Message::try_wrap_forward(Domain::Centrifuge, info.contract, message.clone())
 				})
 				.unwrap_or_else(|| {
 					ensure!(!message.is_forwarded(), Error::<T>::ForwardInfoNotFound);
@@ -221,42 +210,30 @@ pub mod pallet {
 	impl<T: Config> MessageReceiver for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
-		type Origin = DomainAddress;
+		type Origin = Domain;
 
 		fn receive(
 			router_id: T::RouterId,
-			forwarding_domain_address: DomainAddress,
+			forwarding_domain: Domain,
 			message: T::Message,
 		) -> DispatchResult {
 			// Message can be unwrapped iff it was forwarded
-			//
-			// NOTE: Contract address irrelevant here because it is only necessary for
-			// outbound forwarded messages
-			let (lp_message, domain_address) = match (
-				RouterForwarding::<T>::get(&router_id),
+			let (lp_message, domain) = match (
+				RouterForwarding::<T>::get(&router_id).is_some(),
 				message.clone().unwrap_forwarded(),
 			) {
-				(Some(info), Some((source_domain, _contract, lp_message))) => {
-					ensure!(
-						info.source_domain == source_domain,
-						Error::<T>::SourceDomainMismatch
-					);
-
-					let domain_address = DomainAddress::Evm(
-						info.source_domain
-							.get_evm_chain_id()
-							.expect("Domain not Centrifuge; qed"),
-						info.contract,
-					);
-					Ok((lp_message, domain_address))
+				// NOTE: Contract address irrelevant here because it is only necessary for
+				// outbound forwarded messages
+				(true, Some((source_domain, _contract, lp_message))) => {
+					Ok((lp_message, source_domain))
 				}
-				(Some(_), None) => Err(Error::<T>::UnwrappingFailed),
-				(None, None) => Ok((message, forwarding_domain_address)),
-				(None, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
+				(true, None) => Err(Error::<T>::UnwrappingFailed),
+				(false, None) => Ok((message, forwarding_domain)),
+				(false, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
 			}
 			.map_err(|e: Error<T>| e)?;
 
-			T::MessageReceiver::receive(router_id, domain_address, lp_message)
+			T::MessageReceiver::receive(router_id, domain, lp_message)
 		}
 	}
 }

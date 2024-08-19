@@ -34,7 +34,7 @@ use cfg_traits::liquidity_pools::{
 	MessageHash, MessageProcessor, MessageQueue, MessageReceiver, MessageSender,
 	OutboundMessageHandler, RouterProvider,
 };
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::Domain;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
@@ -108,10 +108,7 @@ pub mod pallet {
 		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 
 		/// The type that processes inbound messages.
-		type InboundMessageHandler: InboundMessageHandler<
-			Sender = DomainAddress,
-			Message = Self::Message,
-		>;
+		type InboundMessageHandler: InboundMessageHandler<Sender = Domain, Message = Self::Message>;
 
 		type WeightInfo: WeightInfo;
 
@@ -144,12 +141,6 @@ pub mod pallet {
 			session_id: T::SessionId,
 		},
 
-		/// An instance was added to a domain.
-		InstanceAdded { instance: DomainAddress },
-
-		/// An instance was removed from a domain.
-		InstanceRemoved { instance: DomainAddress },
-
 		/// The domain hook address was initialized or updated.
 		DomainHookAddressSet {
 			domain: Domain,
@@ -158,27 +149,27 @@ pub mod pallet {
 
 		/// An inbound message was processed.
 		InboundMessageProcessed {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message proof was processed.
 		InboundProofProcessed {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message was executed.
 		InboundMessageExecuted {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 		},
 
 		/// An outbound message was sent.
 		OutboundMessageSent {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
@@ -213,15 +204,6 @@ pub mod pallet {
 	#[pallet::getter(fn routers)]
 	pub type Routers<T: Config> =
 		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, ValueQuery>;
-
-	/// Storage that contains a limited number of whitelisted instances of
-	/// deployed liquidity pools for a particular domain.
-	///
-	/// This can only be modified by an admin.
-	#[pallet::storage]
-	#[pallet::getter(fn allowlist)]
-	pub type Allowlist<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
 	/// Stores the hook address of a domain required for particular LP messages.
 	///
@@ -304,20 +286,8 @@ pub mod pallet {
 		/// Pending inbound entry not found.
 		PendingInboundEntryNotFound,
 
-		/// Message proof cannot be retrieved.
-		MessageProofRetrieval,
-
-		/// Recovery message not found.
-		RecoveryMessageNotFound,
-
 		/// Not enough routers are stored for a domain.
 		NotEnoughRoutersForDomain,
-
-		/// The messages of 2 inbound entries do not match.
-		InboundEntryMessageMismatch,
-
-		/// The domain addresses of 2 inbound entries do not match.
-		InboundEntryDomainAddressMismatch,
 	}
 
 	#[pallet::call]
@@ -347,52 +317,6 @@ pub mod pallet {
 
 			Ok(())
 		}
-
-		/// Add a known instance of a deployed liquidity pools integration for a
-		/// specific domain.
-		#[pallet::weight(T::WeightInfo::add_instance())]
-		#[pallet::call_index(1)]
-		pub fn add_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			ensure!(
-				instance.domain() != Domain::Centrifuge,
-				Error::<T>::DomainNotSupported
-			);
-
-			ensure!(
-				!Allowlist::<T>::contains_key(instance.domain(), instance.clone()),
-				Error::<T>::InstanceAlreadyAdded,
-			);
-
-			Allowlist::<T>::insert(instance.domain(), instance.clone(), ());
-
-			Self::deposit_event(Event::InstanceAdded { instance });
-
-			Ok(())
-		}
-
-		/// Remove an instance from a specific domain.
-		#[pallet::weight(T::WeightInfo::remove_instance())]
-		#[pallet::call_index(2)]
-		pub fn remove_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
-
-			ensure!(
-				Allowlist::<T>::contains_key(instance.domain(), instance.clone()),
-				Error::<T>::UnknownInstance,
-			);
-
-			Allowlist::<T>::remove(instance.domain(), instance.clone());
-
-			Self::deposit_event(Event::InstanceRemoved { instance });
-
-			Ok(())
-		}
-
-		// Deprecated: receive_message with call_index(5)
-		//
-		// NOTE: If required, should be exposed by router.
 
 		/// Set the address of the domain hook
 		///
@@ -457,13 +381,13 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
+			let router_ids = Self::get_router_ids_for_domain(domain)?;
 
 			ensure!(
 				router_ids.iter().any(|x| x == &router_id),
@@ -500,7 +424,7 @@ pub mod pallet {
 				&router_ids,
 				session_id,
 				expected_proof_count,
-				domain_address,
+				domain,
 			)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
@@ -623,18 +547,14 @@ pub mod pallet {
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
-					domain_address,
+					domain,
 					message,
 					router_id,
 				} => {
 					let mut counter = 0;
 
-					let res = Self::process_inbound_message(
-						domain_address,
-						message,
-						router_id,
-						&mut counter,
-					);
+					let res =
+						Self::process_inbound_message(domain, message, router_id, &mut counter);
 
 					let weight = match counter {
 						0 => LP_DEFENSIVE_WEIGHT / 10,
@@ -666,20 +586,11 @@ pub mod pallet {
 	impl<T: Config> MessageReceiver for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
-		type Origin = DomainAddress;
+		type Origin = Domain;
 
-		fn receive(
-			router_id: T::RouterId,
-			origin_address: DomainAddress,
-			message: T::Message,
-		) -> DispatchResult {
-			ensure!(
-				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
-				Error::<T>::UnknownInstance,
-			);
-
+		fn receive(router_id: T::RouterId, domain: Domain, message: T::Message) -> DispatchResult {
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
-				domain_address: origin_address,
+				domain,
 				message,
 				router_id,
 			};
