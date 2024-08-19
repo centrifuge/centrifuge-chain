@@ -17,7 +17,7 @@ fn config_mocks(pool_id: PoolId) {
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, PRICE_TIMESTAMP)),
 			_ => Err("Should never be dispatched".into()),
 		}
 	});
@@ -91,7 +91,7 @@ fn with_wrong_schedule() {
 
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::fixed(now().as_secs()),
+				maturity: Maturity::fixed(now()),
 				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
 			},

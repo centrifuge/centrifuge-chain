@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Seconds;
+use cfg_primitives::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 pub use changes::PoolChangeProposal;
 use frame_support::{

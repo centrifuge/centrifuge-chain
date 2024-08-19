@@ -1,7 +1,8 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
+	use cfg_primitives::Seconds;
 	use cfg_traits::{
-		investments::InvestmentAccountant, PoolInspect, PoolReserve, Seconds, TrancheTokenPrice,
+		investments::InvestmentAccountant, PoolInspect, PoolReserve, TrancheTokenPrice,
 	};
 	use cfg_types::investments::InvestmentInfo;
 	use frame_support::pallet_prelude::*;

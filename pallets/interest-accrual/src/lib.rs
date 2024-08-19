@@ -122,17 +122,17 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::SECONDS_PER_YEAR;
+use cfg_primitives::{Seconds, SECONDS_PER_YEAR};
 use cfg_traits::{
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	Seconds, TimeAsSecs,
+	time::UnixTimeSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use frame_system::pallet_prelude::BlockNumberFor;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::{checked_pow, One, Zero};
+use sp_arithmetic::traits::{ensure_pow, One, Zero};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd, EnsureAddAssign, EnsureDiv,
@@ -211,7 +211,7 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>
 			+ MaxEncodedLen;
 
-		type Time: TimeAsSecs;
+		type Time: UnixTimeSecs;
 
 		type MaxRateCount: Get<u32>;
 
@@ -315,8 +315,7 @@ pub mod pallet {
 				Ordering::Less => {
 					let delta = now.ensure_sub(when)?;
 					let rate_adjustment =
-						checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
-							.ok_or(ArithmeticError::Overflow)?;
+						ensure_pow(rate.interest_rate_per_sec, delta.ensure_into()?)?;
 					rate.accumulated_rate.ensure_div(rate_adjustment)?
 				}
 				Ordering::Greater => {
@@ -389,8 +388,7 @@ pub mod pallet {
 		) -> Result<Rate, ArithmeticError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
 			let time_difference_secs = now.ensure_sub(last_updated)?;
-			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-				.ok_or(ArithmeticError::Overflow)? // TODO: This line can be remove once #1241 be merged
+			ensure_pow(interest_rate_per_sec, time_difference_secs.ensure_into()?)?
 				.ensure_mul(accumulated_rate)
 		}
 

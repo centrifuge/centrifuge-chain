@@ -15,7 +15,7 @@ use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools,
 	pre_conditions::pallet as pallet_mock_pre_conditions,
 };
-use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
+use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, Seconds, TrancheId};
 use cfg_traits::{fee::PoolFeeBucket, PoolNAV};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
@@ -36,8 +36,6 @@ use crate::{
 	pallet as pallet_pool_fees, pallet::AssetsUnderManagement, types::Change, ActiveFees, Event,
 	Event::Accrued, FeeIds, FeeIdsToPoolBucket, LastFeeId, PoolFeeInfoOf, PoolFeeOf,
 };
-
-pub const SECONDS: u64 = 1000;
 
 pub const ADMIN: AccountId = 1;
 pub const EDITOR: AccountId = 2;
@@ -137,7 +135,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 impl cfg_mocks::pallet_mock_time::Config for Runtime {
-	type Moment = u64;
+	type Moment = Seconds;
 }
 
 impl cfg_test_utils::mocks::nav::Config for Runtime {
@@ -373,7 +371,7 @@ pub(crate) fn init_mocks() {
 	});
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockChangeGuard::mock_note(|_, _| Ok(H256::default()));
-	MockTime::mock_now(|| 0);
+	MockTime::mock_now(|| Seconds::new(0));
 }
 
 pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {

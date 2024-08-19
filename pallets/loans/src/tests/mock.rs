@@ -11,18 +11,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use std::time::Duration;
-
 use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_data, pallet_mock_permissions, pallet_mock_pools,
 };
-use cfg_traits::Millis;
+use cfg_primitives::{Millis, Seconds};
+use cfg_traits::time::UnixTimeSecs;
 use cfg_types::permissions::PermissionScope;
 use frame_support::{
 	derive_impl,
 	traits::{
 		tokens::nonfungibles::{Create, Mutate},
-		AsEnsureOriginWithArg, Hooks, UnixTime,
+		AsEnsureOriginWithArg, Hooks,
 	},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -34,11 +33,7 @@ use sp_runtime::{DispatchError, FixedU128};
 
 use crate::{entities::changes::Change, pallet as pallet_loans};
 
-pub const BLOCK_TIME: Duration = Duration::from_secs(10);
-pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
-pub const DAY: Duration = Duration::from_secs(24 * 3600);
-
-pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
+pub const INITIAL_TIME: Seconds = Seconds::new(10);
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -75,6 +70,7 @@ pub const PRICE_VALUE: Balance = 980;
 pub const NOTIONAL: Balance = 1000;
 pub const QUANTITY: Quantity = Quantity::from_rational(12, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
+pub const PRICE_TIMESTAMP: Millis = Millis::new(10000);
 pub const MAX_PRICE_VARIATION: Rate = Rate::from_rational(1, 100);
 
 pub const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
@@ -121,7 +117,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl cfg_mocks::time::pallet::Config for Runtime {
-	type Moment = Millis;
+	type Moment = Seconds;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
@@ -199,7 +195,6 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
-	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perbill;
 	type Permissions = MockPermissions;
@@ -218,7 +213,7 @@ impl pallet_loans::Config for Runtime {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = System::externalities();
 	ext.execute_with(|| {
-		MockTimer::mock_now(|| BLOCK_TIME.as_millis() as u64);
+		MockTimer::mock_now(|| INITIAL_TIME);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
@@ -232,12 +227,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	ext
 }
 
-pub fn now() -> Duration {
-	<MockTimer as UnixTime>::now()
+pub fn now() -> Seconds {
+	MockTimer::now_secs()
 }
 
-pub fn advance_time(elapsed: Duration) {
+pub fn advance_time(elapsed: Seconds) {
 	let before = now();
-	MockTimer::mock_now(move || (before + elapsed).as_millis() as u64);
+	MockTimer::mock_now(move || before + elapsed);
 	InterestAccrual::on_initialize(0);
 }

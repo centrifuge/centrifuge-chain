@@ -32,6 +32,7 @@ cfg-types = { workspace = true }
 
 [dev-dependencies]
 bitflags = { workspace = true }
+cfg-mocks = { workspace = true }
 
 [features]
 default = ["std"]
@@ -60,6 +61,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
@@ -69,4 +71,5 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-timestamp/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-mocks/try-runtime",
 ]

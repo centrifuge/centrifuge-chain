@@ -39,10 +39,11 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+use cfg_primitives::Seconds;
 use cfg_traits::{
 	self,
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
-	Seconds, TimeAsSecs,
+	time::UnixTimeSecs,
 };
 use cfg_types::fixed_point::FixedPointNumberExtension;
 use frame_support::{
@@ -190,7 +191,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The source of truth for the current time in seconds
-		type Time: TimeAsSecs;
+		type Time: UnixTimeSecs;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;

@@ -16,7 +16,7 @@ pub fn config_mocks_with_price(deposit_amount: Balance, price: Balance) {
 	MockPrices::mock_get(move |id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		match *id {
-			REGISTER_PRICE_ID => Ok((price, BLOCK_TIME_MS)),
+			REGISTER_PRICE_ID => Ok((price, PRICE_TIMESTAMP)),
 			_ => Err(PRICE_ID_NO_FOUND),
 		}
 	});
@@ -94,7 +94,7 @@ fn has_been_written_off() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 		util::write_off_loan(loan_id);
 
 		config_mocks(util::current_loan_debt(loan_id));
@@ -494,11 +494,11 @@ fn twice_internal_with_elapsed_time() {
 			},
 		));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		assert_eq!(
 			util::current_debt_for(
-				util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+				util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR / 2),
 				COLLATERAL_VALUE / 2,
 			),
 			util::current_loan_debt(loan_id)
@@ -555,11 +555,11 @@ fn twice_external_with_elapsed_time() {
 			},
 		));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		assert_eq!(
 			util::current_debt_for(
-				util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+				util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR / 2),
 				(QUANTITY / 2.into()).saturating_mul_int(NOTIONAL),
 			),
 			util::current_loan_debt(loan_id)
@@ -611,7 +611,7 @@ fn current_debt_rate_no_increase_if_fully_repaid() {
 		});
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		config_mocks(util::current_loan_debt(loan_id));
 		assert_ok!(Loans::repay(
@@ -625,7 +625,7 @@ fn current_debt_rate_no_increase_if_fully_repaid() {
 			},
 		));
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		assert_eq!(0, util::current_loan_debt(loan_id));
 	});
@@ -942,11 +942,11 @@ fn with_external_pricing() {
 		assert_eq!(current_price(), PRICE_VALUE);
 
 		// In the middle of the line
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 		assert_eq!(current_price(), PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2);
 
 		// BEFORE: the loan not yet overdue
-		advance_time(YEAR / 2 - DAY);
+		advance_time(SECONDS_PER_YEAR / 2 - SECONDS_PER_DAY);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
@@ -956,7 +956,7 @@ fn with_external_pricing() {
 		assert!(current_price() < NOTIONAL);
 
 		// EXACT: the loan is just at matuyrity date
-		advance_time(DAY);
+		advance_time(SECONDS_PER_DAY);
 
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
@@ -967,7 +967,7 @@ fn with_external_pricing() {
 		assert_eq!(current_price(), NOTIONAL);
 
 		// AFTER: the loan overpassing maturity date
-		advance_time(DAY);
+		advance_time(SECONDS_PER_DAY);
 
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::TimeAsSecs;
+use cfg_traits::time::UnixTimeSecs;
 use frame_support::{
 	pallet_prelude::Weight,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade},

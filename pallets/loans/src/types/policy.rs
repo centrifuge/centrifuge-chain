@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Seconds;
+use cfg_primitives::Seconds;
 use frame_support::{pallet_prelude::RuntimeDebug, storage::bounded_btree_set::BoundedBTreeSet};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -200,8 +200,8 @@ mod tests {
 	#[test]
 	fn same_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1)),
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(2)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1u32.into())),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(2u32.into())),
 		])
 		.try_into()
 		.unwrap();
@@ -212,8 +212,8 @@ mod tests {
 	#[test]
 	fn different_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1)),
-			UniqueWriteOffTrigger(WriteOffTrigger::PriceOutdated(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1u32.into())),
+			UniqueWriteOffTrigger(WriteOffTrigger::PriceOutdated(1u32.into())),
 		])
 		.try_into()
 		.unwrap();
@@ -224,18 +224,18 @@ mod tests {
 	#[test]
 	fn find_correct_rule() {
 		let rules = [
-			WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1),
-			WriteOffRule::new([WriteOffTrigger::PriceOutdated(1)], 7, 1),
-			WriteOffRule::new([WriteOffTrigger::PriceOutdated(2)], 7, 2), // <=
-			WriteOffRule::new([WriteOffTrigger::PriceOutdated(3)], 3, 4),
-			WriteOffRule::new([WriteOffTrigger::PriceOutdated(4)], 9, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(0u32.into())], 5, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(1u32.into())], 7, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(2u32.into())], 7, 2), // <=
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(3u32.into())], 3, 4),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(4u32.into())], 9, 1),
 		];
 
 		let expected = rules[2].clone();
 
 		assert_ok!(
 			find_rule(rules.into_iter(), |trigger| match trigger {
-				WriteOffTrigger::PriceOutdated(secs) => Ok(*secs <= 3),
+				WriteOffTrigger::PriceOutdated(secs) => Ok(*secs <= 3u32.into()),
 				_ => unreachable!(),
 			}),
 			Some(expected)
@@ -244,7 +244,11 @@ mod tests {
 
 	#[test]
 	fn find_err_rule() {
-		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+		let rules = [WriteOffRule::new(
+			[WriteOffTrigger::PriceOutdated(0u32.into())],
+			5,
+			1,
+		)];
 
 		assert_err!(
 			find_rule(rules.into_iter(), |trigger| match trigger {
@@ -256,7 +260,11 @@ mod tests {
 
 	#[test]
 	fn find_none_rule() {
-		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+		let rules = [WriteOffRule::new(
+			[WriteOffTrigger::PriceOutdated(0u32.into())],
+			5,
+			1,
+		)];
 
 		assert_ok!(
 			find_rule(rules.into_iter(), |trigger| match trigger {

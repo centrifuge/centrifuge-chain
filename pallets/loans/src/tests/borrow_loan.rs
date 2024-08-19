@@ -11,7 +11,7 @@ fn config_mocks(withdraw_amount: Balance) {
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, PRICE_TIMESTAMP)),
 			_ => Err(PRICE_ID_NO_FOUND),
 		}
 	});
@@ -73,7 +73,7 @@ fn with_restriction_no_written_off() {
 			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 		util::write_off_loan(loan_id);
 
 		assert_noop!(
@@ -136,7 +136,7 @@ fn with_maturity_passed() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		config_mocks(COLLATERAL_VALUE);
 		assert_noop!(
@@ -333,7 +333,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		);
 
 		// Suddenty, the oracle set a value
-		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME_MS)));
+		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, PRICE_TIMESTAMP)));
 
 		assert_eq!(
 			(QUANTITY).saturating_mul_int(PRICE_VALUE * 8),
@@ -552,11 +552,11 @@ fn twice_with_elapsed_time() {
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		assert_eq!(
 			util::current_debt_for(
-				util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+				util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR / 2),
 				COLLATERAL_VALUE / 2,
 			),
 			util::current_loan_debt(loan_id)
@@ -633,7 +633,7 @@ mod cashflow {
 			let principal = COLLATERAL_VALUE / 2;
 			let acc_interest_rate_per_year = checked_pow(
 				util::default_interest_rate().per_sec().unwrap(),
-				SECONDS_PER_YEAR as usize,
+				SECONDS_PER_YEAR.inner as usize,
 			)
 			.unwrap();
 			let interest = acc_interest_rate_per_year.saturating_mul_int(principal) - principal;
@@ -669,7 +669,7 @@ mod cashflow {
 			let principal = amount.balance().unwrap();
 			let acc_interest_rate_per_year = checked_pow(
 				util::default_interest_rate().per_sec().unwrap(),
-				SECONDS_PER_YEAR as usize,
+				SECONDS_PER_YEAR.inner as usize,
 			)
 			.unwrap();
 

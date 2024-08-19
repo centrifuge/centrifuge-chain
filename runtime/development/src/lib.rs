@@ -27,11 +27,11 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
-	LPGatewayQueueMessageNonce, LPGatewaySessionId,
+	LPGatewayQueueMessageNonce, LPGatewaySessionId, Millis, Seconds,
 };
 use cfg_traits::{
-	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
-	Seconds,
+	investments::OrderManager, time::UnixTimeSecs, Permissions as PermissionsT, PoolUpdateGuard,
+	PreConditions,
 };
 use cfg_types::{
 	domain_address::DomainAddress,
@@ -64,7 +64,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, Contains, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Get, InstanceFilter, LinearStoragePrice, LockIdentifier, OnFinalize,
-		PalletInfoAccess, TransformOrigin, UnixTime, WithdrawReasons,
+		PalletInfoAccess, TransformOrigin, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -366,7 +366,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
+	pub MinimumPeriod: Millis = SLOT_DURATION / 2;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -1121,12 +1121,12 @@ parameter_types! {
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 0; // No minimum epoch time
-	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
+	pub const DefaultMaxNAVAge: Seconds = SECONDS_PER_MINUTE; // 1 minute
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 0; // Allow closing an epoch in the same block as the creation of a pool and also multiple per block if wanted
-	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
-	pub const MaxNAVAgeUpperBound: u64 = SECONDS_PER_HOUR; // 1 hour
+	pub const MinEpochTimeUpperBound: Seconds = SECONDS_PER_MONTH; // 1 month
+	pub const MaxNAVAgeUpperBound: Seconds = SECONDS_PER_HOUR; // 1 hour
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -1416,7 +1416,6 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
-	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perquintill;
 	type Permissions = Permissions;
@@ -1439,7 +1438,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = SECONDS_PER_WEEK;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 1_000;
@@ -1702,7 +1701,7 @@ parameter_types! {
 	pub const MaxGroups: u32 = 20;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const InitialEpochDuration: Millis = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+	pub InitialEpochDuration: Millis = SECONDS_PER_MINUTE.into_millis();
 }
 
 impl pallet_rewards::mechanism::gap::Config for Runtime {
@@ -2406,7 +2405,7 @@ impl_runtime_apis! {
 
 	impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
 		fn slot_duration() -> sp_consensus_aura::SlotDuration {
-			sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
+			sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration().inner)
 		}
 
 		fn authorities() -> Vec<AuraId> {
@@ -2475,7 +2474,7 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
-			let now = <Timestamp as UnixTime>::now().as_secs();
+			let now = Timestamp::now_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			pool
 				.tranches

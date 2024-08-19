@@ -1,4 +1,4 @@
-use cfg_primitives::SECONDS_PER_YEAR;
+use cfg_primitives::{Seconds, SECONDS_PER_YEAR};
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
@@ -13,8 +13,6 @@ use sp_runtime::{
 	traits::{Get, Member, One, Zero},
 	DispatchError,
 };
-
-use crate::Seconds;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum CompoundingSchedule {

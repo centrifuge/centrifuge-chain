@@ -5,14 +5,14 @@ fn config_mocks() {
 	MockPrices::mock_get(move |id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, PRICE_TIMESTAMP)),
 			_ => Err(PRICE_ID_NO_FOUND),
 		}
 	});
 	MockPrices::mock_collection(|pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		Ok(MockDataCollection::new(|id| match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, PRICE_TIMESTAMP)),
 			_ => Err(PRICE_ID_NO_FOUND),
 		}))
 	});
@@ -59,7 +59,7 @@ fn without_active_loans() {
 			..util::base_internal_loan()
 		});
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		config_mocks();
 		update_portfolio();
@@ -88,7 +88,7 @@ fn with_active_loans() {
 		update_portfolio();
 		expected_portfolio(valuation);
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		update_portfolio();
 		expected_portfolio(util::current_loan_pv(loan_1) + util::current_loan_pv(loan_2));
@@ -109,7 +109,7 @@ fn with_active_written_off_loans() {
 		util::borrow_loan(loan_2, PrincipalInput::Internal(COLLATERAL_VALUE));
 		util::repay_loan(loan_2, PrincipalInput::Internal(COLLATERAL_VALUE / 4));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		util::write_off_loan(loan_1);
 		util::write_off_loan(loan_2);
@@ -134,16 +134,16 @@ fn filled_and_cleaned() {
 		util::borrow_loan(loan_2, PrincipalInput::Internal(COLLATERAL_VALUE));
 		util::repay_loan(loan_2, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		util::write_off_loan(loan_1);
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		util::repay_loan(loan_1, PrincipalInput::External(amount));
 		util::repay_loan(loan_2, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		config_mocks();
 		update_portfolio();
@@ -162,7 +162,7 @@ fn exact_and_inexact_matches() {
 		let loan_1 = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 		config_mocks();
 		update_portfolio();
 
@@ -188,7 +188,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_1, PrincipalInput::External(amount.clone()));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		// This is affected by the linear_accrual_price() computation.
 		let price_value_after_half_year = PRICE_VALUE + (NOTIONAL - PRICE_VALUE) / 2;
@@ -201,7 +201,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		const MARKET_PRICE_VALUE: Balance = 999;
 		MockPrices::mock_collection(|_| {
 			Ok(MockDataCollection::new(|_| {
-				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
+				Ok((MARKET_PRICE_VALUE, PRICE_TIMESTAMP))
 			}))
 		});
 		let price_value_after_half_year = MARKET_PRICE_VALUE + (NOTIONAL - MARKET_PRICE_VALUE) / 2;
@@ -216,7 +216,7 @@ fn empty_portfolio_with_current_timestamp() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(
 			PortfolioValuation::<Runtime>::get(POOL_A).last_updated(),
-			now().as_secs()
+			now()
 		);
 	});
 }
@@ -241,12 +241,12 @@ fn no_linear_pricing_either_settlement_or_oracle() {
 
 		util::borrow_loan(loan_1, PrincipalInput::External(amount.clone()));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		const MARKET_PRICE_VALUE: Balance = 999;
 		MockPrices::mock_collection(|_| {
 			Ok(MockDataCollection::new(|_| {
-				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
+				Ok((MARKET_PRICE_VALUE, PRICE_TIMESTAMP))
 			}))
 		});
 
@@ -263,7 +263,7 @@ fn no_linear_pricing_either_settlement_or_oracle() {
 
 		MockPrices::mock_collection(|_| {
 			Ok(MockDataCollection::new(|_| {
-				Ok((MARKET_PRICE_VALUE, BLOCK_TIME_MS))
+				Ok((MARKET_PRICE_VALUE, PRICE_TIMESTAMP))
 			}))
 		});
 		update_portfolio();
@@ -313,11 +313,11 @@ fn internal_oustanding_debt_with_no_maturity() {
 		update_portfolio();
 		expected_portfolio(pv);
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		update_portfolio();
 		expected_portfolio(
-			Rate::from_float(util::interest_for(DEFAULT_INTEREST_RATE, YEAR))
+			Rate::from_float(util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR))
 				.checked_mul_int(COLLATERAL_VALUE)
 				.unwrap(),
 		);

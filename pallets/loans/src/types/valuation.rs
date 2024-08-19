@@ -11,8 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::SECONDS_PER_YEAR;
-use cfg_traits::{interest::InterestRate, Seconds};
+use cfg_primitives::{Seconds, SECONDS_PER_YEAR};
+use cfg_traits::interest::InterestRate;
 use frame_support::{
 	pallet_prelude::RuntimeDebug,
 	traits::tokens::{self},

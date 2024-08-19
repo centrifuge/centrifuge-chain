@@ -107,9 +107,10 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_primitives::Seconds;
 	use cfg_traits::{
-		investments::ForeignInvestment, liquidity_pools::InboundMessageHandler, CurrencyInspect,
-		Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
+		investments::ForeignInvestment, liquidity_pools::InboundMessageHandler, time::UnixTimeSecs,
+		CurrencyInspect, Permissions, PoolInspect, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -202,7 +203,7 @@ pub mod pallet {
 
 		/// The UNIX timestamp provider type required for checking the validity
 		/// of investments.
-		type Time: TimeAsSecs;
+		type Time: UnixTimeSecs;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.

@@ -147,7 +147,7 @@ mod wrong_mutation {
 			let loan_id = util::create_loan(util::base_internal_loan());
 			util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
-			let mutation = LoanMutation::MaturityExtension(YEAR.as_secs());
+			let mutation = LoanMutation::MaturityExtension(SECONDS_PER_YEAR);
 
 			config_mocks(loan_id, &mutation);
 			assert_noop!(
@@ -211,8 +211,8 @@ fn with_successful_mutation_application() {
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
 				maturity: Maturity::Fixed {
-					date: (now() + YEAR).as_secs(),
-					extension: YEAR.as_secs(),
+					date: now() + SECONDS_PER_YEAR,
+					extension: SECONDS_PER_YEAR,
 				},
 				interest_payments: InterestPayments::OnceAtMaturity,
 				pay_down_schedule: PayDownSchedule::None,
@@ -242,10 +242,10 @@ fn with_successful_mutation_application() {
 			// LoanMutation::InterestPayments(..), No changes, only one variant
 			// LoanMutation::PayDownSchedule(..), No changes, only one variant
 			LoanMutation::Maturity(Maturity::Fixed {
-				date: (now() + YEAR * 2).as_secs(),
-				extension: (YEAR * 2).as_secs(),
+				date: now() + SECONDS_PER_YEAR * 2,
+				extension: SECONDS_PER_YEAR * 2,
 			}),
-			LoanMutation::MaturityExtension(YEAR.as_secs()),
+			LoanMutation::MaturityExtension(SECONDS_PER_YEAR),
 			LoanMutation::InterestRate(InterestRate::Fixed {
 				rate_per_year: Rate::from_float(0.5),
 				compounding: CompoundingSchedule::Secondly,

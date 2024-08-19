@@ -1,4 +1,5 @@
-use cfg_traits::{interest::InterestRate, Seconds};
+use cfg_primitives::Seconds;
+use cfg_traits::interest::InterestRate;
 use frame_support::{pallet_prelude::RuntimeDebug, storage::bounded_vec::BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

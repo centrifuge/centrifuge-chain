@@ -38,7 +38,7 @@ fn with_policy_but_not_overdue() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + BLOCK_TIME);
+		advance_time(SECONDS_PER_YEAR + INITIAL_TIME);
 
 		// The loan maturity date has passed, but the policy can no be applied yet.
 		assert_noop!(
@@ -56,7 +56,7 @@ fn with_valid_maturity() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR / 2);
+		advance_time(SECONDS_PER_YEAR / 2);
 
 		// The loan maturity date has no passed.
 		assert_noop!(
@@ -123,7 +123,7 @@ fn with_wrong_permission() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		config_mocks();
 		assert_noop!(
@@ -147,7 +147,7 @@ fn with_success() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
@@ -165,7 +165,7 @@ fn with_admin_success() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		config_mocks();
 
@@ -215,7 +215,7 @@ fn with_admin_less_than_policy() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		config_mocks();
 
@@ -253,7 +253,7 @@ fn with_policy_change_after() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
@@ -296,7 +296,7 @@ fn with_policy_change_after_admin() {
 
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
@@ -322,7 +322,7 @@ fn with_percentage_applied_internal() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		let pv = util::current_loan_pv(loan_id);
 
@@ -349,12 +349,12 @@ fn with_percentage_applied_external() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*pool_id, POOL_A);
 			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((PRICE_VALUE, BLOCK_TIME_MS))
+			Ok((PRICE_VALUE, PRICE_TIMESTAMP))
 		});
 		let pv = util::current_loan_pv(loan_id);
 
@@ -380,7 +380,7 @@ fn with_penalty_applied() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		assert_ok!(Loans::write_off(
 			RuntimeOrigin::signed(ANY),
@@ -391,13 +391,13 @@ fn with_penalty_applied() {
 		// Modify an interest rate doesn't have effect in the same instant
 		assert_eq!(
 			util::current_debt_for(
-				util::interest_for(DEFAULT_INTEREST_RATE, YEAR + DAY),
+				util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR + SECONDS_PER_DAY),
 				COLLATERAL_VALUE,
 			),
 			util::current_loan_debt(loan_id)
 		);
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		// Because of math arithmetic preccission,
 		// we get a difference that makes the test fail
@@ -405,8 +405,8 @@ fn with_penalty_applied() {
 
 		assert_eq!(
 			util::current_debt_for(
-				util::interest_for(DEFAULT_INTEREST_RATE, YEAR + DAY)
-					* util::interest_for(DEFAULT_INTEREST_RATE + POLICY_PENALTY, YEAR),
+				util::interest_for(DEFAULT_INTEREST_RATE, SECONDS_PER_YEAR + SECONDS_PER_DAY)
+					* util::interest_for(DEFAULT_INTEREST_RATE + POLICY_PENALTY, SECONDS_PER_YEAR),
 				COLLATERAL_VALUE,
 			) - precission_error,
 			util::current_loan_debt(loan_id)
@@ -420,7 +420,7 @@ fn fully() {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR + DAY);
+		advance_time(SECONDS_PER_YEAR + SECONDS_PER_DAY);
 
 		config_mocks();
 		assert_ok!(Loans::admin_write_off(
@@ -433,7 +433,7 @@ fn fully() {
 
 		assert_eq!(0, util::current_loan_pv(loan_id));
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		assert_eq!(0, util::current_loan_pv(loan_id));
 	});

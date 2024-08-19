@@ -1,4 +1,4 @@
-use cfg_primitives::Balance;
+use cfg_primitives::{Balance, Seconds};
 use frame_support::{assert_noop, assert_ok};
 use rand::Rng;
 use sp_arithmetic::FixedPointNumber;
@@ -520,7 +520,7 @@ mod extrinsics {
 
 mod disbursements {
 	use cfg_primitives::SECONDS_PER_YEAR;
-	use cfg_traits::{EpochTransitionHook, PoolNAV, TimeAsSecs};
+	use cfg_traits::{time::UnixTimeSecs, EpochTransitionHook, PoolNAV};
 	use cfg_types::{
 		fixed_point::Rate,
 		pools::{PoolFeeAmount, PoolFeeType},
@@ -528,9 +528,7 @@ mod disbursements {
 	use frame_support::traits::fungibles::Inspect;
 
 	use super::*;
-	use crate::mock::{
-		get_disbursements, pay_single_fee_and_assert, MockTime, NAV, POOL_CURRENCY, SECONDS,
-	};
+	use crate::mock::{get_disbursements, pay_single_fee_and_assert, MockTime, NAV, POOL_CURRENCY};
 
 	mod single_fee {
 		use super::*;
@@ -544,7 +542,7 @@ mod disbursements {
 				#[test]
 				fn sufficient_reserve_sfs() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+						MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 						let fee_id = 1;
 						let res_pre_fees = NAV;
@@ -585,7 +583,7 @@ mod disbursements {
 				#[test]
 				fn insufficient_reserve_sfs() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+						MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 						let fee_id = 1;
 						let res_pre_fees = NAV / 100;
@@ -633,10 +631,10 @@ mod disbursements {
 				#[test]
 				fn sufficient_reserve_sfa() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+						MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 						let fee_id = 1;
-						let res_pre_fees: Balance = (2 * SECONDS_PER_YEAR).into();
+						let res_pre_fees: Balance = (SECONDS_PER_YEAR * 2).into();
 						let res_post_fees = &mut res_pre_fees.clone();
 						let amount_per_second = 1;
 						let fee_amount = SECONDS_PER_YEAR.into();
@@ -674,7 +672,7 @@ mod disbursements {
 				#[test]
 				fn insufficient_reserve_sfa() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+						MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 						let fee_id = 1;
 						let res_pre_fees: Balance = (SECONDS_PER_YEAR / 2).into();
@@ -739,7 +737,7 @@ mod disbursements {
 					#[test]
 					fn empty_charge_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -770,7 +768,7 @@ mod disbursements {
 					#[test]
 					fn below_max_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -808,7 +806,7 @@ mod disbursements {
 					#[test]
 					fn max_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -845,7 +843,7 @@ mod disbursements {
 					#[test]
 					fn excess_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -884,7 +882,7 @@ mod disbursements {
 					#[test]
 					fn insufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV / 100;
@@ -939,7 +937,7 @@ mod disbursements {
 					#[test]
 					fn empty_charge_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -970,7 +968,7 @@ mod disbursements {
 					#[test]
 					fn below_max_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -1008,7 +1006,7 @@ mod disbursements {
 					#[test]
 					fn max_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -1045,7 +1043,7 @@ mod disbursements {
 					#[test]
 					fn excess_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let res_pre_fees = NAV;
@@ -1084,7 +1082,7 @@ mod disbursements {
 					#[test]
 					fn insufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+							MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 							let fee_id = 1;
 							let amount_per_second = 1;
@@ -1191,10 +1189,10 @@ mod disbursements {
 			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
 				add_fees(vec![default_fixed_fee()]);
 
-				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
-				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+				assert_eq!(PoolFees::nav(POOL), Some((0, Seconds::new(0))));
+				MockTime::mock_now(|| SECONDS_PER_YEAR);
 
-				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
+				assert_eq!(PoolFees::nav(POOL), Some((0, Seconds::new(0))));
 				assert_ok!(PoolFees::update_portfolio_valuation(
 					RuntimeOrigin::signed(ANY),
 					POOL
@@ -1215,9 +1213,9 @@ mod disbursements {
 		fn update_single_charged() {
 			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
 				add_fees(vec![default_chargeable_fee()]);
-				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+				MockTime::mock_now(|| SECONDS_PER_YEAR);
 
-				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
+				assert_eq!(PoolFees::nav(POOL), Some((0, Seconds::new(0))));
 				assert_ok!(PoolFees::update_portfolio_valuation(
 					RuntimeOrigin::signed(ANY),
 					POOL
@@ -1242,7 +1240,7 @@ mod disbursements {
 		#[test]
 		fn fixed_charged_charged() {
 			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+				MockTime::mock_now(|| SECONDS_PER_YEAR);
 
 				let charged_fee_ids = vec![2, 3];
 				let res_pre_fees = NAV;
@@ -1250,7 +1248,7 @@ mod disbursements {
 				let annual_rate = Rate::saturating_from_rational(1, 100);
 				let fixed_fee_amount = NAV / 100;
 				let amount_per_seconds = vec![2, 1];
-				let payable = vec![(2 * SECONDS_PER_YEAR).into(), SECONDS_PER_YEAR.into()];
+				let payable = vec![(SECONDS_PER_YEAR * 2).into(), SECONDS_PER_YEAR.into()];
 				let charged_y1 = vec![1, 2 * payable[1]];
 				let charged_y2 = vec![payable[0], payable[1]];
 
@@ -1347,7 +1345,7 @@ mod disbursements {
 
 				// Year 2: Make reserve insufficient to handle all fees (last fee
 				// falls short
-				MockTime::mock_now(|| 2 * SECONDS_PER_YEAR * SECONDS);
+				MockTime::mock_now(|| SECONDS_PER_YEAR * 2);
 				let res_pre_fees = fixed_fee_amount + charged_y2[0] + 1;
 				let res_post_fees = &mut res_pre_fees.clone();
 				assert_ok!(PoolFees::charge_fee(

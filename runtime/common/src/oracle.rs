@@ -1,8 +1,9 @@
 use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
+	Millis,
 };
-use cfg_traits::{HasLocalAssetRepresentation, Millis, PoolInspect, ValueProvider};
+use cfg_traits::{HasLocalAssetRepresentation, PoolInspect, ValueProvider};
 use cfg_types::{
 	fixed_point::{Quantity, Ratio},
 	oracles::OracleKey,
