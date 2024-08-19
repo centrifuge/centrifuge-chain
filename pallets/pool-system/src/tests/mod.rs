@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{constants::SECONDS_PER_YEAR, Balance};
-use cfg_traits::{fee::PoolFeeBucket, PoolMutate, PoolNAV, TrancheTokenPrice};
+use cfg_traits::{fee::PoolFeeBucket, time::UnixTimeSecs, PoolMutate, PoolNAV, TrancheTokenPrice};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
@@ -154,8 +154,8 @@ pub mod util {
 			.unwrap();
 
 			Pool::<Runtime>::try_mutate(DEFAULT_POOL_ID, |maybe_pool| -> Result<(), ()> {
-				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-				maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+				maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 				Ok(())
 			})
 			.unwrap();
@@ -223,7 +223,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
-				last_closed: 0,
+				last_closed: Seconds::new(0),
 				last_executed: Zero::zero(),
 			},
 			reserve: ReserveDetails {
@@ -232,8 +232,8 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				total: 39,
 			},
 			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
+				min_epoch_time: Seconds::new(0),
+				max_nav_age: Seconds::new(60),
 			},
 		};
 
@@ -305,7 +305,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
-				last_closed: 0,
+				last_closed: Seconds::new(0),
 				last_executed: Zero::zero(),
 			},
 			reserve: ReserveDetails {
@@ -314,8 +314,8 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 				total: 10,
 			},
 			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
+				min_epoch_time: Seconds::new(0),
+				max_nav_age: Seconds::new(60),
 			},
 		};
 
@@ -403,7 +403,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
-				last_closed: 0,
+				last_closed: Seconds::new(0),
 				last_executed: Zero::zero(),
 			},
 			reserve: ReserveDetails {
@@ -412,8 +412,8 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				total: 50,
 			},
 			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
+				min_epoch_time: Seconds::new(0),
+				max_nav_age: Seconds::new(60),
 			},
 		};
 
@@ -504,7 +504,7 @@ fn pool_constraints_pass() {
 			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
-				last_closed: 0,
+				last_closed: Seconds::new(0),
 				last_executed: Zero::zero(),
 			},
 			reserve: ReserveDetails {
@@ -513,8 +513,8 @@ fn pool_constraints_pass() {
 				total: 50,
 			},
 			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
+				min_epoch_time: Seconds::new(0),
+				max_nav_age: Seconds::new(60),
 			},
 		};
 
@@ -611,8 +611,8 @@ fn epoch() {
 			0,
 			PoolChanges {
 				tranches: Change::NoChange,
-				min_epoch_time: Change::NewValue(30 * 60),
-				max_nav_age: Change::NewValue(0),
+				min_epoch_time: Change::NewValue(Seconds::new(30 * 60)),
+				max_nav_age: Change::NewValue(Seconds::new(0)),
 				tranche_metadata: Change::NoChange,
 			}
 		));
@@ -636,8 +636,8 @@ fn epoch() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::new(u64::MAX);
 			Ok(())
 		})
 		.unwrap();
@@ -716,7 +716,7 @@ fn epoch() {
 		assert_eq!(pool.reserve.total, 500 * CURRENCY);
 
 		// Repay (with made up interest) after a month.
-		const SECS_PER_MONTH: u64 = 60 * 60 * 24 * 30;
+		const SECS_PER_MONTH: Seconds = Seconds::new(60 * 60 * 24 * 30);
 		next_block_after(SECS_PER_MONTH);
 		test_nav_up(0, 10 * CURRENCY);
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
@@ -848,8 +848,8 @@ fn submission_period() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1027,8 +1027,8 @@ fn execute_info_removed_after_epoch_execute() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1096,7 +1096,7 @@ fn pool_updates_should_be_constrained() {
 		));
 
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
 			Ok(())
 		})
 		.unwrap();
@@ -1114,15 +1114,15 @@ fn pool_updates_should_be_constrained() {
 		));
 
 		let initial_pool = &crate::Pool::<Runtime>::try_get(pool_id).unwrap();
-		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
-		let realistic_max_nav_age = 1 * 60; // 1 min
+		let realistic_min_epoch_time = Seconds::new(24 * 60 * 60); // 24 hours
+		let realistic_max_nav_age = Seconds::new(1 * 60); // 1 min
 
 		assert_err!(
 			PoolSystem::update(
 				pool_id,
 				PoolChanges {
 					tranches: Change::NoChange,
-					min_epoch_time: Change::NewValue(0),
+					min_epoch_time: Change::NewValue(Seconds::new(0)),
 					max_nav_age: Change::NewValue(realistic_max_nav_age),
 					tranche_metadata: Change::NoChange,
 				}
@@ -1135,7 +1135,7 @@ fn pool_updates_should_be_constrained() {
 				PoolChanges {
 					tranches: Change::NoChange,
 					min_epoch_time: Change::NewValue(realistic_min_epoch_time),
-					max_nav_age: Change::NewValue(7 * 24 * 60 * 60),
+					max_nav_age: Change::NewValue(Seconds::new(7 * 24 * 60 * 60)),
 					tranche_metadata: Change::NoChange,
 				}
 			),
@@ -1647,8 +1647,8 @@ fn triger_challange_period_with_zero_solution() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1741,8 +1741,8 @@ fn min_challenge_time_is_respected() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1838,8 +1838,8 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2039,8 +2039,8 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2863,8 +2863,8 @@ mod pool_fees {
 		//
 		// Also force initital reserve to not be empty
 		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2910,7 +2910,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 
 			// Attempt to redeem everything
@@ -2962,7 +2962,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 
 			// Closing epoch 2 should not change anything but reserve.available
@@ -2988,11 +2988,11 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 			assert_eq!(
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
-				(0, Timestamp::now() / 1000)
+				(0, Timestamp::now_secs())
 			);
 		});
 	}
@@ -3040,7 +3040,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 
 			// Closing should update fee nav by disbursements because reserve is sufficient
@@ -3057,11 +3057,11 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 			assert_eq!(
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
-				(0, Timestamp::now() / 1000)
+				(0, Timestamp::now_secs())
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,
@@ -3125,11 +3125,11 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(NAV_AMOUNT, Seconds::new(0))
 			);
 			assert_eq!(
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
-				(0, Timestamp::now() / 1000)
+				(0, Timestamp::now_secs())
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,
@@ -3160,11 +3160,11 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(new_nav_amount, 0)
+				(new_nav_amount, Seconds::new(0))
 			);
 			assert_eq!(
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
-				(0, Timestamp::now() / 1000)
+				(0, Timestamp::now_secs())
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,
@@ -3284,7 +3284,7 @@ mod pool_fees {
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
 				(
 					charged_amount - fee_amount_from_charge,
-					Timestamp::now() / 1000
+					Timestamp::now_secs()
 				)
 			);
 			assert_pending_fees(
@@ -3302,7 +3302,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(2 * NAV_AMOUNT, 0)
+				(2 * NAV_AMOUNT, Seconds::new(0))
 			);
 
 			// Executin should reduce fee_nav by disbursement and transfer
@@ -3328,13 +3328,13 @@ mod pool_fees {
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
 				(
 					charged_amount - fee_amount_from_charge,
-					Timestamp::now() / 1000
+					Timestamp::now_secs()
 				)
 			);
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(2 * NAV_AMOUNT, 0)
+				(2 * NAV_AMOUNT, Seconds::new(0))
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,
@@ -3398,7 +3398,7 @@ mod pool_fees {
 			));
 			assert_eq!(
 				<Runtime as Config>::PoolFeesNAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
-				(fee_nav, Timestamp::now() / 1000)
+				(fee_nav, Timestamp::now_secs())
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,

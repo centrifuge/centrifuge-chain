@@ -1458,7 +1458,7 @@ fn finalize_combine<R, T, W>(
 
 #[cfg(test)]
 pub mod test {
-	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
+	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight, SECONDS_PER_YEAR};
 	use cfg_types::fixed_point::{FixedPointNumberExtension, Quantity, Rate};
 
 	use super::*;
@@ -1473,7 +1473,6 @@ pub mod test {
 	type StringLimit = sp_runtime::traits::ConstU32<128>;
 
 	const DEFAULT_POOL_ID: PoolId = 0;
-	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEBT_RES: u128 = 100_000_000;
 	const DEBT_NONRES_1: u128 = 100_000_000;
 	const DEBT_NONRES_2: u128 = 200_000_000;
@@ -1529,7 +1528,7 @@ pub mod test {
 				reserve: Zero::zero(),
 				loss: Zero::zero(),
 				ratio: Perquintill::one(),
-				last_updated_interest: 0,
+				last_updated_interest: Seconds::new(0),
 				_phantom: PhantomData::default(),
 			}
 		}
@@ -1564,7 +1563,7 @@ pub mod test {
 			reserve,
 			loss: 0,
 			ratio: Perquintill::zero(),
-			last_updated_interest: 0,
+			last_updated_interest: Seconds::new(0),
 			_phantom: PhantomData,
 		}
 	}
@@ -1587,7 +1586,7 @@ pub mod test {
 		let interest_rate_per_sec = interest_rate_in_perc
 			.map(|rate| Rate::saturating_from_rational(rate, 100))
 			.unwrap_or(Rate::one())
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		let min_risk_buffer = buffer_in_perc
@@ -1605,7 +1604,7 @@ pub mod test {
 			reserve,
 			loss: 0,
 			ratio: Perquintill::zero(),
-			last_updated_interest: 0,
+			last_updated_interest: Seconds::new(0),
 			_phantom: PhantomData,
 		}
 	}
@@ -1747,7 +1746,7 @@ pub mod test {
 		fn tranche_accrues_correctly() {
 			let mut tranche = non_residual(1, Some(10), None);
 			tranche.debt = 100_000_000;
-			tranche.accrue(SECS_PER_YEAR).unwrap();
+			tranche.accrue(SECONDS_PER_YEAR).unwrap();
 
 			// After one year, we have 10% of interest, using APY and RPS compounding
 			assert_eq!(110517092, tranche.debt)
@@ -1767,7 +1766,7 @@ pub mod test {
 		fn tranche_returns_interest_rate_correctly() {
 			let tranche = non_residual(1, Some(10), None);
 			let interest_rate_per_sec = Rate::saturating_from_rational(10, 100)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 			assert_eq!(interest_rate_per_sec, tranche.interest_rate_per_sec())
 		}
@@ -1778,7 +1777,7 @@ pub mod test {
 			tranche.debt = 100_000_000;
 
 			// After one year, we have 10% of interest, using APY and RPS compounding
-			assert_eq!(110517092, tranche.debt(SECS_PER_YEAR).unwrap())
+			assert_eq!(110517092, tranche.debt(SECONDS_PER_YEAR).unwrap())
 		}
 
 		#[test]
@@ -1811,7 +1810,7 @@ pub mod test {
 			tranche.debt = Balance::max_value() - 10;
 
 			assert_eq!(
-				tranche.accrue(SECS_PER_YEAR),
+				tranche.accrue(SECONDS_PER_YEAR),
 				Err(ArithmeticError::Overflow.into())
 			)
 		}
@@ -1978,7 +1977,7 @@ pub mod test {
 			let tranche_id: TrancheId = [
 				103u8, 57, 22, 242, 127, 45, 18, 102, 173, 154, 105, 163, 156, 150, 75, 194,
 			];
-			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
+			let int_per_sec = Rate::saturating_from_integer(SECONDS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 
 			// Create tranche with explicit seniority
@@ -1992,7 +1991,7 @@ pub mod test {
 					},
 					Some(5u32),
 					// arbitrary static time val for "now"
-					SECS_PER_YEAR,
+					SECONDS_PER_YEAR,
 				)
 				.unwrap();
 
@@ -2008,9 +2007,9 @@ pub mod test {
 					loss: 0,
 					seniority: 5,
 					currency: _,
-					last_updated_interest: SECS_PER_YEAR,
+					last_updated_interest: l,
 					..
-				} if b == min_risk_buffer && int_per_sec == ir => true,
+				} if b == min_risk_buffer && int_per_sec == ir && l == SECONDS_PER_YEAR => true,
 				_ => false,
 			});
 			assert_eq!(new_tranche.currency, (DEFAULT_POOL_ID, tranche_id));
@@ -2027,7 +2026,7 @@ pub mod test {
 					},
 					// By not providing seniority, it is derived from the index
 					None,
-					SECS_PER_YEAR,
+					SECONDS_PER_YEAR,
 				)
 				.unwrap();
 
@@ -2042,7 +2041,7 @@ pub mod test {
 					min_risk_buffer: min_risk_buffer,
 				},
 				None,
-				SECS_PER_YEAR,
+				SECONDS_PER_YEAR,
 			);
 			assert_eq!(
 				new_tranche,
@@ -2067,7 +2066,7 @@ pub mod test {
 
 			// ensure we have an interest rate lower than the the left side tranche with a
 			// lower index, e.g. lower than 10% at index 1
-			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
+			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECONDS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let seniority = Some(5);
 			let tranche_type = TrancheType::NonResidual {
@@ -2086,7 +2085,7 @@ pub mod test {
 
 			// verify replace tranche works with interest less than prev tranche as expected
 			// replacing last tranche
-			assert_ok!(tranches.replace(2, input, SECS_PER_YEAR));
+			assert_ok!(tranches.replace(2, input, SECONDS_PER_YEAR));
 			assert!(tranches
 				.get_tranche(TrancheLoc::Index(2))
 				.map(|tranche| {
@@ -2111,7 +2110,7 @@ pub mod test {
 			// ensure we have an interest rate larger than the a tranche with a lower index,
 			// e.g. 10%
 			let int_per_sec = Rate::saturating_from_rational(11, 100)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
 				// setting to easily testable value for tranche replacement, should not be changed
@@ -2127,7 +2126,7 @@ pub mod test {
 				},
 			};
 
-			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
+			let replace_res = tranches.replace(2, input, SECONDS_PER_YEAR);
 			assert_eq!(
 				replace_res,
 				Err(DispatchError::Other(
@@ -2148,7 +2147,7 @@ pub mod test {
 			// ensure we have an interest rate larger than the the right-side tranche with a
 			// greater index, e.g. larger than 5% at index 2
 			let int_per_sec = Rate::saturating_from_rational(6u64, 100)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 			let seniority = Some(5);
 			let tranche_type = TrancheType::NonResidual {
@@ -2164,7 +2163,7 @@ pub mod test {
 				},
 			};
 
-			assert_ok!(tranches.replace(1, input, SECS_PER_YEAR));
+			assert_ok!(tranches.replace(1, input, SECONDS_PER_YEAR));
 			assert!(tranches
 				.get_tranche(TrancheLoc::Index(1))
 				.map(|tranche| {
@@ -2189,7 +2188,7 @@ pub mod test {
 			// ensure we have an interest rate lower than a tranche with a higher index,
 			// e.g. 5%
 			let int_per_sec = Rate::saturating_from_rational(4, 100)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
 				seniority: Some(5),
@@ -2204,7 +2203,7 @@ pub mod test {
 			};
 
 			assert_eq!(
-				tranches.replace(1, input, SECS_PER_YEAR),
+				tranches.replace(1, input, SECONDS_PER_YEAR),
 				Err(DispatchError::Other(
 					"Invalid following tranche type. This should be catched somewhere else."
 				))
@@ -2220,7 +2219,7 @@ pub mod test {
 			];
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let int_per_sec = Rate::saturating_from_integer(2)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 
 			// verify returns valid when interest greater than tranche following new tranche
@@ -2233,7 +2232,7 @@ pub mod test {
 						min_risk_buffer: min_risk_buffer,
 					},
 					Some(5u32),
-					SECS_PER_YEAR,
+					SECONDS_PER_YEAR,
 				)
 				.unwrap();
 
@@ -2243,7 +2242,7 @@ pub mod test {
 
 			// verify error returned when interest less than tranche following new tranche
 			let int_per_sec = Rate::saturating_from_rational(1, 100)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 				+ One::one();
 			let new_tranche = tranches
 				.create_tranche(
@@ -2254,7 +2253,7 @@ pub mod test {
 						min_risk_buffer: min_risk_buffer,
 					},
 					Some(5u32),
-					SECS_PER_YEAR,
+					SECONDS_PER_YEAR,
 				)
 				.unwrap();
 
@@ -2605,7 +2604,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
 						initial_assets,
-						SECS_PER_YEAR
+						SECONDS_PER_YEAR
 					),
 					Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
 				);
@@ -2613,7 +2612,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
 						initial_assets,
-						2 * SECS_PER_YEAR
+						SECONDS_PER_YEAR * 2
 					),
 					Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
 				);
@@ -2622,7 +2621,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
 						initial_assets * 2,
-						SECS_PER_YEAR
+						SECONDS_PER_YEAR
 					),
 					Ok(vec![
 						Rate::saturating_from_rational(2, 1),
@@ -2634,7 +2633,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
 						initial_assets / 2,
-						2 * SECS_PER_YEAR
+						SECONDS_PER_YEAR * 2
 					),
 					Ok(vec![
 						Rate::saturating_from_rational(1, 2),
@@ -2649,7 +2648,7 @@ pub mod test {
 			fn no_assets_works() {
 				assert_eq!(
 					default_tranches()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
+						.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECONDS_PER_YEAR),
 					Ok(vec![Rate::zero(), Rate::zero(), Rate::zero(),])
 				);
 			}
@@ -2714,7 +2713,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches().calculate_prices::<_, TTokensEmpty, TrancheCurrency>(
 						10u128.pow(10),
-						SECS_PER_YEAR
+						SECONDS_PER_YEAR
 					),
 					Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
 				);
@@ -2732,7 +2731,7 @@ pub mod test {
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
 							1_100_000_000,
-							SECS_PER_YEAR
+							SECONDS_PER_YEAR
 						),
 					Ok(vec![
 						Rate::saturating_from_rational(1396143445, 1000000000),
@@ -2745,7 +2744,7 @@ pub mod test {
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
 							900_000_000,
-							SECS_PER_YEAR
+							SECONDS_PER_YEAR
 						),
 					Ok(vec![
 						Rate::saturating_from_rational(396143445u64, 1000000000u64),
@@ -2759,7 +2758,7 @@ pub mod test {
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
 							700_000_000,
-							SECS_PER_YEAR
+							SECONDS_PER_YEAR
 						),
 					Ok(vec![
 						Rate::zero(),
@@ -2772,7 +2771,7 @@ pub mod test {
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
 							100_000_000,
-							SECS_PER_YEAR
+							SECONDS_PER_YEAR
 						),
 					Ok(vec![
 						Rate::zero(),
@@ -2793,7 +2792,7 @@ pub mod test {
 				assert_eq!(
 					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
 						1_100_000_000,
-						SECS_PER_YEAR
+						SECONDS_PER_YEAR
 					),
 					Ok(vec![
 						Rate::saturating_from_rational(1396143445, 1000000000),
@@ -2805,7 +2804,7 @@ pub mod test {
 				assert_eq!(
 					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
 						1_100_000_000,
-						2 * SECS_PER_YEAR
+						SECONDS_PER_YEAR * 2
 					),
 					Ok(vec![
 						Rate::saturating_from_rational(1284127705, 1000000000),
@@ -2820,7 +2819,7 @@ pub mod test {
 				assert_eq!(
 					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
 						1_100_000_000,
-						5 * SECS_PER_YEAR
+						SECONDS_PER_YEAR * 5
 					),
 					Ok(vec![
 						Rate::saturating_from_rational(89161395, 100000000),
@@ -2835,7 +2834,7 @@ pub mod test {
 				assert_eq!(
 					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
 						1_100_000_000,
-						20 * SECS_PER_YEAR
+						SECONDS_PER_YEAR * 20
 					),
 					Ok(vec![
 						Rate::zero(),
@@ -2854,7 +2853,7 @@ pub mod test {
 				let mut tranches = default_tranches_with_issuance();
 				assert_ok!(tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 					1_100_000_000,
-					SECS_PER_YEAR
+					SECONDS_PER_YEAR
 				));
 
 				for i in 2..200 {
@@ -2862,7 +2861,7 @@ pub mod test {
 						tranches
 							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 								1_100_000_000,
-								i * SECS_PER_YEAR
+								SECONDS_PER_YEAR * i
 							)
 							.unwrap()
 							.into_iter()
@@ -2871,7 +2870,7 @@ pub mod test {
 						default_tranches_with_issuance()
 							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 								1_100_000_000,
-								i * SECS_PER_YEAR
+								SECONDS_PER_YEAR * i
 							)
 							.unwrap()
 							.into_iter()
@@ -2888,14 +2887,14 @@ pub mod test {
 				let mut tranches = default_tranches_with_issuance();
 				let prices = tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 					1_100_000_000,
-					SECS_PER_YEAR,
+					SECONDS_PER_YEAR,
 				);
 				// should be no change if the last update happened at the provided moment
 				assert_eq!(
 					prices,
 					tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 						1_100_000_000,
-						SECS_PER_YEAR
+						SECONDS_PER_YEAR
 					)
 				);
 			}
@@ -2932,7 +2931,7 @@ pub mod test {
 				let mut tranches = default_tranches_with_issuance();
 
 				assert_ok!(tranches.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					0,
 					0,
 					&[
@@ -2955,7 +2954,7 @@ pub mod test {
 				let mut tranches = default_tranches_with_issuance();
 
 				assert_ok!(tranches.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					TOTAL_ASSETS,
 					// arbitrary amount which does not have any effect
 					DEFAULT_NAV,
@@ -2983,7 +2982,7 @@ pub mod test {
 					let mut tranches_no_rebalance = default_tranches_with_issuance();
 					let mut tranches_rebalance = default_tranches_with_issuance();
 
-					let seconds = year * SECS_PER_YEAR;
+					let seconds = SECONDS_PER_YEAR * year;
 					assert_ok!(&tranches_rebalance.rebalance_tranches(
 						seconds,
 						2 * TOTAL_ASSETS,
@@ -3026,7 +3025,7 @@ pub mod test {
 			fn nav_too_low_throws() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_eq!(tranches.rebalance_tranches(
-							0,
+                            Seconds::new(0),
 							RESERVE_NONRES_2 + 1,
 							DEBT_NONRES_2,
 							&[
@@ -3037,7 +3036,7 @@ pub mod test {
 							&[(0, 0), (0, 0), (0, 0)],
 						), Err(DispatchError::Other("Corrupted pool-state. Pool NAV should be able to handle tranche debt substraction.")));
 				assert_ok!(tranches.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					RESERVE_NONRES_2 - 1,
 					DEBT_NONRES_2,
 					&[
@@ -3056,7 +3055,7 @@ pub mod test {
 				let nav = 1;
 
 				assert_eq!(tranches.rebalance_tranches(
-							0,
+                            Seconds::new(0),
 							// min reserve to throw when NAV is 1
 							0,
 							nav,
@@ -3069,7 +3068,7 @@ pub mod test {
 						), Err(DispatchError::Other("Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.")));
 
 				assert_eq!(tranches.rebalance_tranches(
-							0,
+                            Seconds::new(0),
 							// max reserve to throw
 							RESERVE_NONRES_1 + RESERVE_NONRES_2 - 2,
 							// with min nav
@@ -3083,7 +3082,7 @@ pub mod test {
 						), Err(DispatchError::Other("Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.")));
 
 				assert_ok!(tranches.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					RESERVE_NONRES_1 + RESERVE_NONRES_2 - 1,
 					nav,
 					&[
@@ -3108,14 +3107,14 @@ pub mod test {
 				];
 
 				assert_ok!(single_rate.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					TOTAL_ASSETS,
 					DEFAULT_NAV,
 					&rates,
 					&[(0, 0), (0, 0), (0, 0)],
 				));
 				assert_ok!(double_rate.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					TOTAL_ASSETS,
 					DEFAULT_NAV / 2,
 					&rates.map(|rate| rate + rate),
@@ -3144,7 +3143,7 @@ pub mod test {
 				];
 
 				assert_ok!(tranches.rebalance_tranches(
-					0,
+					Seconds::new(0),
 					TOTAL_ASSETS,
 					DEFAULT_NAV,
 					&[
@@ -3192,7 +3191,7 @@ pub mod test {
 					token_symbol: BoundedVec::<u8, StringLimit>::default(),
 				},
 			};
-			assert_ok!(tranches.add(2, input, 0u64));
+			assert_ok!(tranches.add(2, input, Seconds::new(0)));
 			assert_eq!(tranches.num_tranches(), 3);
 		}
 
