@@ -1104,12 +1104,12 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
+	pub const MinUpdateDelay: Seconds = if cfg!(feature = "runtime-benchmarks") {
 		// Disable update delay in benchmarks
-		0
+		Seconds::new(0)
 	} else {
 		// Same as Lower bound for epochs.
-		1
+		Seconds::new(1)
 	};
 
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
@@ -1120,13 +1120,13 @@ parameter_types! {
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 0; // No minimum epoch time
-	pub const DefaultMaxNAVAge: Seconds = SECONDS_PER_MINUTE; // 1 minute
+	pub const DefaultMinEpochTime: Seconds = Seconds::new(0); // No minimum epoch time
+	pub const DefaultMaxNAVAge: Seconds = SECONDS_PER_MINUTE;
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 0; // Allow closing an epoch in the same block as the creation of a pool and also multiple per block if wanted
-	pub const MinEpochTimeUpperBound: Seconds = SECONDS_PER_MONTH; // 1 month
-	pub const MaxNAVAgeUpperBound: Seconds = SECONDS_PER_HOUR; // 1 hour
+	pub const MinEpochTimeLowerBound: Seconds = Seconds::new(0); // Allow closing an epoch in the same block as the creation of a pool and also multiple per block if wanted
+	pub const MinEpochTimeUpperBound: Seconds = SECONDS_PER_MONTH;
+	pub const MaxNAVAgeUpperBound: Seconds = SECONDS_PER_HOUR;
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
