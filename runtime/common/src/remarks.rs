@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{LoanId, PoolId};
+use cfg_primitives::{BlockNumber, Hash, LoanId, PoolId};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::codec::{Decode, Encode};
@@ -30,6 +30,9 @@ pub enum Remark {
 
 	/// Association with a loan
 	Loan(PoolId, LoanId),
+
+	/// Association with an extrinsic
+	Extrinsic(BlockNumber, Hash),
 }
 
 impl Default for Remark {
