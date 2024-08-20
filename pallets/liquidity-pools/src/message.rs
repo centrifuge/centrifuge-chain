@@ -659,9 +659,13 @@ impl LpMessageForwarded for Message {
 		}
 	}
 
-	fn try_wrap_forward(forwarding_contract: H160, message: Self) -> Result<Self, DispatchError> {
+	fn try_wrap_forward(
+		source_domain: Self::Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError> {
 		Ok(Self::Forwarded {
-			source_domain: Domain::Centrifuge.into(),
+			source_domain: source_domain.into(),
 			forwarding_contract,
 			message: message.try_into().map_err(|_| {
 				DispatchError::Other(

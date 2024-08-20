@@ -46,7 +46,7 @@ impl LpMessageForwarded for Message {
 		}
 	}
 
-	fn try_wrap_forward(_: H160, message: Self) -> Result<Self, DispatchError> {
+	fn try_wrap_forward(_: Self::Domain, _: H160, message: Self) -> Result<Self, DispatchError> {
 		match message {
 			Self::Forward => Err(ERROR_NESTING),
 			Self::NonForward => Ok(Self::Forward),
