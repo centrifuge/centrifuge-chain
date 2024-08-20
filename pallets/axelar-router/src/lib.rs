@@ -21,7 +21,7 @@ use cfg_traits::{
 	PreConditions,
 };
 use cfg_types::{
-	domain_address::{truncate_into_eth_address, Domain},
+	domain_address::{truncate_into_eth_address, Domain, DomainAddress},
 	EVMChainId,
 };
 use ethabi::{Contract, Function, Param, ParamType, Token};
@@ -151,13 +151,26 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ChainNameById<T: Config> = StorageMap<_, Twox64Concat, AxelarId, ChainName>;
 
+	/// Storage that contains a limited number of whitelisted domain instances.
+	///
+	/// This can only be modified by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn allowlist)]
+	pub type Allowlist<T: Config> = StorageMap<_, Blake2_128Concat, DomainAddress, ()>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// An instance was added to a domain.
 		ConfigSet {
 			name: ChainName,
 			config: Box<AxelarConfig>,
 		},
+		/// An instance was added to a domain.
+		InstanceAdded { instance: DomainAddress },
+
+		/// An instance was removed from a domain.
+		InstanceRemoved { instance: DomainAddress },
 	}
 
 	#[pallet::error]
@@ -176,6 +189,12 @@ pub mod pallet {
 
 		/// Emit when a message is received from a non LP caller
 		ContractCallerMismatch,
+
+		/// Instance was already added to the domain.
+		InstanceAlreadyAdded,
+
+		/// Unknown instance.
+		UnknownInstance,
 	}
 
 	#[pallet::call]
@@ -215,6 +234,42 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Add a known instance for a specific domain.
+		#[pallet::weight(Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(2)))]
+		#[pallet::call_index(1)]
+		pub fn add_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(
+				!Allowlist::<T>::contains_key(&instance),
+				Error::<T>::InstanceAlreadyAdded,
+			);
+
+			Allowlist::<T>::insert(instance.clone(), ());
+
+			Self::deposit_event(Event::InstanceAdded { instance });
+
+			Ok(())
+		}
+
+		/// Remove an instance from a specific domain.
+		#[pallet::weight(Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(2)))]
+		#[pallet::call_index(2)]
+		pub fn remove_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin.clone())?;
+
+			ensure!(
+				Allowlist::<T>::contains_key(&instance),
+				Error::<T>::UnknownInstance,
+			);
+
+			Allowlist::<T>::remove(instance.clone());
+
+			Self::deposit_event(Event::InstanceRemoved { instance });
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -239,9 +294,16 @@ pub mod pallet {
 
 			match config.domain {
 				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
-					let _source_address_bytes =
-						decode_var_source::<EVM_ADDRESS_LEN>(source_address)
-							.ok_or(Error::<T>::InvalidSourceAddress)?;
+					let source_address: H160 = decode_var_source::<EVM_ADDRESS_LEN>(source_address)
+						.ok_or(Error::<T>::InvalidSourceAddress)?
+						.into();
+
+					let domain_address = DomainAddress::Evm(chain_id, source_address);
+
+					ensure!(
+						Allowlist::<T>::contains_key(domain_address),
+						Error::<T>::UnknownInstance,
+					);
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
