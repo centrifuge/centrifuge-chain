@@ -183,6 +183,7 @@ pub trait Runtime:
 		Balance = Balance,
 		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
 	> + pallet_axelar_router::Config
+	+ pallet_liquidity_pools_forwarder::Config<Message = Message, RouterId = RouterId>
 	+ pallet_token_mux::Config<
 		BalanceIn = Balance,
 		BalanceOut = Balance,

@@ -2,7 +2,7 @@ use cfg_primitives::{AccountId, Balance};
 use cfg_traits::liquidity_pools::{LpMessageSerializer, MessageProcessor};
 use cfg_types::{domain_address::Domain, EVMChainId};
 use ethabi::{Function, Param, ParamType, Token};
-use frame_support::{assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_ok, dispatch::RawOrigin, BoundedVec};
 use orml_traits::MultiCurrency;
 use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_liquidity_pools::Message;
@@ -25,8 +25,6 @@ use crate::{
 };
 
 mod axelar_evm {
-	use frame_support::BoundedVec;
-
 	use super::*;
 
 	const CHAIN_NAME: &str = "Ethereum";
