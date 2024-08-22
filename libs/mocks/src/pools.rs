@@ -1,7 +1,8 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::{
-		investments::InvestmentAccountant, PoolInspect, PoolReserve, Seconds, TrancheTokenPrice,
+		investments::InvestmentAccountant, PoolInspect, PoolMutate, PoolReserve, Seconds,
+		TrancheTokenPrice, UpdateState,
 	};
 	use cfg_types::investments::InvestmentInfo;
 	use frame_support::pallet_prelude::*;
@@ -25,6 +26,14 @@ pub mod pallet {
 		type Balance;
 		type BalanceRatio;
 		type CurrencyId;
+	}
+
+	/// Extra trait that only requires to be implemented if the pool mutability
+	/// actions are required
+	pub trait ConfigMut: Config {
+		type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+		type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+		type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
 	}
 
 	#[pallet::pallet]
@@ -119,6 +128,33 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: ConfigMut> Pallet<T> {
+		pub fn mock_create(
+			func: impl Fn(
+					T::AccountId,
+					T::AccountId,
+					T::PoolId,
+					Vec<T::TrancheInput>,
+					T::CurrencyId,
+					T::Balance,
+					Vec<T::PoolFeeInput>,
+				) -> DispatchResult
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c, d, e, f, g)| func(a, b, c, d, e, f, g));
+		}
+
+		pub fn mock_update(
+			f: impl Fn(T::PoolId, T::PoolChanges) -> Result<UpdateState, DispatchError> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_execute_update(f: impl Fn(T::PoolId) -> Result<u32, DispatchError> + 'static) {
+			register_call!(f);
+		}
+	}
+
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		type Moment = Seconds;
 		type PoolId = T::PoolId;
@@ -137,6 +173,34 @@ pub mod pallet {
 		}
 
 		fn currency_for(a: T::PoolId) -> Option<T::CurrencyId> {
+			execute_call!(a)
+		}
+	}
+
+	impl<T: ConfigMut> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
+		type Balance = T::Balance;
+		type CurrencyId = T::CurrencyId;
+		type PoolChanges = T::PoolChanges;
+		type PoolFeeInput = T::PoolFeeInput;
+		type TrancheInput = T::TrancheInput;
+
+		fn create(
+			a: T::AccountId,
+			b: T::AccountId,
+			c: T::PoolId,
+			d: Vec<T::TrancheInput>,
+			e: T::CurrencyId,
+			f: T::Balance,
+			g: Vec<T::PoolFeeInput>,
+		) -> DispatchResult {
+			execute_call!((a, b, c, d, e, f, g))
+		}
+
+		fn update(a: T::PoolId, b: T::PoolChanges) -> Result<UpdateState, DispatchError> {
+			execute_call!((a, b))
+		}
+
+		fn execute_update(a: T::PoolId) -> Result<u32, DispatchError> {
 			execute_call!(a)
 		}
 	}
