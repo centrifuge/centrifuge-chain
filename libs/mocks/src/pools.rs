@@ -33,7 +33,7 @@ pub mod pallet {
 	pub trait ConfigMut: Config {
 		type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 		type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
-		type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
+		type PoolFeeInput: Encode + Decode + Clone + TypeInfo;
 	}
 
 	#[pallet::pallet]

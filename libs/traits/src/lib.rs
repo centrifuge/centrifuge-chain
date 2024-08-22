@@ -106,7 +106,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type CurrencyId;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
-	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
+	type PoolFeeInput: Encode + Decode + Clone + TypeInfo;
 
 	fn create(
 		admin: AccountId,

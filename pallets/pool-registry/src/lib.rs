@@ -29,12 +29,9 @@ use cfg_types::{
 use frame_support::{pallet_prelude::*, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use parity_scale_codec::{HasCompact, MaxEncodedLen};
+use parity_scale_codec::MaxEncodedLen;
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, BadOrigin},
-	FixedPointNumber, FixedPointOperand,
-};
+use sp_runtime::traits::BadOrigin;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 
@@ -60,10 +57,14 @@ type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWrite
 	<T as Config>::PoolId,
 >>::Policy;
 
-type PoolFeeInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::PoolId,
->>::PoolFeeInput;
+type PoolFeeInput<T> = (
+	PoolFeeBucket,
+	PoolFeeInfo<
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::Balance,
+		<T as Config>::InterestRate,
+	>,
+);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolRegistrationStatus {
@@ -79,62 +80,37 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Balance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
+		type Balance: Parameter + MaxEncodedLen;
 
-		type PoolId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ core::fmt::Debug;
+		type PoolId: Parameter + Copy + MaxEncodedLen + core::fmt::Debug;
 
-		/// A fixed-point number which represents an
-		/// interest rate.
-		type InterestRate: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+		/// A fixed-point number which represents an interest rate.
+		type InterestRate: Parameter + MaxEncodedLen;
 
 		type ModifyPool: PoolMutate<
 			Self::AccountId,
 			Self::PoolId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
-			PoolFeeInput = (
-				PoolFeeBucket,
-				PoolFeeInfo<Self::AccountId, Self::Balance, Self::InterestRate>,
-			),
+			PoolFeeInput = PoolFeeInput<Self>,
 		>;
 
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
 
-		type CurrencyId: Parameter + Copy + From<(Self::PoolId, Self::TrancheId)>;
+		type CurrencyId: Parameter;
 
-		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
+		type TrancheId;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Max number of Tranches
 		#[pallet::constant]
-		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
+		type MaxTranches: Get<u32>;
 
 		/// Max size of Metadata
 		#[pallet::constant]
-		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
+		type MaxSizeMetadata: Get<u32>;
 
 		type Permission: Permissions<
 			Self::AccountId,
@@ -223,7 +199,7 @@ pub mod pallet {
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
 			write_off_policy: PolicyOf<T>,
-			pool_fees: Vec<PoolFeeInputOf<T>>,
+			pool_fees: Vec<PoolFeeInput<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -381,7 +357,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn do_set_metadata(pool_id: T::PoolId, metadata: Vec<u8>) -> DispatchResult {
+		fn do_set_metadata(pool_id: T::PoolId, metadata: Vec<u8>) -> DispatchResult {
 			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
 				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
