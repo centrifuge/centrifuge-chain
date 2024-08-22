@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 
 use frame_benchmarking::{v2::*, whitelisted_caller};
-use frame_system::RawOrigin;
 
 use super::*;
 
@@ -30,7 +29,6 @@ fn init_mocks() {
         T::PoolId: Default,
         T::CurrencyId: Default,
         T::Balance: Default,
-        TrancheInputOf<T>: Default
     )]
 mod benchmarks {
 	use super::*;
@@ -46,18 +44,18 @@ mod benchmarks {
 			.try_into()
 			.unwrap();
 
-		let policy = T::ModifyWriteOffPolicy::worst_case_policy();
+		let origin = T::PoolCreateOrigin::try_successful_origin().unwrap();
 
 		#[extrinsic_call]
-		register(
-			RawOrigin::Root,
+		_(
+			origin as T::RuntimeOrigin,
 			whitelisted_caller(),
 			T::PoolId::default(),
 			T::ModifyPool::worst_tranche_input_list(n),
 			T::CurrencyId::default(),
 			T::Balance::default(),
 			Some(max_metadata),
-			policy,
+			T::ModifyWriteOffPolicy::worst_case_policy(),
 			T::ModifyPool::worst_fee_input_list(m),
 		);
 

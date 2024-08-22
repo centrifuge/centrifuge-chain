@@ -183,18 +183,12 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 	/// Proof: `PoolRegistry::PoolMetadata` (`max_values`: None, `max_size`: Some(71), added: 2546, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[0, 46]`.
 	/// The range of component `m` is `[0, 100]`.
-	fn set_metadata(n: u32, m: u32, ) -> Weight {
+	fn set_metadata() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `146`
 		//  Estimated: `3693`
 		// Minimum execution time: 18_324_000 picoseconds.
 		Weight::from_parts(18_846_494, 0)
-			.saturating_add(Weight::from_parts(0, 3693))
-			// Standard Error: 636
-			.saturating_add(Weight::from_parts(8_076, 0).saturating_mul(n.into()))
-			// Standard Error: 295
-			.saturating_add(Weight::from_parts(22_420, 0).saturating_mul(m.into()))
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
+        //TODO: Will be recomputed
 	}
 }

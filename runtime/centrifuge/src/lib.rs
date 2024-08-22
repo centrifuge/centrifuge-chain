@@ -1477,12 +1477,10 @@ impl pallet_pool_registry::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
-	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;
