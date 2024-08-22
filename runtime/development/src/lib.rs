@@ -1178,7 +1178,6 @@ impl pallet_pool_system::Config for Runtime {
 }
 
 impl pallet_pool_registry::Config for Runtime {
-	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;

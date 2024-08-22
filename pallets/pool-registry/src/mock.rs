@@ -303,7 +303,6 @@ impl PoolFeesInspect for MockPoolFeesInspect {
 }
 
 impl Config for Test {
-	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;

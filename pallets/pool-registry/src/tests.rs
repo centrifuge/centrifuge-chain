@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{AssetMetadataOf, PoolMetadata};
 use cfg_types::pools::TrancheMetadata;
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use orml_traits::Change;
@@ -18,9 +17,8 @@ use pallet_pool_system::{
 	pool_types::PoolChanges,
 	tranches::{TrancheInput, TrancheType},
 };
-use staging_xcm::VersionedLocation;
 
-use crate::{mock::*, pallet, pallet::Error, Event, PoolMetadataOf};
+use crate::{mock::*, pallet::Error, Event};
 
 fn find_metadata_event(pool_id: u64, metadata: BoundedVec<u8, MaxSizeMetadata>) -> Option<usize> {
 	System::events().iter().position(|e| match &e.event {
@@ -95,7 +93,7 @@ fn register_pool_and_set_metadata() {
 
 			let registered_metadata = PoolRegistry::get_pool_metadata(pool_id);
 
-			assert_eq!(registered_metadata.unwrap().metadata, metadata.unwrap());
+			assert_eq!(registered_metadata.unwrap(), metadata.unwrap());
 
 			let pos_reg = System::events()
 				.iter()
@@ -130,27 +128,6 @@ fn set_metadata() {
 				pool_id,
 				metadata.clone(),
 			));
-
-			assert!(find_metadata_event(pool_id, BoundedVec::truncate_from(metadata)).is_some())
-		})
-}
-
-#[test]
-fn trait_pool_metadata_set_pool_metadata() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_id = 0;
-			let metadata = "QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-				.as_bytes()
-				.to_vec();
-
-			assert_ok!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::set_pool_metadata(
-					pool_id,
-					metadata.clone()
-				)
-			);
 
 			assert!(find_metadata_event(pool_id, BoundedVec::truncate_from(metadata)).is_some())
 		})
@@ -211,161 +188,5 @@ fn register_pool_empty_metadata() {
 			));
 
 			assert!(find_metadata_event(pool_id, BoundedVec::default()).is_some())
-		})
-}
-
-#[test]
-fn trait_pool_metadata_get_pool_metadata() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_id = 0;
-			let metadata_bytes = "QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-				.as_bytes()
-				.to_vec();
-
-			assert_noop!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_pool_metadata(
-					pool_id
-				),
-				Error::<Test>::NoSuchPoolMetadata
-			);
-
-			assert_ok!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::set_pool_metadata(
-					pool_id,
-					metadata_bytes.clone()
-				)
-			);
-
-			assert_eq!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_pool_metadata(
-					pool_id
-				),
-				Ok(PoolMetadataOf::<Test> {
-					metadata:
-						BoundedVec::<u8, <Test as pallet::Config>::MaxSizeMetadata>::truncate_from(
-							metadata_bytes
-						),
-				})
-			);
-		})
-}
-
-#[test]
-fn trait_pool_metadata_create_tranche_token_metadata() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_id = 0;
-			let tranche_id: [u8; 16] = [0u8; 16];
-			let metadata = AssetMetadataOf::<RegistryMock> {
-				decimals: 12,
-				name: Default::default(),
-				symbol: Default::default(),
-				existential_deposit: 1_000_000_000_000,
-				location: None,
-				additional: Default::default(),
-			};
-
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedLocation,
-			>>::create_tranche_token_metadata(
-				pool_id, tranche_id, metadata
-			));
-		})
-}
-
-#[test]
-fn trait_pool_metadata_get_tranche_token_metadata() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_id = 0;
-			let tranche_id: [u8; 16] = [0u8; 16];
-			let metadata = AssetMetadataOf::<RegistryMock> {
-				decimals: 12,
-				name: Default::default(),
-				symbol: Default::default(),
-				existential_deposit: 1_000_000_000_000,
-				location: None,
-				additional: Default::default(),
-			};
-
-			assert_noop!(
-				<PoolRegistry as PoolMetadata<Balance, VersionedLocation>>::get_tranche_token_metadata(
-					pool_id, tranche_id
-				),
-				Error::<Test>::MetadataForCurrencyNotFound
-			);
-
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedLocation,
-			>>::create_tranche_token_metadata(
-				pool_id, tranche_id, metadata.clone()
-			));
-
-			assert_eq!(
-				<PoolRegistry as PoolMetadata<
-					Balance,
-					VersionedLocation
-				>>::get_tranche_token_metadata(pool_id, tranche_id),
-				Ok(metadata)
-			);
-		})
-}
-
-#[test]
-fn trait_pool_metadata_update_tranche_token_metadata() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_id = 0;
-			let tranche_id: [u8; 16] = [0u8; 16];
-			let old = AssetMetadataOf::<RegistryMock> {
-				decimals: 12,
-				name: Default::default(),
-				symbol: Default::default(),
-				existential_deposit: 1_000_000_000_000,
-				location: None,
-				additional: Default::default(),
-			};
-			let new = AssetMetadataOf::<RegistryMock> {
-				decimals: 14,
-				name: Vec::from(b"New").try_into().unwrap(),
-				symbol: Vec::from(b"NEW").try_into().unwrap(),
-				existential_deposit: 2_000_000_000_000,
-				location: None,
-				additional: Default::default(),
-			};
-
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedLocation,
-			>>::create_tranche_token_metadata(pool_id, tranche_id, old));
-
-			assert_ok!(<PoolRegistry as PoolMetadata<
-				Balance,
-				VersionedLocation,
-			>>::update_tranche_token_metadata(
-				pool_id,
-				tranche_id,
-				Some(new.decimals.clone()),
-				Some(new.name.clone().into_inner()),
-				Some(new.symbol.clone().into_inner()),
-				Some(new.existential_deposit.clone()),
-				None,
-				None
-			),);
-
-			assert_eq!(
-				<PoolRegistry as PoolMetadata<
-					Balance,
-					VersionedLocation
-				>>::get_tranche_token_metadata(pool_id, tranche_id),
-				Ok(new)
-			);
 		})
 }

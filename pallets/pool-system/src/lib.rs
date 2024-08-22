@@ -526,10 +526,6 @@ pub mod pallet {
 		InvalidTrancheUpdate,
 		/// No metadata for the given currency found
 		MetadataForCurrencyNotFound,
-		/// The given tranche token name exceeds the length limit
-		TrancheTokenNameTooLong,
-		/// The given tranche symbol name exceeds the length limit
-		TrancheSymbolNameTooLong,
 		/// Registering the metadata for a tranche threw an error
 		FailedToRegisterTrancheMetadata,
 		/// Updating the metadata for a tranche threw an error

@@ -221,12 +221,8 @@ benchmarks! {
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
 	verify {
 		let metadata: BoundedVec<u8, <T as Config>::MaxSizeMetadata> = metadata.try_into().unwrap();
-		assert_eq!(get_pool_metadata::<T>().metadata, metadata);
+		assert_eq!(Pallet::<T>::get_pool_metadata(POOL).unwrap(), metadata);
 	}
-}
-
-fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-	Pallet::<T>::get_pool_metadata(POOL).unwrap()
 }
 
 fn build_update_tranche_token_metadata<T: pallet_pool_system::Config>(

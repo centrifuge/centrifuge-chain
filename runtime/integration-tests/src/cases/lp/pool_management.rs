@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, PoolId, SECONDS_PER_YEAR};
-use cfg_traits::{PoolMetadata, TrancheTokenPrice};
+use cfg_traits::TrancheTokenPrice;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::PoolRole,
@@ -20,6 +20,7 @@ use cfg_types::{
 use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
+use orml_traits::asset_registry::Mutate;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use sp_runtime::FixedPointNumber;
 
@@ -498,17 +499,17 @@ fn update_tranche_token_metadata<T: Runtime>() {
 	});
 
 	env.state_mut(|_evm| {
+		let currency_id = (POOL_A, pool_a_tranche_1_id::<T>()).into();
 		assert_ok!(
-			pallet_pool_registry::Pallet::<T>::update_tranche_token_metadata(
-				POOL_A,
-				pool_a_tranche_1_id::<T>().into(),
-				Some(decimals_new.clone()),
-				Some(name_new.clone()),
-				Some(symbol_new.clone()),
+			<T as pallet_pool_system::Config>::AssetRegistry::update_asset(
+				currency_id,
+				Some(decimals_new),
+				Some(name_new.clone().try_into().unwrap()),
+				Some(symbol_new.clone().try_into().unwrap()),
 				None,
 				None,
 				None
-			),
+			)
 		);
 
 		assert_ok!(
