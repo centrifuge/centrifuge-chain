@@ -30,8 +30,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	#[cfg(feature = "runtime-benchmarks")]
-	use cfg_traits::benchmarking::PoolFeesBenchmarkHelper;
 	use cfg_traits::{
 		changes::ChangeGuard,
 		fee::{FeeAmountProration, PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
@@ -56,8 +54,6 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
-	#[cfg(feature = "runtime-benchmarks")]
-	use sp_arithmetic::fixed_point::FixedPointNumber;
 	use sp_arithmetic::{
 		traits::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, One, Saturating, Zero},
 		ArithmeticError, FixedPointOperand,
@@ -815,9 +811,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolFeesMutate for Pallet<T> {
-		type FeeInfo = PoolFeeInfoOf<T>;
-		type PoolId = T::PoolId;
-
 		fn add_fee(
 			pool_id: Self::PoolId,
 			bucket: PoolFeeBucket,
@@ -829,11 +822,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolFeesInspect for Pallet<T> {
+		type FeeInfo = PoolFeeInfoOf<T>;
+		type MaxFeesPerPool = T::MaxFeesPerPool;
 		type PoolId = T::PoolId;
-
-		fn get_max_fee_count() -> u32 {
-			T::MaxFeesPerPool::get()
-		}
 
 		fn get_max_fees_per_bucket() -> u32 {
 			T::MaxPoolFeesPerBucket::get()
@@ -847,6 +838,15 @@ pub mod pallet {
 			PoolFeeBucket::iter().fold(0u32, |count, bucket| {
 				count.saturating_add(Self::get_pool_fee_bucket_count(pool, bucket))
 			})
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_pool_fee_infos(n: u32) -> BoundedVec<Self::FeeInfo, T::MaxFeesPerPool> {
+			(0..n)
+				.map(|_| Self::get_default_fixed_fee_info())
+				.collect::<Vec<_>>()
+				.try_into()
+				.unwrap()
 		}
 	}
 
@@ -914,23 +914,18 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> PoolFeesBenchmarkHelper for Pallet<T> {
-		type PoolFeeInfo = PoolFeeInfoOf<T>;
-		type PoolId = T::PoolId;
-
-		fn get_pool_fee_infos(n: u32) -> Vec<Self::PoolFeeInfo> {
-			(0..n).map(|_| Self::get_default_fixed_fee_info()).collect()
-		}
-
-		fn add_pool_fees(pool_id: Self::PoolId, bucket: PoolFeeBucket, n: u32) {
-			let fee_infos = Self::get_pool_fee_infos(n);
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn add_pool_fees(pool_id: T::PoolId, bucket: PoolFeeBucket, n: u32) {
+			let fee_infos = Self::worst_pool_fee_infos(n);
 
 			for fee_info in fee_infos {
 				frame_support::assert_ok!(Self::add_fee(pool_id, bucket, fee_info));
 			}
 		}
 
-		fn get_default_fixed_fee_info() -> Self::PoolFeeInfo {
+		pub(crate) fn get_default_fixed_fee_info() -> PoolFeeInfoOf<T> {
+			use sp_runtime::FixedPointNumber;
+
 			let destination = frame_benchmarking::account::<T::AccountId>(
 				"fee destination",
 				benchmarking::ACCOUNT_INDEX,
@@ -953,7 +948,7 @@ pub mod pallet {
 			}
 		}
 
-		fn get_default_charged_fee_info() -> Self::PoolFeeInfo {
+		pub(crate) fn get_default_charged_fee_info() -> PoolFeeInfoOf<T> {
 			let destination = frame_benchmarking::account::<T::AccountId>(
 				"fee destination",
 				benchmarking::ACCOUNT_INDEX,

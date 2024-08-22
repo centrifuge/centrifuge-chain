@@ -134,10 +134,10 @@ pub mod util {
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_OWNER,
 				DEFAULT_POOL_ID,
-				input,
+				input.try_into().unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			)
 			.unwrap();
 		}
@@ -591,10 +591,12 @@ fn epoch() {
 						token_symbol: BoundedVec::default(),
 					}
 				}
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -828,10 +830,12 @@ fn submission_period() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -1017,10 +1021,12 @@ fn execute_info_removed_after_epoch_execute() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1089,10 +1095,12 @@ fn pool_updates_should_be_constrained() {
 					token_name: BoundedVec::default(),
 					token_symbol: BoundedVec::default(),
 				}
-			}],
+			}]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
@@ -1248,10 +1256,12 @@ fn tranche_ids_are_unique() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		assert_ok!(PoolSystem::create(
@@ -1300,10 +1310,12 @@ fn tranche_ids_are_unique() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		let pool_ids_0 = PoolSystem::pool(pool_id_0)
@@ -1339,10 +1351,12 @@ fn same_pool_id_not_possible() {
 					token_name: BoundedVec::default(),
 					token_symbol: BoundedVec::default(),
 				}
-			},],
+			},]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		assert_noop!(
@@ -1357,10 +1371,12 @@ fn same_pool_id_not_possible() {
 						token_name: BoundedVec::default(),
 						token_symbol: BoundedVec::default(),
 					}
-				},],
+				},]
+				.try_into()
+				.unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::PoolInUse
 		);
@@ -1422,10 +1438,10 @@ fn valid_tranche_structure_is_enforced() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				].try_into().unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1485,10 +1501,12 @@ fn valid_tranche_structure_is_enforced() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1540,10 +1558,12 @@ fn valid_tranche_structure_is_enforced() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1592,10 +1612,12 @@ fn valid_tranche_structure_is_enforced() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1637,10 +1659,12 @@ fn triger_challange_period_with_zero_solution() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1731,10 +1755,12 @@ fn min_challenge_time_is_respected() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1828,10 +1854,12 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2029,10 +2057,12 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2219,10 +2249,12 @@ fn only_usd_as_pool_currency_allowed() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				CurrencyId::Native,
 				200 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2252,10 +2284,12 @@ fn only_usd_as_pool_currency_allowed() {
 							token_symbol: BoundedVec::default(),
 						}
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				CurrencyId::Tranche(0, [0u8; 16]),
 				200 * CURRENCY,
-				vec![],
+				Default::default(),
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2284,10 +2318,12 @@ fn only_usd_as_pool_currency_allowed() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 	});
 }
@@ -2328,10 +2364,12 @@ fn creation_takes_deposit() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(0).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2366,10 +2404,12 @@ fn creation_takes_deposit() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(1).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2406,10 +2446,12 @@ fn creation_takes_deposit() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		let pool = crate::PoolDeposit::<Runtime>::get(2).unwrap();
@@ -2454,10 +2496,12 @@ fn create_tranche_token_metadata() {
 						token_symbol: BoundedVec::default(),
 					}
 				},
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		let pool = Pool::<Runtime>::get(3).unwrap();
@@ -2519,10 +2563,10 @@ fn essence() {
 			pool_owner.clone(),
 			pool_owner.clone(),
 			DEFAULT_POOL_ID,
-			tranche_input.clone(),
+			tranche_input.clone().try_into().unwrap(),
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
-			vec![],
+			Default::default(),
 		));
 
 		let pool_details = Pool::<Runtime>::get(DEFAULT_POOL_ID).expect("Pool is registered; qed");
@@ -2832,10 +2876,12 @@ mod pool_fees {
 						token_symbol: BoundedVec::default(),
 					}
 				}
-			],
+			]
+			.try_into()
+			.unwrap(),
 			AUSD_CURRENCY_ID,
 			DEFAULT_POOL_MAX_RESERVE,
-			fees.clone(),
+			fees.clone().try_into().unwrap(),
 		));
 
 		if !fees.is_empty() {
@@ -2882,7 +2928,7 @@ mod pool_fees {
 	fn execute_epoch_without_fees() {
 		new_test_ext().execute_with(|| {
 			// Create pool without fees
-			create_fee_pool_setup(vec![]);
+			create_fee_pool_setup(Default::default());
 
 			// Invest to prepare increment of reserve from 0 to 2 * INVESTMENT_AMOUNT and to
 			// be able to redeem

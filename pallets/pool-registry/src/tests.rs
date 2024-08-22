@@ -32,7 +32,7 @@ pub fn assert_event_with_pos(event: Event<Runtime>) -> usize {
 #[test]
 fn register_pool_with_metadata() {
 	System::externalities().execute_with(|| {
-		Pools::mock_create(|admin, depositor, _, _, _, _, _| {
+		PoolSystem::mock_create(|admin, depositor, _, _, _, _, _| {
 			assert_eq!(admin, POOL_ADMIN);
 			assert_eq!(depositor, POOL_ADMIN);
 			Ok(())
@@ -43,12 +43,12 @@ fn register_pool_with_metadata() {
 			RuntimeOrigin::root(),
 			POOL_ADMIN,
 			POOL_A,
-			vec![()],
+			Default::default(),
 			POOL_CURRENCY,
 			MAX_RESERVE,
 			Some(METADATA.into()),
 			(), // policy
-			vec![]
+			Default::default(),
 		));
 
 		assert_eq!(
@@ -77,7 +77,7 @@ fn update_pool() {
 			assert!(matches!(role, Role::PoolRole(PoolRole::PoolAdmin)));
 			true
 		});
-		Pools::mock_update(|_, _| Ok(UpdateState::NoExecution));
+		PoolSystem::mock_update(|_, _| Ok(UpdateState::NoExecution));
 
 		assert_ok!(PoolRegistry::update(
 			RuntimeOrigin::signed(POOL_ADMIN),
@@ -127,7 +127,7 @@ fn set_metadata_exceeds_max() {
 	System::externalities().execute_with(|| {
 		Permissions::mock_has(|_, _, _| true);
 
-		let big_metadata = sp_std::iter::repeat(23)
+		let big_metadata = sp_std::iter::repeat(b'a')
 			.take(MaxSizeMetadata::get() as usize + 1)
 			.collect::<Vec<_>>()
 			.try_into()

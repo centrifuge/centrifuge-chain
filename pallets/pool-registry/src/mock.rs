@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::fee::{PoolFeeBucket, PoolFeesInspect};
 use cfg_types::permissions::PermissionScope;
 use frame_support::{derive_impl, parameter_types};
 use frame_system::EnsureRoot;
@@ -30,7 +29,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Permissions: cfg_mocks::permissions::pallet,
 		WriteOffPolicy: cfg_mocks::write_off_policy::pallet,
-		Pools: cfg_mocks::pools::pallet,
+		PoolSystem: cfg_mocks::pools::pallet,
 		PoolRegistry: pallet_pool_registry,
 	}
 );
@@ -58,30 +57,11 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 }
 
 impl cfg_mocks::pools::pallet::ConfigMut for Runtime {
+	type MaxFeesPerPool = ConstU32<5>;
+	type MaxTranches = ConstU32<5>;
 	type PoolChanges = ();
 	type PoolFeeInput = PoolFeeInput<Runtime>;
 	type TrancheInput = ();
-}
-
-pub struct MockPoolFeesInspect;
-impl PoolFeesInspect for MockPoolFeesInspect {
-	type PoolId = PoolId;
-
-	fn get_max_fee_count() -> u32 {
-		100
-	}
-
-	fn get_max_fees_per_bucket() -> u32 {
-		unreachable!()
-	}
-
-	fn get_pool_fee_count(_pool: Self::PoolId) -> u32 {
-		100
-	}
-
-	fn get_pool_fee_bucket_count(_pool: Self::PoolId, _bucket: PoolFeeBucket) -> u32 {
-		unreachable!()
-	}
 }
 
 parameter_types! {
@@ -93,12 +73,10 @@ impl Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTranches = ConstU32<5>;
-	type ModifyPool = Pools;
+	type ModifyPool = PoolSystem;
 	type ModifyWriteOffPolicy = WriteOffPolicy;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
-	type PoolFeesInspect = MockPoolFeesInspect;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;

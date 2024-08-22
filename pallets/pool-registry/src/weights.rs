@@ -18,7 +18,7 @@ pub trait WeightInfo {
 	fn update_no_execution(n: u32, m: u32) -> Weight;
 	fn update_and_execute(n: u32, m: u32) -> Weight;
 	fn execute_update(n: u32, m: u32) -> Weight;
-	fn set_metadata(n: u32, m: u32) -> Weight;
+	fn set_metadata() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -38,7 +38,7 @@ impl WeightInfo for () {
 		Weight::zero()
 	}
 
-	fn set_metadata(_n: u32, _m: u32) -> Weight {
+	fn set_metadata() -> Weight {
 		Weight::zero()
 	}
 }

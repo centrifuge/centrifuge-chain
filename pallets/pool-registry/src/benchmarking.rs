@@ -11,31 +11,67 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Module provides benchmarking for Loan Pallet
-use cfg_primitives::PoolEpochId;
-use cfg_traits::{benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket};
-use cfg_types::{pools::TrancheMetadata, tokens::CurrencyId};
-use frame_benchmarking::benchmarks;
-use frame_support::traits::fungibles::Inspect;
+use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_system::RawOrigin;
-use orml_traits::Change;
-#[cfg(feature = "runtime-benchmarks")]
-use pallet_pool_system::benchmarking::{
-	assert_input_tranches_match, assert_update_tranches_match, build_bench_input_tranches,
-	create_admin, create_investor, create_pool, get_pool, get_scheduled_update, get_tranche_id,
-	prepare_asset_registry, update_pool,
-};
-use pallet_pool_system::{
-	pool_types::PoolChanges,
-	tranches::{TrancheIndex, TrancheInput, TrancheType, TrancheUpdate},
-};
-use sp_runtime::{
-	traits::{One, Zero},
-	Perquintill,
-};
-use sp_std::vec;
 
 use super::*;
+
+#[cfg(test)]
+fn init_mocks() {
+	crate::mock::WriteOffPolicy::mock_worst_case_policy(|| ());
+	crate::mock::WriteOffPolicy::mock_update(|_, _| Ok(()));
+	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
+	crate::mock::PoolSystem::mock_worst_tranche_input_list(|_| Default::default());
+	crate::mock::PoolSystem::mock_worst_fee_input_list(|_| Default::default());
+}
+
+#[benchmarks(
+    where
+        T::PoolId: Default,
+        T::CurrencyId: Default,
+        T::Balance: Default,
+        TrancheInputOf<T>: Default
+    )]
+mod benchmarks {
+	use super::*;
+
+	#[benchmark]
+	fn register(n: Linear<1, 10>, m: Linear<1, 10>) -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let max_metadata = sp_std::iter::repeat(b'a')
+			.take(T::MaxSizeMetadata::get() as usize)
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap();
+
+		let policy = T::ModifyWriteOffPolicy::worst_case_policy();
+
+		#[extrinsic_call]
+		register(
+			RawOrigin::Root,
+			whitelisted_caller(),
+			T::PoolId::default(),
+			T::ModifyPool::worst_tranche_input_list(n),
+			T::CurrencyId::default(),
+			T::Balance::default(),
+			Some(max_metadata),
+			policy,
+			T::ModifyPool::worst_fee_input_list(m),
+		);
+
+		Ok(())
+	}
+
+	impl_benchmark_test_suite!(
+		Pallet,
+		crate::mock::System::externalities(),
+		crate::mock::Runtime
+	);
+}
+
+/*
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
@@ -268,3 +304,4 @@ fn build_update_tranches<T: Config>(
 // 	crate::mock::TestExternalitiesBuilder::default().build(),
 // 	crate::mock::Test,
 // );
+*/

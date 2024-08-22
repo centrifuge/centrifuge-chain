@@ -13,15 +13,8 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{
-	benchmarking::PoolFeesBenchmarkHelper,
-	fee::{PoolFeeBucket, PoolFeesInspect},
-	UpdateState,
-};
-use cfg_types::{
-	pools::{PoolFeeInfo, TrancheMetadata},
-	tokens::{CurrencyId, CustomMetadata},
-};
+use cfg_traits::{fee::PoolFeesInspect, UpdateState};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
@@ -35,10 +28,6 @@ const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
 const MINT_AMOUNT: u128 = 1_000_000 * CURRENCY + ED;
 const ED: u128 = CURRENCY;
-
-const SECS_PER_HOUR: u64 = 60 * 60;
-const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
-const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 
 const POOL: u64 = 0;
 const TRANCHE: TrancheIndex = 0;
@@ -62,10 +51,6 @@ benchmarks! {
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
 		<T::AssetsUnderManagementNAV as PoolNAV<<T as Config>::PoolId, <T as Config>::Balance>>::ClassId: From<u16>,
 		T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
-		T::PoolFees: PoolFeesBenchmarkHelper<
-			PoolId = <T as Config>::PoolId,
-			PoolFeeInfo = PoolFeeInfo<T::AccountId, <T as Config>::Balance, <T as Config>::Rate>,
-		>,
 	}
 
 	set_max_reserve {
@@ -303,23 +288,15 @@ pub fn create_pool<T>(num_tranches: u32, num_pool_fees: u32, caller: T::AccountI
 where
 	T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
 	T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
-	T::PoolFees: PoolFeesBenchmarkHelper<
-		PoolId = <T as Config>::PoolId,
-		PoolFeeInfo = PoolFeeInfo<T::AccountId, <T as Config>::Balance, <T as Config>::Rate>,
-	>,
 {
-	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
 		caller.clone(),
 		caller.clone(),
 		POOL,
-		tranches,
+		Pallet::<T>::worst_tranche_input_list(num_tranches),
 		AUSD_CURRENCY_ID,
 		MAX_RESERVE,
-		T::PoolFees::get_pool_fee_infos(num_pool_fees)
-			.into_iter()
-			.map(|fee| (PoolFeeBucket::Top, fee))
-			.collect(),
+		Pallet::<T>::worst_fee_input_list(num_pool_fees),
 	)?;
 	set_liquidity_admin::<T>(caller)
 }
@@ -353,41 +330,6 @@ pub fn assert_update_tranches_match<T: Config>(
 	for (chain, target) in chain.iter().zip(target.iter()) {
 		assert_eq!(chain.tranche_type, target.tranche_type);
 	}
-}
-
-pub fn build_bench_input_tranches<T: Config>(
-	num_tranches: u32,
-) -> Vec<TrancheInput<T::Rate, T::StringLimit>> {
-	let senior_interest_rate =
-		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
-	let mut tranches: Vec<_> = (1..num_tranches)
-		.map(|tranche_id| TrancheInput {
-			tranche_type: TrancheType::NonResidual {
-				interest_rate_per_sec: senior_interest_rate
-					/ T::Rate::saturating_from_integer(tranche_id)
-					+ One::one(),
-				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
-			},
-			seniority: None,
-			metadata: TrancheMetadata {
-				token_name: BoundedVec::default(),
-				token_symbol: BoundedVec::default(),
-			},
-		})
-		.collect();
-	tranches.insert(
-		0,
-		TrancheInput {
-			tranche_type: TrancheType::Residual,
-			seniority: None,
-			metadata: TrancheMetadata {
-				token_name: BoundedVec::default(),
-				token_symbol: BoundedVec::default(),
-			},
-		},
-	);
-
-	tranches
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

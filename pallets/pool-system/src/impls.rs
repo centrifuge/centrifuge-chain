@@ -12,7 +12,7 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::{PoolFeeBucket, PoolFeesMutate},
+	fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	PoolUpdateGuard, TrancheTokenPrice, UpdateState,
 };
@@ -93,6 +93,8 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
+	type MaxFeesPerPool = <T::PoolFees as PoolFeesInspect>::MaxFeesPerPool;
+	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
@@ -104,10 +106,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		admin: T::AccountId,
 		depositor: T::AccountId,
 		pool_id: T::PoolId,
-		tranche_inputs: Vec<TrancheInput<T::Rate, T::StringLimit>>,
+		tranche_inputs: BoundedVec<TrancheInput<T::Rate, T::StringLimit>, T::MaxTranches>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		pool_fees: Vec<Self::PoolFeeInput>,
+		pool_fees: BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -132,15 +134,16 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let now = T::Time::now();
 
-		let tranches = Tranches::<
-			T::Balance,
-			T::Rate,
-			T::TrancheWeight,
-			T::TrancheCurrency,
-			T::TrancheId,
-			T::PoolId,
-			T::MaxTranches,
-		>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone(), now)?;
+		let tranches =
+			Tranches::<
+				T::Balance,
+				T::Rate,
+				T::TrancheWeight,
+				T::TrancheCurrency,
+				T::TrancheId,
+				T::PoolId,
+				T::MaxTranches,
+			>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone().into_inner(), now)?;
 
 		let pool_details = PoolDetails {
 			currency,
@@ -175,8 +178,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details
-				.essence_from_tranche_input::<T::StringLimit>(ids, tranche_inputs.clone())?,
+			essence: pool_details.essence_from_tranche_input::<T::StringLimit>(
+				ids,
+				tranche_inputs.clone().into_inner(),
+			)?,
 		});
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
@@ -271,16 +276,22 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 			Self::do_update_pool(&pool_id, &changes)?;
 
-			Ok(UpdateState::Executed(num_tranches))
+			Ok(UpdateState::Executed(
+				num_tranches,
+				T::PoolFees::get_pool_fee_count(pool_id),
+			))
 		} else {
 			// If an update was already stored, this will override it
 			ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok(UpdateState::Stored(num_tranches))
+			Ok(UpdateState::Stored(
+				num_tranches,
+				T::PoolFees::get_pool_fee_count(pool_id),
+			))
 		}
 	}
 
-	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
+	fn execute_update(pool_id: T::PoolId) -> Result<(u32, u32), DispatchError> {
 		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 		ensure!(
@@ -305,7 +316,55 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		Self::do_update_pool(&pool_id, &update.changes)?;
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		Ok(num_tranches)
+		let num_pool_fees = T::PoolFees::get_pool_fee_count(pool_id);
+
+		Ok((num_tranches, num_pool_fees))
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_tranche_input_list(n: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
+		use cfg_types::pools::TrancheMetadata;
+
+		let senior_interest_rate = T::Rate::saturating_from_rational(5, 100)
+			/ T::Rate::saturating_from_integer(cfg_primitives::SECONDS_PER_YEAR);
+		let mut tranches: Vec<_> = (1..n)
+			.map(|tranche_id| TrancheInput {
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: senior_interest_rate
+						/ T::Rate::saturating_from_integer(tranche_id)
+						+ One::one(),
+					min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+				},
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			})
+			.collect();
+		tranches.insert(
+			0,
+			TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			},
+		);
+
+		tranches.try_into().unwrap()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_fee_input_list(n: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+		T::PoolFees::worst_pool_fee_infos(n)
+			.into_iter()
+			.map(|fee| (PoolFeeBucket::Top, fee))
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap()
 	}
 }
 
@@ -527,12 +586,14 @@ mod benchmarks_utils {
 							token_symbol: BoundedVec::default(),
 						},
 					},
-				],
+				]
+				.try_into()
+				.unwrap(),
 				POOL_CURRENCY,
 				FUNDS.into(),
-				// NOTE: Genesis pool fees missing per default, could be added via <T::PoolFees as
-				// PoolFeesBenchmarkHelper>::add_pool_fees(..)
-				vec![],
+				// NOTE: Genesis pool fees missing per default, could be added via
+				// add_pool_fees(..)
+				Default::default(),
 			));
 		}
 	}

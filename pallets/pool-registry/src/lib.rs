@@ -19,8 +19,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	fee::{PoolFeeBucket, PoolFeesInspect},
-	Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
+	fee::PoolFeeBucket, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
@@ -66,6 +65,16 @@ type PoolFeeInput<T> = (
 	>,
 );
 
+type MaxTranches<T> = <<T as Config>::ModifyPool as PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::PoolId,
+>>::MaxTranches;
+
+type MaxFeesPerPool<T> = <<T as Config>::ModifyPool as PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::PoolId,
+>>::MaxFeesPerPool;
+
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolRegistrationStatus {
 	Registered,
@@ -82,7 +91,7 @@ pub mod pallet {
 
 		type Balance: Parameter + MaxEncodedLen;
 
-		type PoolId: Parameter + Copy + MaxEncodedLen + core::fmt::Debug;
+		type PoolId: Parameter + Copy + MaxEncodedLen;
 
 		/// A fixed-point number which represents an interest rate.
 		type InterestRate: Parameter + MaxEncodedLen;
@@ -104,10 +113,6 @@ pub mod pallet {
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// Max number of Tranches
-		#[pallet::constant]
-		type MaxTranches: Get<u32>;
-
 		/// Max size of Metadata
 		#[pallet::constant]
 		type MaxSizeMetadata: Get<u32>;
@@ -118,9 +123,6 @@ pub mod pallet {
 			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
-
-		/// The source of truth for the pool fees counters;
-		type PoolFeesInspect: PoolFeesInspect<PoolId = Self::PoolId>;
 
 		/// Weight Information
 		type WeightInfo: WeightInfo;
@@ -194,12 +196,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
-			tranche_inputs: Vec<TrancheInputOf<T>>,
+			tranche_inputs: BoundedVec<TrancheInputOf<T>, MaxTranches<T>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
 			write_off_policy: PolicyOf<T>,
-			pool_fees: Vec<PoolFeeInput<T>>,
+			pool_fees: BoundedVec<PoolFeeInput<T>, MaxFeesPerPool<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -249,12 +251,9 @@ pub mod pallet {
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
 		#[pallet::weight(T::WeightInfo::update_no_execution(
-			T::MaxTranches::get(),
-			T::PoolFeesInspect::get_max_fee_count()).max(
-				T::WeightInfo::update_and_execute(T::MaxTranches::get(),
-				T::PoolFeesInspect::get_max_fee_count()
-			))
-		)]
+			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxTranches::get(),
+			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxFeesPerPool::get()
+		))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -286,19 +285,13 @@ pub mod pallet {
 
 			let weight = match state {
 				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0, 0),
-				UpdateState::Executed(num_tranches) => {
+				UpdateState::Executed(num_tranches, num_pool_fees) => {
 					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					T::WeightInfo::update_and_execute(
-						num_tranches,
-						T::PoolFeesInspect::get_pool_fee_count(pool_id),
-					)
+					T::WeightInfo::update_and_execute(num_tranches, num_pool_fees)
 				}
-				UpdateState::Stored(num_tranches) => {
+				UpdateState::Stored(num_tranches, num_pool_fees) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_no_execution(
-						num_tranches,
-						T::PoolFeesInspect::get_pool_fee_count(pool_id),
-					)
+					T::WeightInfo::update_and_execute(num_tranches, num_pool_fees)
 				}
 			};
 			Ok(Some(weight).into())
@@ -311,8 +304,8 @@ pub mod pallet {
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
 		#[pallet::weight(T::WeightInfo::execute_update(
-			T::MaxTranches::get(),
-			T::PoolFeesInspect::get_max_fee_count()
+			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxTranches::get(),
+			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxFeesPerPool::get()
 		))]
 		#[pallet::call_index(2)]
 		pub fn execute_update(
@@ -321,19 +314,16 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			let num_tranches = T::ModifyPool::execute_update(pool_id)?;
-			let num_fees = T::PoolFeesInspect::get_pool_fee_count(pool_id);
-			Ok(Some(T::WeightInfo::execute_update(num_tranches, num_fees)).into())
+			let (num_tranches, num_pool_fees) = T::ModifyPool::execute_update(pool_id)?;
+
+			Ok(Some(T::WeightInfo::execute_update(num_tranches, num_pool_fees)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(
-			metadata.len().try_into().unwrap_or(u32::MAX),
-			T::PoolFeesInspect::get_max_fee_count()
-		))]
+		#[pallet::weight(T::WeightInfo::set_metadata())]
 		#[pallet::call_index(3)]
 		pub fn set_metadata(
 			origin: OriginFor<T>,

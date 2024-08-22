@@ -22,13 +22,16 @@ use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
-	Parameter,
+	BoundedVec, Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_runtime::{traits::Member, DispatchError};
-use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
+use sp_runtime::{
+	traits::{Get, Member},
+	DispatchError,
+};
+use sp_std::{fmt::Debug, marker::PhantomData};
 
 pub mod changes;
 pub mod data;
@@ -96,8 +99,8 @@ pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed(u32),
-	Stored(u32),
+	Executed(u32, u32),
+	Stored(u32, u32),
 }
 
 /// A trait that supports modifications of pools
@@ -107,20 +110,30 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 	type PoolFeeInput: Encode + Decode + Clone + TypeInfo;
+	type MaxTranches: Get<u32>;
+	type MaxFeesPerPool: Get<u32>;
 
 	fn create(
 		admin: AccountId,
 		depositor: AccountId,
 		pool_id: PoolId,
-		tranche_inputs: Vec<Self::TrancheInput>,
+		tranche_inputs: BoundedVec<Self::TrancheInput, Self::MaxTranches>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
-		pool_fees: Vec<Self::PoolFeeInput>,
+		pool_fees: BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
-	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
+	fn execute_update(pool_id: PoolId) -> Result<(u32, u32), DispatchError>;
+
+	/// A worst case list of tranches for benchmarking
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_tranche_input_list(n: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches>;
+
+	/// A worst case list of pool fees for benchmarking
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_fee_input_list(n: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
