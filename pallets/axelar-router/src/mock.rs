@@ -22,7 +22,6 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Receiver: cfg_mocks::router_message::pallet,
 		Transactor: cfg_mocks::ethereum_transactor::pallet,
-		AccountCodeChecker: cfg_mocks::pre_conditions::pallet,
 		Router: pallet_axelar_router,
 	}
 );
@@ -47,7 +46,6 @@ impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
-	type EvmAccountCodeChecker = AccountCodeChecker;
 	type Middleware = Middleware;
 	type Receiver = Receiver;
 	type RuntimeEvent = RuntimeEvent;

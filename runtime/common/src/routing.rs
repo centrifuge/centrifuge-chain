@@ -1,6 +1,5 @@
-use cfg_traits::{
-	liquidity_pools::{LpMessageSerializer, MessageReceiver, MessageSender, RouterProvider},
-	PreConditions,
+use cfg_traits::liquidity_pools::{
+	LpMessageSerializer, MessageReceiver, MessageSender, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
@@ -9,8 +8,6 @@ use frame_support::{
 };
 pub use pallet_axelar_router::AxelarId;
 use pallet_liquidity_pools::Message;
-use sp_core::{H160, H256};
-use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{marker::PhantomData, vec, vec::Vec};
 
 /// Identification of the router where the messages are sent and received.
@@ -68,17 +65,6 @@ where
 				pallet_axelar_router::Pallet::<Routers>::send(axelar_id, origin, message)
 			}
 		}
-	}
-}
-
-/// A precondition to ensure an evm account code is configured for a contract
-pub struct EvmAccountCodeChecker<Runtime>(PhantomData<Runtime>);
-impl<Runtime: pallet_evm::Config> PreConditions<(H160, H256)> for EvmAccountCodeChecker<Runtime> {
-	type Result = bool;
-
-	fn check((contract_address, contract_hash): (H160, H256)) -> bool {
-		let code = pallet_evm::AccountCodes::<Runtime>::get(contract_address);
-		BlakeTwo256::hash_of(&code) == contract_hash
 	}
 }
 

@@ -128,159 +128,6 @@ mod extrinsics {
 		}
 	}
 
-	mod add_instance {
-		use super::*;
-
-		#[test]
-		fn success() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_ok!(LiquidityPoolsGateway::add_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
-
-				assert!(Allowlist::<Runtime>::contains_key(
-					domain_address.domain(),
-					domain_address.clone()
-				));
-
-				event_exists(Event::<Runtime>::InstanceAdded {
-					instance: domain_address,
-				});
-			});
-		}
-
-		#[test]
-		fn bad_origin() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_noop!(
-					LiquidityPoolsGateway::add_instance(
-						RuntimeOrigin::signed(get_test_account_id()),
-						domain_address.clone(),
-					),
-					BadOrigin
-				);
-
-				assert!(!Allowlist::<Runtime>::contains_key(
-					domain_address.domain(),
-					domain_address.clone()
-				));
-			});
-		}
-
-		#[test]
-		fn unsupported_domain() {
-			new_test_ext().execute_with(|| {
-				let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
-
-				assert_noop!(
-					LiquidityPoolsGateway::add_instance(
-						RuntimeOrigin::root(),
-						domain_address.clone()
-					),
-					Error::<Runtime>::DomainNotSupported
-				);
-
-				assert!(!Allowlist::<Runtime>::contains_key(
-					domain_address.domain(),
-					domain_address.clone()
-				));
-			});
-		}
-
-		#[test]
-		fn instance_already_added() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_ok!(LiquidityPoolsGateway::add_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
-
-				assert!(Allowlist::<Runtime>::contains_key(
-					domain_address.domain(),
-					domain_address.clone()
-				));
-
-				assert_noop!(
-					LiquidityPoolsGateway::add_instance(RuntimeOrigin::root(), domain_address),
-					Error::<Runtime>::InstanceAlreadyAdded
-				);
-			});
-		}
-	}
-
-	mod remove_instance {
-		use super::*;
-
-		#[test]
-		fn success() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_ok!(LiquidityPoolsGateway::add_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
-
-				assert_ok!(LiquidityPoolsGateway::remove_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
-
-				assert!(!Allowlist::<Runtime>::contains_key(
-					domain_address.domain(),
-					domain_address.clone()
-				));
-
-				event_exists(Event::<Runtime>::InstanceRemoved {
-					instance: domain_address.clone(),
-				});
-			});
-		}
-
-		#[test]
-		fn bad_origin() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_noop!(
-					LiquidityPoolsGateway::remove_instance(
-						RuntimeOrigin::signed(get_test_account_id()),
-						domain_address.clone(),
-					),
-					BadOrigin
-				);
-			});
-		}
-
-		#[test]
-		fn instance_not_found() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-
-				assert_noop!(
-					LiquidityPoolsGateway::remove_instance(
-						RuntimeOrigin::root(),
-						domain_address.clone(),
-					),
-					Error::<Runtime>::UnknownInstance,
-				);
-			});
-		}
-	}
-
 	mod set_domain_hook {
 		use super::*;
 
@@ -3356,11 +3203,6 @@ mod implementations {
 
 				let router_id = ROUTER_ID_1;
 
-				assert_ok!(LiquidityPoolsGateway::add_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
-
 				let gateway_message = GatewayMessage::Inbound {
 					domain_address: domain_address.clone(),
 					message: message.clone(),
@@ -3383,33 +3225,6 @@ mod implementations {
 		}
 
 		#[test]
-		fn unknown_instance_centrifuge() {
-			new_test_ext().execute_with(|| {
-				let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
-				let router_id = ROUTER_ID_1;
-
-				assert_noop!(
-					LiquidityPoolsGateway::receive(router_id, domain_address, Message::Simple),
-					Error::<Runtime>::UnknownInstance,
-				);
-			});
-		}
-
-		#[test]
-		fn unknown_instance_evm() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
-				let router_id = ROUTER_ID_1;
-
-				assert_noop!(
-					LiquidityPoolsGateway::receive(router_id, domain_address, Message::Simple),
-					Error::<Runtime>::UnknownInstance,
-				);
-			});
-		}
-
-		#[test]
 		fn message_queue_error() {
 			new_test_ext().execute_with(|| {
 				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
@@ -3417,11 +3232,6 @@ mod implementations {
 				let message = Message::Simple;
 
 				let router_id = ROUTER_ID_1;
-
-				assert_ok!(LiquidityPoolsGateway::add_instance(
-					RuntimeOrigin::root(),
-					domain_address.clone(),
-				));
 
 				let err = sp_runtime::DispatchError::from("liquidity_pools error");
 

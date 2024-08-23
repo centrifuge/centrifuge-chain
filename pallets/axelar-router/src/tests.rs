@@ -1,4 +1,4 @@
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_ok};
 use sp_core::{crypto::AccountId32, U256};
 
 use crate::{mock::*, *};
@@ -6,9 +6,8 @@ use crate::{mock::*, *};
 const CHAIN_NAME: &str = "CHAIN_1";
 const CHAIN_ID: EVMChainId = 1;
 const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
-const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
-const SOURCE_ADDRESS: H160 = H160::repeat_byte(3);
-const AXELAR_CONTRACT_HASH: H256 = H256::repeat_byte(42);
+const INBOUND_CONTRACT: H160 = H160::repeat_byte(2);
+const OUTBOUND_CONTRACT: H160 = H160::repeat_byte(3);
 const SENDER: DomainAddress = DomainAddress::Centrifuge(AccountId32::new([0; 32]));
 const MESSAGE: &[u8] = &[1, 2, 3];
 const FEE_VALUE: U256 = U256::zero();
@@ -17,12 +16,12 @@ const GAS_PRICE: U256 = U256::max_value();
 
 fn config() -> AxelarConfig {
 	AxelarConfig {
-		liquidity_pools_contract_address: LP_CONTRACT_ADDRESS,
+		app_contract_address: LP_CONTRACT_ADDRESS,
+		inbound_contract_address: INBOUND_CONTRACT,
+		outbound_contract_address: OUTBOUND_CONTRACT,
 		domain: DomainConfig::Evm(EvmConfig {
 			chain_id: CHAIN_ID,
-			target_contract_address: AXELAR_CONTRACT_ADDRESS,
-			target_contract_hash: AXELAR_CONTRACT_HASH,
-			fee_values: FeeValues {
+			outbound_fee_values: FeeValues {
 				value: FEE_VALUE,
 				gas_limit: GAS_LIMIT,
 				gas_price: GAS_PRICE,
@@ -32,8 +31,6 @@ fn config() -> AxelarConfig {
 }
 
 fn correct_configuration() {
-	AccountCodeChecker::mock_check(|_| true);
-
 	assert_ok!(Router::set_config(
 		RuntimeOrigin::root(),
 		CHAIN_NAME.as_bytes().to_vec().try_into().unwrap(),
@@ -51,33 +48,11 @@ mod configuration {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			AccountCodeChecker::mock_check(|(address, hash)| {
-				assert_eq!(address, AXELAR_CONTRACT_ADDRESS);
-				assert_eq!(hash, AXELAR_CONTRACT_HASH);
-				true
-			});
-
 			assert_ok!(Router::set_config(
 				RuntimeOrigin::root(),
 				CHAIN_NAME.as_bytes().to_vec().try_into().unwrap(),
 				Box::new(config())
 			));
-		});
-	}
-
-	#[test]
-	fn without_correct_account_code() {
-		new_test_ext().execute_with(|| {
-			AccountCodeChecker::mock_check(|_| false);
-
-			assert_noop!(
-				Router::set_config(
-					RuntimeOrigin::root(),
-					CHAIN_NAME.as_bytes().to_vec().try_into().unwrap(),
-					Box::new(config())
-				),
-				Error::<Runtime>::ContractCodeMismatch
-			);
 		});
 	}
 }
@@ -92,7 +67,7 @@ mod send {
 
 			Transactor::mock_call(move |from, to, data, value, gas_price, gas_limit| {
 				assert_eq!(from, SENDER.h160());
-				assert_eq!(to, AXELAR_CONTRACT_ADDRESS);
+				assert_eq!(to, OUTBOUND_CONTRACT);
 				assert_eq!(data, &wrap_message(MESSAGE.to_vec()));
 				assert_eq!(value, FEE_VALUE);
 				assert_eq!(gas_limit, GAS_LIMIT);
@@ -143,15 +118,15 @@ mod receive {
 
 			Receiver::mock_receive(|middleware, origin, message| {
 				assert_eq!(middleware, Middleware(AxelarId::Evm(CHAIN_ID)));
-				assert_eq!(origin, DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS));
+				assert_eq!(origin, DomainAddress::Evm(CHAIN_ID, LP_CONTRACT_ADDRESS));
 				assert_eq!(&message, MESSAGE);
 				Ok(())
 			});
 
 			assert_ok!(Router::receive(
-				LP_CONTRACT_ADDRESS,
+				INBOUND_CONTRACT,
 				CHAIN_NAME.as_bytes(),
-				&SOURCE_ADDRESS.0,
+				&LP_CONTRACT_ADDRESS.0,
 				MESSAGE
 			));
 		});
@@ -162,9 +137,9 @@ mod receive {
 		new_test_ext().execute_with(|| {
 			assert_err!(
 				Router::receive(
-					LP_CONTRACT_ADDRESS,
+					INBOUND_CONTRACT,
 					CHAIN_NAME.as_bytes(),
-					&SOURCE_ADDRESS.0,
+					&LP_CONTRACT_ADDRESS.0,
 					MESSAGE
 				),
 				Error::<Runtime>::RouterConfigurationNotFound
@@ -181,10 +156,10 @@ mod receive {
 				Router::receive(
 					H160::repeat_byte(23),
 					CHAIN_NAME.as_bytes(),
-					&SOURCE_ADDRESS.0,
+					&LP_CONTRACT_ADDRESS.0,
 					MESSAGE
 				),
-				Error::<Runtime>::ContractCallerMismatch
+				Error::<Runtime>::InboundContractMismatch
 			);
 		});
 	}
@@ -200,9 +175,9 @@ mod receive {
 
 			assert_err!(
 				Router::receive(
-					LP_CONTRACT_ADDRESS,
+					INBOUND_CONTRACT,
 					&big_source_chain,
-					&SOURCE_ADDRESS.0,
+					&LP_CONTRACT_ADDRESS.0,
 					MESSAGE
 				),
 				Error::<Runtime>::SourceChainTooLong
@@ -216,12 +191,7 @@ mod receive {
 			correct_configuration();
 
 			assert_err!(
-				Router::receive(
-					LP_CONTRACT_ADDRESS,
-					CHAIN_NAME.as_bytes(),
-					&[1, 2, 3],
-					MESSAGE
-				),
+				Router::receive(INBOUND_CONTRACT, CHAIN_NAME.as_bytes(), &[1, 2, 3], MESSAGE),
 				Error::<Runtime>::InvalidSourceAddress
 			);
 		});

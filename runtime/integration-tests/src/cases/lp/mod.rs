@@ -31,7 +31,7 @@ use pallet_evm::FeeCalculator;
 use runtime_common::{oracle::Feeder, routing::RouterId};
 pub use setup_lp::*;
 use sp_core::{bounded_vec::BoundedVec, Get};
-use sp_runtime::traits::{BlakeTwo256, Hash, One};
+use sp_runtime::traits::One;
 
 use crate::{
 	cases::lp::utils::{pool_a_tranche_1_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},
