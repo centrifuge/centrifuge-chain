@@ -72,7 +72,7 @@ fn with_time_after_fully_repaid_internal() {
 		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 		util::repay_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
-		advance_time(YEAR);
+		advance_time(SECONDS_PER_YEAR);
 
 		assert_ok!(Loans::close(
 			RuntimeOrigin::signed(BORROWER),

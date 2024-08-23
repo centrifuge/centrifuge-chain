@@ -5,12 +5,10 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::{
-	liquidity_pools::{
-		LpMessageBatch, LpMessageForwarded, LpMessageHash, LpMessageProof, LpMessageRecovery,
-		LpMessageSerializer, MessageHash,
-	},
-	Seconds,
+use cfg_primitives::Seconds;
+use cfg_traits::liquidity_pools::{
+	LpMessageBatch, LpMessageForwarded, LpMessageHash, LpMessageProof, LpMessageRecovery,
+	LpMessageSerializer, MessageHash,
 };
 use cfg_types::domain_address::Domain;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};

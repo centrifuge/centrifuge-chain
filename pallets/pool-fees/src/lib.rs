@@ -30,12 +30,14 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_primitives::Seconds;
 	#[cfg(feature = "runtime-benchmarks")]
 	use cfg_traits::benchmarking::PoolFeesBenchmarkHelper;
 	use cfg_traits::{
 		changes::ChangeGuard,
 		fee::{FeeAmountProration, PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
-		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
+		time::UnixTimeSecs,
+		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions,
 	};
 	use cfg_types::{
 		pools::{
@@ -157,7 +159,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Fetching method for the time of the current block
-		type Time: TimeAsSecs;
+		type Time: UnixTimeSecs;
 
 		type WeightInfo: WeightInfo;
 	}

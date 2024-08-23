@@ -268,7 +268,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		};
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
+		if T::MinUpdateDelay::get().is_zero() && T::UpdateGuard::released(&pool, &update, now) {
 			Self::do_update_pool(&pool_id, &changes)?;
 
 			Ok(UpdateState::Executed(num_tranches))
@@ -431,7 +431,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			allowed &= match requirement {
 				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
 				Requirement::DelayTime(secs) => {
-					T::Time::now().saturating_sub(submitted_time) >= secs as u64
+					T::Time::now().saturating_sub(submitted_time) >= Seconds::new(secs.into())
 				}
 				Requirement::BlockedByLockedRedemptions => true, // TODO: #1407
 			}

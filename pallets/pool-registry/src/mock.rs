@@ -15,13 +15,13 @@ use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_pre_conditions, pallet_mock_write_off_policy,
 };
 use cfg_primitives::{
-	Balance as BalanceType, BlockNumber, CollectionId, PoolEpochId, PoolFeeId, PoolId, TrancheId,
-	TrancheWeight,
+	Balance as BalanceType, BlockNumber, CollectionId, Millis, PoolEpochId, PoolFeeId, PoolId,
+	Seconds, TrancheId, TrancheWeight,
 };
 use cfg_traits::{
 	fee::{PoolFeeBucket, PoolFeesInspect},
 	investments::OrderManager,
-	Millis, PoolMutate, PoolUpdateGuard, PreConditions, Seconds, UpdateState,
+	PoolMutate, PoolUpdateGuard, PreConditions, UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
@@ -92,16 +92,16 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, PartialOrd, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
-	pub const MinUpdateDelay: u64 = 0; // for testing purposes
+	pub const MinUpdateDelay: Seconds = Seconds::new(0); // for testing purposes
 	pub const ChallengeTime: BlockNumber = 0;
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 1;
-	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
+	pub const DefaultMinEpochTime: Seconds = Seconds::new(1);
+	pub const DefaultMaxNAVAge: Seconds = Seconds::new(24 * 60 * 60);
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1;
-	pub const MinEpochTimeUpperBound: u64 = 24 * 60 * 60;
-	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
+	pub const MinEpochTimeLowerBound: Seconds = Seconds::new(1);
+	pub const MinEpochTimeUpperBound: Seconds = Seconds::new(24 * 60 * 60);
+	pub const MaxNAVAgeUpperBound: Seconds = Seconds::new(24 * 60 * 60);
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const StringLimit: u32 = 128;
@@ -205,7 +205,7 @@ impl pallet_pool_fees::Config for Test {
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 0;
+	pub const MinDelay: Seconds = Seconds::new(0);
 
 	pub const MaxRoles: u32 = u32::MAX;
 }
@@ -499,8 +499,7 @@ impl Default for TestExternalitiesBuilder {
 	}
 }
 
-pub const SECONDS: u64 = 1000;
-pub const START_DATE: u64 = 1640995200;
+pub const START_DATE: Seconds = Seconds::new(1640995200);
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
@@ -548,7 +547,7 @@ impl TestExternalitiesBuilder {
 			System::set_block_number(1);
 			System::on_initialize(System::block_number());
 			Timestamp::on_initialize(System::block_number());
-			Timestamp::set(RuntimeOrigin::none(), START_DATE * SECONDS).unwrap();
+			Timestamp::set(RuntimeOrigin::none(), START_DATE.into_millis()).unwrap();
 		});
 		externalities
 	}

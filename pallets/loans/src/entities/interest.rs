@@ -1,6 +1,6 @@
 use cfg_traits::{
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	TimeAsSecs,
+	time::UnixTimeSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::RuntimeDebugNoBound;

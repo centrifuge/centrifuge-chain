@@ -16,7 +16,8 @@ use cfg_traits::{
 	benchmarking::FundedPoolBenchmarkHelper,
 	changes::ChangeGuard,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolWriteOffPolicyMutate, TimeAsSecs, ValueProvider,
+	time::UnixTimeSecs,
+	Permissions, PoolWriteOffPolicyMutate, ValueProvider,
 };
 use cfg_types::{
 	adjustments::Adjustment,
@@ -74,7 +75,7 @@ fn config_mocks() {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(sp_core::H256::default())
 	});
-	MockTimer::mock_now(|| 0);
+	MockTimer::mock_now(|| 0u32.into());
 }
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);
@@ -90,7 +91,6 @@ where
 		AccountId = T::AccountId,
 		Balance = T::Balance,
 	>,
-	T::Moment: Default,
 	T::PriceRegistry: ValueProvider<(u32, T::PoolId), T::PriceId, Value = PriceOf<T>>,
 {
 	fn prepare_benchmark() -> T::PoolId {
@@ -325,7 +325,6 @@ benchmarks! {
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
 		T::Pool: FundedPoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-		T::Moment: Default,
 		T::PriceRegistry: ValueProvider<(u32, T::PoolId), T::PriceId, Value = PriceOf<T>>,
 	}
 

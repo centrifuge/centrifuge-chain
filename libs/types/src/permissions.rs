@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{Properties, Seconds, TimeAsSecs};
+use cfg_primitives::Seconds;
+use cfg_traits::{time::UnixTimeSecs, Properties};
 use frame_support::{traits::Get, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -138,7 +139,7 @@ pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
 
 impl<Now, MinDelay> Default for PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 {
 	fn default() -> Self {
@@ -152,7 +153,7 @@ where
 impl<Now, MinDelay, TrancheId, MaxTranches> Default
 	for TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -168,7 +169,7 @@ where
 impl<Now, MinDelay, TrancheId, MaxTranches> Default
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -187,12 +188,12 @@ where
 /// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
 /// Seconds) variant. This UNION shall reflect that and explain to the reader
 /// why it is passed here.
-pub const UNION: Seconds = 0;
+pub const UNION: Seconds = Seconds::new(0);
 
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -314,7 +315,7 @@ where
 
 impl<Now, MinDelay> PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 {
 	pub fn empty() -> Self {
@@ -326,7 +327,7 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
+		let now = Now::now_secs();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -339,7 +340,7 @@ where
 
 	pub fn contains(&self) -> bool {
 		if let Some(info) = &self.info {
-			info.permissioned_till >= <Now as TimeAsSecs>::now()
+			info.permissioned_till >= Now::now_secs()
 		} else {
 			false
 		}
@@ -349,7 +350,7 @@ where
 	pub fn remove(&mut self, delta: Seconds) -> Result<(), ()> {
 		if let Some(info) = &self.info {
 			let valid_till = &info.permissioned_till;
-			let now = <Now as TimeAsSecs>::now();
+			let now = Now::now_secs();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -384,7 +385,7 @@ where
 
 impl<Now, MinDelay, TrancheId, MaxTranches> TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: TimeAsSecs,
+	Now: UnixTimeSecs,
 	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
@@ -398,7 +399,7 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
+		let now = Now::now_secs();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -410,9 +411,9 @@ where
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
-		self.info.iter().any(|info| {
-			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
-		})
+		self.info
+			.iter()
+			.any(|info| info.tranche_id == tranche && info.permissioned_till >= Now::now_secs())
 	}
 
 	pub fn contains_frozen(&self, tranche: TrancheId) -> bool {
@@ -425,7 +426,7 @@ where
 	pub fn remove(&mut self, tranche: TrancheId, delta: Seconds) -> Result<(), ()> {
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
-			let now = <Now as TimeAsSecs>::now();
+			let now = Now::now_secs();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -487,36 +488,33 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: u64 = 4;
+		pub const MinDelay: Seconds = Seconds::new(4);
 		pub const MaxTranches: u32 = 5;
 	}
 
 	struct Now;
 	impl Now {
-		fn pass(delta: u64) {
+		fn pass(delta: Seconds) {
 			unsafe {
 				let current = NOW_HOLDER;
-				NOW_HOLDER = current + delta;
+				NOW_HOLDER = current.add(delta);
 			};
 		}
 
-		fn set(now: u64) {
+		fn set(now: Seconds) {
 			unsafe {
 				NOW_HOLDER = now;
 			};
 		}
 	}
 
-	static mut NOW_HOLDER: u64 = 0;
+	static mut NOW_HOLDER: Seconds = Seconds::new(0);
 	impl frame_support::traits::UnixTime for Now {
 		fn now() -> Duration {
-			unsafe { Duration::new(NOW_HOLDER, 0) }
+			unsafe { Duration::new(NOW_HOLDER.inner, 0) }
 		}
 	}
 
-	/// The exists call does not care what is passed as moment. This type shall
-	/// reflect that
-	const UNION: u64 = 0u64;
 	/// The tranceh id type we use in our runtime-common. But we don't want a
 	/// dependency here.
 	type TrancheId = [u8; 16];
@@ -535,19 +533,19 @@ mod tests {
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				10
+				Seconds::new(10)
 			)))
 			.is_ok());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				9
+				Seconds::new(9)
 			)))
 			.is_err());
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(30),
-				11
+				Seconds::new(11)
 			)))
 			.is_ok());
 
@@ -571,10 +569,10 @@ mod tests {
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(0),
-				0
+				Seconds::new(0)
 			)))
 			.is_err());
-		Now::pass(1);
+		Now::pass(Seconds::new(1));
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			UNION
@@ -589,7 +587,7 @@ mod tests {
 			into_tranche_id(0),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::new(0));
 
 		// Removing after MinDelay works (i.e. this is after min_delay the account will
 		// be invalid)
@@ -599,12 +597,12 @@ mod tests {
 				MinDelay::get()
 			)))
 			.is_ok());
-		Now::pass(6);
+		Now::pass(Seconds::new(6));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::new(0));
 
 		// Multiple tranches work
 		assert!(roles
@@ -652,12 +650,12 @@ mod tests {
 			into_tranche_id(8),
 			UNION
 		))));
-		Now::pass(1);
+		Now::pass(Seconds::new(1));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
 			UNION
 		))));
-		Now::set(0);
+		Now::set(Seconds::new(0));
 
 		// Role must be added for at least min_delay
 		assert!(roles

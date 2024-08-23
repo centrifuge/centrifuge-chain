@@ -13,6 +13,9 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod num_wrapper;
+pub mod time;
+
 use parity_scale_codec::Encode;
 use sp_std::cmp::min;
 

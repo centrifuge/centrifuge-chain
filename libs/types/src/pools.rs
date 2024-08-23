@@ -10,10 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	fee::{FeeAmountProration, PoolFeeBucket},
-	Seconds,
-};
+use cfg_primitives::Seconds;
+use cfg_traits::fee::{FeeAmountProration, PoolFeeBucket};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointOperand;
@@ -224,27 +222,15 @@ where
 	}
 }
 
-/// Converts an annual balance amount into its proratio based on the given
-/// period duration.
-pub fn saturated_balance_proration<
-	Balance: From<Seconds> + FixedPointOperand + sp_std::ops::Div<Output = Balance>,
->(
-	annual_amount: Balance,
-	period: Seconds,
-) -> Balance {
-	let amount = annual_amount.saturating_mul(period.into());
-	amount.div(cfg_primitives::SECONDS_PER_YEAR.into())
-}
-
 /// Converts an annual rate into its proratio based on the given
 /// period duration.
 pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 	annual_rate: Rate,
 	period: Seconds,
 ) -> Rate {
-	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period));
+	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer(period));
 
-	rate.saturating_div_ceil(&Rate::saturating_from_integer::<u64>(
+	rate.saturating_div_ceil(&Rate::saturating_from_integer(
 		cfg_primitives::SECONDS_PER_YEAR,
 	))
 }
@@ -267,7 +253,7 @@ mod tests {
 	use super::*;
 
 	mod saturated_proration {
-		use cfg_primitives::{CFG, DAYS, SECONDS_PER_YEAR};
+		use cfg_primitives::{CFG, SECONDS_PER_DAY, SECONDS_PER_YEAR};
 		use sp_arithmetic::{
 			traits::{One, Zero},
 			FixedPointNumber,
@@ -276,51 +262,13 @@ mod tests {
 		use super::*;
 		use crate::fixed_point::{Quantity, Rate};
 
-		type Balance = u128;
-
-		#[test]
-		fn balance_zero() {
-			assert_eq!(
-				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 0),
-				0
-			);
-			assert_eq!(
-				saturated_balance_proration::<Balance>(0u128, SECONDS_PER_YEAR),
-				0
-			);
-			assert_eq!(
-				saturated_balance_proration::<Balance>((SECONDS_PER_YEAR - 1).into(), 1),
-				0
-			);
-			assert_eq!(
-				saturated_balance_proration::<Balance>(1u128, SECONDS_PER_YEAR - 1),
-				0
-			);
-		}
-
-		#[test]
-		fn balance_one() {
-			assert_eq!(
-				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 1),
-				1u128
-			);
-			assert_eq!(
-				saturated_balance_proration::<Balance>(1u128, SECONDS_PER_YEAR),
-				1u128
-			);
-		}
-		#[test]
-		fn balance_overflow() {
-			assert_eq!(
-				saturated_balance_proration::<Balance>(u128::MAX, u64::MAX),
-				u128::MAX / u128::from(SECONDS_PER_YEAR)
-			);
-		}
-
 		#[test]
 		fn rate_zero() {
 			assert_eq!(
-				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 0),
+				saturated_rate_proration::<Rate>(
+					Rate::from_integer(SECONDS_PER_YEAR.into()),
+					Seconds::new(0)
+				),
 				Rate::zero()
 			);
 			assert_eq!(
@@ -330,7 +278,7 @@ mod tests {
 			assert!(
 				saturated_rate_proration::<Rate>(
 					Rate::from_integer((SECONDS_PER_YEAR - 1).into()),
-					1
+					Seconds::new(1)
 				) > Rate::zero()
 			);
 			assert!(
@@ -341,7 +289,10 @@ mod tests {
 		#[test]
 		fn rate_one() {
 			assert_eq!(
-				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 1),
+				saturated_rate_proration::<Rate>(
+					Rate::from_integer(SECONDS_PER_YEAR.into()),
+					Seconds::new(1)
+				),
 				Rate::one()
 			);
 			assert_eq!(
@@ -356,23 +307,25 @@ mod tests {
 
 			let rate = saturated_rate_proration::<Rate>(
 				Rate::from_integer(u128::from(u128::MAX / 10u128.pow(27))),
-				1,
+				Seconds::new(1),
 			);
 			assert!(left_bound < rate);
 			assert!(rate < right_bound);
 
-			assert!(saturated_rate_proration::<Rate>(Rate::one(), u64::MAX) > left_bound);
-			assert!(saturated_rate_proration::<Rate>(Rate::one(), u64::MAX) < right_bound);
+			assert!(saturated_rate_proration::<Rate>(Rate::one(), Seconds::MAX) > left_bound);
+			assert!(saturated_rate_proration::<Rate>(Rate::one(), Seconds::MAX) < right_bound);
 
-			assert!(saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) > left_bound);
 			assert!(
-				saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) < right_bound
+				saturated_rate_proration::<Rate>(Rate::from_integer(2), Seconds::MAX) > left_bound
+			);
+			assert!(
+				saturated_rate_proration::<Rate>(Rate::from_integer(2), Seconds::MAX) < right_bound
 			);
 		}
 
 		#[test]
 		fn precision_quantity_vs_rate() {
-			let period = (DAYS / 4) as Seconds;
+			let period = SECONDS_PER_DAY / 4;
 			let nav_multiplier = 1_000_000;
 			let nav = nav_multiplier * CFG;
 

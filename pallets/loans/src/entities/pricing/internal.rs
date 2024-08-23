@@ -1,6 +1,7 @@
+use cfg_primitives::Seconds;
 use cfg_traits::{
 	interest::{InterestRate, RateCollection},
-	Seconds, TimeAsSecs,
+	time::UnixTimeSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use frame_support::{

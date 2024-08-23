@@ -164,6 +164,15 @@ pub mod types {
 
 	/// The type for LP gateway session IDs.
 	pub type LPGatewaySessionId = u64;
+
+	/// The type to represent milliseconds
+	pub type Millis = cfg_utils::time::Millis<u64>;
+
+	/// The type to represent seconds
+	pub type Seconds = cfg_utils::time::Seconds<u64>;
+
+	/// The type to represent days
+	pub type Days = cfg_utils::time::Days<u32>;
 }
 
 /// Common constants for all runtimes
@@ -171,7 +180,7 @@ pub mod constants {
 	use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
 
-	use super::types::{Balance, BlockNumber};
+	use super::types::{Balance, BlockNumber, Millis, Seconds};
 
 	/// This determines the average expected block time that we are targeting.
 	/// Blocks will be produced at a minimum duration defined by
@@ -180,24 +189,24 @@ pub mod constants {
 	/// slot_duration()`.
 	///
 	/// Change this to adjust the block time.
-	pub const MILLISECS_PER_BLOCK: u64 = 12000;
-	pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+	pub const MILLISECS_PER_BLOCK: Millis = Millis::new(12000);
+	pub const SLOT_DURATION: Millis = MILLISECS_PER_BLOCK;
 
 	// Time is measured by number of blocks.
-	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK.inner as BlockNumber);
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
 
-	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: u64 = SECONDS_PER_DAY * 1000;
-
 	// Seconds units
-	pub const SECONDS_PER_MINUTE: u64 = 60;
-	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
-	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
-	pub const SECONDS_PER_WEEK: u64 = SECONDS_PER_DAY * 7;
-	pub const SECONDS_PER_MONTH: u64 = SECONDS_PER_DAY * 30;
-	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
+	pub const SECONDS_PER_MINUTE: Seconds = Seconds::new(60);
+	pub const SECONDS_PER_HOUR: Seconds = SECONDS_PER_MINUTE.mul_int(60);
+	pub const SECONDS_PER_DAY: Seconds = SECONDS_PER_HOUR.mul_int(24);
+	pub const SECONDS_PER_WEEK: Seconds = SECONDS_PER_DAY.mul_int(7);
+	pub const SECONDS_PER_MONTH: Seconds = SECONDS_PER_DAY.mul_int(30);
+	pub const SECONDS_PER_YEAR: Seconds = SECONDS_PER_DAY.mul_int(365);
+
+	/// Milliseconds per day
+	pub const MILLISECS_PER_DAY: Millis = Millis::new(SECONDS_PER_DAY.inner * 1000);
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`
 	/// handlers. This is used to limit the maximal weight of a single

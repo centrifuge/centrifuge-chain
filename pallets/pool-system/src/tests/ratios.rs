@@ -35,8 +35,8 @@ fn ensure_ratios_are_distributed_correctly_2_tranches() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -151,8 +151,8 @@ fn ensure_ratios_are_distributed_correctly_1_tranche() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -250,8 +250,8 @@ fn ensure_ratios_are_distributed_correctly_3_tranches() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = Seconds::new(0);
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = Seconds::MAX;
 			Ok(())
 		})
 		.unwrap();

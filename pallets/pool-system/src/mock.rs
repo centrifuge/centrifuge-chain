@@ -13,10 +13,10 @@ use cfg_mocks::{pallet_mock_change_guard, pallet_mock_pre_conditions};
 use cfg_primitives::{
 	Balance, BlockNumber, CollectionId, PoolFeeId, PoolId, TrancheId, SECONDS_PER_YEAR,
 };
-pub use cfg_primitives::{PoolEpochId, TrancheWeight};
+pub use cfg_primitives::{Millis, PoolEpochId, Seconds, TrancheWeight};
 use cfg_traits::{
-	fee::PoolFeeBucket, investments::OrderManager, Millis, Permissions as PermissionsT,
-	PoolUpdateGuard, PreConditions, Seconds,
+	fee::PoolFeeBucket, investments::OrderManager, time::UnixTimeSecs, Permissions as PermissionsT,
+	PoolUpdateGuard, PreConditions,
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
@@ -53,8 +53,7 @@ pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
 pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
-pub const START_DATE: u64 = 1640991600; // 2022.01.01
-pub const SECONDS: u64 = 1000;
+pub const START_DATE: Seconds = Seconds::new(1640991600); // 2022.01.01
 
 pub const DEFAULT_POOL_ID: PoolId = 0;
 pub const DEFAULT_POOL_OWNER: AccountId = 10;
@@ -62,7 +61,7 @@ pub const DEFAULT_POOL_MAX_RESERVE: Balance = 10_000 * CURRENCY;
 
 pub const DEFAULT_FEE_EDITOR: PoolFeeEditor<AccountId> = PoolFeeEditor::Account(100);
 pub const DEFAULT_FEE_DESTINATION: AccountId = 101;
-pub const POOL_FEE_FIXED_RATE_MULTIPLIER: u64 = SECONDS_PER_YEAR / 12;
+pub const POOL_FEE_FIXED_RATE_MULTIPLIER: u64 = SECONDS_PER_YEAR.inner / 12;
 pub const POOL_FEE_CHARGED_AMOUNT_PER_SECOND: Balance = 1000;
 
 pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
@@ -155,7 +154,7 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 0;
+	pub const MinDelay: Seconds = Seconds::new(0);
 	pub const MaxRoles: u32 = u32::MAX;
 }
 
@@ -362,17 +361,17 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, PartialOrd, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
-	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const MinUpdateDelay: Seconds = Seconds::new(0); // no delay
 	pub const ChallengeTime: BlockNumber = 0;
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 1;
-	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
+	pub const DefaultMinEpochTime: Seconds = Seconds::new(1);
+	pub const DefaultMaxNAVAge: Seconds = Seconds::new(24 * 60 * 60);
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1;
-	pub const MinEpochTimeUpperBound: u64 = 24 * 60 * 60;
-	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
+	pub const MinEpochTimeLowerBound: Seconds = Seconds::new(1);
+	pub const MinEpochTimeUpperBound: Seconds = Seconds::new(24 * 60 * 60);
+	pub const MaxNAVAgeUpperBound: Seconds = Seconds::new(24 * 60 * 60);
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const StringLimit: u32 = 128;
@@ -555,20 +554,26 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
-		Timestamp::set(RuntimeOrigin::none(), START_DATE).unwrap();
+		Timestamp::set(RuntimeOrigin::none(), START_DATE.into_millis()).unwrap();
 
 		for account in 0..10u64 {
 			<<Runtime as Config>::Permission as PermissionsT<u64>>::add(
 				PermissionScope::Pool(DEFAULT_POOL_ID),
 				account,
-				Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					JuniorTrancheId::get(),
+					Seconds::MAX,
+				)),
 			)
 			.unwrap();
 
 			<<Runtime as Config>::Permission as PermissionsT<u64>>::add(
 				PermissionScope::Pool(DEFAULT_POOL_ID),
 				account,
-				Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					SeniorTrancheId::get(),
+					Seconds::MAX,
+				)),
 			)
 			.unwrap();
 		}
@@ -577,7 +582,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn next_block() {
-	next_block_after(12)
+	next_block_after(Seconds::new(12))
 }
 
 pub fn next_block_after(seconds: Seconds) {
@@ -586,7 +591,11 @@ pub fn next_block_after(seconds: Seconds) {
 	System::set_block_number(System::block_number() + 1);
 	System::on_initialize(System::block_number());
 	Timestamp::on_initialize(System::block_number());
-	Timestamp::set(RuntimeOrigin::none(), Timestamp::now() + seconds * SECONDS).unwrap();
+	Timestamp::set(
+		RuntimeOrigin::none(),
+		(Timestamp::now_secs() + seconds).into_millis(),
+	)
+	.unwrap();
 }
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {

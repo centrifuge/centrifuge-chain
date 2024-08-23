@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId};
-use cfg_traits::{Permissions, PreConditions};
+use cfg_traits::{time::UnixTimeSecs, Permissions, PreConditions};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
 };
-use frame_support::{dispatch::DispatchResult, traits::UnixTime};
+use frame_support::dispatch::DispatchResult;
 use pallet_investments::OrderType;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
@@ -55,7 +55,7 @@ where
 pub struct IsUnfrozenTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-		T: UnixTime,
+		T: UnixTimeSecs,
 	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P, T>
 {
 	type Result = DispatchResult;
@@ -70,7 +70,7 @@ impl<
 				P::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now_secs())),
 				) && !P::has(
 					PermissionScope::Pool(pool_id),
 					who,
@@ -85,7 +85,7 @@ impl<
 				P::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now_secs())),
 				) && !P::has(
 					PermissionScope::Pool(pool_id),
 					who,
