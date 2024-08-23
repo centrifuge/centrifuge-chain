@@ -148,8 +148,6 @@ pub mod pallet {
 		Registered { pool_id: T::PoolId },
 		/// A pool update was registered.
 		UpdateRegistered { pool_id: T::PoolId },
-		/// A pool update was executed.
-		UpdateExecuted { pool_id: T::PoolId },
 		/// A pool update was stored for later execution.
 		UpdateStored { pool_id: T::PoolId },
 		/// Pool metadata was set.
@@ -248,7 +246,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_and_execute(MaxTranches::<T>::get()))]
+		#[pallet::weight(T::WeightInfo::update(MaxTranches::<T>::get()))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -279,16 +277,13 @@ pub mod pallet {
 			Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 			let weight = match state {
-				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0),
-				UpdateState::Executed(num_tranches) => {
-					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					T::WeightInfo::update_and_execute(num_tranches)
-				}
+				UpdateState::NoExecution => T::WeightInfo::update(0),
 				UpdateState::Stored(num_tranches) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_no_execution(num_tranches)
+					T::WeightInfo::update(num_tranches)
 				}
 			};
+
 			Ok(Some(weight).into())
 		}
 

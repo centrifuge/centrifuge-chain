@@ -99,7 +99,6 @@ pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed(u32),
 	Stored(u32),
 }
 

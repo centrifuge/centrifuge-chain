@@ -272,17 +272,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			submitted_at: now,
 		};
 
-		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
-			Self::do_update_pool(&pool_id, &changes)?;
+		ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok(UpdateState::Executed(num_tranches))
-		} else {
-			// If an update was already stored, this will override it
-			ScheduledUpdate::<T>::insert(pool_id, update);
-
-			Ok(UpdateState::Stored(num_tranches))
-		}
+		let num_tranches = pool.tranches.num_tranches().ensure_into()?;
+		Ok(UpdateState::Stored(num_tranches))
 	}
 
 	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
@@ -450,7 +443,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			Self::worst_tranche_input_list(num_tranches),
 			currency_id,
 			T::Balance::max_value(),
-			Self::worst_fee_input_list(Self::MaxFeesPerPool::get() - 1),
+			Self::worst_fee_input_list(Self::MaxFeesPerPool::get()),
 		)
 		.unwrap();
 	}
