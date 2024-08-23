@@ -22,6 +22,7 @@ fn init_mocks() {
 	crate::mock::WriteOffPolicy::mock_worst_case_policy(|| ());
 	crate::mock::WriteOffPolicy::mock_update(|_, _| Ok(()));
 	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
+	crate::mock::PoolSystem::mock_execute_update(|_| Ok((0, 0)));
 }
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);
@@ -81,6 +82,48 @@ mod benchmarks {
 
 		Ok(())
 	}
+
+	/*
+	#[benchmark]
+	fn update_no_execution(
+		n: Linear<1, { min(MaxTranches::<T>::get(), 10) }>,
+		m: Linear<1, { min(MaxFeesPerPool::<T>::get(), 10) }>,
+	) -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		T::ModifyPool::create_heaviest_pool(T::PoolId::default(), whitelisted_caller(), 0.into());
+
+		#[extrinsic_call]
+		update(
+			RawOrigin::Signed(whitelisted_caller()),
+			T::PoolId::default(),
+		);
+
+		Ok(())
+	}
+	*/
+
+	/*
+	#[benchmark]
+	fn execute_update(
+		n: Linear<1, { min(MaxTranches::<T>::get(), 10) }>,
+		m: Linear<1, { min(MaxFeesPerPool::<T>::get(), 10) }>,
+	) -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		T::ModifyPool::create_heaviest_pool(T::PoolId::default(), whitelisted_caller(), 0.into());
+
+		#[extrinsic_call]
+		_(
+			RawOrigin::Signed(whitelisted_caller()),
+			T::PoolId::default(),
+		);
+
+		Ok(())
+	}
+	*/
 
 	#[benchmark]
 	fn set_metadata() -> Result<(), BenchmarkError> {

@@ -257,7 +257,9 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_execute_update(f: impl Fn(T::PoolId) -> Result<u32, DispatchError> + 'static) {
+		pub fn mock_execute_update(
+			f: impl Fn(T::PoolId) -> Result<(u32, u32), DispatchError> + 'static,
+		) {
 			register_call!(f);
 		}
 	}

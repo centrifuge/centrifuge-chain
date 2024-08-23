@@ -359,7 +359,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn worst_fee_input_list(n: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
-		T::PoolFees::worst_pool_fee_infos(n)
+		let n_in_bucket = sp_std::cmp::min(n, T::PoolFees::get_max_fees_per_bucket());
+		T::PoolFees::worst_pool_fee_infos(n_in_bucket)
 			.into_iter()
 			.map(|fee| (PoolFeeBucket::Top, fee))
 			.collect::<Vec<_>>()
@@ -398,6 +399,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn create_heaviest_pool(pool_id: T::PoolId, admin: T::AccountId, currency_id: T::CurrencyId) {
+		use sp_runtime::traits::Bounded;
+
 		Self::fund_depositor(&admin);
 		Self::register_pool_currency(&currency_id);
 		Self::create(
@@ -406,8 +409,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			pool_id,
 			Self::worst_tranche_input_list(Self::MaxTranches::get()),
 			currency_id,
-			T::Balance::zero(),
-			Self::worst_fee_input_list(Self::MaxFeesPerPool::get()),
+			T::Balance::max_value(),
+			Self::worst_fee_input_list(Self::MaxFeesPerPool::get() - 1),
 		)
 		.unwrap();
 	}
@@ -566,85 +569,34 @@ mod benchmarks_utils {
 		},
 		investments::Investment,
 	};
-	use cfg_types::{
-		pools::TrancheMetadata,
-		tokens::{CurrencyId, CustomMetadata},
-	};
 	use frame_benchmarking::account;
 	use frame_support::traits::Currency;
 	use frame_system::RawOrigin;
-	use sp_std::vec;
 
 	use super::*;
 
-	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
+	const POOL_CURRENCY_INDEX: u32 = 1;
 	const FUNDS: u128 = u64::max_value() as u128;
 
-	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T> {
+	impl<T: Config> PoolBenchmarkHelper for Pallet<T>
+	where
+		T::CurrencyId: From<u32>,
+	{
 		type AccountId = T::AccountId;
 		type PoolId = T::PoolId;
 
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
-			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
-				frame_support::assert_ok!(T::AssetRegistry::register_asset(
-					Some(POOL_CURRENCY),
-					orml_asset_registry::AssetMetadata {
-						decimals: 12,
-						name: Default::default(),
-						symbol: Default::default(),
-						existential_deposit: Zero::zero(),
-						location: None,
-						additional: CustomMetadata {
-							pool_currency: true,
-							..CustomMetadata::default()
-						},
-					},
-				));
-			}
-
-			// Pool creation
-			T::Currency::make_free_balance_be(
-				admin,
-				T::PoolDeposit::get() + T::Currency::minimum_balance(),
-			);
-			frame_support::assert_ok!(Pallet::<T>::create(
-				admin.clone(),
-				admin.clone(),
+			Self::create_heaviest_pool(
 				pool_id,
-				vec![
-					TrancheInput {
-						tranche_type: TrancheType::Residual,
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-					TrancheInput {
-						tranche_type: TrancheType::NonResidual {
-							interest_rate_per_sec: One::one(),
-							min_risk_buffer: Perquintill::from_percent(10),
-						},
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-				]
-				.try_into()
-				.unwrap(),
-				POOL_CURRENCY,
-				FUNDS.into(),
-				// NOTE: Genesis pool fees missing per default, could be added via
-				// add_pool_fees(..)
-				Default::default(),
-			));
+				admin.clone(),
+				T::CurrencyId::from(POOL_CURRENCY_INDEX),
+			);
 		}
 	}
 
-	impl<T: Config<CurrencyId = CurrencyId>> FundedPoolBenchmarkHelper for Pallet<T>
+	impl<T: Config> FundedPoolBenchmarkHelper for Pallet<T>
 	where
+		T::CurrencyId: From<u32>,
 		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
 		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
 	{
@@ -659,7 +611,7 @@ mod benchmarks_utils {
 			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			frame_support::assert_ok!(T::Tokens::mint_into(
-				POOL_CURRENCY,
+				T::CurrencyId::from(POOL_CURRENCY_INDEX),
 				&pool_account,
 				POOL_ACCOUNT_BALANCE.into()
 			));
@@ -694,7 +646,8 @@ mod benchmarks_utils {
 		}
 
 		fn bench_investor_setup(pool_id: T::PoolId, account: T::AccountId, balance: T::Balance) {
-			T::Tokens::mint_into(POOL_CURRENCY, &account, balance).unwrap();
+			let pool_currency = T::CurrencyId::from(POOL_CURRENCY_INDEX);
+			T::Tokens::mint_into(pool_currency, &account, balance).unwrap();
 			T::Currency::make_free_balance_be(&account, balance);
 
 			let tranche =
@@ -708,7 +661,7 @@ mod benchmarks_utils {
 		}
 	}
 
-	impl<T: Config<CurrencyId = CurrencyId>> InvestmentIdBenchmarkHelper for Pallet<T> {
+	impl<T: Config> InvestmentIdBenchmarkHelper for Pallet<T> {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
