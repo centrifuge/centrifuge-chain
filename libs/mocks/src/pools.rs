@@ -260,6 +260,11 @@ pub mod pallet {
 		pub fn mock_execute_update(f: impl Fn(T::PoolId) -> Result<u32, DispatchError> + 'static) {
 			register_call!(f);
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_worst_pool_changes(f: impl Fn(Option<u32>) -> T::PoolChanges + 'static) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: ConfigMut> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
@@ -288,6 +293,11 @@ pub mod pallet {
 		}
 
 		fn execute_update(a: T::PoolId) -> Result<u32, DispatchError> {
+			execute_call!(a)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_pool_changes(a: Option<u32>) -> Self::PoolChanges {
 			execute_call!(a)
 		}
 	}

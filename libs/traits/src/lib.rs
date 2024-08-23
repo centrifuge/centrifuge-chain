@@ -129,24 +129,23 @@ pub trait PoolMutate<AccountId, PoolId> {
 
 	/// A worst case list of tranches
 	#[cfg(feature = "runtime-benchmarks")]
-	fn worst_tranche_input_list(_: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
+	fn worst_tranche_input_list(
+		_num_tranches: u32,
+	) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
 		Default::default()
 	}
 
 	/// A worst case list of pool fees
 	#[cfg(feature = "runtime-benchmarks")]
-	fn worst_fee_input_list(_: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+	fn worst_fee_input_list(
+		_num_pool_fees: u32,
+	) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
 		Default::default()
 	}
 
 	/// A worst case change
 	#[cfg(feature = "runtime-benchmarks")]
-	fn worst_pool_changes(_: Option<u32>) -> Self::PoolChanges
-	where
-		Self::PoolChanges: Default,
-	{
-		Default::default()
-	}
+	fn worst_pool_changes(_num_tranches: Option<u32>) -> Self::PoolChanges;
 
 	/// Returns a valid currency to be used in the pool
 	#[cfg(feature = "runtime-benchmarks")]
@@ -158,7 +157,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 
 	/// Creates the heviest pool possible
 	#[cfg(feature = "runtime-benchmarks")]
-	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId) {}
+	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId, _num_tranches: u32) {}
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit

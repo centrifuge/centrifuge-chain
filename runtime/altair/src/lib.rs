@@ -1458,11 +1458,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
-		0
-	} else {
-		2 * SECONDS_PER_DAY
-	};
+	pub const MinUpdateDelay: u64 = 2 * SECONDS_PER_DAY;
 
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
 		// Disable challenge time in benchmarks

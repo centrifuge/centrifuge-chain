@@ -82,7 +82,7 @@ fn update_pool() {
 		assert_ok!(PoolRegistry::update(
 			RuntimeOrigin::signed(POOL_ADMIN),
 			POOL_A,
-			(),
+			1,
 		));
 
 		System::assert_last_event(Event::<Runtime>::UpdateRegistered { pool_id: POOL_A }.into());

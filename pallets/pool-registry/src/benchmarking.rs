@@ -21,7 +21,9 @@ use super::*;
 fn init_mocks() {
 	crate::mock::WriteOffPolicy::mock_worst_case_policy(|| ());
 	crate::mock::WriteOffPolicy::mock_update(|_, _| Ok(()));
+	crate::mock::PoolSystem::mock_worst_pool_changes(|changes| changes.unwrap_or(0));
 	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
+	crate::mock::PoolSystem::mock_update(|_, changes| Ok(UpdateState::Stored(changes)));
 	crate::mock::PoolSystem::mock_execute_update(|_| Ok(0));
 }
 
@@ -83,7 +85,6 @@ mod benchmarks {
 		Ok(())
 	}
 
-	/*
 	#[benchmark]
 	fn update_no_execution(
 		n: Linear<1, { min(MaxTranches::<T>::get(), 10) }>,
@@ -91,18 +92,22 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		T::ModifyPool::create_heaviest_pool(T::PoolId::default(), whitelisted_caller(), 0.into());
+		T::ModifyPool::create_heaviest_pool(
+			T::PoolId::default(),
+			whitelisted_caller(),
+			T::CurrencyId::from(0),
+			n,
+		);
 
 		#[extrinsic_call]
 		update(
 			RawOrigin::Signed(whitelisted_caller()),
 			T::PoolId::default(),
-			T::ModifyPool::changes(None),
+			T::ModifyPool::worst_pool_changes(None),
 		);
 
 		Ok(())
 	}
-	*/
 
 	/*
 	#[benchmark]
@@ -125,7 +130,6 @@ mod benchmarks {
 	}
 	*/
 
-	/*
 	#[benchmark]
 	fn execute_update(
 		n: Linear<1, { min(MaxTranches::<T>::get(), 10) }>,
@@ -133,7 +137,14 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		T::ModifyPool::create_heaviest_pool(T::PoolId::default(), whitelisted_caller(), 0.into());
+		let pool_id = T::PoolId::default();
+		let currency_id = T::CurrencyId::from(0);
+
+		T::ModifyPool::create_heaviest_pool(pool_id, whitelisted_caller(), currency_id, n);
+		let update_state =
+			T::ModifyPool::update(pool_id, T::ModifyPool::worst_pool_changes(Some(n))).unwrap();
+
+		assert_eq!(update_state, UpdateState::Stored(n));
 
 		#[extrinsic_call]
 		_(
@@ -143,7 +154,6 @@ mod benchmarks {
 
 		Ok(())
 	}
-	*/
 
 	#[benchmark]
 	fn set_metadata() -> Result<(), BenchmarkError> {

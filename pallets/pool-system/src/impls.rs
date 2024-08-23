@@ -433,7 +433,12 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn create_heaviest_pool(pool_id: T::PoolId, admin: T::AccountId, currency_id: T::CurrencyId) {
+	fn create_heaviest_pool(
+		pool_id: T::PoolId,
+		admin: T::AccountId,
+		currency_id: T::CurrencyId,
+		num_tranches: u32,
+	) {
 		use sp_runtime::traits::Bounded;
 
 		Self::fund_depositor(&admin);
@@ -442,7 +447,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin.clone(),
 			admin,
 			pool_id,
-			Self::worst_tranche_input_list(Self::MaxTranches::get()),
+			Self::worst_tranche_input_list(num_tranches),
 			currency_id,
 			T::Balance::max_value(),
 			Self::worst_fee_input_list(Self::MaxFeesPerPool::get() - 1),
@@ -625,6 +630,7 @@ mod benchmarks_utils {
 				pool_id,
 				admin.clone(),
 				T::CurrencyId::from(POOL_CURRENCY_INDEX),
+				T::MaxTranches::get(),
 			);
 		}
 	}

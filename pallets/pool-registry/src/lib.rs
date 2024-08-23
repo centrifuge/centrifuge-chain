@@ -248,7 +248,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(MaxTranches::<T>::get()))]
+		#[pallet::weight(T::WeightInfo::update_and_execute(MaxTranches::<T>::get()))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -286,7 +286,7 @@ pub mod pallet {
 				}
 				UpdateState::Stored(num_tranches) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_and_execute(num_tranches)
+					T::WeightInfo::update_no_execution(num_tranches)
 				}
 			};
 			Ok(Some(weight).into())

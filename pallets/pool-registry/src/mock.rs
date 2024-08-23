@@ -59,7 +59,7 @@ impl cfg_mocks::pools::pallet::Config for Runtime {
 impl cfg_mocks::pools::pallet::ConfigMut for Runtime {
 	type MaxFeesPerPool = ConstU32<5>;
 	type MaxTranches = ConstU32<5>;
-	type PoolChanges = ();
+	type PoolChanges = u32;
 	type PoolFeeInput = PoolFeeInput<Runtime>;
 	type TrancheInput = ();
 }
