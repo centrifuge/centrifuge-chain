@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{fee::PoolFeesInspect, UpdateState};
+use cfg_traits::fee::PoolFeesInspect;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
@@ -22,7 +22,7 @@ use parity_scale_codec::EncodeLike;
 use sp_std::vec;
 
 use super::*;
-use crate::tranches::{TrancheIndex, TrancheInput, TrancheLoc};
+use crate::tranches::{TrancheIndex, TrancheLoc};
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
@@ -299,37 +299,6 @@ where
 		Pallet::<T>::worst_fee_input_list(num_pool_fees),
 	)?;
 	set_liquidity_admin::<T>(caller)
-}
-
-pub fn update_pool<T: Config<PoolId = u64>>(
-	changes: PoolChanges<T::Rate, T::StringLimit, T::MaxTranches>,
-) -> Result<UpdateState, DispatchError> {
-	Pallet::<T>::update(POOL, changes)
-}
-
-pub fn get_scheduled_update<T: Config<PoolId = u64>>(
-) -> ScheduledUpdateDetails<T::Rate, T::StringLimit, T::MaxTranches> {
-	Pallet::<T>::scheduled_update(POOL).unwrap()
-}
-
-pub fn assert_input_tranches_match<T: Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::Rate, T::StringLimit>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
-}
-
-pub fn assert_update_tranches_match<T: Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheUpdate<T::Rate>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
