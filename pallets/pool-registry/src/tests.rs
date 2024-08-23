@@ -12,9 +12,9 @@
 
 use cfg_traits::UpdateState;
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
-use frame_support::{assert_err, assert_ok};
+use frame_support::assert_ok;
 
-use crate::{mock::*, Error, Event};
+use crate::{mock::*, Event};
 
 const POOL_ADMIN: AccountId = 1;
 const POOL_A: PoolId = 1;
@@ -46,7 +46,7 @@ fn register_pool_with_metadata() {
 			Default::default(),
 			POOL_CURRENCY,
 			MAX_RESERVE,
-			Some(METADATA.into()),
+			Some(METADATA.to_vec().try_into().unwrap()),
 			(), // policy
 			Default::default(),
 		));
@@ -102,7 +102,7 @@ fn set_metadata() {
 		assert_ok!(PoolRegistry::set_metadata(
 			RuntimeOrigin::signed(POOL_ADMIN),
 			POOL_A,
-			METADATA.try_into().unwrap(),
+			METADATA.to_vec().try_into().unwrap(),
 		));
 
 		assert_eq!(
@@ -118,24 +118,6 @@ fn set_metadata() {
 				metadata: METADATA.to_vec().try_into().unwrap(),
 			}
 			.into(),
-		);
-	});
-}
-
-#[test]
-fn set_metadata_exceeds_max() {
-	System::externalities().execute_with(|| {
-		Permissions::mock_has(|_, _, _| true);
-
-		let big_metadata = sp_std::iter::repeat(b'a')
-			.take(MaxSizeMetadata::get() as usize + 1)
-			.collect::<Vec<_>>()
-			.try_into()
-			.unwrap();
-
-		assert_err!(
-			PoolRegistry::set_metadata(RuntimeOrigin::signed(POOL_ADMIN), POOL_A, big_metadata),
-			Error::<Runtime>::BadMetadata
 		);
 	});
 }

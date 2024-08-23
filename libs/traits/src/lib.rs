@@ -129,11 +129,26 @@ pub trait PoolMutate<AccountId, PoolId> {
 
 	/// A worst case list of tranches for benchmarking
 	#[cfg(feature = "runtime-benchmarks")]
-	fn worst_tranche_input_list(n: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches>;
+	fn worst_tranche_input_list(_: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
+		Default::default()
+	}
 
 	/// A worst case list of pool fees for benchmarking
 	#[cfg(feature = "runtime-benchmarks")]
-	fn worst_fee_input_list(n: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>;
+	fn worst_fee_input_list(_: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+		Default::default()
+	}
+
+	/// Returns a valid currency to be used in the pool
+	#[cfg(feature = "runtime-benchmarks")]
+	fn register_pool_currency(_: &Self::CurrencyId) {}
+
+	/// Satisfy the account preconditions as an admin
+	#[cfg(feature = "runtime-benchmarks")]
+	fn fund_depositor(_: &AccountId) {}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId) {}
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit

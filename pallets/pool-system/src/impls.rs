@@ -366,6 +366,51 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			.try_into()
 			.unwrap()
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn register_pool_currency(currency_id: &T::CurrencyId) {
+		use cfg_types::tokens::CustomMetadata;
+
+		let metadata = orml_asset_registry::AssetMetadata {
+			decimals: 18,
+			name: Default::default(),
+			symbol: Default::default(),
+			existential_deposit: Zero::zero(),
+			location: None,
+			additional: CustomMetadata {
+				pool_currency: true,
+				..CustomMetadata::default()
+			},
+		};
+
+		T::AssetRegistry::register_asset(Some(*currency_id), metadata).unwrap();
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn fund_depositor(admin: &T::AccountId) {
+		use frame_support::traits::Currency;
+
+		T::Currency::make_free_balance_be(
+			admin,
+			T::PoolDeposit::get() + T::Currency::minimum_balance(),
+		);
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_heaviest_pool(pool_id: T::PoolId, admin: T::AccountId, currency_id: T::CurrencyId) {
+		Self::fund_depositor(&admin);
+		Self::register_pool_currency(&currency_id);
+		Self::create(
+			admin.clone(),
+			admin,
+			pool_id,
+			Self::worst_tranche_input_list(Self::MaxTranches::get()),
+			currency_id,
+			T::Balance::zero(),
+			Self::worst_fee_input_list(Self::MaxFeesPerPool::get()),
+		)
+		.unwrap();
+	}
 }
 
 impl<T: Config> PoolReserve<T::AccountId, T::CurrencyId> for Pallet<T> {

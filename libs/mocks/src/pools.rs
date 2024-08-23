@@ -260,20 +260,6 @@ pub mod pallet {
 		pub fn mock_execute_update(f: impl Fn(T::PoolId) -> Result<u32, DispatchError> + 'static) {
 			register_call!(f);
 		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		pub fn mock_worst_tranche_input_list(
-			f: impl Fn(u32) -> BoundedVec<T::TrancheInput, T::MaxTranches> + 'static,
-		) {
-			register_call!(f);
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		pub fn mock_worst_fee_input_list(
-			f: impl Fn(u32) -> BoundedVec<T::PoolFeeInput, T::MaxFeesPerPool> + 'static,
-		) {
-			register_call!(f);
-		}
 	}
 
 	impl<T: ConfigMut> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
@@ -302,16 +288,6 @@ pub mod pallet {
 		}
 
 		fn execute_update(a: T::PoolId) -> Result<(u32, u32), DispatchError> {
-			execute_call!(a)
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn worst_tranche_input_list(a: u32) -> BoundedVec<Self::TrancheInput, T::MaxTranches> {
-			execute_call!(a)
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn worst_fee_input_list(a: u32) -> BoundedVec<Self::PoolFeeInput, T::MaxFeesPerPool> {
 			execute_call!(a)
 		}
 	}

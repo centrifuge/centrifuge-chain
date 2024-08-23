@@ -161,8 +161,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Invalid metadata passed
-		BadMetadata,
 		/// A Pool with the given ID was already registered in the past
 		PoolAlreadyRegistered,
 	}
@@ -199,7 +197,7 @@ pub mod pallet {
 			tranche_inputs: BoundedVec<TrancheInputOf<T>, MaxTranches<T>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
-			metadata: Option<Vec<u8>>,
+			metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>>,
 			write_off_policy: PolicyOf<T>,
 			pool_fees: BoundedVec<PoolFeeInput<T>, MaxFeesPerPool<T>>,
 		) -> DispatchResult {
@@ -250,10 +248,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(
-			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxTranches::get(),
-			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxFeesPerPool::get()
-		))]
+		#[pallet::weight(T::WeightInfo::update_no_execution(MaxTranches::<T>::get(), MaxFeesPerPool::<T>::get()))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -303,10 +298,7 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_update(
-			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxTranches::get(),
-			<T::ModifyPool as PoolMutate<T::AccountId, T::PoolId>>::MaxFeesPerPool::get()
-		))]
+		#[pallet::weight(T::WeightInfo::execute_update(MaxTranches::<T>::get(), MaxFeesPerPool::<T>::get()))]
 		#[pallet::call_index(2)]
 		pub fn execute_update(
 			origin: OriginFor<T>,
@@ -328,7 +320,7 @@ pub mod pallet {
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			metadata: Vec<u8>,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -347,16 +339,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn do_set_metadata(pool_id: T::PoolId, metadata: Vec<u8>) -> DispatchResult {
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
-				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
+		fn do_set_metadata(
+			pool_id: T::PoolId,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
+		) -> DispatchResult {
+			PoolMetadata::<T>::insert(pool_id, metadata.clone());
 
-			PoolMetadata::<T>::insert(pool_id, checked_metadata.clone());
-
-			Self::deposit_event(Event::MetadataSet {
-				pool_id,
-				metadata: checked_metadata,
-			});
+			Self::deposit_event(Event::MetadataSet { pool_id, metadata });
 
 			Ok(())
 		}

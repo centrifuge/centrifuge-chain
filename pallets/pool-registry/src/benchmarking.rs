@@ -12,6 +12,8 @@
 // GNU General Public License for more details.
 
 use frame_benchmarking::{v2::*, whitelisted_caller};
+use frame_system::RawOrigin;
+use sp_std::cmp::min;
 
 use super::*;
 
@@ -20,43 +22,82 @@ fn init_mocks() {
 	crate::mock::WriteOffPolicy::mock_worst_case_policy(|| ());
 	crate::mock::WriteOffPolicy::mock_update(|_, _| Ok(()));
 	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
-	crate::mock::PoolSystem::mock_worst_tranche_input_list(|_| Default::default());
-	crate::mock::PoolSystem::mock_worst_fee_input_list(|_| Default::default());
+}
+
+struct Helper<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Helper<T>
+where
+	T::PoolId: Default,
+	T::CurrencyId: From<u32>,
+	T::Balance: Default,
+{
+	fn max_metadata() -> BoundedVec<u8, T::MaxSizeMetadata> {
+		sp_std::iter::repeat(b'a')
+			.take(T::MaxSizeMetadata::get() as usize)
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap()
+	}
 }
 
 #[benchmarks(
     where
         T::PoolId: Default,
-        T::CurrencyId: Default,
+        T::CurrencyId: From<u32>,
         T::Balance: Default,
     )]
 mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn register(n: Linear<1, 10>, m: Linear<1, 10>) -> Result<(), BenchmarkError> {
+	fn register(
+		n: Linear<1, { min(MaxTranches::<T>::get(), 10) }>,
+		m: Linear<1, { min(MaxFeesPerPool::<T>::get(), 10) }>,
+	) -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
-		let max_metadata = sp_std::iter::repeat(b'a')
-			.take(T::MaxSizeMetadata::get() as usize)
-			.collect::<Vec<_>>()
-			.try_into()
-			.unwrap();
-
 		let origin = T::PoolCreateOrigin::try_successful_origin().unwrap();
+		let admin: T::AccountId = whitelisted_caller();
+
+		let currency_id = T::CurrencyId::from(0);
+		T::ModifyPool::register_pool_currency(&currency_id);
+
+		let depositor = ensure_signed(origin.clone()).unwrap_or(admin.clone());
+		T::ModifyPool::fund_depositor(&depositor);
 
 		#[extrinsic_call]
 		_(
 			origin as T::RuntimeOrigin,
-			whitelisted_caller(),
+			admin,
 			T::PoolId::default(),
 			T::ModifyPool::worst_tranche_input_list(n),
-			T::CurrencyId::default(),
+			currency_id,
 			T::Balance::default(),
-			Some(max_metadata),
+			Some(Helper::<T>::max_metadata()),
 			T::ModifyWriteOffPolicy::worst_case_policy(),
 			T::ModifyPool::worst_fee_input_list(m),
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn set_metadata() -> Result<(), BenchmarkError> {
+		let who: T::AccountId = whitelisted_caller();
+		let pool_id = T::PoolId::default();
+
+		T::Permission::add(
+			PermissionScope::Pool(pool_id),
+			who.clone(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+		)?;
+
+		#[extrinsic_call]
+		_(
+			RawOrigin::Signed(who.clone()),
+			pool_id,
+			Helper::<T>::max_metadata(),
 		);
 
 		Ok(())
