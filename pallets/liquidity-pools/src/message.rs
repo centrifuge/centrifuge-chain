@@ -98,9 +98,11 @@ impl TryFrom<Message> for NonBatchMessage {
 
 impl MaxEncodedLen for NonBatchMessage {
 	fn max_encoded_len() -> usize {
-		// This message uses a non-batch message version to obtain the encoded
-		// len to avoid an infinite recursion: message -> batch -> message -> batch ...
-		Message::<()>::max_encoded_len()
+		// This message uses a non-recursive message version to obtain the encoded
+		// len to avoid an infinite recursion of messages
+		//
+		// Note: A Batch can NOT contain Forwarded messages
+		Message::<(), ()>::max_encoded_len()
 	}
 }
 
@@ -206,7 +208,7 @@ impl TryFrom<Message> for NonForwardMessage {
 	fn try_from(message: Message) -> Result<Self, DispatchError> {
 		match message {
 			Message::Forwarded { .. } => Err(DispatchError::Other(
-				"A submessage can not be a forwarded one",
+				"The inner forwarded message can not be a forwarded one",
 			)),
 			_ => Ok(Self(message.into())),
 		}
@@ -221,10 +223,11 @@ impl From<NonForwardMessage> for Message {
 
 impl MaxEncodedLen for NonForwardMessage {
 	fn max_encoded_len() -> usize {
-		// This message uses a non-forwarded message version to obtain the encoded
-		// len to avoid an infinite recursion: message -> forward -> message -> forward
-		// ...
-		Message::<()>::max_encoded_len()
+		// This message uses a non-recursive message version to obtain the encoded
+		// len to avoid an infinite recursion of messages
+		//
+		// Note: A Batch CAN be inside of a Forwarded message
+		Message::<BatchMessages, ()>::max_encoded_len()
 	}
 }
 
@@ -667,11 +670,7 @@ impl LpMessageForwarded for Message {
 		Ok(Self::Forwarded {
 			source_domain: source_domain.into(),
 			forwarding_contract,
-			message: message.try_into().map_err(|_| {
-				DispatchError::Other(
-					"Failed to convert LpMessage {message:?} into NonForwardMessage",
-				)
-			})?,
+			message: message.try_into()?,
 		})
 	}
 }
@@ -730,6 +729,11 @@ mod tests {
 	const AMOUNT: u128 = 100000000000000000000000000;
 	const POOL_ID: PoolId = 12378532;
 	const TOKEN_ID: u128 = 246803579;
+
+	#[test]
+	fn ensure_non_recursive_max_encoded_len_computation() {
+		Message::<BatchMessages, NonForwardMessage>::max_encoded_len();
+	}
 
 	#[test]
 	fn invalid() {
