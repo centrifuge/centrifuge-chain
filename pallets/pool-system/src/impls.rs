@@ -21,7 +21,7 @@ use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
 	Contains,
 };
-use sp_runtime::traits::Hash;
+use sp_runtime::traits::{EnsureInto, Hash};
 
 use super::*;
 use crate::{
@@ -276,22 +276,16 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 			Self::do_update_pool(&pool_id, &changes)?;
 
-			Ok(UpdateState::Executed(
-				num_tranches,
-				T::PoolFees::get_pool_fee_count(pool_id),
-			))
+			Ok(UpdateState::Executed(num_tranches))
 		} else {
 			// If an update was already stored, this will override it
 			ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok(UpdateState::Stored(
-				num_tranches,
-				T::PoolFees::get_pool_fee_count(pool_id),
-			))
+			Ok(UpdateState::Stored(num_tranches))
 		}
 	}
 
-	fn execute_update(pool_id: T::PoolId) -> Result<(u32, u32), DispatchError> {
+	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
 		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 		ensure!(
@@ -315,10 +309,9 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		Self::do_update_pool(&pool_id, &update.changes)?;
 
-		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		let num_pool_fees = T::PoolFees::get_pool_fee_count(pool_id);
+		let num_tranches = pool.tranches.num_tranches().ensure_into()?;
 
-		Ok((num_tranches, num_pool_fees))
+		Ok(num_tranches)
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -366,6 +359,48 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_pool_changes(tranches: Option<u32>) -> Self::PoolChanges {
+		use cfg_primitives::{SECONDS_PER_DAY, SECONDS_PER_HOUR};
+		use cfg_types::pools::TrancheMetadata;
+
+		match tranches {
+			Some(n) => {
+				let tranche_updates = Self::worst_tranche_input_list(n)
+					.iter()
+					.map(|input| TrancheUpdate {
+						tranche_type: input.tranche_type,
+						seniority: input.seniority,
+					})
+					.collect::<Vec<_>>()
+					.try_into()
+					.unwrap();
+
+				let tranche_metadatas = sp_std::iter::repeat(TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				})
+				.take(n as usize)
+				.collect::<Vec<_>>()
+				.try_into()
+				.unwrap();
+
+				PoolChanges {
+					tranches: Change::NewValue(tranche_updates),
+					min_epoch_time: Change::NewValue(SECONDS_PER_DAY),
+					max_nav_age: Change::NewValue(SECONDS_PER_HOUR),
+					tranche_metadata: Change::NewValue(tranche_metadatas),
+				}
+			}
+			None => PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(SECONDS_PER_DAY),
+				max_nav_age: Change::NewValue(SECONDS_PER_HOUR),
+				tranche_metadata: Change::NoChange,
+			},
+		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]

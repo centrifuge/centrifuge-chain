@@ -15,9 +15,9 @@ use frame_support::weights::Weight;
 
 pub trait WeightInfo {
 	fn register(n: u32, m: u32) -> Weight;
-	fn update_no_execution(n: u32, m: u32) -> Weight;
-	fn update_and_execute(n: u32, m: u32) -> Weight;
-	fn execute_update(n: u32, m: u32) -> Weight;
+	fn update_no_execution(n: u32) -> Weight;
+	fn update_and_execute(n: u32) -> Weight;
+	fn execute_update(n: u32) -> Weight;
 	fn set_metadata() -> Weight;
 }
 
@@ -26,15 +26,15 @@ impl WeightInfo for () {
 		Weight::zero()
 	}
 
-	fn update_no_execution(_n: u32, _m: u32) -> Weight {
+	fn update_no_execution(_n: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn update_and_execute(_n: u32, _m: u32) -> Weight {
+	fn update_and_execute(_n: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn execute_update(_n: u32, _m: u32) -> Weight {
+	fn execute_update(_n: u32) -> Weight {
 		Weight::zero()
 	}
 

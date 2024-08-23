@@ -248,7 +248,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(MaxTranches::<T>::get(), MaxFeesPerPool::<T>::get()))]
+		#[pallet::weight(T::WeightInfo::update_no_execution(MaxTranches::<T>::get()))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -279,14 +279,14 @@ pub mod pallet {
 			Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 			let weight = match state {
-				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0, 0),
-				UpdateState::Executed(num_tranches, num_pool_fees) => {
+				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0),
+				UpdateState::Executed(num_tranches) => {
 					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					T::WeightInfo::update_and_execute(num_tranches, num_pool_fees)
+					T::WeightInfo::update_and_execute(num_tranches)
 				}
-				UpdateState::Stored(num_tranches, num_pool_fees) => {
+				UpdateState::Stored(num_tranches) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_and_execute(num_tranches, num_pool_fees)
+					T::WeightInfo::update_and_execute(num_tranches)
 				}
 			};
 			Ok(Some(weight).into())
@@ -298,7 +298,7 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_update(MaxTranches::<T>::get(), MaxFeesPerPool::<T>::get()))]
+		#[pallet::weight(T::WeightInfo::execute_update(MaxTranches::<T>::get()))]
 		#[pallet::call_index(2)]
 		pub fn execute_update(
 			origin: OriginFor<T>,
@@ -306,9 +306,9 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			let (num_tranches, num_pool_fees) = T::ModifyPool::execute_update(pool_id)?;
+			let num_tranches = T::ModifyPool::execute_update(pool_id)?;
 
-			Ok(Some(T::WeightInfo::execute_update(num_tranches, num_pool_fees)).into())
+			Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.

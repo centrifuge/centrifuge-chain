@@ -95,7 +95,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 	/// Proof: `PoolSystem::ScheduledUpdate` (`max_values`: None, `max_size`: Some(1504), added: 3979, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 5]`.
 	/// The range of component `m` is `[0, 100]`.
-	fn update_no_execution(n: u32, m: u32, ) -> Weight {
+	fn update_no_execution(n: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `924 + m * (124 ±0) + n * (133 ±0)`
 		//  Estimated: `17508 + n * (2531 ±0)`
@@ -105,7 +105,6 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			// Standard Error: 32_924
 			.saturating_add(Weight::from_parts(2_803_470, 0).saturating_mul(n.into()))
 			// Standard Error: 1_502
-			.saturating_add(Weight::from_parts(213_164, 0).saturating_mul(m.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -129,7 +128,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 	/// Proof: `PoolSystem::ScheduledUpdate` (`max_values`: None, `max_size`: Some(1504), added: 3979, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 5]`.
 	/// The range of component `m` is `[0, 100]`.
-	fn update_and_execute(n: u32, m: u32, ) -> Weight {
+	fn update_and_execute(n: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `927 + m * (124 ±0) + n * (200 ±0)`
 		//  Estimated: `17508 + n * (3417 ±0)`
@@ -139,7 +138,6 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			// Standard Error: 40_662
 			.saturating_add(Weight::from_parts(10_276_443, 0).saturating_mul(n.into()))
 			// Standard Error: 1_855
-			.saturating_add(Weight::from_parts(238_255, 0).saturating_mul(m.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
@@ -161,7 +159,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 	/// Proof: `PoolFees::ActiveFees` (`max_values`: None, `max_size`: Some(14043), added: 16518, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 5]`.
 	/// The range of component `m` is `[0, 100]`.
-	fn execute_update(n: u32, m: u32, ) -> Weight {
+	fn execute_update(n: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `915 + m * (124 ±0) + n * (227 ±0)`
 		//  Estimated: `17508 + n * (3417 ±0)`
@@ -171,7 +169,6 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			// Standard Error: 39_835
 			.saturating_add(Weight::from_parts(10_453_540, 0).saturating_mul(n.into()))
 			// Standard Error: 1_817
-			.saturating_add(Weight::from_parts(219_149, 0).saturating_mul(m.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))

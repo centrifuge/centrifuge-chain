@@ -99,8 +99,8 @@ pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed(u32, u32),
-	Stored(u32, u32),
+	Executed(u32),
+	Stored(u32),
 }
 
 /// A trait that supports modifications of pools
@@ -125,17 +125,26 @@ pub trait PoolMutate<AccountId, PoolId> {
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
-	fn execute_update(pool_id: PoolId) -> Result<(u32, u32), DispatchError>;
+	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 
-	/// A worst case list of tranches for benchmarking
+	/// A worst case list of tranches
 	#[cfg(feature = "runtime-benchmarks")]
 	fn worst_tranche_input_list(_: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
 		Default::default()
 	}
 
-	/// A worst case list of pool fees for benchmarking
+	/// A worst case list of pool fees
 	#[cfg(feature = "runtime-benchmarks")]
 	fn worst_fee_input_list(_: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+		Default::default()
+	}
+
+	/// A worst case change
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_pool_changes(_: Option<u32>) -> Self::PoolChanges
+	where
+		Self::PoolChanges: Default,
+	{
 		Default::default()
 	}
 
@@ -143,10 +152,11 @@ pub trait PoolMutate<AccountId, PoolId> {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn register_pool_currency(_: &Self::CurrencyId) {}
 
-	/// Satisfy the account preconditions as an admin
+	/// Satisfy the account preconditions as a depositor
 	#[cfg(feature = "runtime-benchmarks")]
 	fn fund_depositor(_: &AccountId) {}
 
+	/// Creates the heviest pool possible
 	#[cfg(feature = "runtime-benchmarks")]
 	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId) {}
 }
