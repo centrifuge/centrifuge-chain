@@ -17,11 +17,12 @@ jobs:
   codecov:
     runs-on: ubuntu-latest-4-cores
     if: >
-      github.event.pull_request.draft == false ||
+       &&
+      (github.event.pull_request.draft == false ||
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
       github.event.action == 'ready_for_review' ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@master
 
