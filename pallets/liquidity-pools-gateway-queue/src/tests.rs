@@ -1,18 +1,11 @@
-use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_traits::liquidity_pools::MessageQueue as MessageQueueT;
+use cfg_traits::liquidity_pools::MessageQueue as _;
 use frame_support::{
 	assert_noop, assert_ok, dispatch::RawOrigin, pallet_prelude::Hooks, weights::Weight,
 };
-use sp_runtime::{
-	traits::{BadOrigin, One, Zero},
-	DispatchError,
-};
+use sp_runtime::{traits::BadOrigin, DispatchError};
 
 use crate::{
-	mock::{
-		new_test_ext, LPGatewayMock, LPGatewayQueue, Runtime, RuntimeEvent as MockEvent,
-		RuntimeOrigin,
-	},
+	mock::{new_test_ext, Processor, Queue, Runtime, RuntimeEvent as MockEvent, RuntimeOrigin},
 	Error, Event, FailedMessageQueue, MessageQueue,
 };
 
@@ -36,20 +29,17 @@ mod process_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let message = 1;
-			let nonce = LPGatewayQueueMessageNonce::one();
+			let nonce = 1;
 
 			MessageQueue::<Runtime>::insert(nonce, message);
 
-			LPGatewayMock::mock_process(move |msg| {
+			Processor::mock_process(move |msg| {
 				assert_eq!(msg, message);
 
 				(Ok(()), Default::default())
 			});
 
-			assert_ok!(LPGatewayQueue::process_message(
-				RuntimeOrigin::signed(1),
-				nonce
-			));
+			assert_ok!(Queue::process_message(RuntimeOrigin::signed(1), nonce));
 
 			assert!(MessageQueue::<Runtime>::get(nonce).is_none());
 
@@ -60,13 +50,7 @@ mod process_message {
 	#[test]
 	fn failure_bad_origin() {
 		new_test_ext().execute_with(|| {
-			assert_noop!(
-				LPGatewayQueue::process_message(
-					RawOrigin::None.into(),
-					LPGatewayQueueMessageNonce::zero(),
-				),
-				BadOrigin,
-			);
+			assert_noop!(Queue::process_message(RawOrigin::None.into(), 0), BadOrigin);
 		});
 	}
 
@@ -74,10 +58,7 @@ mod process_message {
 	fn failure_message_not_found() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
-				LPGatewayQueue::process_message(
-					RuntimeOrigin::signed(1),
-					LPGatewayQueueMessageNonce::zero(),
-				),
+				Queue::process_message(RuntimeOrigin::signed(1), 0,),
 				Error::<Runtime>::MessageNotFound,
 			);
 		});
@@ -87,22 +68,19 @@ mod process_message {
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
 			let message = 1;
-			let nonce = LPGatewayQueueMessageNonce::one();
+			let nonce = 1;
 
 			MessageQueue::<Runtime>::insert(nonce, message);
 
 			let error = DispatchError::Unavailable;
 
-			LPGatewayMock::mock_process(move |msg| {
+			Processor::mock_process(move |msg| {
 				assert_eq!(msg, message);
 
 				(Err(error), Default::default())
 			});
 
-			assert_ok!(LPGatewayQueue::process_message(
-				RuntimeOrigin::signed(1),
-				nonce
-			));
+			assert_ok!(Queue::process_message(RuntimeOrigin::signed(1), nonce));
 
 			assert_eq!(
 				FailedMessageQueue::<Runtime>::get(nonce),
@@ -125,18 +103,18 @@ mod process_failed_message {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let message = 1;
-			let nonce = LPGatewayQueueMessageNonce::one();
+			let nonce = 1;
 			let error = DispatchError::Unavailable;
 
 			FailedMessageQueue::<Runtime>::insert(nonce, (message, error));
 
-			LPGatewayMock::mock_process(move |msg| {
+			Processor::mock_process(move |msg| {
 				assert_eq!(msg, message);
 
 				(Ok(()), Default::default())
 			});
 
-			assert_ok!(LPGatewayQueue::process_failed_message(
+			assert_ok!(Queue::process_failed_message(
 				RuntimeOrigin::signed(1),
 				nonce
 			));
@@ -151,10 +129,7 @@ mod process_failed_message {
 	fn failure_bad_origin() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
-				LPGatewayQueue::process_failed_message(
-					RawOrigin::None.into(),
-					LPGatewayQueueMessageNonce::zero(),
-				),
+				Queue::process_failed_message(RawOrigin::None.into(), 0,),
 				BadOrigin,
 			);
 		});
@@ -164,10 +139,7 @@ mod process_failed_message {
 	fn failure_message_not_found() {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
-				LPGatewayQueue::process_failed_message(
-					RuntimeOrigin::signed(1),
-					LPGatewayQueueMessageNonce::zero(),
-				),
+				Queue::process_failed_message(RuntimeOrigin::signed(1), 0,),
 				Error::<Runtime>::MessageNotFound,
 			);
 		});
@@ -177,19 +149,19 @@ mod process_failed_message {
 	fn failure_message_processor() {
 		new_test_ext().execute_with(|| {
 			let message = 1;
-			let nonce = LPGatewayQueueMessageNonce::one();
+			let nonce = 1;
 			let error = DispatchError::Unavailable;
 
 			FailedMessageQueue::<Runtime>::insert(nonce, (message, error));
 
 			let error = DispatchError::Unavailable;
-			LPGatewayMock::mock_process(move |msg| {
+			Processor::mock_process(move |msg| {
 				assert_eq!(msg, message);
 
 				(Err(error), Default::default())
 			});
 
-			assert_ok!(LPGatewayQueue::process_failed_message(
+			assert_ok!(Queue::process_failed_message(
 				RuntimeOrigin::signed(1),
 				nonce
 			));
@@ -216,9 +188,9 @@ mod message_queue_impl {
 		new_test_ext().execute_with(|| {
 			let message = 1;
 
-			assert_ok!(LPGatewayQueue::submit(message));
+			assert_ok!(Queue::queue(message));
 
-			let nonce = LPGatewayQueueMessageNonce::one();
+			let nonce = 1;
 
 			assert_eq!(MessageQueue::<Runtime>::get(nonce), Some(message));
 
@@ -239,10 +211,10 @@ mod on_idle {
 		new_test_ext().execute_with(|| {
 			(1..=3).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
 
-			LPGatewayMock::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
-			let handle = LPGatewayMock::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
+			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
+			let handle = Processor::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
 
-			let weight = LPGatewayQueue::on_idle(0, TOTAL_WEIGHT);
+			let weight = Queue::on_idle(0, TOTAL_WEIGHT);
 
 			assert_eq!(weight, PROCESS_WEIGHT * 3);
 			assert_eq!(handle.times(), 3);
@@ -256,10 +228,10 @@ mod on_idle {
 		new_test_ext().execute_with(|| {
 			(1..=5).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
 
-			LPGatewayMock::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
-			let handle = LPGatewayMock::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
+			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
+			let handle = Processor::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
 
-			let weight = LPGatewayQueue::on_idle(0, TOTAL_WEIGHT);
+			let weight = Queue::on_idle(0, TOTAL_WEIGHT);
 
 			assert_eq!(weight, PROCESS_WEIGHT * 4);
 			assert_eq!(handle.times(), 4);
@@ -268,7 +240,7 @@ mod on_idle {
 
 			// Next block
 
-			let weight = LPGatewayQueue::on_idle(0, TOTAL_WEIGHT);
+			let weight = Queue::on_idle(0, TOTAL_WEIGHT);
 
 			assert_eq!(weight, PROCESS_WEIGHT);
 			assert_eq!(handle.times(), 5);
@@ -281,13 +253,13 @@ mod on_idle {
 		new_test_ext().execute_with(|| {
 			(1..=3).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
 
-			LPGatewayMock::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
-			let handle = LPGatewayMock::mock_process(|msg| match msg {
+			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
+			let handle = Processor::mock_process(|msg| match msg {
 				20 => (Err(DispatchError::Unavailable), PROCESS_WEIGHT / 2),
 				_ => (Ok(()), PROCESS_WEIGHT),
 			});
 
-			let weight = LPGatewayQueue::on_idle(0, TOTAL_WEIGHT);
+			let weight = Queue::on_idle(0, TOTAL_WEIGHT);
 
 			assert_eq!(weight, PROCESS_WEIGHT * 2 + PROCESS_WEIGHT / 2);
 			assert_eq!(handle.times(), 3);

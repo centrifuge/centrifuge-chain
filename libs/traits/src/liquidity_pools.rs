@@ -11,19 +11,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	weights::Weight,
-};
-use sp_runtime::DispatchError;
+use frame_support::{dispatch::DispatchResult, weights::Weight};
+use sp_runtime::{app_crypto::sp_core::H160, DispatchError};
 use sp_std::vec::Vec;
+
+/// Type that represents the hash of an LP message.
+pub type MessageHash = [u8; 32];
 
 /// An encoding & decoding trait for the purpose of meeting the
 /// LiquidityPools General Message Passing Format
-pub trait LPEncoding: Sized {
+pub trait LpMessageSerializer: Sized {
+	/// Serialize the message
 	fn serialize(&self) -> Vec<u8>;
-	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
 
+	/// Deserialize the message
+	fn deserialize(input: &[u8]) -> Result<Self, DispatchError>;
+}
+
+/// Behavior or a message that can be batched
+pub trait LpMessageBatch: Sized {
 	/// Extend this message with a new one
 	fn pack_with(&mut self, other: Self) -> DispatchResult;
 
@@ -36,16 +42,97 @@ pub trait LPEncoding: Sized {
 	fn empty() -> Self;
 }
 
-/// The trait required for sending outbound messages.
-pub trait Router {
-	/// The sender type of the outbound message.
-	type Sender;
+/// Support for hashing
+pub trait LpMessageHash {
+	/// Retrieves the message hash, if the message is a proof type.
+	fn get_message_hash(&self) -> MessageHash;
+}
 
-	/// Initialize the router.
-	fn init(&self) -> DispatchResult;
+/// Behavior of a message that can support proofs
+pub trait LpMessageProof: LpMessageHash {
+	/// Returns whether the message is a proof or not.
+	fn is_proof_message(&self) -> bool;
 
-	/// Send the message to the router's destination.
-	fn send(&self, sender: Self::Sender, message: Vec<u8>) -> DispatchResultWithPostInfo;
+	/// Converts the message into a message proof type.
+	fn to_proof_message(&self) -> Self;
+}
+
+//Behavior of a message that support recovery
+pub trait LpMessageRecovery: LpMessageHash {
+	/// Creates a message used for initiating message recovery.
+	///
+	/// Hash - hash of the message that should be recovered.
+	/// Router - the address of the recovery router.
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
+
+	/// Creates a message used for disputing message recovery.
+	///
+	/// Hash - hash of the message that should be disputed.
+	/// Router - the address of the recovery router.
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self;
+}
+
+/// Behavior of a message that can be forwarded
+pub trait LpMessageForwarded: Sized {
+	type Domain;
+
+	/// Checks whether a message is a forwarded one.
+	fn is_forwarded(&self) -> bool;
+
+	/// Unwraps a forwarded message.
+	fn unwrap_forwarded(self) -> Option<(Self::Domain, H160, Self)>;
+
+	/// Attempts to wrap into a forwarded message.
+	fn try_wrap_forward(
+		domain: Self::Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError>;
+}
+
+pub trait RouterProvider<Domain>: Sized {
+	/// The router identifier.
+	type RouterId;
+
+	/// Returns a list of routers supported for the given domain.
+	fn routers_for_domain(domain: Domain) -> Vec<Self::RouterId>;
+}
+
+/// The behavior of an entity that can send messages
+pub trait MessageSender {
+	/// The middleware by where this message is sent
+	type Middleware;
+
+	/// The originator of the message to be sent
+	type Origin;
+
+	/// The type of the message
+	type Message;
+
+	/// Sends a message for origin to destination
+	fn send(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Self::Message,
+	) -> DispatchResult;
+}
+
+/// The behavior of an entity that can receive messages
+pub trait MessageReceiver {
+	/// The middleware by where this message is received
+	type Middleware;
+
+	/// The originator of the received message
+	type Origin;
+
+	type Message;
+
+	/// Sends a message for origin to destination
+	fn receive(
+		middleware: Self::Middleware,
+		origin: Self::Origin,
+		message: Self::Message,
+	) -> DispatchResult;
 }
 
 /// The trait required for queueing messages.
@@ -54,10 +141,10 @@ pub trait MessageQueue {
 	type Message;
 
 	/// Submit a message to the queue.
-	fn submit(msg: Self::Message) -> DispatchResult;
+	fn queue(msg: Self::Message) -> DispatchResult;
 }
 
-/// The trait required for processing queued messages.
+/// The trait required for processing dequeued messages.
 pub trait MessageProcessor {
 	/// The message type.
 	type Message;
@@ -65,7 +152,7 @@ pub trait MessageProcessor {
 	/// Process a message.
 	fn process(msg: Self::Message) -> (DispatchResult, Weight);
 
-	/// Process a message.
+	/// Max weight that processing a message can take
 	fn max_processing_weight(msg: &Self::Message) -> Weight;
 }
 

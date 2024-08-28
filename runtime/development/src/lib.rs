@@ -27,13 +27,14 @@ use cfg_primitives::{
 		IBalance, InvestmentId, ItemId, LoanId, Nonce, OrderId, PalletIndex, PoolEpochId,
 		PoolFeeId, PoolId, Signature, TrancheId, TrancheWeight,
 	},
-	LPGatewayQueueMessageNonce,
+	LPGatewayQueueMessageNonce, LPGatewaySessionId,
 };
 use cfg_traits::{
 	investments::OrderManager, Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	Seconds,
 };
 use cfg_types::{
+	domain_address::DomainAddress,
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
@@ -124,6 +125,10 @@ use runtime_common::{
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
+	routing::{
+		EvmAccountCodeChecker, LPGatewayRouterProvider, MessageSerializer, RouterDispatcher,
+		RouterId,
+	},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -1840,8 +1845,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToDomainAddress = AccountConverter;
-	type DomainAddressToAccountId = AccountConverter;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type MarketRatio = OrderBook;
@@ -1859,27 +1862,39 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_liquidity_pools_forwarder::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Message = pallet_liquidity_pools::Message;
+	type MessageReceiver = LiquidityPoolsGateway;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
+	type RouterId = RouterId;
+	type RuntimeEvent = RuntimeEvent;
+}
+
 parameter_types! {
+	pub Sender: DomainAddress = gateway::get_gateway_domain_address::<Runtime>();
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = gateway::get_gateway_account::<Runtime>();
+	pub const MaxRouterCount: u32 = 8;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type InboundMessageHandler = LiquidityPools;
-	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type MessageSender = LiquidityPoolsForwarder;
+	type RouterId = RouterId;
+	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
+	type SessionId = LPGatewaySessionId;
 	type WeightInfo = ();
 }
 
 impl pallet_liquidity_pools_gateway_queue::Config for Runtime {
-	type Message = GatewayMessage<AccountId, pallet_liquidity_pools::Message>;
+	type Message = GatewayMessage<pallet_liquidity_pools::Message, RouterId>;
 	type MessageNonce = LPGatewayQueueMessageNonce;
 	type MessageProcessor = LiquidityPoolsGateway;
 	type RuntimeEvent = RuntimeEvent;
@@ -1990,10 +2005,13 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
-impl axelar_gateway_precompile::Config for Runtime {
+impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
+	type Middleware = RouterId;
+	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type Transactor = EthereumTransaction;
 }
 
 impl pallet_conviction_voting::Config for Runtime {
@@ -2187,7 +2205,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>, HoldReason} = 112,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
-		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T> } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
@@ -2196,6 +2214,7 @@ construct_runtime!(
 		// our pallets part 2
 		AnchorsV2: pallet_anchors_v2::{Pallet, Call, Storage, Event<T>} = 130,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 131,
+		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 132,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2219,7 +2238,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config<T>, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
-		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
+		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// Removed: Migration = 199
 		// admin stuff

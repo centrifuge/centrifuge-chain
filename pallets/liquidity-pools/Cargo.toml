@@ -22,6 +22,7 @@ scale-info = { workspace = true }
 serde = { workspace = true }
 serde-big-array = { workspace = true }
 sp-core = { workspace = true }
+sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 staging-xcm = { workspace = true }
@@ -48,6 +49,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "sp-std/std",
+  "sp-io/std",
   "sp-runtime/std",
   "orml-traits/std",
   "staging-xcm/std",

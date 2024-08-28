@@ -38,7 +38,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The message type.
-		type Message: Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec + Default;
+		type Message: Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// Type used for message identification.
 		type MessageNonce: Parameter
@@ -253,7 +253,7 @@ pub mod pallet {
 	impl<T: Config> MessageQueueT for Pallet<T> {
 		type Message = T::Message;
 
-		fn submit(message: Self::Message) -> DispatchResult {
+		fn queue(message: Self::Message) -> DispatchResult {
 			let nonce = <MessageNonceStore<T>>::try_mutate(|n| {
 				n.ensure_add_assign(T::MessageNonce::one())?;
 				Ok::<T::MessageNonce, DispatchError>(*n)

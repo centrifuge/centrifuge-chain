@@ -10,6 +10,7 @@ use cfg_types::{
 };
 use frame_support::{derive_impl, traits::PalletInfo as _};
 use orml_traits::parameter_type_with_key;
+use sp_core::H160;
 use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
 use staging_xcm::{
 	v4::{Junction::*, Location, NetworkId},
@@ -23,27 +24,18 @@ pub type AccountId = AccountId32;
 pub type Ratio = FixedU128;
 
 pub const CHAIN_ID: u64 = 1;
-pub const ALICE_32: [u8; 32] = [2; 32];
-pub const ALICE: AccountId = AccountId::new(ALICE_32);
-pub const ALICE_ETH: [u8; 20] = [2; 20];
-pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(42, ALICE_ETH);
-// TODO(future): Can be removed after domain conversion refactor
-pub const ALICE_EVM_LOCAL_ACCOUNT: AccountId = {
-	let mut arr = [0u8; 32];
-	let mut i = 0;
-	while i < 20 {
-		arr[i] = ALICE_ETH[i];
-		i += 1;
-	}
-	AccountId::new(arr)
-};
-pub const CENTRIFUGE_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge(ALICE_32);
-pub const CONTRACT_ACCOUNT: [u8; 20] = [1; 20];
-pub const CONTRACT_ACCOUNT_ID: AccountId = AccountId::new([1; 32]);
-pub const DOMAIN_HOOK_ADDRESS_20: [u8; 20] = [10u8; 20];
-pub const DOMAIN_HOOK_ADDRESS_32: [u8; 32] = [10u8; 32];
-pub const EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(CHAIN_ID, CONTRACT_ACCOUNT);
-pub const EVM_DOMAIN: Domain = Domain::EVM(CHAIN_ID);
+pub const EVM_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
+
+pub const CONTRACT_ACCOUNT: H160 = H160::repeat_byte(1);
+pub const CONTRACT_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Evm(CHAIN_ID, CONTRACT_ACCOUNT);
+
+pub const ALICE: AccountId = AccountId::new([2; 32]);
+pub const ALICE_ETH: H160 = H160::repeat_byte(2);
+pub const ALICE_EVM_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Evm(CHAIN_ID, ALICE_ETH);
+pub const ALICE_LOCAL_DOMAIN_ADDRESS: DomainAddress = DomainAddress::Centrifuge(ALICE);
+
+pub const DOMAIN_HOOK_ADDRESS: H160 = H160::repeat_byte(10);
+
 pub const AMOUNT: Balance = 100;
 pub const CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const POOL_CURRENCY_ID: CurrencyId = CurrencyId::LocalAsset(LocalAssetId(1));
@@ -68,8 +60,6 @@ frame_support::construct_runtime!(
 		AssetRegistry: cfg_mocks::asset_registry::pallet,
 		ForeignInvestment: cfg_mocks::foreign_investment::pallet,
 		Gateway: cfg_mocks::pallet_mock_liquidity_pools_gateway,
-		DomainAddressToAccountId: cfg_mocks::converter::pallet::<Instance1>,
-		DomainAccountToDomainAddress: cfg_mocks::converter::pallet::<Instance2>,
 		TransferFilter: cfg_mocks::pre_conditions::pallet,
 		MarketRatio: cfg_mocks::token_swaps::pallet,
 		Tokens: orml_tokens,
@@ -119,16 +109,6 @@ impl cfg_mocks::pallet_mock_liquidity_pools_gateway::Config for Runtime {
 	type Message = crate::Message;
 }
 
-impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance1> for Runtime {
-	type From = DomainAddress;
-	type To = AccountId;
-}
-
-impl cfg_mocks::converter::pallet::Config<cfg_mocks::converter::pallet::Instance2> for Runtime {
-	type From = (Domain, [u8; 32]);
-	type To = DomainAddress;
-}
-
 impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 	type Conditions = (AccountId, DomainAddress, CurrencyId);
 	type Result = DispatchResult;
@@ -172,8 +152,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToDomainAddress = DomainAccountToDomainAddress;
-	type DomainAddressToAccountId = DomainAddressToAccountId;
 	type ForeignInvestment = ForeignInvestment;
 	type GeneralCurrencyPrefix = CurrencyPrefix;
 	type MarketRatio = MarketRatio;
@@ -223,7 +201,7 @@ pub mod util {
 					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
 					AccountKey20 {
 						network: None,
-						key: CONTRACT_ACCOUNT,
+						key: CONTRACT_ACCOUNT.into(),
 					},
 				],
 			))),

@@ -30,8 +30,9 @@ use core::fmt::Debug;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LPEncoding, MessageProcessor, MessageQueue, OutboundMessageHandler,
-	Router as DomainRouter,
+	InboundMessageHandler, LpMessageBatch, LpMessageProof, LpMessageRecovery, LpMessageSerializer,
+	MessageHash, MessageProcessor, MessageQueue, MessageReceiver, MessageSender,
+	OutboundMessageHandler, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -39,17 +40,21 @@ use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
-use parity_scale_codec::{EncodeLike, FullCodec};
+use parity_scale_codec::FullCodec;
+use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
+use sp_runtime::SaturatedConversion;
 use sp_std::convert::TryInto;
 
-use crate::weights::WeightInfo;
-
-mod origin;
-pub use origin::*;
+use crate::{
+	message_processing::{InboundEntry, ProofEntry},
+	weights::WeightInfo,
+};
 
 pub mod message;
 
 pub mod weights;
+
+mod message_processing;
 
 #[cfg(test)]
 mod mock;
@@ -67,41 +72,40 @@ pub mod pallet {
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
-	#[pallet::origin]
-	pub type Origin = GatewayOrigin;
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The origin type.
-		type RuntimeOrigin: Into<Result<GatewayOrigin, <Self as frame_system::Config>::RuntimeOrigin>>
-			+ From<GatewayOrigin>;
-
 		/// The event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
-		/// The LocalOrigin ensures that some calls can only be performed from a
-		/// local context i.e. a different pallet.
-		type LocalEVMOrigin: EnsureOrigin<
-			<Self as frame_system::Config>::RuntimeOrigin,
-			Success = GatewayOrigin,
-		>;
 
 		/// The AdminOrigin ensures that some calls can only be performed by
 		/// admins.
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The Liquidity Pools message type.
-		type Message: LPEncoding + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
-
-		/// The message router type that is stored for each domain.
-		type Router: DomainRouter<Sender = Self::AccountId>
+		type Message: LpMessageSerializer
+			+ LpMessageBatch
+			+ LpMessageProof
+			+ LpMessageRecovery
 			+ Clone
 			+ Debug
+			+ PartialEq
+			+ Eq
 			+ MaxEncodedLen
 			+ TypeInfo
-			+ FullCodec
-			+ EncodeLike
-			+ PartialEq;
+			+ FullCodec;
+
+		/// The target of the messages coming from this chain
+		type MessageSender: MessageSender<
+			Middleware = Self::RouterId,
+			Origin = DomainAddress,
+			Message = Self::Message,
+		>;
+
+		/// An identification of a router
+		type RouterId: Parameter + MaxEncodedLen + Into<Domain>;
+
+		/// The type that provides the router available for a domain.
+		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 
 		/// The type that processes inbound messages.
 		type InboundMessageHandler: InboundMessageHandler<
@@ -118,17 +122,27 @@ pub mod pallet {
 		/// The sender account that will be used in the OutboundQueue
 		/// implementation.
 		#[pallet::constant]
-		type Sender: Get<Self::AccountId>;
+		type Sender: Get<DomainAddress>;
 
 		/// Type used for queueing messages.
-		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::AccountId, Self::Message>>;
+		type MessageQueue: MessageQueue<Message = GatewayMessage<Self::Message, Self::RouterId>>;
+
+		/// Maximum number of routers allowed for a domain.
+		#[pallet::constant]
+		type MaxRouterCount: Get<u32>;
+
+		/// Type for identifying sessions of inbound routers.
+		type SessionId: Parameter + Member + BaseArithmetic + Default + Copy + MaxEncodedLen;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The router for a given domain was set.
-		DomainRouterSet { domain: Domain, router: T::Router },
+		/// The routers for a given domain were set.
+		RoutersSet {
+			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
+			session_id: T::SessionId,
+		},
 
 		/// An instance was added to a domain.
 		InstanceAdded { instance: DomainAddress },
@@ -141,14 +155,64 @@ pub mod pallet {
 			domain: Domain,
 			hook_address: [u8; 20],
 		},
+
+		/// An inbound message was processed.
+		InboundMessageProcessed {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message proof was processed.
+		InboundProofProcessed {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// An inbound message was executed.
+		InboundMessageExecuted {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+		},
+
+		/// An outbound message was sent.
+		OutboundMessageSent {
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// Message recovery was executed.
+		MessageRecoveryExecuted {
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		},
+
+		/// Message recovery was initiated.
+		MessageRecoveryInitiated {
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		},
+
+		/// Message recovery was disputed.
+		MessageRecoveryDisputed {
+			domain: Domain,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		},
 	}
 
-	/// Storage for domain routers.
+	/// Storage for routers.
 	///
 	/// This can only be set by an admin.
 	#[pallet::storage]
-	#[pallet::getter(fn domain_routers)]
-	pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
+	#[pallet::getter(fn routers)]
+	pub type Routers<T: Config> =
+		StorageValue<_, BoundedVec<T::RouterId, T::MaxRouterCount>, ValueQuery>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -168,18 +232,31 @@ pub mod pallet {
 	pub type DomainHookAddress<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, [u8; 20], OptionQuery>;
 
-	/// Stores a batch message, not ready yet to be enqueue.
+	/// Stores a batch message, not ready yet to be enqueued.
 	/// Lifetime handled by `start_batch_message()` and `end_batch_message()`
 	/// extrinsics.
 	#[pallet::storage]
 	pub(crate) type PackedMessage<T: Config> =
 		StorageMap<_, Blake2_128Concat, (T::AccountId, Domain), T::Message>;
 
+	/// Storage for pending inbound messages.
+	#[pallet::storage]
+	#[pallet::getter(fn pending_inbound_entries)]
+	pub type PendingInboundEntries<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		MessageHash,
+		Blake2_128Concat,
+		T::RouterId,
+		InboundEntry<T>,
+	>;
+
+	/// Storage for inbound message session IDs.
+	#[pallet::storage]
+	pub type SessionIdStore<T: Config> = StorageValue<_, T::SessionId, ValueQuery>;
+
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Router initialization failed.
-		RouterInitFailed,
-
 		/// The origin of the message to be processed is invalid.
 		InvalidMessageOrigin,
 
@@ -195,8 +272,8 @@ pub mod pallet {
 		/// Unknown instance.
 		UnknownInstance,
 
-		/// Router not found.
-		RouterNotFound,
+		/// Routers not found.
+		RoutersNotFound,
 
 		/// Emitted when you call `start_batch_messages()` but that was already
 		/// called. You should finalize the message with `end_batch_messages()`
@@ -205,27 +282,68 @@ pub mod pallet {
 		/// Emitted when you can `end_batch_message()` but the packing process
 		/// was not started by `start_batch_message()`.
 		MessagePackingNotStarted,
+
+		/// Unknown router.
+		UnknownRouter,
+
+		/// Messaging router not found.
+		MessagingRouterNotFound,
+
+		/// The router that sent the message is not the first one.
+		MessageExpectedFromFirstRouter,
+
+		/// The router that sent the proof should not be the first one.
+		ProofNotExpectedFromFirstRouter,
+
+		/// A message was expected instead of a proof.
+		ExpectedMessageType,
+
+		/// A message proof was expected instead of a message.
+		ExpectedMessageProofType,
+
+		/// Pending inbound entry not found.
+		PendingInboundEntryNotFound,
+
+		/// Message proof cannot be retrieved.
+		MessageProofRetrieval,
+
+		/// Recovery message not found.
+		RecoveryMessageNotFound,
+
+		/// Not enough routers are stored for a domain.
+		NotEnoughRoutersForDomain,
+
+		/// The messages of 2 inbound entries do not match.
+		InboundEntryMessageMismatch,
+
+		/// The domain addresses of 2 inbound entries do not match.
+		InboundEntryDomainAddressMismatch,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Set a domain's router,
-		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		/// Sets the IDs of the routers that are used when receiving and sending
+		/// messages.
+		#[pallet::weight(T::WeightInfo::set_routers())]
 		#[pallet::call_index(0)]
-		pub fn set_domain_router(
+		pub fn set_routers(
 			origin: OriginFor<T>,
-			domain: Domain,
-			router: T::Router,
+			router_ids: BoundedVec<T::RouterId, T::MaxRouterCount>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+			<Routers<T>>::set(router_ids.clone());
 
-			router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
+			let new_session_id = SessionIdStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
 
-			<DomainRouters<T>>::insert(domain.clone(), router.clone());
+				Ok::<T::SessionId, DispatchError>(*n)
+			})?;
 
-			Self::deposit_event(Event::DomainRouterSet { domain, router });
+			Self::deposit_event(Event::RoutersSet {
+				router_ids,
+				session_id: new_session_id,
+			});
 
 			Ok(())
 		}
@@ -272,36 +390,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Process an inbound message.
-		#[pallet::weight(T::WeightInfo::receive_message())]
-		#[pallet::call_index(5)]
-		pub fn receive_message(
-			origin: OriginFor<T>,
-			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
-		) -> DispatchResult {
-			let GatewayOrigin::Domain(origin_address) = T::LocalEVMOrigin::ensure_origin(origin)?;
-
-			if let DomainAddress::Centrifuge(_) = origin_address {
-				return Err(Error::<T>::InvalidMessageOrigin.into());
-			}
-
-			ensure!(
-				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
-				Error::<T>::UnknownInstance,
-			);
-
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Inbound {
-				domain_address: origin_address,
-				message: T::Message::deserialize(&msg)?,
-			};
-
-			T::MessageQueue::submit(gateway_message)
-		}
+		// Deprecated: receive_message with call_index(5)
+		//
+		// NOTE: If required, should be exposed by router.
 
 		/// Set the address of the domain hook
 		///
 		/// Can only be called by `AdminOrigin`.
-		#[pallet::weight(T::WeightInfo::set_domain_router())]
+		#[pallet::weight(T::WeightInfo::set_domain_hook_address())]
 		#[pallet::call_index(8)]
 		pub fn set_domain_hook_address(
 			origin: OriginFor<T>,
@@ -311,7 +407,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
-			DomainHookAddress::<T>::insert(domain.clone(), hook_address);
+			DomainHookAddress::<T>::insert(domain, hook_address);
 
 			Self::deposit_event(Event::DomainHookAddressSet {
 				domain,
@@ -348,65 +444,148 @@ pub mod pallet {
 
 			match PackedMessage::<T>::take((&sender, &destination)) {
 				Some(msg) if msg.submessages().is_empty() => Ok(()), //No-op
-				Some(message) => Self::queue_message(destination, message),
+				Some(message) => Self::queue_outbound_message(destination, message),
 				None => Err(Error::<T>::MessagePackingNotStarted.into()),
 			}
+		}
+
+		/// Manually increase the proof count for a particular message and
+		/// executes it if the required count is reached.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::execute_message_recovery())]
+		#[pallet::call_index(11)]
+		pub fn execute_message_recovery(
+			origin: OriginFor<T>,
+			domain_address: DomainAddress,
+			message_hash: MessageHash,
+			router_id: T::RouterId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
+
+			ensure!(
+				router_ids.iter().any(|x| x == &router_id),
+				Error::<T>::UnknownRouter
+			);
+			// Message recovery shouldn't be supported for setups that have less than 1
+			// router since no proofs are required in that case.
+			ensure!(router_ids.len() > 1, Error::<T>::NotEnoughRoutersForDomain);
+
+			let session_id = SessionIdStore::<T>::get();
+
+			PendingInboundEntries::<T>::try_mutate(
+				message_hash,
+				router_id.clone(),
+				|storage_entry| match storage_entry {
+					Some(stored_inbound_entry) => {
+						stored_inbound_entry.increment_proof_count(session_id)
+					}
+					None => {
+						*storage_entry = Some(InboundEntry::<T>::Proof(ProofEntry {
+							session_id,
+							current_count: 1,
+						}));
+
+						Ok::<(), DispatchError>(())
+					}
+				},
+			)?;
+
+			let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
+
+			Self::execute_if_requirements_are_met(
+				message_hash,
+				&router_ids,
+				session_id,
+				expected_proof_count,
+				domain_address,
+			)?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
+				message_hash,
+				router_id,
+			});
+
+			Ok(())
+		}
+
+		/// Sends a message that initiates a message recovery using the
+		/// messaging router.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::initiate_message_recovery())]
+		#[pallet::call_index(12)]
+		pub fn initiate_message_recovery(
+			origin: OriginFor<T>,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let domain = messaging_router.clone().into();
+
+			let message = T::Message::initiate_recovery_message(message_hash, recovery_router);
+
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryInitiated {
+				domain,
+				message_hash,
+				recovery_router,
+				messaging_router,
+			});
+
+			Ok(())
+		}
+
+		/// Sends a message that disputes a message recovery using the
+		/// messaging router.
+		///
+		/// Can only be called by `AdminOrigin`.
+		#[pallet::weight(T::WeightInfo::dispute_message_recovery())]
+		#[pallet::call_index(13)]
+		pub fn dispute_message_recovery(
+			origin: OriginFor<T>,
+			message_hash: MessageHash,
+			recovery_router: [u8; 32],
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			let domain = messaging_router.clone().into();
+
+			let message = T::Message::dispute_recovery_message(message_hash, recovery_router);
+
+			Self::send_recovery_message(domain, message, messaging_router.clone())?;
+
+			Self::deposit_event(Event::<T>::MessageRecoveryDisputed {
+				domain,
+				message_hash,
+				recovery_router,
+				messaging_router,
+			});
+
+			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Give the message to the `InboundMessageHandler` to be processed.
-		fn process_inbound_message(
-			domain_address: DomainAddress,
-			message: T::Message,
-		) -> (DispatchResult, Weight) {
-			let mut count = 0;
-
-			for submessage in message.submessages() {
-				count += 1;
-
-				if let Err(e) = T::InboundMessageHandler::handle(domain_address.clone(), submessage)
-				{
-					// We only consume the processed weight if error during the batch
-					return (Err(e), LP_DEFENSIVE_WEIGHT.saturating_mul(count));
-				}
-			}
-
-			(Ok(()), LP_DEFENSIVE_WEIGHT.saturating_mul(count))
-		}
-
-		/// Retrieves the router stored for the provided domain, sends the
-		/// message using the router, and calculates and returns the required
-		/// weight for these operations in the `DispatchResultWithPostInfo`.
-		fn process_outbound_message(
-			sender: T::AccountId,
+		fn send_recovery_message(
 			domain: Domain,
 			message: T::Message,
-		) -> (DispatchResult, Weight) {
-			let read_weight = T::DbWeight::get().reads(1);
+			messaging_router: T::RouterId,
+		) -> DispatchResult {
+			let router_ids = Self::get_router_ids_for_domain(domain)?;
 
-			let Some(router) = DomainRouters::<T>::get(domain) else {
-				return (Err(Error::<T>::RouterNotFound.into()), read_weight);
-			};
+			ensure!(
+				router_ids.iter().any(|x| x == &messaging_router),
+				Error::<T>::MessagingRouterNotFound
+			);
 
-			let (result, router_weight) = match router.send(sender, message.serialize()) {
-				Ok(dispatch_info) => (Ok(()), dispatch_info.actual_weight),
-				Err(e) => (Err(e.error), e.post_info.actual_weight),
-			};
-
-			(result, router_weight.unwrap_or(read_weight))
-		}
-
-		fn queue_message(destination: Domain, message: T::Message) -> DispatchResult {
-			// We are using the sender specified in the pallet config so that we can
-			// ensure that the account is funded
-			let gateway_message = GatewayMessage::<T::AccountId, T::Message>::Outbound {
-				sender: T::Sender::get(),
-				destination,
-				message,
-			};
-
-			T::MessageQueue::submit(gateway_message)
+			T::MessageSender::send(messaging_router, T::Sender::get(), message)
 		}
 	}
 
@@ -425,9 +604,9 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			PackedMessage::<T>::mutate((&from, destination.clone()), |batch| match batch {
+			PackedMessage::<T>::mutate((&from, destination), |batch| match batch {
 				Some(batch) => batch.pack_with(message),
-				None => Self::queue_message(destination, message),
+				None => Self::queue_outbound_message(destination, message),
 			})
 		}
 	}
@@ -439,30 +618,73 @@ pub mod pallet {
 	}
 
 	impl<T: Config> MessageProcessor for Pallet<T> {
-		type Message = GatewayMessage<T::AccountId, T::Message>;
+		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
 					domain_address,
 					message,
-				} => Self::process_inbound_message(domain_address, message),
-				GatewayMessage::Outbound {
-					sender,
-					destination,
-					message,
-				} => Self::process_outbound_message(sender, destination, message),
+					router_id,
+				} => {
+					let mut counter = 0;
+
+					let res = Self::process_inbound_message(
+						domain_address,
+						message,
+						router_id,
+						&mut counter,
+					);
+
+					let weight = match counter {
+						0 => LP_DEFENSIVE_WEIGHT / 10,
+						n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
+					};
+
+					(res, weight)
+				}
+				GatewayMessage::Outbound { message, router_id } => {
+					let res = T::MessageSender::send(router_id, T::Sender::get(), message);
+
+					(res, LP_DEFENSIVE_WEIGHT)
+				}
 			}
 		}
 
-		/// Process a message.
+		/// Returns the max processing weight for a message, based on its
+		/// direction.
 		fn max_processing_weight(msg: &Self::Message) -> Weight {
 			match msg {
 				GatewayMessage::Inbound { message, .. } => {
-					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len() as u64)
+					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len().saturated_into())
 				}
 				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
 			}
+		}
+	}
+
+	impl<T: Config> MessageReceiver for Pallet<T> {
+		type Message = T::Message;
+		type Middleware = T::RouterId;
+		type Origin = DomainAddress;
+
+		fn receive(
+			router_id: T::RouterId,
+			origin_address: DomainAddress,
+			message: T::Message,
+		) -> DispatchResult {
+			ensure!(
+				Allowlist::<T>::contains_key(origin_address.domain(), origin_address.clone()),
+				Error::<T>::UnknownInstance,
+			);
+
+			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
+				domain_address: origin_address,
+				message,
+				router_id,
+			};
+
+			T::MessageQueue::queue(gateway_message)
 		}
 	}
 }

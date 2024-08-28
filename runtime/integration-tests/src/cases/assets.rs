@@ -1,5 +1,5 @@
 use cfg_types::tokens::{default_metadata, CurrencyId};
-use frame_support::{assert_noop, assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_err, assert_ok, dispatch::RawOrigin};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 
 use crate::{config::Runtime, env::Env, envs::runtime_env::RuntimeEnv, utils::orml_asset_registry};
@@ -21,7 +21,7 @@ fn authority_configured<T: Runtime>() {
 			Some(CurrencyId::ForeignAsset(42))
 		));
 
-		assert_noop!(
+		assert_err!(
 			orml_asset_registry::Pallet::<T>::register_asset(
 				RawOrigin::Root.into(),
 				default_metadata(),
@@ -37,7 +37,7 @@ fn processor_configured<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::default();
 
 	env.parachain_state_mut(|| {
-		assert_noop!(
+		assert_err!(
 			orml_asset_registry::Pallet::<T>::register_asset(
 				RawOrigin::Root.into(),
 				default_metadata(),

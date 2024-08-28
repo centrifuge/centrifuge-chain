@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use axelar_gateway_precompile::SourceConverter;
-use cfg_primitives::{Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
+use cfg_primitives::{AccountId, Balance, PoolId, CFG, SECONDS_PER_HOUR, SECONDS_PER_YEAR};
 use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	fixed_point::Ratio,
+	oracles::OracleKey,
 	permissions::PoolRole,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, LocalAssetId},
 };
@@ -22,19 +23,15 @@ use ethabi::{
 	ethereum_types::{H160, U128, U256},
 	FixedBytes, Token, Uint,
 };
-use frame_support::{
-	assert_ok, dispatch::RawOrigin, pallet_prelude::ConstU32, traits::OriginTrait, BoundedVec,
-};
+use frame_support::{assert_ok, dispatch::RawOrigin, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
-use liquidity_pools_gateway_routers::{
-	AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_AXELAR_EVM_CHAIN_SIZE,
-};
+use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_evm::FeeCalculator;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{oracle::Feeder, routing::RouterId};
 pub use setup_lp::*;
-use sp_core::Get;
-use sp_runtime::traits::{BlakeTwo256, Hash};
+use sp_core::{bounded_vec::BoundedVec, Get};
+use sp_runtime::traits::{BlakeTwo256, Hash, One};
 
 use crate::{
 	cases::lp::utils::{pool_a_tranche_1_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},
@@ -91,7 +88,9 @@ pub const EVM_DOMAIN_STR: &str = "TestDomain";
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
 
-pub const EVM_DOMAIN: Domain = Domain::EVM(EVM_DOMAIN_CHAIN_ID);
+pub const EVM_DOMAIN: Domain = Domain::Evm(EVM_DOMAIN_CHAIN_ID);
+
+pub const EVM_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(EVM_DOMAIN_CHAIN_ID));
 
 /// Represents Solidity enum Domain.Centrifuge
 pub const DOMAIN_CENTRIFUGE: u8 = 0;

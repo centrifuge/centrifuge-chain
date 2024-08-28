@@ -1,0 +1,65 @@
+[package]
+name = "pallet-liquidity-pools-forwarder"
+description = "Centrifuge Liquidity Pools Relayer Pallet"
+version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+# Benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
+# Our custom pallets
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+
+[dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
+cfg-primitives = { workspace = true }
+sp-io = { workspace = true, default-features = true }
+
+[features]
+default = ["std"]
+std = [
+  "parity-scale-codec/std",
+  "cfg-types/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking/std",
+  "sp-std/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "scale-info/std",
+]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-mocks/try-runtime",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+]

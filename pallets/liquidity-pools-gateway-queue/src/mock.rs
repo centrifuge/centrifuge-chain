@@ -12,17 +12,17 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_liquidity_pools_gateway;
-use cfg_primitives::LPGatewayQueueMessageNonce;
-use cfg_types::domain_address::Domain;
 use frame_support::derive_impl;
 
 use crate::{self as pallet_liquidity_pools_gateway_queue, Config};
 
+type Nonce = u64;
+
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		LPGatewayMock: pallet_mock_liquidity_pools_gateway,
-		LPGatewayQueue: pallet_liquidity_pools_gateway_queue,
+		Processor: pallet_mock_liquidity_pools_gateway,
+		Queue: pallet_liquidity_pools_gateway_queue,
 	}
 );
 
@@ -33,14 +33,14 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_mock_liquidity_pools_gateway::Config for Runtime {
-	type Destination = Domain;
+	type Destination = ();
 	type Message = u32;
 }
 
 impl Config for Runtime {
 	type Message = u32;
-	type MessageNonce = LPGatewayQueueMessageNonce;
-	type MessageProcessor = LPGatewayMock;
+	type MessageNonce = Nonce;
+	type MessageProcessor = Processor;
 	type RuntimeEvent = RuntimeEvent;
 }
 

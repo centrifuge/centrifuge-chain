@@ -5,7 +5,13 @@
 //! also have a custom GMPF implementation, aiming for a fixed-size encoded
 //! representation for each message variant.
 
-use cfg_traits::{liquidity_pools::LPEncoding, Seconds};
+use cfg_traits::{
+	liquidity_pools::{
+		LpMessageBatch, LpMessageForwarded, LpMessageHash, LpMessageProof, LpMessageRecovery,
+		LpMessageSerializer, MessageHash,
+	},
+	Seconds,
+};
 use cfg_types::domain_address::Domain;
 use frame_support::{pallet_prelude::RuntimeDebug, BoundedVec};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -15,9 +21,10 @@ use serde::{
 	ser::{Error as _, SerializeTuple},
 	Deserialize, Serialize, Serializer,
 };
-use sp_core::U256;
+use sp_core::H160;
+use sp_io::hashing::keccak_256;
 use sp_runtime::{traits::ConstU32, DispatchError, DispatchResult};
-use sp_std::{vec, vec::Vec};
+use sp_std::{boxed::Box, vec, vec::Vec};
 
 use crate::gmpf; // Generic Message Passing Format
 
@@ -57,7 +64,7 @@ impl From<Domain> for SerializableDomain {
 	fn from(domain: Domain) -> Self {
 		match domain {
 			Domain::Centrifuge => Self(0, 0),
-			Domain::EVM(chain_id) => Self(1, chain_id),
+			Domain::Evm(chain_id) => Self(1, chain_id),
 		}
 	}
 }
@@ -68,7 +75,7 @@ impl TryInto<Domain> for SerializableDomain {
 	fn try_into(self) -> Result<Domain, DispatchError> {
 		match self.0 {
 			0 => Ok(Domain::Centrifuge),
-			1 => Ok(Domain::EVM(self.1)),
+			1 => Ok(Domain::Evm(self.1)),
 			_ => Err(DispatchError::Other("Unknown domain")),
 		}
 	}
@@ -76,9 +83,9 @@ impl TryInto<Domain> for SerializableDomain {
 
 /// A message type that can not be a batch.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct NoBatchMessage(Message);
+pub struct NonBatchMessage(Message);
 
-impl TryFrom<Message> for NoBatchMessage {
+impl TryFrom<Message> for NonBatchMessage {
 	type Error = DispatchError;
 
 	fn try_from(message: Message) -> Result<Self, DispatchError> {
@@ -89,16 +96,18 @@ impl TryFrom<Message> for NoBatchMessage {
 	}
 }
 
-impl MaxEncodedLen for NoBatchMessage {
+impl MaxEncodedLen for NonBatchMessage {
 	fn max_encoded_len() -> usize {
-		// This message use a non batch message version to obtain the encoded
-		// len to avoid an infite recursion: message -> batch -> message -> batch ...
-		Message::<()>::max_encoded_len()
+		// This message uses a non-recursive message version to obtain the encoded
+		// len to avoid an infinite recursion of messages
+		//
+		// Note: A Batch can NOT contain Forwarded messages
+		Message::<(), ()>::max_encoded_len()
 	}
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen, Default)]
-pub struct BatchMessages(BoundedVec<NoBatchMessage, ConstU32<MAX_BATCH_MESSAGES>>);
+pub struct BatchMessages(BoundedVec<NonBatchMessage, ConstU32<MAX_BATCH_MESSAGES>>);
 
 impl Serialize for BatchMessages {
 	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -189,6 +198,39 @@ impl BatchMessages {
 	}
 }
 
+/// A message type that cannot be forwarded.
+#[derive(Encode, Decode, Serialize, Deserialize, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct NonForwardMessage(Box<Message>);
+
+impl TryFrom<Message> for NonForwardMessage {
+	type Error = DispatchError;
+
+	fn try_from(message: Message) -> Result<Self, DispatchError> {
+		match message {
+			Message::Forwarded { .. } => Err(DispatchError::Other(
+				"The inner forwarded message can not be a forwarded one",
+			)),
+			_ => Ok(Self(message.into())),
+		}
+	}
+}
+
+impl From<NonForwardMessage> for Message {
+	fn from(value: NonForwardMessage) -> Self {
+		*value.0
+	}
+}
+
+impl MaxEncodedLen for NonForwardMessage {
+	fn max_encoded_len() -> usize {
+		// This message uses a non-recursive message version to obtain the encoded
+		// len to avoid an infinite recursion of messages
+		//
+		// Note: A Batch CAN be inside of a Forwarded message
+		Message::<BatchMessages, ()>::max_encoded_len()
+	}
+}
+
 /// A LiquidityPools Message
 #[derive(
 	Encode,
@@ -203,13 +245,13 @@ impl BatchMessages {
 	MaxEncodedLen,
 	Default,
 )]
-pub enum Message<BatchContent = BatchMessages> {
+pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessage> {
 	#[default]
 	Invalid,
 	// --- Gateway ---
 	/// Proof a message has been executed.
 	///
-	/// Directionality: Centrifuge -> EVM Domain.
+	/// Directionality: Centrifuge <-> EVM Domain.
 	MessageProof {
 		// Hash of the message for which the proof is provided
 		hash: [u8; 32],
@@ -223,7 +265,7 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The hash of the message which shall be recovered
 		hash: [u8; 32],
 		/// The address of the router
-		address: Address,
+		router: [u8; 32],
 	},
 	/// Dispute the recovery of a message.
 	///
@@ -232,7 +274,7 @@ pub enum Message<BatchContent = BatchMessages> {
 	/// Directionality: Centrifuge -> EVM Domain.
 	DisputeMessageRecovery {
 		/// The hash of the message which shall be disputed
-		message: [u8; 32],
+		hash: [u8; 32],
 		/// The address of the router
 		router: [u8; 32],
 	},
@@ -267,10 +309,10 @@ pub enum Message<BatchContent = BatchMessages> {
 		asset: Address,
 		/// The user address which receives the recovered tokens
 		recipient: Address,
-		/// The amount of tokens to recover
+		/// The amount of tokens to recover.
 		///
-		/// NOTE: Use `u256` as EVM balances are `u256`.
-		amount: U256,
+		/// NOTE: Represents `sp_core::U256` because EVM balances are `u256`.
+		amount: [u8; 32],
 	},
 	// --- Gas service ---
 	/// Updates the gas price which should cover transaction fees on Centrifuge
@@ -527,9 +569,18 @@ pub enum Message<BatchContent = BatchMessages> {
 		/// The amount of tranche tokens which should be redeemed.
 		amount: u128,
 	},
+	/// A wrapped Message which was forwarded from the source domain via the
+	/// contract.
+	///
+	/// Directionality: Centrifuge <-> EVM Domain.
+	Forwarded {
+		source_domain: SerializableDomain,
+		forwarding_contract: H160,
+		message: ForwardContent,
+	},
 }
 
-impl LPEncoding for Message {
+impl LpMessageSerializer for Message {
 	fn serialize(&self) -> Vec<u8> {
 		gmpf::to_vec(self).unwrap_or_default()
 	}
@@ -537,7 +588,9 @@ impl LPEncoding for Message {
 	fn deserialize(data: &[u8]) -> Result<Self, DispatchError> {
 		gmpf::from_slice(data).map_err(|_| DispatchError::Other("LP Deserialization issue"))
 	}
+}
 
+impl LpMessageBatch for Message {
 	fn pack_with(&mut self, other: Self) -> Result<(), DispatchError> {
 		match self {
 			Message::Batch(content) => content.try_add(other),
@@ -557,6 +610,68 @@ impl LPEncoding for Message {
 
 	fn empty() -> Message {
 		Message::Batch(BatchMessages::default())
+	}
+}
+
+impl LpMessageHash for Message {
+	fn get_message_hash(&self) -> MessageHash {
+		keccak_256(&LpMessageSerializer::serialize(self))
+	}
+}
+
+impl LpMessageProof for Message {
+	fn is_proof_message(&self) -> bool {
+		matches!(self, Message::MessageProof { .. })
+	}
+
+	fn to_proof_message(&self) -> Self {
+		Message::MessageProof {
+			hash: self.get_message_hash(),
+		}
+	}
+}
+
+impl LpMessageRecovery for Message {
+	fn initiate_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
+		Message::InitiateMessageRecovery { hash, router }
+	}
+
+	fn dispute_recovery_message(hash: MessageHash, router: [u8; 32]) -> Self {
+		Message::DisputeMessageRecovery { hash, router }
+	}
+}
+
+impl LpMessageForwarded for Message {
+	type Domain = Domain;
+
+	fn is_forwarded(&self) -> bool {
+		matches!(self, Message::Forwarded { .. })
+	}
+
+	fn unwrap_forwarded(self) -> Option<(Domain, H160, Self)> {
+		match self {
+			Self::Forwarded {
+				source_domain,
+				forwarding_contract,
+				message,
+			} => source_domain
+				.try_into()
+				.ok()
+				.map(|domain| (domain, forwarding_contract, message.into())),
+			_ => None,
+		}
+	}
+
+	fn try_wrap_forward(
+		source_domain: Domain,
+		forwarding_contract: H160,
+		message: Self,
+	) -> Result<Self, DispatchError> {
+		Ok(Self::Forwarded {
+			source_domain: source_domain.into(),
+			forwarding_contract,
+			message: message.try_into()?,
+		})
 	}
 }
 
@@ -616,6 +731,11 @@ mod tests {
 	const TOKEN_ID: u128 = 246803579;
 
 	#[test]
+	fn ensure_non_recursive_max_encoded_len_computation() {
+		Message::<BatchMessages, NonForwardMessage>::max_encoded_len();
+	}
+
+	#[test]
 	fn invalid() {
 		let msg: Message<BatchMessages> = Message::Invalid;
 		assert_eq!(gmpf::to_vec(&msg).unwrap(), vec![0]);
@@ -630,17 +750,17 @@ mod tests {
 		);
 		// Ethereum MainNet
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(1))).unwrap()),
 			"010000000000000001"
 		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(1284))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(1284))).unwrap()),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::EVM(43114))).unwrap()),
+			hex::encode(gmpf::to_vec(&SerializableDomain::from(Domain::Evm(43114))).unwrap()),
 			"01000000000000a86a"
 		);
 	}
@@ -741,18 +861,18 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer_tranche_tokens_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, default_address_20());
+	fn transfer_tranche_tokens_to_chain() {
+		let domain_address = DomainAddress::Evm(1284, default_address_20().into());
 
 		test_encode_decode_identity(
 			Message::TransferTrancheTokens {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				domain: domain_address.domain().into(),
-				receiver: domain_address.address(),
+				receiver: domain_address.bytes(),
 				amount: AMOUNT,
 			},
-			"120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+            "120000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100000000000005041231231231231231231231231231231231231231000000000000050445564d00000000000052b7d2dcc80cd2e4000000"
 		);
 	}
 
@@ -901,6 +1021,26 @@ mod tests {
 			},
 			"061231231231231231231231231231231231231231",
 		)
+	}
+
+	#[test]
+	fn recover_assets() {
+		let msg = Message::RecoverAssets {
+			contract: [2u8; 32],
+			asset: [1u8; 32],
+			recipient: [3u8; 32],
+			amount: (sp_core::U256::MAX - 1).into(),
+		};
+		test_encode_decode_identity(
+			msg,
+			concat!(
+				"07",
+				"0202020202020202020202020202020202020202020202020202020202020202",
+				"0101010101010101010101010101010101010101010101010101010101010101",
+				"0303030303030303030303030303030303030303030303030303030303030303",
+				"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe",
+			),
+		);
 	}
 
 	#[test]

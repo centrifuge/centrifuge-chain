@@ -21,7 +21,6 @@ use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
 use pallet_liquidity_pools::GeneralCurrencyIndexOf;
-use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::FixedPointNumber;
 
 use crate::{
@@ -30,8 +29,8 @@ use crate::{
 		names::POOL_A_T_1,
 		utils,
 		utils::{pool_a_tranche_1_id, Decoder},
-		LocalUSDC, EVM_DOMAIN, EVM_DOMAIN_CHAIN_ID, LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A,
-		USDC,
+		LocalUSDC, DECIMALS_6, DEFAULT_BALANCE, EVM_DOMAIN, EVM_DOMAIN_CHAIN_ID,
+		LOCAL_RESTRICTION_MANAGER_ADDRESS, POOL_A, USDC,
 	},
 	config::Runtime,
 	env::{EnvEvmExtension, EvmEnv},
@@ -142,7 +141,7 @@ fn add_pool<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -163,7 +162,7 @@ fn add_pool<T: Runtime>() {
 		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 			T::RuntimeOriginExt::signed(Keyring::Admin.into()),
 			POOL,
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(|_| {
@@ -213,7 +212,7 @@ fn add_tranche<T: Runtime>() {
 			OriginFor::<T>::signed(Keyring::Admin.into()),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -391,7 +390,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Bob.into())
+						Token::Address(Keyring::Bob.in_eth())
 					]),
 				)
 				.unwrap()
@@ -403,7 +402,7 @@ fn update_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		crate::utils::pool::give_role::<T>(
-			AccountConverter::convert_evm_address(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()).account(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
 		);
@@ -412,7 +411,7 @@ fn update_member<T: Runtime>() {
 			Keyring::Bob.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()),
 			SECONDS_PER_YEAR,
 		));
 
@@ -428,7 +427,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Bob.into())
+						Token::Address(Keyring::Bob.in_eth())
 					]),
 				)
 				.unwrap()
@@ -445,7 +444,7 @@ fn update_member<T: Runtime>() {
 					"isMember",
 					Some(&[
 						Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-						Token::Address(Keyring::Alice.into())
+						Token::Address(Keyring::Alice.in_eth())
 					]),
 				)
 				.unwrap()
@@ -517,7 +516,7 @@ fn update_tranche_token_metadata<T: Runtime>() {
 				OriginFor::<T>::signed(Keyring::Alice.into()),
 				POOL_A,
 				pool_a_tranche_1_id::<T>(),
-				Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+				Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 			)
 		);
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -573,7 +572,7 @@ fn update_tranche_token_price<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			USDC.id(),
-			Domain::EVM(EVM_DOMAIN_CHAIN_ID)
+			Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 		));
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
@@ -620,7 +619,7 @@ fn freeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).into())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -630,10 +629,7 @@ fn freeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -641,7 +637,7 @@ fn freeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -655,7 +651,7 @@ fn freeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).into())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -677,10 +673,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		give_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -688,7 +681,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -701,7 +694,7 @@ fn unfreeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).into())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -711,10 +704,7 @@ fn unfreeze_member<T: Runtime>() {
 
 	env.state_mut(|_| {
 		remove_role::<T>(
-			AccountConverter::convert_evm_address(
-				EVM_DOMAIN_CHAIN_ID,
-				Keyring::TrancheInvestor(2).into(),
-			),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,
 			PoolRole::FrozenTrancheInvestor(pool_a_tranche_1_id::<T>()),
 		);
@@ -722,7 +712,7 @@ fn unfreeze_member<T: Runtime>() {
 			Keyring::Admin.as_origin(),
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
-			DomainAddress::evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).into()),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -735,7 +725,7 @@ fn unfreeze_member<T: Runtime>() {
 				"isFrozen",
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_A_T_1).address()),
-					Token::Address(Keyring::TrancheInvestor(2).into())
+					Token::Address(Keyring::TrancheInvestor(2).in_eth())
 				]),
 			)
 			.unwrap()
@@ -789,5 +779,130 @@ fn update_tranche_hook<T: Runtime>() {
 				.value,
 		);
 		assert_eq!(hook_address, H160::from(new_hook));
+	});
+}
+
+#[test]
+fn tmp() {
+	recover_assets::<development_runtime::Runtime>()
+}
+
+#[test_runtimes([development])]
+fn recover_assets<T: Runtime>() {
+	let mut env = super::setup::<T, _>(|evm| {
+		super::setup_currencies(evm);
+	});
+	let investor = Keyring::Custom("WrongTransfer");
+	let amount = DEFAULT_BALANCE * DECIMALS_6;
+
+	// Transfer assets into wrong contract
+	let (token, wrong_contract) = env.state_mut(|evm| {
+		let wrong_contract = evm.deployed(names::POOL_MANAGER).address();
+		let token = evm.deployed(names::USDC).address();
+
+		// Need to mint here instead of executing `transferAssets` because this would
+		// transfer to escrow instead of pool manager
+		evm.call(
+			Keyring::Admin,
+			Default::default(),
+			names::USDC,
+			"mint",
+			Some(&[
+				Token::Address(wrong_contract.into()),
+				Token::Uint(sp_core::U256::from(amount)),
+			]),
+		)
+		.unwrap();
+
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(wrong_contract.into())]),
+			)),
+			amount
+		);
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(investor.in_eth())]),
+			)),
+			0
+		);
+
+		(token, wrong_contract)
+	});
+
+	env.state_mut(|_| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::recover_assets(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
+			utils::to_fixed_array(wrong_contract.as_bytes()),
+			utils::to_fixed_array(token.as_bytes()),
+			sp_core::U256::from(amount),
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+
+	env.state(|evm| {
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(wrong_contract)]),
+			)),
+			0
+		);
+		assert_eq!(
+			Decoder::<Balance>::decode(&evm.view(
+				Keyring::Alice,
+				names::USDC,
+				"balanceOf",
+				Some(&[Token::Address(investor.in_eth())]),
+			)),
+			amount
+		);
+	});
+}
+
+#[test_runtimes([development])]
+fn schedule_upgrade<T: Runtime>() {
+	let mut env = super::setup_full::<T>();
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+}
+
+#[test_runtimes([development])]
+fn cancel_upgrade<T: Runtime>() {
+	let mut env = super::setup_full::<T>();
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::schedule_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+	});
+	env.state_mut(|evm| {
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::cancel_upgrade(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			EVM_DOMAIN_CHAIN_ID,
+			evm.deployed(names::POOL_MANAGER).address().into()
+		));
+
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 	});
 }

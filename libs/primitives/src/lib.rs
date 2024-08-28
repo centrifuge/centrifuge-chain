@@ -161,6 +161,9 @@ pub mod types {
 
 	/// The type for LP gateway message nonces.
 	pub type LPGatewayQueueMessageNonce = u64;
+
+	/// The type for LP gateway session IDs.
+	pub type LPGatewaySessionId = u64;
 }
 
 /// Common constants for all runtimes
