@@ -1,11 +1,11 @@
 name: try-runtime
 on:
-  schedule:
-    - cron: '0 6 * * 0' # At 00:00 on Sunday
+  #  schedule:
+  #    - cron: '0 6 * * 0' # At 00:00 on Sunday
   issue_comment:
-    types: [created]
+    types: [ created ]
   pull_request:
-    types: [labeled]
+    types: [ labeled ]
     paths:
       - '**.rs'
       - .github/workflows/try-runtime.yml
@@ -13,11 +13,11 @@ jobs:
   try-runtime:
     permissions:
       id-token: write
-      contents: read    
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        chain: [altair, centrifuge]
+        chain: [ altair, centrifuge ]
     if: >
       github.event_name == 'schedule' || 
       contains(github.event.pull_request.labels.*.name, 'D8-migration') ||
@@ -59,11 +59,11 @@ jobs:
           echo "Commenter is a contributor and PR author."
 
       - name: Prep build on Ubuntu
-        uses: ./.github/actions/prep-ubuntu 
+        uses: ./.github/actions/prep-ubuntu
         with:
           cache: enabled
           GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}        
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
       # - name: Install try-runtime-cli
       #   run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.5.4 --locked
@@ -73,7 +73,7 @@ jobs:
           TARGET: cargo-build
           RUSTC_WRAPPER: "sccache"
 
-      - name: Run try-runtime 
+      - name: Run try-runtime
         run: ./ci/run-check.sh "${{ matrix.chain }}"
         env:
           TARGET: try-runtime

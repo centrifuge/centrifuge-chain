@@ -1,128 +1,128 @@
-name: Docker Build
-on:
-  # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
-  workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
-  push:
-    tags: ['v*.*.*']
-    branches: [main]
-  release:
-    # Release logic:
-    #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
-    # 
-    types: [ released ] # GITHUB_REF == tag pushed with the release
-  pull_request:
-    paths:
-      - ".github/workflows/build-docker.yml"
-      - "docker/centrifuge-chain"
-      - "docker/scripts"
-      - ".dockerignore"
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
-  cancel-in-progress: true
-jobs:
-  docker:
-    strategy:
-      matrix:
-        target: [ release, test ]
-    runs-on: ubuntu-latest-8-cores
-    permissions:
-      contents: write # to update the GH release w/ Docker tags
-      packages: write # to upload images to ghcr
-      id-token: write
-    steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4.1.1
-        with:
-          fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@0d103c3126aa41d772a8362f6aa67afac040f80c #v3.1.0
-
-      - name: DockerHub Registry Login
-        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 #v3.1.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Github Registry login
-        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 #v3.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: echo "NOW=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
-
-      - name: Setup docker metadata
-        id: meta
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 #v5.5.1
-        with:
-          images: |
-            ghcr.io/centrifuge/centrifuge-chain
-            ${{ (github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))) && 'centrifugeio/centrifuge-chain' || ''}}
-          # TAGS:
-          # v.X.Y.Z when pushing a git tag (or a release)
-          # latest when triggered by a release
-          # PRXYZ when triggered from a PR (testing)
-          # {BRANCH_NAME} when triggered from branch push
-          tags: |
-            type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-            type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
-            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
-          labels: |
-            org.opencontainers.image.vendor="k-f dev AG" \
-            org.opencontainers.image.authors="protocol@k-f.co" \	
-            org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
-            org.opencontainers.image.base.name="ubuntu/jammy" \
-            org.opencontainers.image.base.digest="ubuntu@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b" 
-
-      - name: Configure GHA cache
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Build and push centrifugeio/centrifuge-chain
-        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 #v5.3.0
-        with:
-          provenance: false # Solves untagged containers getting into the GH registry https://github.com/docker/build-push-action/issues/894
-          context: .
-          file: ./docker/centrifuge-chain/Dockerfile
-          build-args: |
-            FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          # Always push, either to ghcr or Dockerhub
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          # Cache options:
-          # https://docs.docker.com/build/ci/github-actions/cache/
-          cache-from: type=gha
-          # cache-from: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}
-          # https://docs.docker.com/build/cache/backends/inline/
-          cache-to: type=gha, mode=max
-          # cache-to: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}, mode=max
-
-      - name: Update DockerHub descriptions
-        if: contains(github.ref, 'refs/tags/release-v')
-        uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae #v4.0.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          repository: centrifuge/centrifuge-chain
-          short-description: ${{ github.event.repository.description }}
-          enable-url-completion: true
-
-      # - name: Update GitHub release
-      #   if: github.event_name == 'release' && github.event.action == 'released' && matrix.target == 'release'
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     append_body: true
-      #     body: |
-      #       **Docker tags (${{ env.NOW }}):**
-      #          ${{ steps.meta.outputs.tags }}
-
-      - if: failure()
-        name: Check available space after build failed
-        run: |
-          docker volume ls
-          df -h
+#name: Docker Build
+#on:
+#  # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
+#  workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
+#  push:
+#    tags: ['v*.*.*']
+#    branches: [main]
+#  release:
+#    # Release logic:
+#    #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
+#    #
+#    types: [ released ] # GITHUB_REF == tag pushed with the release
+#  pull_request:
+#    paths:
+#      - ".github/workflows/build-docker.yml"
+#      - "docker/centrifuge-chain"
+#      - "docker/scripts"
+#      - ".dockerignore"
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
+#  cancel-in-progress: true
+#jobs:
+#  docker:
+#    strategy:
+#      matrix:
+#        target: [ release, test ]
+#    runs-on: ubuntu-latest-8-cores
+#    permissions:
+#      contents: write # to update the GH release w/ Docker tags
+#      packages: write # to upload images to ghcr
+#      id-token: write
+#    steps:
+#      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4.1.1
+#        with:
+#          fetch-depth: 0
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@0d103c3126aa41d772a8362f6aa67afac040f80c #v3.1.0
+#
+#      - name: DockerHub Registry Login
+#        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 #v3.1.0
+#        with:
+#          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+#
+#      - name: Github Registry login
+#        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 #v3.1.0
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - run: echo "NOW=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
+#
+#      - name: Setup docker metadata
+#        id: meta
+#        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 #v5.5.1
+#        with:
+#          images: |
+#            ghcr.io/centrifuge/centrifuge-chain
+#            ${{ (github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))) && 'centrifugeio/centrifuge-chain' || ''}}
+#          # TAGS:
+#          # v.X.Y.Z when pushing a git tag (or a release)
+#          # latest when triggered by a release
+#          # PRXYZ when triggered from a PR (testing)
+#          # {BRANCH_NAME} when triggered from branch push
+#          tags: |
+#            type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+#            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+#            type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+#            type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
+#            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
+#          labels: |
+#            org.opencontainers.image.vendor="k-f dev AG" \
+#            org.opencontainers.image.authors="protocol@k-f.co" \
+#            org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
+#            org.opencontainers.image.base.name="ubuntu/jammy" \
+#            org.opencontainers.image.base.digest="ubuntu@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b"
+#
+#      - name: Configure GHA cache
+#        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+#        with:
+#          script: |
+#            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+#            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+#
+#      - name: Build and push centrifugeio/centrifuge-chain
+#        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 #v5.3.0
+#        with:
+#          provenance: false # Solves untagged containers getting into the GH registry https://github.com/docker/build-push-action/issues/894
+#          context: .
+#          file: ./docker/centrifuge-chain/Dockerfile
+#          build-args: |
+#            FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
+#          # Always push, either to ghcr or Dockerhub
+#          push: true
+#          tags: ${{ steps.meta.outputs.tags }}
+#          # Cache options:
+#          # https://docs.docker.com/build/ci/github-actions/cache/
+#          cache-from: type=gha
+#          # cache-from: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}
+#          # https://docs.docker.com/build/cache/backends/inline/
+#          cache-to: type=gha, mode=max
+#          # cache-to: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}, mode=max
+#
+#      - name: Update DockerHub descriptions
+#        if: contains(github.ref, 'refs/tags/release-v')
+#        uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae #v4.0.0
+#        with:
+#          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+#          repository: centrifuge/centrifuge-chain
+#          short-description: ${{ github.event.repository.description }}
+#          enable-url-completion: true
+#
+#      # - name: Update GitHub release
+#      #   if: github.event_name == 'release' && github.event.action == 'released' && matrix.target == 'release'
+#      #   uses: softprops/action-gh-release@v1
+#      #   with:
+#      #     append_body: true
+#      #     body: |
+#      #       **Docker tags (${{ env.NOW }}):**
+#      #          ${{ steps.meta.outputs.tags }}
+#
+#      - if: failure()
+#        name: Check available space after build failed
+#        run: |
+#          docker volume ls
+#          df -h
