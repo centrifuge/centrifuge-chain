@@ -19,6 +19,8 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
 	weights::{RuntimeDbWeight, Weight},
 };
+use scale_info::prelude::format;
+use sp_io::MultiRemovalResults;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
@@ -151,22 +153,7 @@ where
 			log::info!("Nuke-{}: nuking pallet...", Pallet::name());
 
 			let result = unhashed::clear_prefix(&pallet_prefix::<Pallet>(), None, None);
-			match result.maybe_cursor {
-				None => log::info!("Nuke-{}: storage cleared successful", Pallet::name()),
-				Some(_) => {
-					// TODO: Should we loop over maybe_cursor as a new prefix?
-					// By now, returning error.
-					log::error!("Nuke-{}: storage not totally cleared", Pallet::name())
-				}
-			}
-
-			log::info!(
-				"Nuke-{}: iteration result. backend: {} unique: {} loops: {}",
-				Pallet::name(),
-				result.backend,
-				result.unique,
-				result.loops,
-			);
+			storage_clean_res_log(&result, "", &format!("Nuke-{}", Pallet::name()));
 
 			Pallet::current_storage_version().put::<Pallet>();
 
@@ -218,4 +205,20 @@ pub fn contains_prefixed_key_skip_storage_version<Pallet: PalletInfoAccess>(pref
 			}
 		}
 	}
+}
+
+pub fn storage_clean_res_log(res: &MultiRemovalResults, storage_prefix: &str, log_prefix: &str) {
+	match res.maybe_cursor {
+		None => log::info!("{log_prefix}: Cleared all {storage_prefix} storage entries"),
+		Some(_) => {
+			log::error!("{log_prefix}: {storage_prefix} storage not totally cleared",)
+		}
+	}
+
+	log::info!(
+		"{log_prefix} Clear result of {storage_prefix}: backend: {} unique: {} loops: {}",
+		res.backend,
+		res.unique,
+		res.loops,
+	);
 }

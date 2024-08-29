@@ -10,26 +10,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use frame_support::migrations::VersionedMigration;
+
 use crate::Runtime;
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1402 = (
-	// Clear OutboundMessageNonceStore
-	frame_support::migrations::VersionedMigration<
+pub type UpgradeAltair1403 = (
+	// Clear v0 RelayerList storage
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
+	runtime_common::migrations::liquidity_pools_v2::v0_init_message_queue::Migration<Runtime>,
+	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
+	VersionedMigration<
 		0,
-		1,
-		runtime_common::migrations::liquidity_pools_gateway::clear_outbound_nonce::Migration<
-			Runtime,
-		>,
-		pallet_liquidity_pools_gateway::Pallet<Runtime>,
-		<Runtime as frame_system::Config>::DbWeight,
-	>,
-	// Remove deprecated DomainRouters entries
-	frame_support::migrations::VersionedMigration<
-		1,
-		2,
-		runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>,
+		3,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,

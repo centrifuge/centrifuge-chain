@@ -176,7 +176,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1402,
+	spec_version: 1403,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -272,25 +272,25 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(c: &RuntimeCall) -> bool {
 		match c {
 			RuntimeCall::PolkadotXcm(method) => match method {
-				// Block these calls when called by a signed extrinsic.
-				// Root will still be able to execute these.
-				pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::teleport_assets { .. } // deprecated
-				| pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_suspension { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-			},
+                // Block these calls when called by a signed extrinsic.
+                // Root will still be able to execute these.
+                pallet_xcm::Call::execute { .. }
+                | pallet_xcm::Call::transfer_assets { .. }
+                | pallet_xcm::Call::teleport_assets { .. } // deprecated
+                | pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
+                | pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+                | pallet_xcm::Call::limited_teleport_assets { .. } => false,
+                pallet_xcm::Call::__Ignore { .. } => {
+                    unimplemented!()
+                }
+                // Allow all these calls. Only send(..) is callable by signed the rest needs root.
+                pallet_xcm::Call::send { .. }
+                | pallet_xcm::Call::force_xcm_version { .. }
+                | pallet_xcm::Call::force_suspension { .. }
+                | pallet_xcm::Call::force_default_xcm_version { .. }
+                | pallet_xcm::Call::force_subscribe_version_notify { .. }
+                | pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
+            },
 			// We block this call since it includes Moonbeam trait implementations such
 			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
 			// arbitrary users calling it.
@@ -2132,7 +2132,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1402,
+	crate::migrations::UpgradeDevelopment1403,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata

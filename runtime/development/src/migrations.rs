@@ -14,4 +14,14 @@ use frame_support::migrations::VersionedMigration;
 
 use crate::Runtime;
 
-pub type UpgradeDevelopment1402 = VersionedMigration<1, 2, runtime_common::migrations::liquidity_pools_gateway::clear_deprecated_domain_router_entries::Migration<Runtime>, pallet_liquidity_pools_gateway::Pallet<Runtime>, <Runtime as frame_system::Config>::DbWeight>;
+pub type UpgradeDevelopment1403 = (
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	runtime_common::migrations::liquidity_pools_v2::v2_update_message_queue::Migration<Runtime>,
+	VersionedMigration<
+		2,
+		3,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
+		pallet_liquidity_pools_gateway::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
+);
