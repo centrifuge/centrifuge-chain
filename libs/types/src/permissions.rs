@@ -183,12 +183,6 @@ where
 	}
 }
 
-/// The implementation of trait Properties for our PermissionsRoles does not
-/// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
-/// Seconds) variant. This UNION shall reflect that and explain to the reader
-/// why it is passed here.
-pub const UNION: Seconds = 0;
-
 impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
@@ -212,7 +206,9 @@ where
 				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
 				PoolRole::InvestorAdmin => self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN),
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
-				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
+				PoolRole::TrancheInvestor(id, validity) => {
+					self.tranche_investor.contains(id, validity)
+				}
 				PoolRole::PODReadAccess => {
 					self.pool_admin.contains(PoolAdminRoles::POD_READ_ACCESS)
 				}
@@ -409,9 +405,11 @@ where
 		}
 	}
 
-	pub fn contains(&self, tranche: TrancheId) -> bool {
+	pub fn contains(&self, tranche: TrancheId, validity: Seconds) -> bool {
 		self.info.iter().any(|info| {
-			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
+			info.tranche_id == tranche
+				&& info.permissioned_till >= validity
+				&& validity >= <Now as TimeAsSecs>::now()
 		})
 	}
 
@@ -487,7 +485,7 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: u64 = 4;
+		pub const MinDelay: u64 = VALIDITY;
 		pub const MaxTranches: u32 = 5;
 	}
 
@@ -514,10 +512,9 @@ mod tests {
 		}
 	}
 
-	/// The exists call does not care what is passed as moment. This type shall
-	/// reflect that
-	const UNION: u64 = 0u64;
-	/// The tranceh id type we use in our runtime-common. But we don't want a
+	/// The default validity
+	const VALIDITY: u64 = 4;
+	/// The tranche id type we use in our runtime-common. But we don't want a
 	/// dependency here.
 	type TrancheId = [u8; 16];
 
@@ -554,7 +551,7 @@ mod tests {
 		// Test zero-tranche handling
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
-			UNION
+			VALIDITY
 		))));
 		assert!(roles
 			.add(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -564,7 +561,7 @@ mod tests {
 			.is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
-			UNION
+			VALIDITY
 		))));
 
 		// Removing before MinDelay fails
@@ -577,7 +574,7 @@ mod tests {
 		Now::pass(1);
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
-			UNION
+			VALIDITY
 		))));
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -587,7 +584,7 @@ mod tests {
 			.is_err());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
-			UNION
+			VALIDITY
 		))));
 		Now::set(0);
 
@@ -602,7 +599,7 @@ mod tests {
 		Now::pass(6);
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
-			UNION
+			VALIDITY
 		))));
 		Now::set(0);
 
@@ -621,11 +618,11 @@ mod tests {
 			.is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(1),
-			UNION
+			VALIDITY
 		))));
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(2),
-			UNION
+			VALIDITY
 		))));
 
 		// Adding roles works normally
@@ -645,17 +642,17 @@ mod tests {
 			.is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
-			UNION
+			VALIDITY
 		))));
 		Now::pass(MinDelay::get() + 2);
 		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
-			UNION
+			VALIDITY + 2
 		))));
 		Now::pass(1);
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
-			UNION
+			VALIDITY + 2
 		))));
 		Now::set(0);
 
@@ -668,7 +665,7 @@ mod tests {
 			.is_err());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(5),
-			UNION
+			VALIDITY
 		))));
 
 		// Removing roles work normally for Non-TrancheInvestor roles

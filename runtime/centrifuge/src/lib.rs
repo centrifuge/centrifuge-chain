@@ -40,9 +40,7 @@ use cfg_types::{
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
-	permissions::{
-		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
-	},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
@@ -399,16 +397,17 @@ where
 			amount: _amount,
 		} = details;
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,

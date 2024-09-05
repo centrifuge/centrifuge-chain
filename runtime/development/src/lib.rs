@@ -40,9 +40,7 @@ use cfg_types::{
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
-	permissions::{
-		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
-	},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
@@ -269,25 +267,25 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(c: &RuntimeCall) -> bool {
 		match c {
 			RuntimeCall::PolkadotXcm(method) => match method {
-				// Block these calls when called by a signed extrinsic.
-				// Root will still be able to execute these.
-				pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::teleport_assets { .. } // deprecated
-				| pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_suspension { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-			},
+                // Block these calls when called by a signed extrinsic.
+                // Root will still be able to execute these.
+                pallet_xcm::Call::execute { .. }
+                | pallet_xcm::Call::transfer_assets { .. }
+                | pallet_xcm::Call::teleport_assets { .. } // deprecated
+                | pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
+                | pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+                | pallet_xcm::Call::limited_teleport_assets { .. } => false,
+                pallet_xcm::Call::__Ignore { .. } => {
+                    unimplemented!()
+                }
+                // Allow all these calls. Only send(..) is callable by signed the rest needs root.
+                pallet_xcm::Call::send { .. }
+                | pallet_xcm::Call::force_xcm_version { .. }
+                | pallet_xcm::Call::force_suspension { .. }
+                | pallet_xcm::Call::force_default_xcm_version { .. }
+                | pallet_xcm::Call::force_subscribe_version_notify { .. }
+                | pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
+            },
 			// We block this call since it includes Moonbeam trait implementations such
 			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
 			// arbitrary users calling it.
@@ -1511,16 +1509,17 @@ where
 			amount: _amount,
 		} = details;
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,
