@@ -239,14 +239,14 @@ pub mod v0_init_message_queue {
 			>,
 	{
 		fn on_runtime_upgrade() -> Weight {
-			let reads = 0u64;
-			let writes = 0u64;
+			let mut reads = 0u64;
+			let mut writes = 0u64;
 			OutboundMessageNonceStore::<T>::kill();
 
 			pallet_liquidity_pools_gateway_queue::MessageNonceStore::<T>::put(0u64);
-			Self::migrate_message_queue(reads, writes);
-			Self::migrate_failed_message_queue(reads, writes);
-			log::info!("{LOG_PREFIX}: Migration done!");
+			Self::migrate_message_queue(&mut reads, &mut writes);
+			Self::migrate_failed_message_queue(&mut reads, &mut writes);
+			log::info!("{LOG_PREFIX}: Migration done with {reads} reads and {writes} writes!");
 
 			// Add weight from killing and setting nonce store
 			T::DbWeight::get().reads_writes(reads.saturating_add(1), writes.saturating_add(2))
@@ -310,7 +310,7 @@ pub mod v0_init_message_queue {
 				Message = GatewayMessage<Message, RouterId>,
 			>,
 	{
-		fn migrate_message_queue(mut reads: u64, mut writes: u64) {
+		fn migrate_message_queue(reads: &mut u64, writes: &mut u64) {
 			let n: u64 = FailedOutboundMessages::<T>::iter_keys()
 				.count()
 				.saturated_into();
@@ -337,7 +337,7 @@ pub mod v0_init_message_queue {
 			}
 		}
 
-		fn migrate_failed_message_queue(mut reads: u64, mut writes: u64) {
+		fn migrate_failed_message_queue(reads: &mut u64, writes: &mut u64) {
 			let n: u64 = FailedOutboundMessages::<T>::iter_keys()
 				.count()
 				.saturated_into();
