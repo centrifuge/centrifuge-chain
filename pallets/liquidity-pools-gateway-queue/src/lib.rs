@@ -205,7 +205,9 @@ pub mod pallet {
 			let mut processed_entries = Vec::new();
 
 			for (nonce, message) in MessageQueue::<T>::iter() {
-				let remaining_weight = max_weight.saturating_sub(weight_used);
+				let remaining_weight = max_weight
+					.saturating_sub(weight_used)
+					.saturating_sub(T::DbWeight::get().reads(1));
 				let next_weight = T::MessageProcessor::max_processing_weight(&message);
 
 				// We ensure we have still capacity in the block before processing the message
@@ -237,7 +239,7 @@ pub mod pallet {
 
 				weight_used = weight_used.saturating_add(weight);
 
-				if weight_used.all_gte(max_weight) {
+				if weight_used.any_gte(max_weight) {
 					break;
 				}
 			}
