@@ -133,13 +133,18 @@ pub mod pallet {
 
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			let (result, weight) = Self::process_message_and_deposit_event(nonce, message.clone());
+			let (result, mut weight) =
+				Self::process_message_and_deposit_event(nonce, message.clone());
 
 			if let Err(e) = result {
 				FailedMessageQueue::<T>::insert(nonce, (message, e));
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight)))
+			// Add write from MessageQueue::take
+			Ok(PostDispatchInfo::from(Some(
+				weight.saturating_add(T::DbWeight::get().writes(1)),
+			)))
 		}
 
 		/// Convenience method for manually processing a failed message.
@@ -166,13 +171,17 @@ pub mod pallet {
 			let (message, _) =
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			let (result, weight) = Self::process_message_and_deposit_event(nonce, message);
+			let (result, mut weight) = Self::process_message_and_deposit_event(nonce, message);
 
 			if result.is_ok() {
 				FailedMessageQueue::<T>::remove(nonce);
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight)))
+			// Add read from FailedMessageQueue
+			Ok(PostDispatchInfo::from(Some(
+				weight.saturating_add(T::DbWeight::get().reads(1)),
+			)))
 		}
 	}
 
