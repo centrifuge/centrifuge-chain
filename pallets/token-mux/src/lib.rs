@@ -42,7 +42,7 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-
+	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::swaps::{OrderRatio, TokenSwaps};
 	use cfg_types::tokens::CustomMetadata;
 	use frame_support::{
@@ -267,8 +267,13 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
+					let amount_in = Self::convert_stable(
+						order.swap.currency_out,
+						order.swap.currency_in,
+						amount,
+					)?;
 					T::Tokens::mint_into(local, &Self::account(), amount.into())?;
-					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
+					T::OrderBook::fill_order(Self::account(), order_id, amount, amount_in)?;
 				}
 				// Exchange foreign for local and burn local
 				(Err(_), Ok(local)) => {
@@ -277,7 +282,12 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
+					let amount_in = Self::convert_stable(
+						order.swap.currency_out,
+						order.swap.currency_in,
+						amount,
+					)?;
+					T::OrderBook::fill_order(Self::account(), order_id, amount, amount_in)?;
 					T::Tokens::burn_from(
 						local,
 						&Self::account(),
@@ -367,6 +377,20 @@ pub mod pallet {
 			);
 
 			Ok(local)
+		}
+
+		pub fn convert_stable(
+			currency_from: T::CurrencyId,
+			currency_to: T::CurrencyId,
+			amount_from: T::BalanceOut,
+		) -> Result<T::BalanceIn, DispatchError> {
+			let from_decimals = T::AssetRegistry::metadata(&currency_from)
+				.ok_or(Error::<T>::MetadataNotFound)?
+				.decimals;
+			let to_decimals = T::AssetRegistry::metadata(&currency_to)
+				.ok_or(Error::<T>::MetadataNotFound)?
+				.decimals;
+			Ok(convert_balance_decimals(from_decimals, to_decimals, amount_from.into())?.into())
 		}
 	}
 }

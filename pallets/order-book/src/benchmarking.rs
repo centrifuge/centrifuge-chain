@@ -202,12 +202,24 @@ mod benchmarks {
 
 		let (account_out, account_in) = Helper::<T>::setup();
 		let order_id = Helper::<T>::place_order(&account_out);
-		let amount = Helper::<T>::amount_out();
+		let buy_amount = Helper::<T>::amount_out();
+		let max_sell_amount = Pallet::<T>::convert_with_ratio(
+			CURRENCY_OUT.into(),
+			CURRENCY_IN.into(),
+			T::Ratio::saturating_from_integer(RATIO),
+			buy_amount,
+		)
+		.expect("Assets are registered; qed");
 
 		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
-		fill_order(RawOrigin::Signed(account_in), order_id, amount);
+		fill_order(
+			RawOrigin::Signed(account_in),
+			order_id,
+			buy_amount,
+			max_sell_amount,
+		);
 
 		Ok(())
 	}

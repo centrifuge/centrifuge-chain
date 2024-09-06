@@ -200,7 +200,7 @@ pub mod pallet {
 		/// Currency id expected to give
 		pub currency_out: T::CurrencyId,
 
-		/// Amount in `currency_in` obtained by swaping `amount_out`
+		/// Amount in `currency_in` obtained by swapping `amount_out`
 		pub amount_in: T::BalanceIn,
 
 		/// How many tokens of `currency_out` available to sell
@@ -318,6 +318,9 @@ pub mod pallet {
 		MarketFeederNotFound,
 		/// Expected a market ratio for the given pair of currencies.
 		MarketRatioNotFound,
+		/// The amount of assets to sell exceeds the maximum provided by the
+		/// fulfilling account
+		SlippageExceeded,
 	}
 
 	#[pallet::call]
@@ -394,12 +397,13 @@ pub mod pallet {
 		pub fn fill_order(
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
-			amount_out: T::BalanceOut,
+			buy_amount: T::BalanceOut,
+			max_sell_amount: T::BalanceIn,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 
-			Self::fulfill_order_with_amount(order, amount_out, account_id)
+			Self::fulfill_order_with_amount(order, buy_amount, account_id, max_sell_amount)
 		}
 
 		/// Set the market feeder for set market ratios.
@@ -532,8 +536,9 @@ pub mod pallet {
 
 		fn fulfill_order_with_amount(
 			order: Order<T>,
-			amount_out: T::BalanceOut,
+			max_amount_out: T::BalanceOut,
 			fulfilling_account: T::AccountId,
+			max_amount_in: T::BalanceIn,
 		) -> DispatchResult {
 			let min_fulfillment_amount_out = min(
 				order.amount_out,
@@ -541,7 +546,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				amount_out >= min_fulfillment_amount_out,
+				max_amount_out >= min_fulfillment_amount_out,
 				Error::<T>::BelowMinFulfillmentAmount,
 			);
 
@@ -550,12 +555,18 @@ pub mod pallet {
 				OrderRatio::Custom(ratio) => ratio,
 			};
 
-			let amount_in =
-				Self::convert_with_ratio(order.currency_out, order.currency_in, ratio, amount_out)?;
+			let amount_in = Self::convert_with_ratio(
+				order.currency_out,
+				order.currency_in,
+				ratio,
+				max_amount_out,
+			)?;
+			// Protect the fulfilling account from extreme market conditions
+			ensure!(amount_in <= max_amount_in, Error::<T>::SlippageExceeded);
 
 			let remaining_amount_out = order
 				.amount_out
-				.checked_sub(&amount_out)
+				.checked_sub(&max_amount_out)
 				.ok_or(Error::<T>::FulfillAmountTooLarge)?;
 
 			let partial_fulfillment = !remaining_amount_out.is_zero();
@@ -573,11 +584,12 @@ pub mod pallet {
 				order.currency_out,
 				&(),
 				&order.placing_account,
-				amount_out.into(),
+				max_amount_out.into(),
 				Precision::Exact,
 			)?;
 
-			if T::Currency::balance(order.currency_out, &order.placing_account) < amount_out.into()
+			if T::Currency::balance(order.currency_out, &order.placing_account)
+				< max_amount_out.into()
 			{
 				Err(DispatchError::Token(TokenError::FundsUnavailable))?
 			}
@@ -590,7 +602,7 @@ pub mod pallet {
 				order.currency_out,
 				&order.placing_account,
 				&fulfilling_account,
-				amount_out.into(),
+				max_amount_out.into(),
 				Preservation::Expendable,
 			)?;
 			T::Currency::transfer(
@@ -610,7 +622,7 @@ pub mod pallet {
 						currency_out: order.currency_out,
 					},
 					swapped_in: amount_in,
-					swapped_out: amount_out,
+					swapped_out: max_amount_out,
 					ratio,
 				},
 			)?;
@@ -622,7 +634,7 @@ pub mod pallet {
 				partial_fulfillment,
 				currency_in: order.currency_in,
 				currency_out: order.currency_out,
-				fulfillment_amount: amount_out,
+				fulfillment_amount: max_amount_out,
 				ratio,
 			});
 
@@ -749,10 +761,11 @@ pub mod pallet {
 			account: T::AccountId,
 			order_id: Self::OrderId,
 			buy_amount: T::BalanceOut,
+			max_sell_amount: T::BalanceIn,
 		) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
 
-			Self::fulfill_order_with_amount(order, buy_amount, account)
+			Self::fulfill_order_with_amount(order, buy_amount, account, max_sell_amount)
 		}
 
 		fn convert_by_market(
