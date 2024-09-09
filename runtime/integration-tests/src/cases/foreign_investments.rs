@@ -340,7 +340,8 @@ pub mod utils {
 		assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 			RawOrigin::Signed(trader.clone()).into(),
 			swap_order_id,
-			amount_foreign
+			amount_foreign,
+			amount_pool,
 		));
 	}
 
@@ -1983,7 +1984,8 @@ mod mismatching_currencies {
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated / 4
+					invest_amount_pool_denominated / 4,
+					invest_amount_foreign_denominated / 4,
 				));
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -2005,7 +2007,8 @@ mod mismatching_currencies {
 			assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 				RawOrigin::Signed(trader.clone()).into(),
 				swap_order_id,
-				invest_amount_pool_denominated / 4 * 3
+				invest_amount_pool_denominated / 4 * 3,
+				invest_amount_foreign_denominated / 4 * 3
 			));
 			assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 				e.event
@@ -2127,7 +2130,8 @@ mod mismatching_currencies {
 			assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 				RawOrigin::Signed(trader.clone()).into(),
 				default_order_id::<T>(&investor),
-				invest_amount_pool_denominated / 2
+				invest_amount_pool_denominated / 2,
+				invest_amount_foreign_denominated / 2
 			));
 
 			let nonce = MessageNonceStore::<T>::get();
