@@ -37,7 +37,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureAddAssign, One, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureAddAssign, EnsureSub, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{
@@ -679,17 +679,13 @@ impl<T: Config> Pallet<T> {
 					let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
 						.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-					let currency_payout =
-						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
+					let remaining_pre = collection.remaining_investment_invest;
+					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
 					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment)?;
-					collected_ids.push(order_id);
+					let remaining_post = collection.remaining_investment_invest;
 
-					amount_payment.ensure_add_assign(
-						fulfillment
-							.price
-							.checked_mul_int_floor(currency_payout)
-							.ok_or(ArithmeticError::Overflow)?,
-					)?;
+					collected_ids.push(order_id);
+					amount_payment.ensure_add_assign(remaining_pre.ensure_sub(remaining_post)?)?;
 				}
 
 				order.update_after_collect(
@@ -801,22 +797,15 @@ impl<T: Config> Pallet<T> {
 				for order_id in order.submitted_at()..last_processed_order_id {
 					let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
 						.map_err(|_| Error::<T>::OrderNotCleared)?;
-					let payout_tranche_tokens =
-						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
+
+					let remaining_pre = collection.remaining_investment_redeem;
+					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
 					Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment)?;
+					let remaining_post = collection.remaining_investment_redeem;
+
 					collected_ids.push(order_id);
 
-					// TODO(@mustermeiszer): We actually want the reciprocal without rounding, is
-					// this sufficient or should we use something like
-					// `reciprocal_with_rounding(SignedRounding::NearestPrefMajor)`
-					amount_payment.ensure_add_assign(
-						fulfillment
-							.price
-							.reciprocal_floor()
-							.ok_or(Error::<T>::ZeroPricedInvestment)?
-							.checked_mul_int_floor(payout_tranche_tokens)
-							.ok_or(ArithmeticError::Overflow)?,
-					)?;
+					amount_payment.ensure_add_assign(remaining_pre.ensure_sub(remaining_post)?)?;
 				}
 
 				order.update_after_collect(
@@ -970,7 +959,7 @@ impl<T: Config> Pallet<T> {
 	pub fn acc_payout_invest(
 		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-	) -> Result<T::Amount, DispatchError> {
+	) -> Result<(), DispatchError> {
 		let remaining = collection.remaining_investment_invest;
 		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a
 		// 		given price the system side (i.e. the pallet-investments) will always
@@ -994,7 +983,7 @@ impl<T: Config> Pallet<T> {
 			.checked_add(payout_investment_invest)
 			.ok_or(ArithmeticError::Overflow)?;
 
-		Ok(*payout_investment_invest)
+		Ok(())
 	}
 
 	/// Increments an accounts' redemption payout amount based on the remaining
@@ -1004,7 +993,7 @@ impl<T: Config> Pallet<T> {
 	pub fn acc_payout_redeem(
 		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-	) -> Result<T::Amount, DispatchError> {
+	) -> Result<(), DispatchError> {
 		let remaining = collection.remaining_investment_redeem;
 		// NOTE: The checked_mul_int_floor here ensures that for a given price
 		//       the system side (i.e. the pallet-investments) will always have
@@ -1026,7 +1015,7 @@ impl<T: Config> Pallet<T> {
 			.checked_add(payout_investment_redeem)
 			.ok_or(ArithmeticError::Overflow)?;
 
-		Ok(*payout_investment_redeem)
+		Ok(())
 	}
 
 	/// Decrements an accounts' remaining redemption amount based on the
