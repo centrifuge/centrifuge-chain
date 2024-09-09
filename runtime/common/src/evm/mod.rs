@@ -185,9 +185,12 @@ mod tests {
 
 #[cfg(feature = "std")]
 pub mod utils {
+	#[cfg(feature = "std")]
 	use sp_core::H160;
+	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
 
+	#[cfg(feature = "std")]
 	use crate::evm::precompile::H160Addresses;
 
 	pub fn account_genesis<PrecompileSet: H160Addresses>() -> BTreeMap<H160, fp_evm::GenesisAccount>

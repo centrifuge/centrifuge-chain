@@ -14,7 +14,7 @@
 
 pub mod foreign_investments_v2;
 pub mod increase_storage_version;
-pub mod liquidity_pools_gateway;
+pub mod liquidity_pools_v2;
 pub mod nuke;
 pub mod permissions_v1;
 pub mod precompile_account_codes;
