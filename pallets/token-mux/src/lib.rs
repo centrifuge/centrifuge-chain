@@ -282,18 +282,22 @@ pub mod pallet {
 		}
 
 		pub(crate) fn prepare_and(
-			currency_a: &T::CurrencyId,
-			currency_b: &T::CurrencyId,
+			currency_from: &T::CurrencyId,
+			currency_to: &T::CurrencyId,
 			amount: T::Balance,
 			and: FnOnce(T::Balance) -> DispatchResult,
 		) -> DispatchResult {
-			if currency_a.is_local_representation_of(&currency_b) {
-				and(Self::adjust_amount(currency_a, currency_b, amount)?)?;
+			match (
+				currency_a.is_local_representation_of(&currency_b),
+				currency_b.is_local_representation_of(&currency_a),
+			) {
+				(true, false) => {
+					mint()
+					and(amount)
+				},
+				(false, true) => and(Self::adjust_amount(currency_a, currency_b, amount)?)?,
+				(_, _) => Err(Error::<T>::NoLocalRepresentation.into()),
 			}
-
-			if currency_b.is_local_representation_of(&currency_a) {}
-
-			Err(Error::<T>::NoLocalRepresentation.into())
 		}
 	}
 }
