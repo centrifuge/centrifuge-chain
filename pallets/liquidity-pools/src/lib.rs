@@ -846,6 +846,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
+			investor_validity: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -870,7 +871,7 @@ pub mod pallet {
 				domain_address.account(),
 				pool_id,
 				tranche_id,
-				T::Time::now(),
+				investor_validity,
 				true,
 			)?;
 
@@ -903,6 +904,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
+			investor_validity: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -927,7 +929,7 @@ pub mod pallet {
 				domain_address.account(),
 				pool_id,
 				tranche_id,
-				T::Time::now(),
+				investor_validity,
 				false,
 			)?;
 

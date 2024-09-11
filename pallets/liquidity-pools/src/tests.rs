@@ -1470,7 +1470,8 @@ mod freeze {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				ALICE_EVM_DOMAIN_ADDRESS
+				ALICE_EVM_DOMAIN_ADDRESS,
+				NOW_SECS
 			));
 		});
 	}
@@ -1486,7 +1487,8 @@ mod freeze {
 						RuntimeOrigin::none(),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					DispatchError::BadOrigin
 				);
@@ -1500,7 +1502,8 @@ mod freeze {
 						RuntimeOrigin::root(),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					DispatchError::BadOrigin
 				);
@@ -1518,7 +1521,8 @@ mod freeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -1536,7 +1540,8 @@ mod freeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::TrancheNotFound
 				);
@@ -1554,7 +1559,8 @@ mod freeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::NotPoolAdmin
 				);
@@ -1581,7 +1587,8 @@ mod freeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::InvestorDomainAddressNotAMember
 				);
@@ -1619,7 +1626,8 @@ mod freeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::InvestorDomainAddressFrozen
 				);
@@ -1686,7 +1694,8 @@ mod unfreeze {
 				RuntimeOrigin::signed(ALICE),
 				POOL_ID,
 				TRANCHE_ID,
-				ALICE_EVM_DOMAIN_ADDRESS
+				ALICE_EVM_DOMAIN_ADDRESS,
+				NOW_SECS
 			));
 		});
 	}
@@ -1702,7 +1711,8 @@ mod unfreeze {
 						RuntimeOrigin::none(),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					DispatchError::BadOrigin
 				);
@@ -1716,7 +1726,8 @@ mod unfreeze {
 						RuntimeOrigin::root(),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					DispatchError::BadOrigin
 				);
@@ -1734,7 +1745,8 @@ mod unfreeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::PoolNotFound
 				);
@@ -1752,7 +1764,8 @@ mod unfreeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::TrancheNotFound
 				);
@@ -1770,7 +1783,8 @@ mod unfreeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::NotPoolAdmin
 				);
@@ -1797,7 +1811,8 @@ mod unfreeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::InvestorDomainAddressNotAMember
 				);
@@ -1815,7 +1830,8 @@ mod unfreeze {
 						RuntimeOrigin::signed(ALICE),
 						POOL_ID,
 						TRANCHE_ID,
-						ALICE_EVM_DOMAIN_ADDRESS
+						ALICE_EVM_DOMAIN_ADDRESS,
+						NOW_SECS
 					),
 					Error::<Runtime>::InvestorDomainAddressFrozen
 				);

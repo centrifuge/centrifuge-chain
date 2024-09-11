@@ -322,15 +322,13 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
-		let min_validity = now.saturating_add(MinDelay::get());
-		let req_validity = now.saturating_add(delta);
-
-		if req_validity < min_validity {
-			return Err(());
+		if delta < MinDelay::get() {
+			Err(())
+		} else {
+			let now = <Now as TimeAsSecs>::now();
+			let req_validity = now.saturating_add(delta);
+			Ok(req_validity)
 		}
-
-		Ok(req_validity)
 	}
 
 	pub fn contains(&self) -> bool {
@@ -347,7 +345,7 @@ where
 			let valid_till = &info.permissioned_till;
 			let now = <Now as TimeAsSecs>::now();
 
-			if *valid_till <= now {
+			if *valid_till < now {
 				// The account is already invalid. Hence no more grace period
 				Err(())
 			} else {
@@ -394,21 +392,20 @@ where
 	}
 
 	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
-		let now = <Now as TimeAsSecs>::now();
-		let min_validity = now.saturating_add(MinDelay::get());
-		let req_validity = now.saturating_add(delta);
-
-		if req_validity < min_validity {
+		if delta < MinDelay::get() {
 			Err(())
 		} else {
+			let now = <Now as TimeAsSecs>::now();
+			let req_validity = now.saturating_add(delta);
 			Ok(req_validity)
 		}
 	}
 
 	pub fn contains(&self, tranche: TrancheId, validity: Seconds) -> bool {
 		self.info.iter().any(|info| {
+			dbg!(&info.permissioned_till, validity);
 			info.tranche_id == tranche
-				&& info.permissioned_till >= validity
+				&& info.permissioned_till == validity
 				&& validity >= <Now as TimeAsSecs>::now()
 		})
 	}
@@ -425,7 +422,7 @@ where
 			let valid_till = &self.info[index].permissioned_till;
 			let now = <Now as TimeAsSecs>::now();
 
-			if *valid_till <= now {
+			if *valid_till < now {
 				// The account is already invalid. Hence no more grace period
 				Err(())
 			} else {

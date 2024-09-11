@@ -674,7 +674,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL B - Tranche 1/2
@@ -694,7 +696,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL B - Tranche 2/2
@@ -714,7 +718,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL C - Tranche 1/1
@@ -734,7 +740,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_C,
 			utils::pool_c_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		for currency in [names::USDC, names::FRAX, names::DAI] {
