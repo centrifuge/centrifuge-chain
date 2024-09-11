@@ -1,6 +1,6 @@
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]    
+    types: [ opened, synchronize, reopened, ready_for_review ]
 name: Sanity checks
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -13,7 +13,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     timeout-minutes: 90
     name: ${{ matrix.target }}
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest-8-cores
     strategy:
       matrix:
         target: [ test-general, test-integration,
