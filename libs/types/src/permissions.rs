@@ -475,42 +475,53 @@ where
 #[cfg(test)]
 mod tests {
 	use core::time::Duration;
+	use std::cell::RefCell;
 
-	use frame_support::parameter_types;
+	use frame_support::{assert_ok, parameter_types, traits::UnixTime};
 
-	///! Tests for some types in the common section for our runtimes
 	use super::*;
 
 	parameter_types! {
-		pub const MinDelay: u64 = VALIDITY;
+		pub const MinDelay: u64 = MIN_DELAY;
 		pub const MaxTranches: u32 = 5;
 	}
 
+	// Thread-local storage for `NOW_HOLDER`
+	// Each thread will have its own independent value of `NOW_HOLDER`
+	thread_local! {
+		static NOW_HOLDER: RefCell<u64> = RefCell::new(0);
+	}
+
+	// Struct representing the Unix time logic
 	struct Now;
+
 	impl Now {
 		fn pass(delta: u64) {
-			unsafe {
-				let current = NOW_HOLDER;
-				NOW_HOLDER = current + delta;
-			};
+			NOW_HOLDER.with(|now_holder| {
+				*now_holder.borrow_mut() += delta;
+			});
 		}
 
-		fn set(now: u64) {
-			unsafe {
-				NOW_HOLDER = now;
-			};
+		#[allow(dead_code)]
+
+		fn set(t: u64) {
+			NOW_HOLDER.with(|now_holder| {
+				*now_holder.borrow_mut() = t;
+			});
 		}
 	}
 
-	static mut NOW_HOLDER: u64 = 0;
-	impl frame_support::traits::UnixTime for Now {
+	// Implementing the `UnixTime` trait for `Now`
+	impl UnixTime for Now {
 		fn now() -> Duration {
-			unsafe { Duration::new(NOW_HOLDER, 0) }
+			NOW_HOLDER.with(|now_holder| Duration::new(*now_holder.borrow(), 0))
 		}
 	}
 
 	/// The default validity
-	const VALIDITY: u64 = 4;
+	const VALIDITY: u64 = 14;
+	/// The minimum delay
+	const MIN_DELAY: u64 = 10;
 	/// The tranche id type we use in our runtime-common. But we don't want a
 	/// dependency here.
 	type TrancheId = [u8; 16];
@@ -520,158 +531,542 @@ mod tests {
 	}
 
 	#[test]
-	fn permission_roles_work() {
+	fn default_roles() {
 		assert!(PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default().empty());
+	}
 
-		let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+	#[test]
+	fn default_time() {
+		assert!(<Now as UnixTime>::now().is_zero());
+	}
 
-		// Updating works only when increasing permissions
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(30),
-				10
-			)))
-			.is_ok());
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(30),
-				9
-			)))
-			.is_err());
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(30),
-				11
-			)))
-			.is_ok());
+	#[test]
+	fn time_manipulation() {
+		Now::set(10);
+		assert_eq!(<Now as UnixTime>::now(), Duration::new(10, 0));
 
-		// Test zero-tranche handling
-		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(0),
-			VALIDITY
-		))));
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(0),
-				MinDelay::get()
-			)))
-			.is_ok());
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(0),
-			VALIDITY
-		))));
+		Now::pass(100);
+		assert_eq!(<Now as UnixTime>::now(), Duration::new(110, 0));
 
-		// Removing before MinDelay fails
-		assert!(roles
-			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(0),
-				0
-			)))
-			.is_err());
-		Now::pass(1);
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(0),
-			VALIDITY
-		))));
-		assert!(roles
-			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(0),
-				MinDelay::get() - 1
-			)))
-			.is_err());
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(0),
-			VALIDITY
-		))));
-		Now::set(0);
+		Now::set(5);
+		assert_eq!(<Now as UnixTime>::now(), Duration::new(5, 0));
+	}
 
-		// Removing after MinDelay works (i.e. this is after min_delay the account will
-		// be invalid)
-		assert!(roles
-			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(0),
-				MinDelay::get()
-			)))
-			.is_ok());
-		Now::pass(6);
-		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(0),
-			VALIDITY
-		))));
-		Now::set(0);
+	mod pool_role {
+		use super::*;
 
-		// Multiple tranches work
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(1),
-				MinDelay::get()
-			)))
-			.is_ok());
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(2),
-				MinDelay::get()
-			)))
-			.is_ok());
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(1),
-			VALIDITY
-		))));
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(2),
-			VALIDITY
-		))));
+		mod non_tranche_investor {
+			use super::*;
+			#[test]
+			fn success_with_adding_roles() {
+				let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
-		// Adding roles works normally
-		assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
-		assert!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
-		assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
-		assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::Borrower)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PoolAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PricingAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::LoanAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)));
 
-		// Role exists for as long as permission is given
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(8),
-				MinDelay::get() + 2
-			)))
-			.is_ok());
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(8),
-			VALIDITY
-		))));
-		Now::pass(MinDelay::get() + 2);
-		assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(8),
-			VALIDITY + 2
-		))));
-		Now::pass(1);
-		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(8),
-			VALIDITY + 2
-		))));
-		Now::set(0);
+				assert!(roles.exists(Role::PoolRole(PoolRole::Borrower)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::PoolAdmin)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::PricingAdmin)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::LoanAdmin)));
+				assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+			}
+			#[test]
+			fn success_with_removing_roles() {
+				let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
-		// Role must be added for at least min_delay
-		assert!(roles
-			.add(Role::PoolRole(PoolRole::TrancheInvestor(
-				into_tranche_id(5),
-				MinDelay::get() - 1
-			)))
-			.is_err());
-		assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
-			into_tranche_id(5),
-			VALIDITY
-		))));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::Borrower)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PoolAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PricingAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::LoanAdmin)));
+				assert_ok!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)));
 
-		// Removing roles work normally for Non-TrancheInvestor roles
-		assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.rm(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
-		assert!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
-		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
-		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::Borrower)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PoolAdmin)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PricingAdmin)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::InvestorAdmin)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::LoanAdmin)));
+				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)));
+
+				assert!(!roles.exists(Role::PoolRole(PoolRole::Borrower)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::PoolAdmin)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::PricingAdmin)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::LoanAdmin)));
+				assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+			}
+		}
+
+		mod tranche_investor {
+			use super::*;
+
+			mod success {
+				use super::*;
+
+				#[test]
+				fn with_updating_requires_increasing_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+
+					assert!(roles
+						.add(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY - 1
+						)))
+						.is_err());
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY + 1
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY + 1
+					))));
+				}
+
+				#[test]
+				fn with_zero_tranche() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+				}
+
+				#[test]
+				/// TrancheInvestor is invalid in block after validity
+				fn with_invalidation_after_validity_expiration() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					Now::pass(VALIDITY);
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					Now::pass(1);
+					assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+					assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						1
+					))));
+				}
+
+				#[test]
+				fn with_adding_multiple_tranches() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(2),
+						VALIDITY
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(2),
+						VALIDITY
+					))));
+				}
+
+				#[test]
+				fn with_reducing_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+
+					assert_ok!(roles.rm(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						MIN_DELAY
+					))));
+
+					for i in VALIDITY..MIN_DELAY {
+						assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							i
+						))));
+					}
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						MIN_DELAY
+					))));
+				}
+
+				#[test]
+				fn with_freezing() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
+						into_tranche_id(1)
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
+						into_tranche_id(1)
+					))));
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+
+					assert_ok!(roles.rm(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
+						into_tranche_id(1)
+					))));
+					assert!(
+						!roles.exists(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
+							into_tranche_id(1)
+						)))
+					);
+					assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(1),
+						VALIDITY
+					))));
+				}
+			}
+
+			mod failure {
+				use super::*;
+
+				#[test]
+				fn with_adding_with_lower_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					for i in 0..VALIDITY {
+						assert!(roles
+							.add(Role::PoolRole(PoolRole::TrancheInvestor(
+								into_tranche_id(0),
+								i
+							)))
+							.is_err());
+					}
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+				}
+
+				#[test]
+				fn with_removing_below_min_delay() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						MIN_DELAY
+					))));
+
+					for i in 0..MIN_DELAY {
+						assert!(roles
+							.rm(Role::PoolRole(PoolRole::TrancheInvestor(
+								into_tranche_id(0),
+								i
+							)))
+							.is_err());
+					}
+				}
+
+				#[test]
+				fn with_removing_in_past() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PoolRole(PoolRole::TrancheInvestor(
+						into_tranche_id(0),
+						VALIDITY
+					))));
+
+					Now::pass(VALIDITY + 1);
+					assert!(roles
+						.rm(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							VALIDITY
+						)))
+						.is_err());
+				}
+			}
+		}
+	}
+
+	mod permissioned_currency_role {
+		use super::*;
+
+		#[test]
+		fn manager_success_with_adding_removing() {
+			let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+			assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Manager
+			)));
+			assert!(roles.exists(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Manager
+			)));
+
+			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Manager
+			)));
+			assert!(!roles.exists(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Manager
+			)));
+		}
+
+		#[test]
+		fn issuer_success_with_adding_removing() {
+			let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+			assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Issuer
+			)));
+			assert!(roles.exists(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Issuer
+			)));
+
+			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Issuer
+			)));
+			assert!(!roles.exists(Role::PermissionedCurrencyRole(
+				PermissionedCurrencyRole::Issuer
+			)));
+		}
+
+		mod holder {
+			use super::*;
+
+			mod success {
+				use super::*;
+
+				#[test]
+				fn with_updating_requires_increasing_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					assert!(roles
+						.add(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(VALIDITY - 1)
+						))
+						.is_err());
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY + 1)
+					)));
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY + 1)
+					)));
+				}
+
+				#[test]
+				fn with_zero_tranche() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert!(!roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+				}
+
+				#[test]
+				/// TrancheInvestor is invalid in block after validity
+				fn with_invalidation_after_validity_expiration() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					Now::pass(VALIDITY);
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					Now::pass(1);
+					assert!(!roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+					assert!(!roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(1)
+					)));
+				}
+
+				#[test]
+				fn with_adding_multiple_tranches() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+				}
+
+				#[test]
+				fn with_reducing_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(MIN_DELAY)
+					)));
+
+					for i in VALIDITY..MIN_DELAY {
+						assert!(!roles.exists(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(i)
+						)));
+					}
+					assert!(roles.exists(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(MIN_DELAY)
+					)));
+				}
+			}
+
+			mod failure {
+				use super::*;
+
+				#[test]
+				fn with_adding_with_lower_validity() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					for i in 0..VALIDITY {
+						assert!(roles
+							.add(Role::PermissionedCurrencyRole(
+								PermissionedCurrencyRole::Holder(i)
+							))
+							.is_err());
+					}
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+				}
+
+				#[test]
+				fn with_removing_below_min_delay() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(MIN_DELAY)
+					)));
+
+					for i in 0..MIN_DELAY {
+						assert!(roles
+							.rm(Role::PermissionedCurrencyRole(
+								PermissionedCurrencyRole::Holder(i)
+							))
+							.is_err());
+					}
+				}
+
+				#[test]
+				fn with_removing_in_past() {
+					let mut roles =
+						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
+
+					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
+						PermissionedCurrencyRole::Holder(VALIDITY)
+					)));
+
+					Now::pass(VALIDITY + 1);
+					assert!(roles
+						.rm(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(VALIDITY)
+						))
+						.is_err());
+				}
+			}
+		}
 	}
 }
 
