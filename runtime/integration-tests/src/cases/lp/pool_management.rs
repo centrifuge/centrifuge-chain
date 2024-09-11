@@ -676,7 +676,6 @@ fn unfreeze_member<T: Runtime>() {
 	});
 
 	env.state_mut(|_| {
-		dbg!("unfreeze_member", frame_system::Pallet::<T>::block_number());
 		give_role::<T>(
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()).account(),
 			POOL_A,

@@ -403,7 +403,6 @@ where
 
 	pub fn contains(&self, tranche: TrancheId, validity: Seconds) -> bool {
 		self.info.iter().any(|info| {
-			dbg!(&info.permissioned_till, validity);
 			info.tranche_id == tranche
 				&& info.permissioned_till == validity
 				&& validity >= <Now as TimeAsSecs>::now()
