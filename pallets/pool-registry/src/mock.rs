@@ -484,6 +484,10 @@ impl cfg_traits::Permissions<AccountId> for PermissionsMock {
 	) -> Result<Self::Ok, Self::Error> {
 		Ok(())
 	}
+
+	fn get(_scope: Self::Scope, _who: AccountId, role: Self::Role) -> Option<Self::Role> {
+		Some(role)
+	}
 }
 
 // Test externalities builder

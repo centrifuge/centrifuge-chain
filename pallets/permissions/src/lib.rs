@@ -308,4 +308,10 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	fn remove(scope: T::Scope, who: T::AccountId, role: T::Role) -> Result<(), DispatchError> {
 		Pallet::<T>::do_remove(scope, who, role)
 	}
+
+	fn get(scope: T::Scope, who: T::AccountId, role: T::Role) -> Option<T::Role> {
+		Permission::<T>::get(who, scope)
+			.map(|roles| roles.get(role))
+			.flatten()
+	}
 }

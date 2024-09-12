@@ -91,21 +91,28 @@ mod handle_tranche_tokens_transfer {
 
 	fn config_mocks(receiver: DomainAddress) {
 		Time::mock_now(|| NOW);
+		let r = receiver.clone();
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, receiver.account());
+			assert_eq!(who, r.account());
 			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(tranche_id, TRANCHE_ID);
-					assert_eq!(validity, NOW_SECS);
-					true
-				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has unfrozen investor
 					false
 				}
 				_ => false,
+			}
+		});
+		Permissions::mock_get(move |scope, who, role| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			assert_eq!(who, receiver.account());
+			match role {
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
+					assert_eq!(tranche_id, TRANCHE_ID);
+					Some(role)
+				}
+				_ => None,
 			}
 		});
 		Pools::mock_pool_exists(|_| true);
@@ -218,6 +225,7 @@ mod handle_tranche_tokens_transfer {
 			System::externalities().execute_with(|| {
 				config_mocks(ALICE_LOCAL_DOMAIN_ADDRESS);
 				Permissions::mock_has(|_, _, _| false);
+				Permissions::mock_get(|_, _, _| None);
 
 				assert_noop!(
 					LiquidityPools::handle(

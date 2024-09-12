@@ -846,7 +846,6 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			investor_validity: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -871,7 +870,7 @@ pub mod pallet {
 				domain_address.account(),
 				pool_id,
 				tranche_id,
-				investor_validity,
+				None,
 				true,
 			)?;
 
@@ -904,7 +903,6 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			investor_validity: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -929,7 +927,7 @@ pub mod pallet {
 				domain_address.account(),
 				pool_id,
 				tranche_id,
-				investor_validity,
+				None,
 				false,
 			)?;
 
@@ -1155,15 +1153,19 @@ pub mod pallet {
 			investor: T::AccountId,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			valid_until: Seconds,
+			valid_until: Option<Seconds>,
 			is_frozen: bool,
 		) -> DispatchResult {
 			ensure!(
-				T::Permission::has(
+				T::Permission::get(
 					PermissionScope::Pool(pool_id),
 					investor.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
-				),
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						tranche_id,
+						valid_until.unwrap_or_default()
+					))
+				)
+				.is_some(),
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 			ensure!(
@@ -1187,11 +1189,13 @@ pub mod pallet {
 			tranche_id: T::TrancheId,
 		) -> DispatchResult {
 			ensure!(
-				T::Permission::has(
+				T::Permission::get(
 					PermissionScope::Pool(pool_id),
 					investor.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
-				),
+					// NOTE: Validity is unknown but get check does not require it
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Default::default()))
+				)
+				.is_some(),
 				Error::<T>::UnauthorizedTransfer
 			);
 			ensure!(

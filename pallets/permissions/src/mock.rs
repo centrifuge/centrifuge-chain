@@ -148,6 +148,10 @@ impl Properties for Storage {
 		};
 		Ok(())
 	}
+
+	fn get(&self, property: Self::Property) -> Option<Self::Property> {
+		Self::exists(&self, property.clone()).then(|| property)
+	}
 }
 
 mod dummy {

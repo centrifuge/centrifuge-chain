@@ -28,6 +28,10 @@ pub mod pallet {
 		pub fn mock_remove(f: impl Fn(T::Scope, T::AccountId, Role) -> DispatchResult + 'static) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_get(f: impl Fn(T::Scope, T::AccountId, Role) -> Option<Role> + 'static) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
 	}
 
 	impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
@@ -45,6 +49,10 @@ pub mod pallet {
 		}
 
 		fn remove(a: Self::Scope, b: T::AccountId, c: Self::Role) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		fn get(a: Self::Scope, b: T::AccountId, c: Self::Role) -> Option<Self::Role> {
 			execute_call!((a, b, c))
 		}
 	}

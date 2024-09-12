@@ -603,7 +603,6 @@ fn update_tranche_token_price<T: Runtime>() {
 
 #[test_runtimes([centrifuge, development])]
 fn freeze_member<T: Runtime>() {
-	let validity_block: BlockNumber = 1;
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
@@ -640,7 +639,6 @@ fn freeze_member<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
-			crate::utils::pool::get_default_tranche_investor_validity::<T>(validity_block)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -665,7 +663,6 @@ fn freeze_member<T: Runtime>() {
 
 #[test_runtimes([centrifuge, development])]
 fn unfreeze_member<T: Runtime>() {
-	let validity_block: BlockNumber = 1;
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
@@ -686,7 +683,6 @@ fn unfreeze_member<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
-			crate::utils::pool::get_default_tranche_investor_validity::<T>(validity_block)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -718,7 +714,6 @@ fn unfreeze_member<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::TrancheInvestor(2).in_eth()),
-			crate::utils::pool::get_default_tranche_investor_validity::<T>(validity_block)
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);

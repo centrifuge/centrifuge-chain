@@ -188,7 +188,7 @@ impl<Now, MinDelay, TrancheId, MaxTranches> Properties
 where
 	Now: TimeAsSecs,
 	MinDelay: Get<Seconds>,
-	TrancheId: PartialEq + PartialOrd,
+	TrancheId: PartialEq + PartialOrd + Copy,
 	MaxTranches: Get<u32>,
 {
 	type Error = ();
@@ -227,6 +227,27 @@ where
 						.contains(CurrencyAdminRoles::PERMISSIONED_ASSET_ISSUER),
 				}
 			}
+		}
+	}
+
+	fn get(&self, property: Self::Property) -> Option<Self::Property> {
+		match property {
+			Role::PoolRole(PoolRole::TrancheInvestor(id, _validity)) => {
+				self.tranche_investor.get(id).map(|info| {
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						info.tranche_id,
+						info.permissioned_till,
+					))
+				})
+			}
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_validity)) => {
+				self.permissioned_asset_holder.get().map(|info| {
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(
+						info.permissioned_till,
+					))
+				})
+			}
+			role => Self::exists(&self, role).then(|| role),
 		}
 	}
 
@@ -339,6 +360,10 @@ where
 		}
 	}
 
+	pub fn get(&self) -> Option<&PermissionedCurrencyHolderInfo> {
+		self.info.iter().find(|_| Self::contains(&self))
+	}
+
 	#[allow(clippy::result_unit_err)]
 	pub fn remove(&mut self, delta: Seconds) -> Result<(), ()> {
 		if let Some(info) = &self.info {
@@ -406,6 +431,12 @@ where
 			info.tranche_id == tranche
 				&& info.permissioned_till == validity
 				&& validity >= <Now as TimeAsSecs>::now()
+		})
+	}
+
+	pub fn get(&self, tranche: TrancheId) -> Option<&TrancheInvestorInfo<TrancheId>> {
+		self.info.iter().find(|info| {
+			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
 		})
 	}
 
@@ -560,49 +591,38 @@ mod tests {
 			fn success_with_adding_roles() {
 				let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::Borrower)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PoolAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PricingAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::LoanAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)));
-
-				assert!(roles.exists(Role::PoolRole(PoolRole::Borrower)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::PoolAdmin)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::PricingAdmin)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::LoanAdmin)));
-				assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+				for role in [
+					Role::PoolRole(PoolRole::Borrower),
+					Role::PoolRole(PoolRole::LiquidityAdmin),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					Role::PoolRole(PoolRole::PricingAdmin),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
+					Role::PoolRole(PoolRole::PODReadAccess),
+				] {
+					assert_ok!(roles.add(role));
+					assert!(roles.exists(role));
+					assert_eq!(roles.get(role), Some(role));
+				}
 			}
 			#[test]
 			fn success_with_removing_roles() {
 				let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::Borrower)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PoolAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PricingAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::LoanAdmin)));
-				assert_ok!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)));
-
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::Borrower)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PoolAdmin)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PricingAdmin)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::InvestorAdmin)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::LoanAdmin)));
-				assert_ok!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)));
-
-				assert!(!roles.exists(Role::PoolRole(PoolRole::Borrower)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::PoolAdmin)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::PricingAdmin)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::LoanAdmin)));
-				assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
+				for role in [
+					Role::PoolRole(PoolRole::Borrower),
+					Role::PoolRole(PoolRole::LiquidityAdmin),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					Role::PoolRole(PoolRole::PricingAdmin),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
+					Role::PoolRole(PoolRole::PODReadAccess),
+				] {
+					assert_ok!(roles.add(role));
+					assert_ok!(roles.rm(role));
+					assert!(!roles.exists(role));
+					assert!(roles.get(role).is_none());
+				}
 			}
 		}
 
@@ -625,6 +645,16 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY
+						)))
+					);
 
 					assert!(roles
 						.add(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -641,6 +671,16 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY + 1
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY + 1
+						)))
+					);
 				}
 
 				#[test]
@@ -662,6 +702,16 @@ mod tests {
 						into_tranche_id(0),
 						VALIDITY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							VALIDITY
+						)))
+					);
 				}
 
 				#[test]
@@ -680,6 +730,16 @@ mod tests {
 						into_tranche_id(0),
 						VALIDITY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							VALIDITY
+						)))
+					);
 
 					Now::pass(1);
 					assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -690,6 +750,12 @@ mod tests {
 						into_tranche_id(0),
 						1
 					))));
+					assert!(roles
+						.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(0),
+							1
+						)))
+						.is_none());
 				}
 
 				#[test]
@@ -714,6 +780,27 @@ mod tests {
 						into_tranche_id(2),
 						VALIDITY
 					))));
+
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY
+						)))
+					);
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(2),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(2),
+							VALIDITY
+						)))
+					);
 				}
 
 				#[test]
@@ -741,6 +828,16 @@ mod tests {
 						into_tranche_id(1),
 						MIN_DELAY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							MIN_DELAY
+						)))
+					);
 				}
 
 				#[test]
@@ -762,6 +859,16 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY
+						)))
+					);
 
 					assert_ok!(roles.rm(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
 						into_tranche_id(1)
@@ -775,6 +882,16 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
+					assert_eq!(
+						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							Default::default()
+						))),
+						Some(Role::PoolRole(PoolRole::TrancheInvestor(
+							into_tranche_id(1),
+							VALIDITY
+						)))
+					);
 				}
 			}
 
@@ -860,6 +977,14 @@ mod tests {
 			assert!(roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
 			)));
+			assert_eq!(
+				roles.get(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Manager
+				)),
+				Some(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Manager
+				))
+			);
 
 			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
@@ -867,6 +992,11 @@ mod tests {
 			assert!(!roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
 			)));
+			assert!(roles
+				.get(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Manager
+				))
+				.is_none());
 		}
 
 		#[test]
@@ -879,6 +1009,14 @@ mod tests {
 			assert!(roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
 			)));
+			assert_eq!(
+				roles.get(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Issuer
+				)),
+				Some(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Issuer
+				))
+			);
 
 			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
@@ -886,6 +1024,11 @@ mod tests {
 			assert!(!roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
 			)));
+			assert!(roles
+				.get(Role::PermissionedCurrencyRole(
+					PermissionedCurrencyRole::Issuer
+				))
+				.is_none());
 		}
 
 		mod holder {
@@ -905,6 +1048,14 @@ mod tests {
 					assert!(roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(VALIDITY)
 					)));
+					assert_eq!(
+						roles.get(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(Default::default())
+						)),
+						Some(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(VALIDITY)
+						))
+					);
 
 					assert!(roles
 						.add(Role::PermissionedCurrencyRole(
@@ -918,24 +1069,14 @@ mod tests {
 					assert!(roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(VALIDITY + 1)
 					)));
-				}
-
-				#[test]
-				fn with_zero_tranche() {
-					let mut roles =
-						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
-
-					assert!(!roles.exists(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
-
-					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
-
-					assert!(roles.exists(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
+					assert_eq!(
+						roles.get(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(Default::default())
+						)),
+						Some(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(VALIDITY + 1)
+						))
+					);
 				}
 
 				#[test]
@@ -960,26 +1101,11 @@ mod tests {
 					assert!(!roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(1)
 					)));
-				}
-
-				#[test]
-				fn with_adding_multiple_tranches() {
-					let mut roles =
-						PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
-
-					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
-					assert!(roles.exists(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
-
-					assert_ok!(roles.add(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
-					assert!(roles.exists(Role::PermissionedCurrencyRole(
-						PermissionedCurrencyRole::Holder(VALIDITY)
-					)));
+					assert!(roles
+						.get(Role::PermissionedCurrencyRole(
+							PermissionedCurrencyRole::Holder(Default::default())
+						))
+						.is_none());
 				}
 
 				#[test]
