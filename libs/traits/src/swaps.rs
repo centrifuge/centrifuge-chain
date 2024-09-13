@@ -56,22 +56,22 @@ pub trait TokenSwaps<Account> {
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
-	/// Fill an existing order up to the provided `buy_amount`.
-	///  * If `buy_amount` equals the `order.amount_out`, the order is
+	/// Fill an existing order up to the provided `amount_out`.
+	///  * If `amount_out` equals the `order.amount_out`, the order is
 	///    completely fulfilled.
 	///  * Else, the order is partially fulfilled for `amount /
 	///    order.amount_out`%.
 	///
 	/// NOTE:
-	/// * The `buy_amount` is outgoing currency amount of the order.
-	/// * The `max_sell_amount` protects `account` from extreme market
+	/// * The `amount_out` is outgoing currency amount of the order.
+	/// * The `max_amount_in` protects `account` from extreme market
 	/// conditions or being front-run. It refers to the incoming currency amount
 	/// of the order.
 	fn fill_order(
 		account: Account,
 		order_id: Self::OrderId,
-		buy_amount: Self::BalanceOut,
-		max_sell_amount: Self::BalanceIn,
+		amount_out: Self::BalanceOut,
+		max_amount_in: Self::BalanceIn,
 	) -> DispatchResult;
 
 	/// Cancel an already active order.
