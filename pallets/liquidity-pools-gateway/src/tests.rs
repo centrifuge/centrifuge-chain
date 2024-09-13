@@ -9,7 +9,7 @@ use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use sp_arithmetic::ArithmeticError::{Overflow, Underflow};
-use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
+use sp_core::{bounded::BoundedVec, crypto::AccountId32};
 use sp_runtime::{
 	DispatchError,
 	DispatchError::{Arithmetic, BadOrigin},
@@ -182,18 +182,17 @@ mod extrinsics {
 
 		const USER: AccountId32 = AccountId32::new([1; 32]);
 		const OTHER: AccountId32 = AccountId32::new([2; 32]);
-		const DOMAIN: Domain = Domain::Evm(TEST_EVM_CHAIN);
 
 		#[test]
 		fn pack_empty() {
 			new_test_ext().execute_with(|| {
 				assert_ok!(LiquidityPoolsGateway::start_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 				assert_ok!(LiquidityPoolsGateway::end_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 			});
 		}
@@ -203,20 +202,24 @@ mod extrinsics {
 			new_test_ext().execute_with(|| {
 				assert_ok!(LiquidityPoolsGateway::start_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 
 				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				// Ok Batched
-				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+				assert_ok!(LiquidityPoolsGateway::handle(
+					USER,
+					TEST_DOMAIN,
+					Message::Simple
+				));
 
 				Routers::<Runtime>::set(BoundedVec::try_from(vec![ROUTER_ID_1]).unwrap());
 
 				// Not batched, it belongs to OTHER
 				assert_ok!(LiquidityPoolsGateway::handle(
 					OTHER,
-					DOMAIN,
+					TEST_DOMAIN,
 					Message::Simple
 				));
 
@@ -228,14 +231,18 @@ mod extrinsics {
 				));
 
 				// Ok Batched
-				assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+				assert_ok!(LiquidityPoolsGateway::handle(
+					USER,
+					TEST_DOMAIN,
+					Message::Simple
+				));
 
 				// Two non-packed messages
 				assert_eq!(handler.times(), 2);
 
 				assert_ok!(LiquidityPoolsGateway::end_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 
 				// Packed message queued
@@ -248,17 +255,21 @@ mod extrinsics {
 			new_test_ext().execute_with(|| {
 				assert_ok!(LiquidityPoolsGateway::start_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 
 				let handler = MockLiquidityPoolsGatewayQueue::mock_queue(|_| Ok(()));
 
 				(0..MAX_PACKED_MESSAGES).for_each(|_| {
-					assert_ok!(LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple));
+					assert_ok!(LiquidityPoolsGateway::handle(
+						USER,
+						TEST_DOMAIN,
+						Message::Simple
+					));
 				});
 
 				assert_err!(
-					LiquidityPoolsGateway::handle(USER, DOMAIN, Message::Simple),
+					LiquidityPoolsGateway::handle(USER, TEST_DOMAIN, Message::Simple),
 					DispatchError::Other(MAX_PACKED_MESSAGES_ERR)
 				);
 
@@ -268,7 +279,7 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::end_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 				assert_eq!(handler.times(), 1);
 			});
@@ -278,7 +289,10 @@ mod extrinsics {
 		fn end_before_start() {
 			new_test_ext().execute_with(|| {
 				assert_err!(
-					LiquidityPoolsGateway::end_batch_message(RuntimeOrigin::signed(USER), DOMAIN),
+					LiquidityPoolsGateway::end_batch_message(
+						RuntimeOrigin::signed(USER),
+						TEST_DOMAIN
+					),
 					Error::<Runtime>::MessagePackingNotStarted
 				);
 			});
@@ -289,11 +303,14 @@ mod extrinsics {
 			new_test_ext().execute_with(|| {
 				assert_ok!(LiquidityPoolsGateway::start_batch_message(
 					RuntimeOrigin::signed(USER),
-					DOMAIN
+					TEST_DOMAIN
 				));
 
 				assert_err!(
-					LiquidityPoolsGateway::start_batch_message(RuntimeOrigin::signed(USER), DOMAIN),
+					LiquidityPoolsGateway::start_batch_message(
+						RuntimeOrigin::signed(USER),
+						TEST_DOMAIN
+					),
 					Error::<Runtime>::MessagePackingAlreadyStarted
 				);
 			});
@@ -302,8 +319,7 @@ mod extrinsics {
 		#[test]
 		fn process_inbound() {
 			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(TEST_EVM_CHAIN, address);
+				let domain = Domain::Evm(TEST_EVM_CHAIN);
 
 				let router_id_1 = ROUTER_ID_1;
 
@@ -315,7 +331,7 @@ mod extrinsics {
 				let submessage_count = 5;
 
 				let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain_address,
+					domain,
 					message: Message::deserialize(&(1..=submessage_count).collect::<Vec<_>>())
 						.unwrap(),
 					router_id: ROUTER_ID_1,
@@ -332,8 +348,7 @@ mod extrinsics {
 		#[test]
 		fn process_inbound_with_errors() {
 			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(1, address);
+				let domain = Domain::Evm(1);
 
 				let router_id_1 = ROUTER_ID_1;
 
@@ -350,7 +365,7 @@ mod extrinsics {
 				});
 
 				let (result, _) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain_address,
+					domain,
 					message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
 					router_id: ROUTER_ID_1,
 				});
@@ -380,23 +395,22 @@ mod extrinsics {
 					ROUTER_ID_1,
 					InboundEntry::Message(MessageEntry {
 						session_id,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 1,
 					}),
 				);
 
-				let handler =
-					MockLiquidityPools::mock_handle(move |mock_domain_address, mock_message| {
-						assert_eq!(mock_domain_address, TEST_DOMAIN_ADDRESS);
-						assert_eq!(mock_message, Message::Simple);
+				let handler = MockLiquidityPools::mock_handle(move |mock_domain, mock_message| {
+					assert_eq!(mock_domain, TEST_DOMAIN);
+					assert_eq!(mock_message, Message::Simple);
 
-						Ok(())
-					});
+					Ok(())
+				});
 
 				assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN_ADDRESS,
+					TEST_DOMAIN,
 					MESSAGE_HASH,
 					ROUTER_ID_2,
 				));
@@ -428,7 +442,7 @@ mod extrinsics {
 					ROUTER_ID_1,
 					InboundEntry::Message(MessageEntry {
 						session_id,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 2,
 					}),
@@ -436,7 +450,7 @@ mod extrinsics {
 
 				assert_ok!(LiquidityPoolsGateway::execute_message_recovery(
 					RuntimeOrigin::root(),
-					TEST_DOMAIN_ADDRESS,
+					TEST_DOMAIN,
 					MESSAGE_HASH,
 					ROUTER_ID_2,
 				));
@@ -451,7 +465,7 @@ mod extrinsics {
 					Some(
 						MessageEntry {
 							session_id,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain: TEST_DOMAIN,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}
@@ -478,7 +492,7 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN_ADDRESS,
+						TEST_DOMAIN,
 						MESSAGE_HASH,
 						ROUTER_ID_1,
 					),
@@ -490,7 +504,7 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN_ADDRESS,
+						TEST_DOMAIN,
 						MESSAGE_HASH,
 						ROUTER_ID_1,
 					),
@@ -508,7 +522,7 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN_ADDRESS,
+						TEST_DOMAIN,
 						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
@@ -538,7 +552,7 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN_ADDRESS,
+						TEST_DOMAIN,
 						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
@@ -550,7 +564,6 @@ mod extrinsics {
 		#[test]
 		fn expected_message_hash_type() {
 			new_test_ext().execute_with(|| {
-				let domain_address = TEST_DOMAIN_ADDRESS;
 				let session_id = 1;
 
 				Routers::<Runtime>::set(
@@ -562,7 +575,7 @@ mod extrinsics {
 					ROUTER_ID_2,
 					InboundEntry::Message(MessageEntry {
 						session_id,
-						domain_address: domain_address.clone(),
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 2,
 					}),
@@ -571,7 +584,7 @@ mod extrinsics {
 				assert_noop!(
 					LiquidityPoolsGateway::execute_message_recovery(
 						RuntimeOrigin::root(),
-						TEST_DOMAIN_ADDRESS,
+						TEST_DOMAIN,
 						MESSAGE_HASH,
 						ROUTER_ID_2
 					),
@@ -979,7 +992,7 @@ mod implementations {
 
 							for router_message in test.router_messages {
 								let gateway_message = GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: router_message.1,
 									router_id: router_message.0,
 								};
@@ -1114,10 +1127,10 @@ mod implementations {
 						let message = Message::Simple;
 						let message_hash = message.get_message_hash();
 						let session_id = 1;
-						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
+						let domain = Domain::Evm(1);
 						let router_id = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
-							domain_address: domain_address.clone(),
+							domain: Domain::Evm(1),
 							message: message.clone(),
 							router_id: router_id.clone(),
 						};
@@ -1127,14 +1140,13 @@ mod implementations {
 						);
 						SessionIdStore::<Runtime>::set(session_id);
 
-						let handler = MockLiquidityPools::mock_handle(
-							move |mock_domain_address, mock_message| {
-								assert_eq!(mock_domain_address, domain_address);
+						let handler =
+							MockLiquidityPools::mock_handle(move |mock_domain, mock_message| {
+								assert_eq!(mock_domain, domain);
 								assert_eq!(mock_message, message);
 
 								Ok(())
-							},
-						);
+							});
 
 						let (res, _) = LiquidityPoolsGateway::process(gateway_message);
 						assert_ok!(res);
@@ -1151,10 +1163,9 @@ mod implementations {
 				fn multi_router_not_found() {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
-						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_hash = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
-							domain_address: domain_address.clone(),
+							domain: Domain::Evm(1),
 							message: message.clone(),
 							router_id: router_hash,
 						};
@@ -1169,10 +1180,9 @@ mod implementations {
 					new_test_ext().execute_with(|| {
 						let message = Message::Simple;
 						let session_id = 1;
-						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_hash = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
-							domain_address: domain_address.clone(),
+							domain: Domain::Evm(1),
 							message: message.clone(),
 							// The router stored has a different hash, this should trigger the
 							// expected error.
@@ -1195,10 +1205,9 @@ mod implementations {
 						let message = Message::Simple;
 						let message_hash = message.get_message_hash();
 						let session_id = 1;
-						let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
 						let router_id = ROUTER_ID_1;
 						let gateway_message = GatewayMessage::Inbound {
-							domain_address: domain_address.clone(),
+							domain: Domain::Evm(1),
 							message: message.clone(),
 							router_id: router_id.clone(),
 						};
@@ -1257,7 +1266,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 2,
 														}
@@ -1352,7 +1361,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 3,
 														}
@@ -1400,7 +1409,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 1,
 														}
@@ -1425,7 +1434,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 1,
 														}
@@ -1473,7 +1482,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 1,
 														}
@@ -1567,7 +1576,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 4,
 														}
@@ -1617,7 +1626,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 2,
 														}
@@ -1643,7 +1652,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 2,
 														}
@@ -1669,7 +1678,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 2,
 														}
@@ -1695,7 +1704,7 @@ mod implementations {
 													Some(
 														MessageEntry {
 															session_id: TEST_SESSION_ID,
-															domain_address: TEST_DOMAIN_ADDRESS,
+															domain: TEST_DOMAIN,
 															message: Message::Simple,
 															expected_proof_count: 2,
 														}
@@ -1921,7 +1930,7 @@ mod implementations {
 							SessionIdStore::<Runtime>::set(session_id);
 
 							let gateway_message = GatewayMessage::Inbound {
-								domain_address: TEST_DOMAIN_ADDRESS,
+								domain: TEST_DOMAIN,
 								message: Message::Simple,
 								router_id: ROUTER_ID_2,
 							};
@@ -1943,7 +1952,7 @@ mod implementations {
 							SessionIdStore::<Runtime>::set(session_id);
 
 							let gateway_message = GatewayMessage::Inbound {
-								domain_address: TEST_DOMAIN_ADDRESS,
+								domain: TEST_DOMAIN,
 								message: Message::Proof(MESSAGE_HASH),
 								router_id: ROUTER_ID_1,
 							};
@@ -1988,7 +1997,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2123,7 +2132,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2157,7 +2166,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2191,7 +2200,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2225,7 +2234,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2259,7 +2268,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2316,7 +2325,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 6,
 													}
@@ -2390,7 +2399,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2425,7 +2434,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2460,7 +2469,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2495,7 +2504,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2530,7 +2539,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2565,7 +2574,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2600,7 +2609,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2635,7 +2644,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 2,
 													}
@@ -2670,7 +2679,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2705,7 +2714,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2740,7 +2749,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -2775,7 +2784,7 @@ mod implementations {
 												Some(
 													MessageEntry {
 														session_id: TEST_SESSION_ID,
-														domain_address: TEST_DOMAIN_ADDRESS,
+														domain: TEST_DOMAIN,
 														message: Message::Simple,
 														expected_proof_count: 4,
 													}
@@ -3101,24 +3110,23 @@ mod implementations {
 			#[test]
 			fn inbound_message_handler_error() {
 				new_test_ext().execute_with(|| {
-					let domain_address = DomainAddress::Evm(1, H160::repeat_byte(1));
-
 					Routers::<Runtime>::set(
 						BoundedVec::try_from(vec![ROUTER_ID_1.clone()]).unwrap(),
 					);
 					SessionIdStore::<Runtime>::set(1);
 
 					let message = Message::Simple;
+					let domain = Domain::Evm(1);
 					let gateway_message = GatewayMessage::Inbound {
-						domain_address: domain_address.clone(),
+						domain,
 						message: message.clone(),
 						router_id: ROUTER_ID_1,
 					};
 
 					let err = DispatchError::Unavailable;
 
-					MockLiquidityPools::mock_handle(move |mock_domain_address, mock_mesage| {
-						assert_eq!(mock_domain_address, domain_address);
+					MockLiquidityPools::mock_handle(move |mock_domain, mock_mesage| {
+						assert_eq!(mock_domain, domain);
 						assert_eq!(mock_mesage, message);
 
 						Err(err)
@@ -3197,14 +3205,13 @@ mod implementations {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
+				let domain = Domain::Evm(0);
 				let message = Message::Simple;
 
 				let router_id = ROUTER_ID_1;
 
 				let gateway_message = GatewayMessage::Inbound {
-					domain_address: domain_address.clone(),
+					domain,
 					message: message.clone(),
 					router_id: router_id.clone(),
 				};
@@ -3214,11 +3221,7 @@ mod implementations {
 					Ok(())
 				});
 
-				assert_ok!(LiquidityPoolsGateway::receive(
-					router_id,
-					domain_address,
-					message
-				));
+				assert_ok!(LiquidityPoolsGateway::receive(router_id, domain, message));
 
 				assert_eq!(handler.times(), 1);
 			});
@@ -3227,8 +3230,7 @@ mod implementations {
 		#[test]
 		fn message_queue_error() {
 			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(0, address);
+				let domain = Domain::Evm(0);
 				let message = Message::Simple;
 
 				let router_id = ROUTER_ID_1;
@@ -3236,7 +3238,7 @@ mod implementations {
 				let err = sp_runtime::DispatchError::from("liquidity_pools error");
 
 				let gateway_message = GatewayMessage::Inbound {
-					domain_address: domain_address.clone(),
+					domain,
 					message: message.clone(),
 					router_id: router_id.clone(),
 				};
@@ -3247,7 +3249,7 @@ mod implementations {
 				});
 
 				assert_noop!(
-					LiquidityPoolsGateway::receive(router_id, domain_address, Message::Simple),
+					LiquidityPoolsGateway::receive(router_id, domain, Message::Simple),
 					err,
 				);
 			});
@@ -3338,7 +3340,6 @@ mod implementations {
 			#[test]
 			fn create_inbound_entry() {
 				new_test_ext().execute_with(|| {
-					let domain_address = TEST_DOMAIN_ADDRESS;
 					let session_id = 1;
 					let expected_proof_count = 2;
 
@@ -3347,7 +3348,7 @@ mod implementations {
 							Message::Simple,
 							MessageEntry {
 								session_id,
-								domain_address: domain_address.clone(),
+								domain: TEST_DOMAIN,
 								message: Message::Simple,
 								expected_proof_count,
 							}
@@ -3367,7 +3368,7 @@ mod implementations {
 						let res = InboundEntry::create(
 							test_message,
 							session_id,
-							domain_address.clone(),
+							TEST_DOMAIN,
 							expected_proof_count,
 						);
 
@@ -3383,7 +3384,6 @@ mod implementations {
 			#[test]
 			fn no_stored_entry() {
 				new_test_ext().execute_with(|| {
-					let domain_address = TEST_DOMAIN_ADDRESS;
 					let session_id = 1;
 					let expected_proof_count = 2;
 
@@ -3392,7 +3392,7 @@ mod implementations {
 							ROUTER_ID_1,
 							MessageEntry {
 								session_id,
-								domain_address,
+								domain: TEST_DOMAIN,
 								message: Message::Simple,
 								expected_proof_count,
 							}
@@ -3429,7 +3429,7 @@ mod implementations {
 				new_test_ext().execute_with(|| {
 					let inbound_entry: InboundEntry<Runtime> = MessageEntry {
 						session_id: 1,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 2,
 					}
@@ -3453,7 +3453,7 @@ mod implementations {
 						res,
 						MessageEntry {
 							session_id: 1,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain: TEST_DOMAIN,
 							message: Message::Simple,
 							expected_proof_count: 4,
 						}
@@ -3470,7 +3470,7 @@ mod implementations {
 						ROUTER_ID_1,
 						InboundEntry::Message(MessageEntry {
 							session_id: 1,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain: TEST_DOMAIN,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}),
@@ -3481,7 +3481,7 @@ mod implementations {
 						&ROUTER_ID_1,
 						MessageEntry {
 							session_id: 2,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain: TEST_DOMAIN,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}
@@ -3494,7 +3494,7 @@ mod implementations {
 						res,
 						MessageEntry {
 							session_id: 2,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain: TEST_DOMAIN,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}
@@ -3508,7 +3508,7 @@ mod implementations {
 				new_test_ext().execute_with(|| {
 					let inbound_entry: InboundEntry<Runtime> = MessageEntry {
 						session_id: 1,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 2,
 					}
@@ -3624,7 +3624,7 @@ mod implementations {
 							&ROUTER_ID_1,
 							InboundEntry::Message(MessageEntry {
 								session_id: 1,
-								domain_address: TEST_DOMAIN_ADDRESS,
+								domain: TEST_DOMAIN,
 								message: Message::Simple,
 								expected_proof_count: 1,
 							}),
@@ -3641,7 +3641,7 @@ mod implementations {
 			#[test]
 			fn entries_with_invalid_session_are_ignored() {
 				new_test_ext().execute_with(|| {
-					let domain_address = TEST_DOMAIN_ADDRESS;
+					let domain = TEST_DOMAIN;
 					let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
 					let session_id = 1;
 					let expected_proof_count = 2;
@@ -3651,7 +3651,7 @@ mod implementations {
 						ROUTER_ID_1,
 						InboundEntry::Message(MessageEntry {
 							session_id: 1,
-							domain_address: TEST_DOMAIN_ADDRESS,
+							domain,
 							message: Message::Simple,
 							expected_proof_count: 2,
 						}),
@@ -3678,7 +3678,7 @@ mod implementations {
 						&router_ids,
 						session_id,
 						expected_proof_count,
-						domain_address,
+						domain,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).is_some()
@@ -3729,7 +3729,7 @@ mod inbound_entry {
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: message.clone(),
 					expected_proof_count: 4,
 				});
@@ -3744,7 +3744,7 @@ mod inbound_entry {
 					res,
 					Some(InboundEntry::<Runtime>::Message(MessageEntry {
 						session_id: 1,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message,
 						expected_proof_count: 2,
 					}))
@@ -3759,7 +3759,7 @@ mod inbound_entry {
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: message.clone(),
 					expected_proof_count: 2,
 				});
@@ -3780,7 +3780,7 @@ mod inbound_entry {
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: message.clone(),
 					expected_proof_count: 2,
 				});
@@ -3861,14 +3861,13 @@ mod inbound_entry {
 		#[test]
 		fn success() {
 			new_test_ext().execute_with(|| {
-				let domain_address = TEST_DOMAIN_ADDRESS;
 				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
 				let session_id = 1;
 				let expected_proof_count = 2;
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id,
-					domain_address,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count,
 				});
@@ -3905,14 +3904,13 @@ mod inbound_entry {
 		#[test]
 		fn message_type_mismatch() {
 			new_test_ext().execute_with(|| {
-				let domain_address = TEST_DOMAIN_ADDRESS;
 				let router_ids = vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3];
 				let session_id = 1;
 				let expected_proof_count = 2;
 
 				let inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id,
-					domain_address,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count,
 				});
@@ -3985,7 +3983,7 @@ mod inbound_entry {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count: 1,
 				});
@@ -4006,7 +4004,7 @@ mod inbound_entry {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count: 2,
 				});
@@ -4018,7 +4016,7 @@ mod inbound_entry {
 					inbound_entry_1,
 					InboundEntry::<Runtime>::Message(MessageEntry {
 						session_id: 1,
-						domain_address: TEST_DOMAIN_ADDRESS,
+						domain: TEST_DOMAIN,
 						message: Message::Simple,
 						expected_proof_count: 4,
 					})
@@ -4031,14 +4029,14 @@ mod inbound_entry {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count: 2,
 				});
 
 				let inbound_entry_2 = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 2,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count: 5,
 				});
@@ -4092,7 +4090,7 @@ mod inbound_entry {
 			new_test_ext().execute_with(|| {
 				let mut inbound_entry_1 = InboundEntry::<Runtime>::Message(MessageEntry {
 					session_id: 1,
-					domain_address: TEST_DOMAIN_ADDRESS,
+					domain: TEST_DOMAIN,
 					message: Message::Simple,
 					expected_proof_count: 2,
 				});

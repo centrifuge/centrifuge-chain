@@ -108,10 +108,7 @@ pub mod pallet {
 		type RouterProvider: RouterProvider<Domain, RouterId = Self::RouterId>;
 
 		/// The type that processes inbound messages.
-		type InboundMessageHandler: InboundMessageHandler<
-			Sender = DomainAddress,
-			Message = Self::Message,
-		>;
+		type InboundMessageHandler: InboundMessageHandler<Sender = Domain, Message = Self::Message>;
 
 		type WeightInfo: WeightInfo;
 
@@ -152,21 +149,21 @@ pub mod pallet {
 
 		/// An inbound message was processed.
 		InboundMessageProcessed {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message proof was processed.
 		InboundProofProcessed {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		},
 
 		/// An inbound message was executed.
 		InboundMessageExecuted {
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 		},
 
@@ -369,13 +366,13 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		pub fn execute_message_recovery(
 			origin: OriginFor<T>,
-			domain_address: DomainAddress,
+			domain: Domain,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
+			let router_ids = Self::get_router_ids_for_domain(domain)?;
 
 			ensure!(
 				router_ids.iter().any(|x| x == &router_id),
@@ -412,7 +409,7 @@ pub mod pallet {
 				&router_ids,
 				session_id,
 				expected_proof_count,
-				domain_address,
+				domain,
 			)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
@@ -535,18 +532,14 @@ pub mod pallet {
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
-					domain_address,
+					domain,
 					message,
 					router_id,
 				} => {
 					let mut counter = 0;
 
-					let res = Self::process_inbound_message(
-						domain_address,
-						message,
-						router_id,
-						&mut counter,
-					);
+					let res =
+						Self::process_inbound_message(domain, message, router_id, &mut counter);
 
 					let weight = match counter {
 						0 => LP_DEFENSIVE_WEIGHT / 10,
@@ -578,15 +571,11 @@ pub mod pallet {
 	impl<T: Config> MessageReceiver for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
-		type Origin = DomainAddress;
+		type Origin = Domain;
 
-		fn receive(
-			router_id: T::RouterId,
-			origin_address: DomainAddress,
-			message: T::Message,
-		) -> DispatchResult {
+		fn receive(router_id: T::RouterId, domain: Domain, message: T::Message) -> DispatchResult {
 			let gateway_message = GatewayMessage::<T::Message, T::RouterId>::Inbound {
-				domain_address: origin_address,
+				domain,
 				message,
 				router_id,
 			};
