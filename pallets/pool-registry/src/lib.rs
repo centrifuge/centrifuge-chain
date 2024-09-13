@@ -31,7 +31,6 @@ pub use pallet::*;
 use parity_scale_codec::MaxEncodedLen;
 use scale_info::TypeInfo;
 use sp_runtime::traits::BadOrigin;
-use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]

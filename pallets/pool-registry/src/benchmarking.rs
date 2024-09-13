@@ -25,6 +25,8 @@ fn init_mocks() {
 	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
 	crate::mock::PoolSystem::mock_update(|_, changes| Ok(UpdateState::Stored(changes)));
 	crate::mock::PoolSystem::mock_execute_update(|_| Ok(0));
+	crate::mock::Permissions::mock_add(|_, _, _| Ok(()));
+	crate::mock::Permissions::mock_has(|_, _, _| true);
 }
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);
@@ -136,6 +138,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn set_metadata() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
 		let who: T::AccountId = whitelisted_caller();
 		let pool_id = T::PoolId::default();
 
