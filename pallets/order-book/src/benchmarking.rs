@@ -202,12 +202,12 @@ mod benchmarks {
 
 		let (account_out, account_in) = Helper::<T>::setup();
 		let order_id = Helper::<T>::place_order(&account_out);
-		let buy_amount = Helper::<T>::amount_out();
-		let max_sell_amount = Pallet::<T>::convert_with_ratio(
+		let amount_out = Helper::<T>::amount_out();
+		let max_amount_in = Pallet::<T>::convert_with_ratio(
 			CURRENCY_OUT.into(),
 			CURRENCY_IN.into(),
 			T::Ratio::saturating_from_integer(RATIO),
-			buy_amount,
+			amount_out,
 		)
 		.expect("Assets are registered; qed");
 
@@ -217,8 +217,8 @@ mod benchmarks {
 		fill_order(
 			RawOrigin::Signed(account_in),
 			order_id,
-			buy_amount,
-			max_sell_amount,
+			amount_out,
+			max_amount_in,
 		);
 
 		Ok(())
