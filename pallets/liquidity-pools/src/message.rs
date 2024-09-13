@@ -663,7 +663,7 @@ impl LpMessageForwarded for Message {
 	}
 
 	fn try_wrap_forward(
-		source_domain: Domain,
+		source_domain: Self::Domain,
 		forwarding_contract: H160,
 		message: Self,
 	) -> Result<Self, DispatchError> {
