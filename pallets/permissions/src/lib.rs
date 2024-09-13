@@ -310,8 +310,6 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	}
 
 	fn get(scope: T::Scope, who: T::AccountId, role: T::Role) -> Option<T::Role> {
-		Permission::<T>::get(who, scope)
-			.map(|roles| roles.get(role))
-			.flatten()
+		Permission::<T>::get(who, scope).and_then(|roles| roles.get(role))
 	}
 }

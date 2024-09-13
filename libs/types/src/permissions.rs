@@ -247,7 +247,7 @@ where
 					))
 				})
 			}
-			role => Self::exists(&self, role).then(|| role),
+			role => Self::exists(self, role).then_some(role),
 		}
 	}
 
@@ -361,7 +361,7 @@ where
 	}
 
 	pub fn get(&self) -> Option<&PermissionedCurrencyHolderInfo> {
-		self.info.iter().find(|_| Self::contains(&self))
+		self.info.iter().find(|_| Self::contains(self))
 	}
 
 	#[allow(clippy::result_unit_err)]
