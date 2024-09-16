@@ -44,7 +44,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
 	use cfg_traits::swaps::{OrderRatio, TokenSwaps};
-	use cfg_types::tokens::CustomMetadata;
+	use cfg_types::tokens::{CustomMetadata, HasLocalAssetRepresentation};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, *},
 		traits::{
@@ -111,12 +111,7 @@ pub mod pallet {
 		type OrderId: Parameter + Member + Copy + Ord + MaxEncodedLen;
 
 		/// The general asset type
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaxEncodedLen
-			+ From<Self::LocalAssetId>
-			+ TryInto<Self::LocalAssetId>;
+		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen + HasLocalAssetRepresentation;
 
 		/// The local asset type
 		type LocalAssetId: From<cfg_types::tokens::LocalAssetId>;
@@ -185,19 +180,26 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
+			currency_in: T::CurrencyId,
 			currency_out: T::CurrencyId,
 			amount_out: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let local = Self::try_local(&currency_out)?;
-
-			Self::mint_route(&who, local, currency_out, amount_out)?;
+			Self::prepare_and(&currency_out, &currency_in, amount_out, |amount| {
+				T::Tokens::transfer(
+					currency_in,
+					&Self::account(),
+					who,
+					amount.into(),
+					Preservation::Expendable,
+				)
+			})?;
 
 			Self::deposit_event(Event::<T>::Deposited {
 				who,
 				currency_out,
-				currency_in: local,
+				currency_in,
 				amount: amount_out,
 			});
 
@@ -208,14 +210,21 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
+			currency_in: T::CurrencyId,
 			currency_out: T::CurrencyId,
 			amount_out: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let local = Self::try_local(&currency_out)?;
-
-			Self::burn_route(&who, local, currency_out, amount_out)?;
+			Self::prepare_and(&currency_out, &currency_in, amount_out, |amount| {
+				T::Tokens::transfer(
+					currency_out,
+					&Self::account(),
+					who,
+					amount.into(),
+					Preservation::Expendable,
+				)
+			})?;
 
 			Self::deposit_event(Event::<T>::Burned {
 				who,
@@ -229,11 +238,7 @@ pub mod pallet {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::match_swap())]
-		pub fn match_swap(
-			origin: OriginFor<T>,
-			order_id: T::OrderId,
-			amount: T::BalanceOut,
-		) -> DispatchResult {
+		pub fn match_swap(origin: OriginFor<T>, order_id: T::OrderId) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
 			let order =
@@ -241,11 +246,11 @@ pub mod pallet {
 
 			let ratio = match order.ratio {
 				OrderRatio::Market => T::BalanceRatio::ensure_from_rational(
-					amount,
+					order.amount,
 					T::OrderBook::convert_by_market(
 						order.swap.currency_in,
 						order.swap.currency_out,
-						amount,
+						order.amount,
 					)?,
 				)?,
 				OrderRatio::Custom(ratio) => ratio,
@@ -253,44 +258,18 @@ pub mod pallet {
 
 			ensure!(ratio == One::one(), Error::<T>::NotIdenticalSwap);
 
-			match (
-				Self::try_local(&order.swap.currency_out),
-				Self::try_local(&order.swap.currency_in),
-			) {
-				(Ok(_), Ok(_)) | (Err(_), Err(_)) => {
-					return Err(Error::<T>::InvalidSwapCurrencies.into())
-				}
-				// Mint local and exchange for foreign
-				(Ok(local), Err(_)) => {
-					ensure!(
-						order.swap.currency_in == local,
-						Error::<T>::InvalidSwapCurrencies
-					);
-
-					T::Tokens::mint_into(local, &Self::account(), amount.into())?;
+			Self::prepare_and(
+				&order.swap.currency_out,
+				&order.swap.currency_in,
+				order.amount,
+				|amount| {
 					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
-				}
-				// Exchange foreign for local and burn local
-				(Err(_), Ok(local)) => {
-					ensure!(
-						order.swap.currency_out == local,
-						Error::<T>::InvalidSwapCurrencies
-					);
-
-					T::OrderBook::fill_order(Self::account(), order_id, amount)?;
-					T::Tokens::burn_from(
-						local,
-						&Self::account(),
-						amount.into(),
-						Precision::Exact,
-						Fortitude::Polite,
-					)?;
-				}
-			}
+				},
+			)?;
 
 			Self::deposit_event(Event::<T>::SwapMatched {
 				id: order_id,
-				amount,
+				amount: order.amount,
 			});
 
 			Ok(())
@@ -302,71 +281,19 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		fn mint_route(
-			who: &T::AccountId,
-			local: T::CurrencyId,
-			variant: T::CurrencyId,
-			amount: T::BalanceOut,
+		pub(crate) fn prepare_and(
+			currency_a: &T::CurrencyId,
+			currency_b: &T::CurrencyId,
+			amount: T::Balance,
+			and: FnOnce(T::Balance) -> DispatchResult,
 		) -> DispatchResult {
-			T::Tokens::transfer(
-				variant,
-				who,
-				&Self::account(),
-				amount.into(),
-				Preservation::Expendable,
-			)?;
+			if currency_a.is_local_representation_of(&currency_b) {
+				and(Self::adjust_amount(currency_a, currency_b, amount)?)?;
+			}
 
-			T::Tokens::mint_into(local, who, amount.into()).map(|_| ())
-		}
+			if currency_b.is_local_representation_of(&currency_a) {}
 
-		fn burn_route(
-			who: &T::AccountId,
-			local: T::CurrencyId,
-			variant: T::CurrencyId,
-			amount: T::BalanceOut,
-		) -> DispatchResult {
-			T::Tokens::burn_from(
-				local,
-				who,
-				amount.into(),
-				Precision::Exact,
-				Fortitude::Polite,
-			)?;
-
-			T::Tokens::transfer(
-				variant,
-				&Self::account(),
-				who,
-				amount.into(),
-				Preservation::Expendable,
-			)
-			.map(|_| ())
-		}
-
-		pub(crate) fn try_local(currency: &T::CurrencyId) -> Result<T::CurrencyId, DispatchError> {
-			let meta_variant =
-				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MetadataNotFound)?;
-
-			let local: T::CurrencyId = T::LocalAssetId::from(
-				meta_variant
-					.additional
-					.local_representation
-					.ok_or(Error::<T>::NoLocalRepresentation)?,
-			)
-			.into();
-
-			let meta_local =
-				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MetadataNotFound)?;
-
-			// NOTE: We could also think about making conversion between local
-			//       representations and variants but I fear that we then have problems with
-			//       SUM(locked variants) = local. Hence, this restriction.
-			ensure!(
-				meta_local.decimals == meta_variant.decimals,
-				Error::<T>::DecimalMismatch
-			);
-
-			Ok(local)
+			Err(Error::<T>::NoLocalRepresentation.into())
 		}
 	}
 }
