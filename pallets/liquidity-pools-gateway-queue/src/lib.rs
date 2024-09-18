@@ -237,7 +237,7 @@ pub mod pallet {
 
 				weight_used = weight_used.saturating_add(weight);
 
-				if weight_used.all_gte(max_weight) {
+				if weight_used.any_gte(max_weight) {
 					break;
 				}
 			}
