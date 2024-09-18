@@ -323,6 +323,7 @@ impl<T: Config> Pallet<T> {
 		session_id: T::SessionId,
 		expected_proof_count: u32,
 		domain_address: DomainAddress,
+		counter: &mut u64,
 	) -> DispatchResult {
 		let mut message = None;
 		let mut votes = 0;
@@ -349,9 +350,13 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
+			for submessage in msg.submessages() {
+				counter.ensure_add_assign(1)?;
 
-			T::InboundMessageHandler::handle(domain_address.clone(), msg)?;
+				T::InboundMessageHandler::handle(domain_address.clone(), submessage)?;
+			}
+
+			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
 			Self::deposit_event(Event::<T>::InboundMessageExecuted {
 				domain_address,
@@ -406,37 +411,33 @@ impl<T: Config> Pallet<T> {
 		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
 		let session_id = SessionIdStore::<T>::get();
 		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
+		let message_hash = message.get_message_hash();
+		let inbound_entry: InboundEntry<T> = InboundEntry::create(
+			message.clone(),
+			session_id,
+			domain_address.clone(),
+			expected_proof_count,
+		);
 
-		for submessage in message.submessages() {
-			counter.ensure_add_assign(1)?;
+		inbound_entry.validate(&router_ids, &router_id.clone())?;
 
-			let message_hash = submessage.get_message_hash();
+		Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
 
-			let inbound_entry: InboundEntry<T> = InboundEntry::create(
-				submessage.clone(),
-				session_id,
-				domain_address.clone(),
-				expected_proof_count,
-			);
+		Self::deposit_processing_event(
+			domain_address.clone(),
+			message,
+			message_hash,
+			router_id.clone(),
+		);
 
-			inbound_entry.validate(&router_ids, &router_id.clone())?;
-			Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
-
-			Self::deposit_processing_event(
-				domain_address.clone(),
-				submessage,
-				message_hash,
-				router_id.clone(),
-			);
-
-			Self::execute_if_requirements_are_met(
-				message_hash,
-				&router_ids,
-				session_id,
-				expected_proof_count,
-				domain_address.clone(),
-			)?;
-		}
+		Self::execute_if_requirements_are_met(
+			message_hash,
+			&router_ids,
+			session_id,
+			expected_proof_count,
+			domain_address.clone(),
+			counter,
+		)?;
 
 		Ok(())
 	}

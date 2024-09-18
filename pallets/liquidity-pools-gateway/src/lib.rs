@@ -65,6 +65,7 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::transactional;
+
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
