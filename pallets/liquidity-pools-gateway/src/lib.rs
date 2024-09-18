@@ -64,6 +64,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::transactional;
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
@@ -620,6 +621,7 @@ pub mod pallet {
 	impl<T: Config> MessageProcessor for Pallet<T> {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
+		#[transactional]
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			match msg {
 				GatewayMessage::Inbound {
