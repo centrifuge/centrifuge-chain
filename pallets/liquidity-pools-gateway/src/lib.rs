@@ -469,8 +469,8 @@ pub mod pallet {
 				router_ids.iter().any(|x| x == &router_id),
 				Error::<T>::UnknownRouter
 			);
-			// Message recovery shouldn't be supported for setups that have less than 1
-			// router since no proofs are required in that case.
+			// Message recovery shouldn't be supported for setups that have less than 2
+			// routers since no proofs are required in that case.
 			ensure!(router_ids.len() > 1, Error::<T>::NotEnoughRoutersForDomain);
 
 			let session_id = SessionIdStore::<T>::get();
