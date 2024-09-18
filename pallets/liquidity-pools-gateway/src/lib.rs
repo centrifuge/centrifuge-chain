@@ -38,6 +38,7 @@ use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
 	dispatch::{DispatchResult, PostDispatchInfo},
 	pallet_prelude::*,
+	storage::{with_transaction, TransactionOutcome},
 };
 use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
@@ -637,8 +638,6 @@ pub mod pallet {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
-			use frame_support::storage::{with_transaction, TransactionOutcome};
-
 			// The #[transactional] macro only works for functions that return a
 			// `DispatchResult` therefore, we need to manually add this here.
 			with_transaction(|| {
