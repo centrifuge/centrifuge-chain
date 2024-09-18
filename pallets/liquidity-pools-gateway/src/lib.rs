@@ -64,7 +64,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::transactional;
+	use frame_support::{dispatch::PostDispatchInfo, transactional};
 
 	use super::*;
 
@@ -462,7 +462,7 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
@@ -497,12 +497,15 @@ pub mod pallet {
 
 			let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 
+			let mut counter = 0u64;
+
 			Self::execute_if_requirements_are_met(
 				message_hash,
 				&router_ids,
 				session_id,
 				expected_proof_count,
 				domain_address,
+				&mut counter,
 			)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
@@ -510,7 +513,10 @@ pub mod pallet {
 				router_id,
 			});
 
-			Ok(())
+			Ok(PostDispatchInfo {
+				actual_weight: Some(Self::get_weight_for_batch_messages(counter)),
+				pays_fee: Pays::Yes,
+			})
 		}
 
 		/// Sends a message that initiates a message recovery using the
@@ -589,6 +595,13 @@ pub mod pallet {
 
 			T::MessageSender::send(messaging_router, T::Sender::get(), message)
 		}
+
+		fn get_weight_for_batch_messages(count: u64) -> Weight {
+			match count {
+				0 => LP_DEFENSIVE_WEIGHT / 10,
+				n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
+			}
+		}
 	}
 
 	impl<T: Config> OutboundMessageHandler for Pallet<T> {
@@ -639,12 +652,7 @@ pub mod pallet {
 						&mut counter,
 					);
 
-					let weight = match counter {
-						0 => LP_DEFENSIVE_WEIGHT / 10,
-						n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
-					};
-
-					(res, weight)
+					(res, Self::get_weight_for_batch_messages(counter))
 				}
 				GatewayMessage::Outbound { message, router_id } => {
 					let res = T::MessageSender::send(router_id, T::Sender::get(), message);
