@@ -236,10 +236,6 @@ pub mod pallet {
 				processed_entries.push(nonce);
 
 				weight_used = weight_used.saturating_add(weight);
-
-				if weight_used.any_gte(max_weight) {
-					break;
-				}
 			}
 
 			for entry in processed_entries {
