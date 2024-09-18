@@ -35,7 +35,10 @@ use cfg_traits::liquidity_pools::{
 	OutboundMessageHandler, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{
+	dispatch::{DispatchResult, PostDispatchInfo},
+	pallet_prelude::*,
+};
 use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
@@ -64,8 +67,6 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::PostDispatchInfo, transactional};
-
 	use super::*;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
@@ -635,31 +636,47 @@ pub mod pallet {
 	impl<T: Config> MessageProcessor for Pallet<T> {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
-		#[transactional]
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
-			match msg {
-				GatewayMessage::Inbound {
-					domain_address,
-					message,
-					router_id,
-				} => {
-					let mut counter = 0;
+			use frame_support::storage::{with_transaction, TransactionOutcome};
 
-					let res = Self::process_inbound_message(
+			// The #[transactional] macro only works for functions that return a
+			// `DispatchResult` therefore, we need to manually add this here.
+			with_transaction(|| {
+				let (res, weight) = match msg {
+					GatewayMessage::Inbound {
 						domain_address,
 						message,
 						router_id,
-						&mut counter,
-					);
+					} => {
+						let mut counter = 0;
 
-					(res, Self::get_weight_for_batch_messages(counter))
-				}
-				GatewayMessage::Outbound { message, router_id } => {
-					let res = T::MessageSender::send(router_id, T::Sender::get(), message);
+						let res = Self::process_inbound_message(
+							domain_address,
+							message,
+							router_id,
+							&mut counter,
+						);
 
-					(res, LP_DEFENSIVE_WEIGHT)
+						(res, Self::get_weight_for_batch_messages(counter))
+					}
+					GatewayMessage::Outbound { message, router_id } => {
+						let res = T::MessageSender::send(router_id, T::Sender::get(), message);
+
+						(res, LP_DEFENSIVE_WEIGHT)
+					}
+				};
+
+				if res.is_ok() {
+					TransactionOutcome::Commit(Ok::<(DispatchResult, Weight), DispatchError>((
+						res, weight,
+					)))
+				} else {
+					TransactionOutcome::Rollback(Ok::<(DispatchResult, Weight), DispatchError>((
+						res, weight,
+					)))
 				}
-			}
+			})
+			.expect("success is ensured by the transaction closure")
 		}
 
 		/// Returns the max processing weight for a message, based on its

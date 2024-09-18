@@ -3863,12 +3863,15 @@ mod implementations {
 						}),
 					);
 
+					let mut counter = 0;
+
 					assert_ok!(LiquidityPoolsGateway::execute_if_requirements_are_met(
 						MESSAGE_HASH,
 						&router_ids,
 						session_id,
 						expected_proof_count,
 						domain_address,
+						&mut counter,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).is_some()
