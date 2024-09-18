@@ -334,7 +334,11 @@ impl<T: Config> Pallet<T> {
 				// we can return.
 				None => return Ok(()),
 				Some(stored_inbound_entry) => match stored_inbound_entry {
-					InboundEntry::Message(message_entry) => message = Some(message_entry.message),
+					InboundEntry::Message(message_entry)
+						if message_entry.session_id == session_id =>
+					{
+						message = Some(message_entry.message)
+					}
 					InboundEntry::Proof(proof_entry)
 						if proof_entry.has_valid_vote_for_session(session_id) =>
 					{
