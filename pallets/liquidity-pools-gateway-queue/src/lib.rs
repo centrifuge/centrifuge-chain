@@ -202,9 +202,13 @@ pub mod pallet {
 		fn service_message_queue(max_weight: Weight) -> Weight {
 			let mut weight_used = Weight::zero();
 
-			let mut processed_entries = Vec::new();
+			let mut nonces = MessageQueue::<T>::iter_keys().collect::<Vec<_>>();
+			nonces.sort();
 
-			for (nonce, message) in MessageQueue::<T>::iter() {
+			for nonce in nonces {
+				let message =
+					MessageQueue::<T>::take(nonce).expect("valid nonce ensured by `iter_keys`");
+
 				let remaining_weight = max_weight.saturating_sub(weight_used);
 				let next_weight = T::MessageProcessor::max_processing_weight(&message);
 
@@ -233,13 +237,7 @@ pub mod pallet {
 					}
 				};
 
-				processed_entries.push(nonce);
-
 				weight_used = weight_used.saturating_add(weight);
-			}
-
-			for entry in processed_entries {
-				MessageQueue::<T>::remove(entry);
 			}
 
 			weight_used
