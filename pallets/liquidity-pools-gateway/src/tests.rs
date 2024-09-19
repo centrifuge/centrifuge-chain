@@ -1108,7 +1108,6 @@ mod implementations {
 		mod inbound {
 			use super::*;
 
-			#[macro_use]
 			mod util {
 				use super::*;
 
@@ -2104,6 +2103,160 @@ mod implementations {
 							let (res, _) = LiquidityPoolsGateway::process(gateway_message);
 							assert_noop!(res, Error::<Runtime>::ProofNotExpectedFromFirstRouter);
 						});
+					}
+
+					#[test]
+					fn storage_rollback_on_failure() {
+						new_test_ext().execute_with(|| {
+							Routers::<Runtime>::set(
+								BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2])
+									.unwrap(),
+							);
+							SessionIdStore::<Runtime>::set(1);
+
+							let err = DispatchError::Unavailable;
+
+							MockLiquidityPools::mock_handle(move |_, _| Err(err));
+
+							let (res, _) =
+								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								});
+							assert_ok!(res);
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_1
+							)
+							.is_some());
+
+							let (res, _) =
+								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								});
+							assert_noop!(res, err);
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_1
+							)
+							.is_some());
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_2
+							)
+							.is_none());
+						});
+					}
+				}
+
+				mod session_id_change {
+					use super::*;
+
+					#[derive(Debug)]
+					enum TestAction {
+						SetRouters(Vec<RouterId>),
+						ProcessMessage(GatewayMessage<Message, RouterId>),
+					}
+
+					#[test]
+					fn no_execution_after_session_change() {
+						let tests = vec![
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_3,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_3,
+								}),
+							],
+						];
+
+						for test in tests {
+							println!("Executing session id change test for - {:?}", test);
+
+							new_test_ext().execute_with(|| {
+								for action in test {
+									let mock_handler =
+										MockLiquidityPools::mock_handle(move |_, _| Ok(()));
+
+									match action {
+										TestAction::SetRouters(routers) => {
+											assert_ok!(LiquidityPoolsGateway::set_routers(
+												RuntimeOrigin::root(),
+												BoundedVec::<_, _>::try_from(routers).unwrap(),
+											));
+										}
+										TestAction::ProcessMessage(message) => {
+											let (res, _) = LiquidityPoolsGateway::process(message);
+											assert_ok!(res);
+										}
+									}
+
+									assert_eq!(mock_handler.times(), 0)
+								}
+							});
+						}
 					}
 				}
 			}
