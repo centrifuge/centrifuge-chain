@@ -209,7 +209,7 @@ mod on_idle {
 	#[test]
 	fn success_all() {
 		new_test_ext().execute_with(|| {
-			(1..=3).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
+			(1..=3).for_each(|i| Queue::queue(i * 10).unwrap());
 
 			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
 			let handle = Processor::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
@@ -226,7 +226,7 @@ mod on_idle {
 	#[test]
 	fn not_all_messages_fit_in_the_block() {
 		new_test_ext().execute_with(|| {
-			(1..=5).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
+			(1..=5).for_each(|i| Queue::queue(i * 10).unwrap());
 
 			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
 			let handle = Processor::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
@@ -251,7 +251,7 @@ mod on_idle {
 	#[test]
 	fn with_failed_messages() {
 		new_test_ext().execute_with(|| {
-			(1..=3).for_each(|i| MessageQueue::<Runtime>::insert(i as u64, i * 10));
+			(1..=3).for_each(|i| Queue::queue(i * 10).unwrap());
 
 			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
 			let handle = Processor::mock_process(|msg| match msg {
