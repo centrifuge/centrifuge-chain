@@ -41,28 +41,40 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{liquidity_pools::OutboundMessageHandler, swaps::TokenSwaps, PreConditions};
+use cfg_traits::{
+	investments::ForeignInvestment,
+	liquidity_pools::{InboundMessageHandler, OutboundMessageHandler},
+	swaps::TokenSwaps,
+	CurrencyInspect, Permissions, PoolInspect, PreConditions, Seconds, TimeAsSecs,
+	TrancheTokenPrice,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	tokens::GeneralCurrencyIndex,
+	permissions::{PermissionScope, PoolRole, Role, TrancheInvestorInfo},
+	tokens::{CustomMetadata, GeneralCurrencyIndex},
+	EVMChainId,
 };
 use cfg_utils::vec_to_fixed_array;
 use frame_support::{
+	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, Mutate},
+		tokens::{Fortitude, Precision, Preservation},
 		PalletInfo,
 	},
 	transactional,
 };
+use frame_system::pallet_prelude::*;
 use orml_traits::{
 	asset_registry::{self, Inspect as _},
 	GetByKey,
 };
 pub use pallet::*;
-use sp_core::{crypto::AccountId32, H160};
+use parity_scale_codec::HasCompact;
+use sp_core::{crypto::AccountId32, H160, U256};
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, EnsureMul},
-	FixedPointNumber, SaturatedConversion,
+	traits::{AtLeast32BitUnsigned, EnsureMul, Zero},
+	DispatchError, FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec};
 use staging_xcm::{
@@ -107,24 +119,6 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{
-		investments::ForeignInvestment, liquidity_pools::InboundMessageHandler, CurrencyInspect,
-		Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
-	};
-	use cfg_types::{
-		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CustomMetadata,
-		EVMChainId,
-	};
-	use frame_support::{
-		pallet_prelude::*,
-		traits::tokens::{Fortitude, Precision, Preservation},
-	};
-	use frame_system::pallet_prelude::*;
-	use parity_scale_codec::HasCompact;
-	use sp_core::U256;
-	use sp_runtime::{traits::Zero, DispatchError};
-
 	use super::*;
 	use crate::defensive_weights::WeightInfo;
 
@@ -194,11 +188,18 @@ pub mod pallet {
 
 		/// The source of truth for investment permissions.
 		type Permission: Permissions<
-			Self::AccountId,
-			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId>,
-			Error = DispatchError,
-		>;
+				Self::AccountId,
+				Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
+				Role = Role<Self::TrancheId>,
+				Error = DispatchError,
+			> + GetByKey<
+				(
+					PermissionScope<Self::PoolId, Self::CurrencyId>,
+					Self::AccountId,
+					Self::TrancheId,
+				),
+				Option<TrancheInvestorInfo<Self::TrancheId>>,
+			>;
 
 		/// The UNIX timestamp provider type required for checking the validity
 		/// of investments.
@@ -324,8 +325,6 @@ pub mod pallet {
 		InvalidIncomingMessage,
 		/// The destination domain is invalid.
 		InvalidDomain,
-		/// The validity is in the past.
-		InvalidTrancheInvestorValidity,
 		/// The currency is not allowed to be transferred via LiquidityPools.
 		InvalidTransferCurrency,
 		/// The account derived from the [Domain] and [DomainAddress] has not
@@ -508,10 +507,6 @@ pub mod pallet {
 			ensure!(
 				T::PoolInspect::tranche_exists(pool_id, tranche_id),
 				Error::<T>::TrancheNotFound
-			);
-			ensure!(
-				valid_until > T::Time::now(),
-				Error::<T>::InvalidTrancheInvestorValidity
 			);
 
 			// Ensure that the destination address has been whitelisted as a TrancheInvestor
@@ -866,13 +861,7 @@ pub mod pallet {
 				),
 				Error::<T>::NotPoolAdmin
 			);
-			Self::validate_investor_status(
-				domain_address.account(),
-				pool_id,
-				tranche_id,
-				None,
-				true,
-			)?;
+			Self::validate_investor_status(domain_address.account(), pool_id, tranche_id, true)?;
 
 			T::OutboundMessageHandler::handle(
 				who,
@@ -923,13 +912,7 @@ pub mod pallet {
 				),
 				Error::<T>::NotPoolAdmin
 			);
-			Self::validate_investor_status(
-				domain_address.account(),
-				pool_id,
-				tranche_id,
-				None,
-				false,
-			)?;
+			Self::validate_investor_status(domain_address.account(), pool_id, tranche_id, false)?;
 
 			T::OutboundMessageHandler::handle(
 				who,
@@ -1153,19 +1136,11 @@ pub mod pallet {
 			investor: T::AccountId,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			valid_until: Option<Seconds>,
 			is_frozen: bool,
 		) -> DispatchResult {
 			ensure!(
-				T::Permission::get(
-					PermissionScope::Pool(pool_id),
-					investor.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						tranche_id,
-						valid_until.unwrap_or_default()
-					))
-				)
-				.is_some(),
+				T::Permission::get(&(PermissionScope::Pool(pool_id), investor.clone(), tranche_id))
+					.is_some(),
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 			ensure!(
@@ -1189,13 +1164,8 @@ pub mod pallet {
 			tranche_id: T::TrancheId,
 		) -> DispatchResult {
 			ensure!(
-				T::Permission::get(
-					PermissionScope::Pool(pool_id),
-					investor.clone(),
-					// NOTE: Validity is unknown but get check does not require it
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Default::default()))
-				)
-				.is_some(),
+				T::Permission::get(&(PermissionScope::Pool(pool_id), investor.clone(), tranche_id))
+					.is_some(),
 				Error::<T>::UnauthorizedTransfer
 			);
 			ensure!(

@@ -1,7 +1,8 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
+	use cfg_primitives::TrancheId;
 	use cfg_traits::Permissions;
-	use cfg_types::permissions::Role;
+	use cfg_types::permissions::{Role, TrancheInvestorInfo};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -29,8 +30,11 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_get(f: impl Fn(T::Scope, T::AccountId, Role) -> Option<Role> + 'static) {
-			register_call!(move |(a, b, c)| f(a, b, c));
+		pub fn mock_get(
+			f: impl Fn(&(T::Scope, T::AccountId, TrancheId)) -> Option<TrancheInvestorInfo<TrancheId>>
+				+ 'static,
+		) {
+			register_call!(f);
 		}
 	}
 
@@ -51,9 +55,18 @@ pub mod pallet {
 		fn remove(a: Self::Scope, b: T::AccountId, c: Self::Role) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
+	}
 
-		fn get(a: Self::Scope, b: T::AccountId, c: Self::Role) -> Option<Self::Role> {
-			execute_call!((a, b, c))
+	impl<T: Config>
+		orml_traits::GetByKey<
+			(T::Scope, T::AccountId, TrancheId),
+			Option<TrancheInvestorInfo<TrancheId>>,
+		> for Pallet<T>
+	{
+		fn get(
+			tuple: &(T::Scope, T::AccountId, TrancheId),
+		) -> Option<TrancheInvestorInfo<TrancheId>> {
+			execute_call!(tuple)
 		}
 	}
 }

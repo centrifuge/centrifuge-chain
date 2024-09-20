@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::permissions::TrancheInvestorInfo;
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
 	derive_impl, parameter_types,
@@ -148,9 +149,11 @@ impl Properties for Storage {
 		};
 		Ok(())
 	}
+}
 
-	fn get(&self, property: Self::Property) -> Option<Self::Property> {
-		Self::exists(&self, property.clone()).then(|| property)
+impl orml_traits::GetByKey<(Storage, [u8; 16]), Option<TrancheInvestorInfo<[u8; 16]>>> for Storage {
+	fn get(_: &(Storage, [u8; 16])) -> Option<TrancheInvestorInfo<[u8; 16]>> {
+		None
 	}
 }
 
@@ -260,6 +263,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = Scope;
 	type Storage = Storage;
+	type TrancheId = [u8; 16];
 	type WeightInfo = ();
 }
 

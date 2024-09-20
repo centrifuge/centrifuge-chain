@@ -12,6 +12,7 @@
 
 use cfg_traits::{Properties, Seconds, TimeAsSecs};
 use frame_support::{traits::Get, BoundedVec};
+use orml_traits::GetByKey;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -112,6 +113,17 @@ pub struct TrancheInvestorInfo<TrancheId> {
 	tranche_id: TrancheId,
 	permissioned_till: Seconds,
 	is_frozen: bool,
+}
+
+#[cfg(feature = "std")]
+impl<TrancheId> TrancheInvestorInfo<TrancheId> {
+	pub fn dummy(tranche_id: TrancheId) -> Self {
+		Self {
+			tranche_id,
+			permissioned_till: Default::default(),
+			is_frozen: Default::default(),
+		}
+	}
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
@@ -230,27 +242,6 @@ where
 		}
 	}
 
-	fn get(&self, property: Self::Property) -> Option<Self::Property> {
-		match property {
-			Role::PoolRole(PoolRole::TrancheInvestor(id, _validity)) => {
-				self.tranche_investor.get(id).map(|info| {
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						info.tranche_id,
-						info.permissioned_till,
-					))
-				})
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_validity)) => {
-				self.permissioned_asset_holder.get().map(|info| {
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(
-						info.permissioned_till,
-					))
-				})
-			}
-			role => Self::exists(self, role).then_some(role),
-		}
-	}
-
 	fn empty(&self) -> bool {
 		self.pool_admin.is_empty()
 			&& self.currency_admin.is_empty()
@@ -329,6 +320,30 @@ where
 	}
 }
 
+impl<Now, MinDelay, TrancheId, MaxTranches>
+	GetByKey<
+		(
+			PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>,
+			TrancheId,
+		),
+		Option<TrancheInvestorInfo<TrancheId>>,
+	> for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
+where
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
+	TrancheId: PartialEq + PartialOrd + Copy,
+	MaxTranches: Get<u32>,
+{
+	fn get(
+		(roles, tranche_id): &(
+			PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>,
+			TrancheId,
+		),
+	) -> Option<TrancheInvestorInfo<TrancheId>> {
+		roles.tranche_investor.get_info(*tranche_id).cloned()
+	}
+}
+
 impl<Now, MinDelay> PermissionedCurrencyHolders<Now, MinDelay>
 where
 	Now: TimeAsSecs,
@@ -360,7 +375,7 @@ where
 		}
 	}
 
-	pub fn get(&self) -> Option<&PermissionedCurrencyHolderInfo> {
+	pub fn get_info(&self) -> Option<&PermissionedCurrencyHolderInfo> {
 		self.info.iter().find(|_| Self::contains(self))
 	}
 
@@ -434,7 +449,7 @@ where
 		})
 	}
 
-	pub fn get(&self, tranche: TrancheId) -> Option<&TrancheInvestorInfo<TrancheId>> {
+	pub fn get_info(&self, tranche: TrancheId) -> Option<&TrancheInvestorInfo<TrancheId>> {
 		self.info.iter().find(|info| {
 			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
 		})
@@ -512,7 +527,9 @@ mod tests {
 	use super::*;
 
 	parameter_types! {
+		#[derive(Clone)]
 		pub const MinDelay: u64 = MIN_DELAY;
+		#[derive(Clone)]
 		pub const MaxTranches: u32 = 5;
 	}
 
@@ -523,6 +540,7 @@ mod tests {
 	}
 
 	// Struct representing the Unix time logic
+	#[derive(Clone)]
 	struct Now;
 
 	impl Now {
@@ -602,7 +620,6 @@ mod tests {
 				] {
 					assert_ok!(roles.add(role));
 					assert!(roles.exists(role));
-					assert_eq!(roles.get(role), Some(role));
 				}
 			}
 			#[test]
@@ -621,13 +638,30 @@ mod tests {
 					assert_ok!(roles.add(role));
 					assert_ok!(roles.rm(role));
 					assert!(!roles.exists(role));
-					assert!(roles.get(role).is_none());
 				}
 			}
 		}
 
 		mod tranche_investor {
 			use super::*;
+
+			fn assert_get(
+				roles: PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>,
+				tranche_id: TrancheId,
+				permissioned_till: Seconds,
+				is_frozen: bool,
+			) {
+				assert_eq!(
+					<PermissionRoles<Now, MinDelay, TrancheId, MaxTranches> as GetByKey<_, _>>::get(
+						&(roles, tranche_id)
+					),
+					Some(TrancheInvestorInfo {
+						tranche_id,
+						permissioned_till,
+						is_frozen,
+					})
+				);
+			}
 
 			mod success {
 				use super::*;
@@ -645,16 +679,7 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							VALIDITY
-						)))
-					);
+					assert_get(roles.clone(), into_tranche_id(1), VALIDITY, false);
 
 					assert!(roles
 						.add(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -671,16 +696,7 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY + 1
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							VALIDITY + 1
-						)))
-					);
+					assert_get(roles, into_tranche_id(1), VALIDITY + 1, false);
 				}
 
 				#[test]
@@ -702,16 +718,7 @@ mod tests {
 						into_tranche_id(0),
 						VALIDITY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(0),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(0),
-							VALIDITY
-						)))
-					);
+					assert_get(roles, into_tranche_id(0), VALIDITY, false);
 				}
 
 				#[test]
@@ -730,16 +737,7 @@ mod tests {
 						into_tranche_id(0),
 						VALIDITY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(0),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(0),
-							VALIDITY
-						)))
-					);
+					assert_get(roles.clone(), into_tranche_id(0), VALIDITY, false);
 
 					Now::pass(1);
 					assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
@@ -750,12 +748,6 @@ mod tests {
 						into_tranche_id(0),
 						1
 					))));
-					assert!(roles
-						.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(0),
-							1
-						)))
-						.is_none());
 				}
 
 				#[test]
@@ -781,26 +773,8 @@ mod tests {
 						VALIDITY
 					))));
 
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							VALIDITY
-						)))
-					);
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(2),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(2),
-							VALIDITY
-						)))
-					);
+					assert_get(roles.clone(), into_tranche_id(1), VALIDITY, false);
+					assert_get(roles, into_tranche_id(2), VALIDITY, false);
 				}
 
 				#[test]
@@ -828,16 +802,7 @@ mod tests {
 						into_tranche_id(1),
 						MIN_DELAY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							MIN_DELAY
-						)))
-					);
+					assert_get(roles, into_tranche_id(1), MIN_DELAY, false);
 				}
 
 				#[test]
@@ -859,16 +824,7 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							VALIDITY
-						)))
-					);
+					assert_get(roles.clone(), into_tranche_id(1), VALIDITY, true);
 
 					assert_ok!(roles.rm(Role::PoolRole(PoolRole::FrozenTrancheInvestor(
 						into_tranche_id(1)
@@ -882,16 +838,7 @@ mod tests {
 						into_tranche_id(1),
 						VALIDITY
 					))));
-					assert_eq!(
-						roles.get(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							Default::default()
-						))),
-						Some(Role::PoolRole(PoolRole::TrancheInvestor(
-							into_tranche_id(1),
-							VALIDITY
-						)))
-					);
+					assert_get(roles, into_tranche_id(1), VALIDITY, false);
 				}
 			}
 
@@ -977,14 +924,6 @@ mod tests {
 			assert!(roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
 			)));
-			assert_eq!(
-				roles.get(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Manager
-				)),
-				Some(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Manager
-				))
-			);
 
 			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
@@ -992,11 +931,6 @@ mod tests {
 			assert!(!roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Manager
 			)));
-			assert!(roles
-				.get(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Manager
-				))
-				.is_none());
 		}
 
 		#[test]
@@ -1009,14 +943,6 @@ mod tests {
 			assert!(roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
 			)));
-			assert_eq!(
-				roles.get(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Issuer
-				)),
-				Some(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Issuer
-				))
-			);
 
 			assert_ok!(roles.rm(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
@@ -1024,11 +950,6 @@ mod tests {
 			assert!(!roles.exists(Role::PermissionedCurrencyRole(
 				PermissionedCurrencyRole::Issuer
 			)));
-			assert!(roles
-				.get(Role::PermissionedCurrencyRole(
-					PermissionedCurrencyRole::Issuer
-				))
-				.is_none());
 		}
 
 		mod holder {
@@ -1048,14 +969,6 @@ mod tests {
 					assert!(roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(VALIDITY)
 					)));
-					assert_eq!(
-						roles.get(Role::PermissionedCurrencyRole(
-							PermissionedCurrencyRole::Holder(Default::default())
-						)),
-						Some(Role::PermissionedCurrencyRole(
-							PermissionedCurrencyRole::Holder(VALIDITY)
-						))
-					);
 
 					assert!(roles
 						.add(Role::PermissionedCurrencyRole(
@@ -1069,14 +982,6 @@ mod tests {
 					assert!(roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(VALIDITY + 1)
 					)));
-					assert_eq!(
-						roles.get(Role::PermissionedCurrencyRole(
-							PermissionedCurrencyRole::Holder(Default::default())
-						)),
-						Some(Role::PermissionedCurrencyRole(
-							PermissionedCurrencyRole::Holder(VALIDITY + 1)
-						))
-					);
 				}
 
 				#[test]
@@ -1101,11 +1006,6 @@ mod tests {
 					assert!(!roles.exists(Role::PermissionedCurrencyRole(
 						PermissionedCurrencyRole::Holder(1)
 					)));
-					assert!(roles
-						.get(Role::PermissionedCurrencyRole(
-							PermissionedCurrencyRole::Holder(Default::default())
-						))
-						.is_none());
 				}
 
 				#[test]

@@ -85,7 +85,8 @@ mod handle_transfer {
 }
 
 mod handle_tranche_tokens_transfer {
-	use cfg_types::domain_address::Domain;
+	use cfg_primitives::TrancheId;
+	use cfg_types::{domain_address::Domain, permissions::TrancheInvestorInfo};
 
 	use super::*;
 
@@ -104,16 +105,11 @@ mod handle_tranche_tokens_transfer {
 				_ => false,
 			}
 		});
-		Permissions::mock_get(move |scope, who, role| {
+		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, receiver.account());
-			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Some(role)
-				}
-				_ => None,
-			}
+			assert_eq!(*who, receiver.account());
+			assert_eq!(*tranche_id, TRANCHE_ID);
+			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -225,7 +221,7 @@ mod handle_tranche_tokens_transfer {
 			System::externalities().execute_with(|| {
 				config_mocks(ALICE_LOCAL_DOMAIN_ADDRESS);
 				Permissions::mock_has(|_, _, _| false);
-				Permissions::mock_get(|_, _, _| None);
+				Permissions::mock_get(|(_, _, _)| None);
 
 				assert_noop!(
 					LiquidityPools::handle(

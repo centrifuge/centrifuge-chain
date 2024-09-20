@@ -34,8 +34,10 @@ enum Who {
 }
 
 use cfg_traits::{Permissions, Properties};
+use cfg_types::permissions::TrancheInvestorInfo;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
+use orml_traits::GetByKey;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
@@ -59,11 +61,14 @@ pub mod pallet {
 			+ Parameter
 			+ Properties<Property = Self::Role>
 			+ Default
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ GetByKey<(Self::Storage, Self::TrancheId), Option<TrancheInvestorInfo<Self::TrancheId>>>;
 
 		type Editors: Contains<(Self::AccountId, Option<Self::Role>, Self::Scope, Self::Role)>;
 
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		#[pallet::constant]
 		type MaxRolesPerScope: Get<u32>;
@@ -308,8 +313,16 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	fn remove(scope: T::Scope, who: T::AccountId, role: T::Role) -> Result<(), DispatchError> {
 		Pallet::<T>::do_remove(scope, who, role)
 	}
+}
 
-	fn get(scope: T::Scope, who: T::AccountId, role: T::Role) -> Option<T::Role> {
-		Permission::<T>::get(who, scope).and_then(|roles| roles.get(role))
+impl<T: Config>
+	GetByKey<(T::Scope, T::AccountId, T::TrancheId), Option<TrancheInvestorInfo<T::TrancheId>>>
+	for Pallet<T>
+{
+	fn get(
+		(scope, who, tranche_id): &(T::Scope, T::AccountId, T::TrancheId),
+	) -> Option<TrancheInvestorInfo<T::TrancheId>> {
+		Permission::<T>::get(who, scope)
+			.and_then(|roles| <T::Storage as GetByKey<_, _>>::get(&(roles, *tranche_id)))
 	}
 }

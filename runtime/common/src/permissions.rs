@@ -10,13 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId};
+use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId, TrancheId};
 use cfg_traits::{Permissions, PreConditions};
 use cfg_types::{
-	permissions::{PermissionScope, PoolRole, Role},
+	permissions::{PermissionScope, PoolRole, Role, TrancheInvestorInfo},
 	tokens::CurrencyId,
 };
 use frame_support::dispatch::DispatchResult;
+use orml_traits::GetByKey;
 use pallet_investments::OrderType;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
@@ -53,8 +54,13 @@ where
 /// of a `TrancheInvestor` without having `FrozenInvestor` for the given pool
 /// and tranche.
 pub struct IsUnfrozenTrancheInvestor<P>(PhantomData<P>);
-impl<P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>>
-	PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P>
+impl<
+		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>
+			+ GetByKey<
+				(PermissionScope<PoolId, CurrencyId>, AccountId, TrancheId),
+				Option<TrancheInvestorInfo<TrancheId>>,
+			>,
+	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P>
 {
 	type Result = DispatchResult;
 
@@ -72,17 +78,13 @@ impl<P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role
 			} => (who, pool_id, tranche_id),
 		};
 
-		let is_tranche_investor = P::get(
-			PermissionScope::Pool(pool_id),
-			who.clone(),
-			// NOTE: Validity is unknown but get check does not require it
-			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Default::default())),
-		)
-		.is_some() && !P::has(
-			PermissionScope::Pool(pool_id),
-			who,
-			Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
-		);
+		let is_tranche_investor =
+			P::get(&(PermissionScope::Pool(pool_id), who.clone(), tranche_id)).is_some()
+				&& !P::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
+				);
 
 		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())

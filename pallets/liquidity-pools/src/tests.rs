@@ -1,7 +1,8 @@
+use cfg_primitives::TrancheId;
 use cfg_traits::Seconds;
 use cfg_types::{
 	domain_address::DomainAddress,
-	permissions::{PermissionScope, PoolRole, Role},
+	permissions::{PermissionScope, PoolRole, Role, TrancheInvestorInfo},
 	tokens::CurrencyId,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -223,16 +224,11 @@ mod transfer_tranche_tokens {
 				_ => false,
 			}
 		});
-		Permissions::mock_get(move |scope, who, role| {
+		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, CONTRACT_DOMAIN_ADDRESS.account());
-			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Some(role)
-				}
-				_ => None,
-			}
+			assert_eq!(*who, CONTRACT_DOMAIN_ADDRESS.account());
+			assert_eq!(*tranche_id, TRANCHE_ID);
+			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -299,7 +295,7 @@ mod transfer_tranche_tokens {
 			System::externalities().execute_with(|| {
 				config_mocks();
 				Permissions::mock_has(|_, _, _| false);
-				Permissions::mock_get(|_, _, _| None);
+				Permissions::mock_get(|(_, _, _)| None);
 
 				assert_noop!(
 					LiquidityPools::transfer_tranche_tokens(
@@ -930,25 +926,6 @@ mod update_member {
 		}
 
 		#[test]
-		fn with_wrong_time() {
-			System::externalities().execute_with(|| {
-				config_mocks();
-				Time::mock_now(|| VALID_UNTIL_SECS * 1000);
-
-				assert_noop!(
-					LiquidityPools::update_member(
-						RuntimeOrigin::signed(ALICE),
-						POOL_ID,
-						TRANCHE_ID,
-						CONTRACT_DOMAIN_ADDRESS,
-						VALID_UNTIL_SECS,
-					),
-					Error::<Runtime>::InvalidTrancheInvestorValidity,
-				);
-			})
-		}
-
-		#[test]
 		fn with_wrong_permissions() {
 			System::externalities().execute_with(|| {
 				config_mocks();
@@ -1443,16 +1420,11 @@ mod freeze {
 				_ => false,
 			}
 		});
-		Permissions::mock_get(move |scope, who, role| {
+		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Some(role)
-				}
-				_ => None,
-			}
+			assert_eq!(*who, ALICE_EVM_DOMAIN_ADDRESS.account());
+			assert_eq!(*tranche_id, TRANCHE_ID);
+			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
 
 		Pools::mock_pool_exists(|_| true);
@@ -1588,7 +1560,7 @@ mod freeze {
 						_ => false,
 					}
 				});
-				Permissions::mock_get(move |scope, _, _| {
+				Permissions::mock_get(move |(scope, _, _)| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					None
 				});
@@ -1624,16 +1596,11 @@ mod freeze {
 						_ => false,
 					}
 				});
-				Permissions::mock_get(move |scope, who, role| {
+				Permissions::mock_get(move |(scope, who, tranche_id)| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-					match role {
-						Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
-							assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
-							assert_eq!(tranche_id, TRANCHE_ID);
-							Some(role)
-						}
-						_ => None,
-					}
+					assert_eq!(*who, ALICE_EVM_DOMAIN_ADDRESS.account());
+					assert_eq!(*tranche_id, TRANCHE_ID);
+					Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 				});
 
 				assert_noop!(
@@ -1674,16 +1641,11 @@ mod unfreeze {
 				_ => false,
 			}
 		});
-		Permissions::mock_get(move |scope, who, role| {
+		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, _)) => {
-					assert_eq!(who, ALICE_EVM_DOMAIN_ADDRESS.account());
-					assert_eq!(tranche_id, TRANCHE_ID);
-					Some(role)
-				}
-				_ => None,
-			}
+			assert_eq!(*who, ALICE_EVM_DOMAIN_ADDRESS.account());
+			assert_eq!(*tranche_id, TRANCHE_ID);
+			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -1818,7 +1780,7 @@ mod unfreeze {
 						_ => false,
 					}
 				});
-				Permissions::mock_get(move |scope, _, _| {
+				Permissions::mock_get(move |(scope, _, _)| {
 					assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
 					None
 				});

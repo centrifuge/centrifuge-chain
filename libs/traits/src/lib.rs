@@ -211,8 +211,6 @@ pub trait Permissions<AccountId> {
 		who: AccountId,
 		role: Self::Role,
 	) -> Result<Self::Ok, Self::Error>;
-
-	fn get(scope: Self::Scope, who: AccountId, role: Self::Role) -> Option<Self::Role>;
 }
 
 pub trait Properties {
@@ -221,8 +219,6 @@ pub trait Properties {
 	type Ok;
 
 	fn exists(&self, property: Self::Property) -> bool;
-
-	fn get(&self, property: Self::Property) -> Option<Self::Property>;
 
 	fn empty(&self) -> bool;
 
