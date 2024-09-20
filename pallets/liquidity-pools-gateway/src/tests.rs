@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{
-	LpMessageHash, LpMessageSerializer, MessageProcessor, OutboundMessageHandler,
-};
+use cfg_traits::liquidity_pools::{LpMessageHash, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
@@ -13,10 +11,6 @@ use sp_core::{bounded::BoundedVec, crypto::AccountId32, ByteArray, H160};
 use sp_runtime::{
 	DispatchError,
 	DispatchError::{Arithmetic, BadOrigin},
-};
-use sp_std::sync::{
-	atomic::{AtomicU32, Ordering},
-	Arc,
 };
 
 use super::{
@@ -449,68 +443,6 @@ mod extrinsics {
 					LiquidityPoolsGateway::start_batch_message(RuntimeOrigin::signed(USER), DOMAIN),
 					Error::<Runtime>::MessagePackingAlreadyStarted
 				);
-			});
-		}
-
-		#[test]
-		fn process_inbound() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(TEST_EVM_CHAIN, address);
-
-				let router_id_1 = ROUTER_ID_1;
-
-				Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
-				SessionIdStore::<Runtime>::set(1);
-
-				let handler = MockLiquidityPools::mock_handle(|_, _| Ok(()));
-
-				let submessage_count = 5;
-
-				let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain_address,
-					message: Message::deserialize(&(1..=submessage_count).collect::<Vec<_>>())
-						.unwrap(),
-					router_id: ROUTER_ID_1,
-				});
-
-				let expected_weight = LP_DEFENSIVE_WEIGHT.saturating_mul(submessage_count.into());
-
-				assert_ok!(result);
-				assert_eq!(weight, expected_weight);
-				assert_eq!(handler.times(), submessage_count as u32);
-			});
-		}
-
-		#[test]
-		fn process_inbound_with_errors() {
-			new_test_ext().execute_with(|| {
-				let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-				let domain_address = DomainAddress::Evm(1, address);
-
-				let router_id_1 = ROUTER_ID_1;
-
-				Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
-				SessionIdStore::<Runtime>::set(1);
-
-				let counter = Arc::new(AtomicU32::new(0));
-
-				let handler = MockLiquidityPools::mock_handle(move |_, _| {
-					match counter.fetch_add(1, Ordering::Relaxed) {
-						2 => Err(DispatchError::Unavailable),
-						_ => Ok(()),
-					}
-				});
-
-				let (result, _) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain_address,
-					message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
-					router_id: ROUTER_ID_1,
-				});
-
-				assert_err!(result, DispatchError::Unavailable);
-				// 2 correct messages and 1 failed message processed.
-				assert_eq!(handler.times(), 3);
 			});
 		}
 	}
@@ -4016,15 +3948,12 @@ mod implementations {
 						}),
 					);
 
-					let mut counter = 0;
-
 					assert_ok!(LiquidityPoolsGateway::execute_if_requirements_are_met(
 						MESSAGE_HASH,
 						&router_ids,
 						session_id,
 						expected_proof_count,
 						domain_address,
-						&mut counter,
 					));
 					assert!(
 						PendingInboundEntries::<Runtime>::get(MESSAGE_HASH, ROUTER_ID_1).is_some()

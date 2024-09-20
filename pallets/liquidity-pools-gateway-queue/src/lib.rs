@@ -207,7 +207,9 @@ pub mod pallet {
 
 			for nonce in nonces {
 				let message =
-					MessageQueue::<T>::take(nonce).expect("valid nonce ensured by `iter_keys`");
+					MessageQueue::<T>::get(nonce).expect("valid nonce ensured by `iter_keys`");
+
+				weight_used.saturating_accrue(T::DbWeight::get().reads(1));
 
 				let remaining_weight = max_weight.saturating_sub(weight_used);
 				let next_weight = T::MessageProcessor::max_processing_weight(&message);
@@ -218,26 +220,21 @@ pub mod pallet {
 				}
 
 				let weight = match Self::process_message_and_deposit_event(nonce, message.clone()) {
-					(Ok(()), weight) => {
-						// Extra weight breakdown:
-						//
-						// 1 read for the message
-						// 1 write for the message removal
-						weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
-					}
+					(Ok(()), weight) => weight,
 					(Err(e), weight) => {
 						FailedMessageQueue::<T>::insert(nonce, (message, e));
 
-						// Extra weight breakdown:
-						//
-						// 1 read for the message
 						// 1 write for the failed message
-						// 1 write for the message removal
-						weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))
+						weight.saturating_add(T::DbWeight::get().writes(1))
 					}
 				};
 
-				weight_used = weight_used.saturating_add(weight);
+				weight_used.saturating_accrue(weight);
+
+				MessageQueue::<T>::remove(nonce);
+
+				// 1 write for removing the message
+				weight_used.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
 			weight_used

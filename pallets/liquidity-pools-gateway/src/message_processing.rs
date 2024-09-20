@@ -1,6 +1,5 @@
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LpMessageBatch, LpMessageHash, LpMessageProof, MessageHash,
-	MessageQueue, RouterProvider,
+	InboundMessageHandler, LpMessageHash, LpMessageProof, MessageHash, MessageQueue, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
@@ -323,7 +322,6 @@ impl<T: Config> Pallet<T> {
 		session_id: T::SessionId,
 		expected_proof_count: u32,
 		domain_address: DomainAddress,
-		counter: &mut u64,
 	) -> DispatchResult {
 		let mut message = None;
 		let mut votes = 0;
@@ -354,11 +352,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			for submessage in msg.submessages() {
-				counter.ensure_add_assign(1)?;
-
-				T::InboundMessageHandler::handle(domain_address.clone(), submessage)?;
-			}
+			T::InboundMessageHandler::handle(domain_address.clone(), msg)?;
 
 			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
@@ -410,7 +404,6 @@ impl<T: Config> Pallet<T> {
 		domain_address: DomainAddress,
 		message: T::Message,
 		router_id: T::RouterId,
-		counter: &mut u64,
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
 		let session_id = SessionIdStore::<T>::get();
@@ -440,7 +433,6 @@ impl<T: Config> Pallet<T> {
 			session_id,
 			expected_proof_count,
 			domain_address.clone(),
-			counter,
 		)?;
 
 		Ok(())

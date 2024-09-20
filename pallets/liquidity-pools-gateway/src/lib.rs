@@ -36,7 +36,7 @@ use cfg_traits::liquidity_pools::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{
-	dispatch::{DispatchResult, PostDispatchInfo},
+	dispatch::DispatchResult,
 	pallet_prelude::*,
 	storage::{with_transaction, TransactionOutcome},
 };
@@ -46,7 +46,6 @@ use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
-use sp_runtime::SaturatedConversion;
 use sp_std::convert::TryInto;
 
 use crate::{
@@ -464,7 +463,7 @@ pub mod pallet {
 			domain_address: DomainAddress,
 			message_hash: MessageHash,
 			router_id: T::RouterId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
@@ -499,15 +498,12 @@ pub mod pallet {
 
 			let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 
-			let mut counter = 0u64;
-
 			Self::execute_if_requirements_are_met(
 				message_hash,
 				&router_ids,
 				session_id,
 				expected_proof_count,
 				domain_address,
-				&mut counter,
 			)?;
 
 			Self::deposit_event(Event::<T>::MessageRecoveryExecuted {
@@ -515,10 +511,7 @@ pub mod pallet {
 				router_id,
 			});
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(Self::get_weight_for_batch_messages(counter)),
-				pays_fee: Pays::Yes,
-			})
+			Ok(())
 		}
 
 		/// Sends a message that initiates a message recovery using the
@@ -597,13 +590,6 @@ pub mod pallet {
 
 			T::MessageSender::send(messaging_router, T::Sender::get(), message)
 		}
-
-		fn get_weight_for_batch_messages(count: u64) -> Weight {
-			match count {
-				0 => LP_DEFENSIVE_WEIGHT / 10,
-				n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
-			}
-		}
 	}
 
 	impl<T: Config> OutboundMessageHandler for Pallet<T> {
@@ -640,53 +626,31 @@ pub mod pallet {
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
 			// The #[transactional] macro only works for functions that return a
 			// `DispatchResult` therefore, we need to manually add this here.
-			with_transaction(|| {
-				let (res, weight) = match msg {
+			let res = with_transaction(|| {
+				let res = match msg {
 					GatewayMessage::Inbound {
 						domain_address,
 						message,
 						router_id,
-					} => {
-						let mut counter = 0;
-
-						let res = Self::process_inbound_message(
-							domain_address,
-							message,
-							router_id,
-							&mut counter,
-						);
-
-						(res, Self::get_weight_for_batch_messages(counter))
-					}
+					} => Self::process_inbound_message(domain_address, message, router_id),
 					GatewayMessage::Outbound { message, router_id } => {
-						let res = T::MessageSender::send(router_id, T::Sender::get(), message);
-
-						(res, LP_DEFENSIVE_WEIGHT)
+						T::MessageSender::send(router_id, T::Sender::get(), message)
 					}
 				};
 
 				if res.is_ok() {
-					TransactionOutcome::Commit(Ok::<(DispatchResult, Weight), DispatchError>((
-						res, weight,
-					)))
+					TransactionOutcome::Commit(res)
 				} else {
-					TransactionOutcome::Rollback(Ok::<(DispatchResult, Weight), DispatchError>((
-						res, weight,
-					)))
+					TransactionOutcome::Rollback(res)
 				}
-			})
-			.expect("success is ensured by the transaction closure")
+			});
+
+			(res, LP_DEFENSIVE_WEIGHT)
 		}
 
-		/// Returns the max processing weight for a message, based on its
-		/// direction.
-		fn max_processing_weight(msg: &Self::Message) -> Weight {
-			match msg {
-				GatewayMessage::Inbound { message, .. } => {
-					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len().saturated_into())
-				}
-				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
-			}
+		/// Returns the maximum weight for processing one message.
+		fn max_processing_weight(_: &Self::Message) -> Weight {
+			LP_DEFENSIVE_WEIGHT
 		}
 	}
 
