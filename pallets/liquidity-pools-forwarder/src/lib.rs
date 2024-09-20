@@ -96,7 +96,7 @@ pub mod pallet {
 		/// The entity which acts on unwrapped messages.
 		type MessageReceiver: MessageReceiver<
 			Middleware = Self::RouterId,
-			Origin = DomainAddress,
+			Origin = Domain,
 			Message = Self::Message,
 		>;
 
@@ -225,18 +225,18 @@ pub mod pallet {
 	impl<T: Config> MessageReceiver for Pallet<T> {
 		type Message = T::Message;
 		type Middleware = T::RouterId;
-		type Origin = DomainAddress;
+		type Origin = Domain;
 
 		fn receive(
 			router_id: T::RouterId,
-			forwarding_domain_address: DomainAddress,
+			forwarding_domain: Domain,
 			message: T::Message,
 		) -> DispatchResult {
 			// Message can be unwrapped iff it was forwarded
 			//
 			// NOTE: Contract address irrelevant here because it is only necessary for
 			// outbound forwarded messages
-			let (lp_message, domain_address) = match (
+			let (lp_message, domain) = match (
 				RouterForwarding::<T>::get(&router_id),
 				message.clone().unwrap_forwarded(),
 			) {
@@ -246,21 +246,15 @@ pub mod pallet {
 						Error::<T>::SourceDomainMismatch
 					);
 
-					let domain_address = DomainAddress::Evm(
-						info.source_domain
-							.get_evm_chain_id()
-							.expect("Domain not Centrifuge; qed"),
-						info.contract,
-					);
-					Ok((lp_message, domain_address))
+					Ok((lp_message, info.source_domain))
 				}
 				(Some(_), None) => Err(Error::<T>::UnwrappingFailed),
-				(None, None) => Ok((message, forwarding_domain_address)),
+				(None, None) => Ok((message, forwarding_domain)),
 				(None, Some((_, _, _))) => Err(Error::<T>::ForwardInfoNotFound),
 			}
 			.map_err(|e: Error<T>| e)?;
 
-			T::MessageReceiver::receive(router_id, domain_address, lp_message)
+			T::MessageReceiver::receive(router_id, domain, lp_message)
 		}
 	}
 }

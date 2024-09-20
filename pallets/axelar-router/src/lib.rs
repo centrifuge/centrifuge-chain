@@ -19,7 +19,10 @@ use cfg_traits::{
 	ethereum::EthereumTransactor,
 	liquidity_pools::{MessageReceiver, MessageSender},
 };
-use cfg_types::{domain_address::DomainAddress, EVMChainId};
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	EVMChainId,
+};
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use fp_evm::PrecompileHandle;
 use frame_support::{
@@ -127,7 +130,7 @@ pub mod pallet {
 		/// The target of the messages coming from other chains
 		type Receiver: MessageReceiver<
 			Middleware = Self::Middleware,
-			Origin = DomainAddress,
+			Origin = Domain,
 			Message = Vec<u8>,
 		>;
 
@@ -238,7 +241,7 @@ pub mod pallet {
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
-						DomainAddress::Evm(chain_id, source_address),
+						Domain::Evm(chain_id),
 						payload.to_vec(),
 					)
 				}

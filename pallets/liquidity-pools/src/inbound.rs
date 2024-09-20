@@ -151,7 +151,7 @@ impl<T: Config> Pallet<T> {
 		investor: T::AccountId,
 		amount: <T as Config>::Balance,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		sending_domain: DomainAddress,
+		sending_domain: Domain,
 	) -> DispatchResult {
 		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_currency_id(currency_index)?;
@@ -160,7 +160,7 @@ impl<T: Config> Pallet<T> {
 		// origination domain
 		T::Tokens::transfer(
 			invest_id.into(),
-			&sending_domain.domain().into_account(),
+			&sending_domain.into_account(),
 			&investor,
 			amount,
 			Preservation::Expendable,
@@ -186,7 +186,7 @@ impl<T: Config> Pallet<T> {
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		destination: DomainAddress,
+		destination: Domain,
 	) -> DispatchResult {
 		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency_u128 = currency_index.index;
@@ -198,7 +198,7 @@ impl<T: Config> Pallet<T> {
 		T::Tokens::transfer(
 			invest_id.into(),
 			&investor,
-			&destination.domain().into_account(),
+			&destination.into_account(),
 			amount,
 			Preservation::Expendable,
 		)?;
@@ -211,11 +211,7 @@ impl<T: Config> Pallet<T> {
 			tranche_tokens_payout: amount.into(),
 		};
 
-		T::OutboundMessageHandler::handle(
-			T::TreasuryAccount::get(),
-			destination.domain(),
-			message,
-		)?;
+		T::OutboundMessageHandler::handle(T::TreasuryAccount::get(), destination, message)?;
 
 		Ok(())
 	}

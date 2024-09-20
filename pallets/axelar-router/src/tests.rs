@@ -118,7 +118,7 @@ mod receive {
 
 			Receiver::mock_receive(|middleware, origin, message| {
 				assert_eq!(middleware, Middleware(AxelarId::Evm(CHAIN_ID)));
-				assert_eq!(origin, DomainAddress::Evm(CHAIN_ID, LP_CONTRACT_ADDRESS));
+				assert_eq!(origin, Domain::Evm(CHAIN_ID));
 				assert_eq!(&message, MESSAGE);
 				Ok(())
 			});

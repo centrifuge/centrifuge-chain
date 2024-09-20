@@ -284,10 +284,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An incoming LP message was
 		/// detected and is further processed
-		IncomingMessage {
-			sender: DomainAddress,
-			message: Message,
-		},
+		IncomingMessage { sender: Domain, message: Message },
 	}
 
 	#[pallet::error]
@@ -1183,12 +1180,12 @@ pub mod pallet {
 
 	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = Message;
-		type Sender = DomainAddress;
+		type Sender = Domain;
 
 		#[transactional]
-		fn handle(sender: DomainAddress, msg: Message) -> DispatchResult {
+		fn handle(sender: Domain, msg: Message) -> DispatchResult {
 			Self::deposit_event(Event::<T>::IncomingMessage {
-				sender: sender.clone(),
+				sender,
 				message: msg.clone(),
 			});
 
@@ -1209,7 +1206,7 @@ pub mod pallet {
 				} => Self::handle_tranche_tokens_transfer(
 					pool_id.into(),
 					tranche_id.into(),
-					sender.domain(),
+					sender,
 					DomainAddress::new(domain.try_into()?, receiver),
 					amount.into(),
 				),
@@ -1222,7 +1219,7 @@ pub mod pallet {
 				} => Self::handle_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).account(),
+					DomainAddress::new(sender, investor).account(),
 					currency.into(),
 					amount.into(),
 				),
@@ -1235,7 +1232,7 @@ pub mod pallet {
 				} => Self::handle_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).account(),
+					DomainAddress::new(sender, investor).account(),
 					amount.into(),
 					currency.into(),
 					sender,
@@ -1248,7 +1245,7 @@ pub mod pallet {
 				} => Self::handle_cancel_deposit_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).account(),
+					DomainAddress::new(sender, investor).account(),
 					currency.into(),
 				),
 				Message::CancelRedeemRequest {
@@ -1259,7 +1256,7 @@ pub mod pallet {
 				} => Self::handle_cancel_redeem_request(
 					pool_id.into(),
 					tranche_id.into(),
-					DomainAddress::new(sender.domain(), investor).account(),
+					DomainAddress::new(sender, investor).account(),
 					currency.into(),
 					sender,
 				),
