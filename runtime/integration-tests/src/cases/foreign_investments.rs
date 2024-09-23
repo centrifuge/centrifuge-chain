@@ -176,11 +176,13 @@ pub mod utils {
 						token_symbol: BoundedVec::default(),
 					}
 				}
-			],
+			]
+			.try_into()
+			.unwrap(),
 			currency_id,
 			currency_decimals,
 			// No pool fees per default
-			vec![]
+			Default::default()
 		));
 	}
 

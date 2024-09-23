@@ -81,7 +81,6 @@ pub trait Runtime:
 		TrancheId = TrancheId,
 		InterestRate = Rate,
 		Balance = Balance,
-		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
