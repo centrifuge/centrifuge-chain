@@ -290,6 +290,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
 		let now = T::Time::now();
+
+		#[cfg(not(feature = "runtime-benchmarks"))]
 		ensure!(
 			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
 			Error::<T>::ScheduledTimeHasNotPassed

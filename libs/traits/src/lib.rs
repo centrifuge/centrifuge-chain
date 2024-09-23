@@ -154,7 +154,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn fund_depositor(_: &AccountId) {}
 
-	/// Creates the heviest pool possible
+	/// Creates the heaviest pool possible
 	#[cfg(feature = "runtime-benchmarks")]
 	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId, _num_tranches: u32) {}
 }

@@ -13,7 +13,7 @@
 
 use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_system::RawOrigin;
-use sp_std::cmp::min;
+use sp_std::{cmp::min, vec::Vec};
 
 use super::*;
 
@@ -24,7 +24,12 @@ fn init_mocks() {
 	crate::mock::PoolSystem::mock_worst_pool_changes(|changes| changes.unwrap_or(0));
 	crate::mock::PoolSystem::mock_create(|_, _, _, _, _, _, _| Ok(()));
 	crate::mock::PoolSystem::mock_update(|_, changes| Ok(UpdateState::Stored(changes)));
-	crate::mock::PoolSystem::mock_execute_update(|_| Ok(0));
+	crate::mock::PoolSystem::mock_execute_update(|_| {
+		crate::mock::PoolSystem::mock_execute_update(|_| {
+			Err(DispatchError::Other("Second time fails"))
+		});
+		Ok(0)
+	});
 	crate::mock::Permissions::mock_add(|_, _, _| Ok(()));
 	crate::mock::Permissions::mock_has(|_, _, _| true);
 }
@@ -125,13 +130,18 @@ mod benchmarks {
 
 		assert_eq!(update_state, UpdateState::Stored(n));
 
-		// TODO overpass T::MinUpdateDelay to be able to execute it correctly
-
 		#[extrinsic_call]
 		_(
 			RawOrigin::Signed(whitelisted_caller()),
 			T::PoolId::default(),
 		);
+
+		// If the above is executed correctly, executing again will fail:
+		assert!(Pallet::<T>::execute_update(
+			RawOrigin::Signed(whitelisted_caller()).into(),
+			T::PoolId::default(),
+		)
+		.is_err());
 
 		Ok(())
 	}
