@@ -117,6 +117,7 @@ pallet-interest-accrual = { workspace = true, features = ["std"] }
 pallet-investments = { workspace = true, features = ["std"] }
 pallet-keystore = { workspace = true, features = ["std"] }
 pallet-liquidity-pools = { workspace = true, features = ["std"] }
+pallet-liquidity-pools-forwarder = { workspace = true, features = ["std"] }
 pallet-liquidity-pools-gateway = { workspace = true, features = ["std"] }
 pallet-liquidity-pools-gateway-queue = { workspace = true, features = ["std"] }
 pallet-liquidity-rewards = { workspace = true, features = ["std"] }
