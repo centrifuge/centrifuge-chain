@@ -978,8 +978,6 @@ where
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
 	pub currency: TrancheCurrency,
-	pub supply: Balance,
-	pub price: BalanceRatio,
 	pub invest: Balance,
 	pub redeem: Balance,
 	pub min_risk_buffer: Perquintill,
