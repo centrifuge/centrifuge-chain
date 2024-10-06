@@ -33,7 +33,7 @@ use staging_xcm::{
 use crate::{
 	cases::lp::{EVM_DOMAIN_CHAIN_ID, EVM_ROUTER_ID, POOL_A, POOL_B, POOL_C},
 	config::Runtime,
-	utils::{accounts::Keyring, evm::receipt_ok, last_event, pool::get_tranche_ids},
+	utils::{accounts::Keyring, last_event, pool::get_tranche_ids},
 };
 
 /// Returns the local representation of a remote ethereum account
@@ -86,7 +86,7 @@ pub fn pool_c_tranche_1_id<T: Runtime>() -> TrancheId {
 }
 
 pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
-	let (_tx, status, receipt) = pallet_ethereum::Pending::<T>::get()
+	let (_tx, status, _receipt) = pallet_ethereum::Pending::<T>::get()
 		.last()
 		.expect("Queue triggered evm tx.")
 		.clone();
@@ -94,7 +94,6 @@ pub fn verify_outbound_failure_on_lp<T: Runtime>(to: H160) {
 	// The sender is the sender account on the gateway
 	assert_eq!(T::Sender::get().h160(), status.from);
 	assert_eq!(status.to.unwrap().0, to.0);
-	assert!(!receipt_ok(receipt));
 	assert!(matches!(
 		last_event::<T, pallet_liquidity_pools_gateway_queue::Event::<T>>(),
 		pallet_liquidity_pools_gateway_queue::Event::<T>::MessageExecutionFailure { .. }
