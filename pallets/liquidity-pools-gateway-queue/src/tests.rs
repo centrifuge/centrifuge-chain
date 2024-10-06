@@ -6,7 +6,7 @@ use sp_runtime::{traits::BadOrigin, DispatchError};
 
 use crate::{
 	mock::{new_test_ext, Processor, Queue, Runtime, RuntimeEvent as MockEvent, RuntimeOrigin},
-	Error, Event, FailedMessageQueue, MessageQueue,
+	Error, Event, FailedMessageQueue, LastProcessedNonce, MessageQueue,
 };
 
 mod utils {
@@ -181,7 +181,10 @@ mod process_failed_message {
 }
 
 mod message_queue_impl {
+	use sp_arithmetic::ArithmeticError::Overflow;
+
 	use super::*;
+	use crate::MessageNonceStore;
 
 	#[test]
 	fn success() {
@@ -195,6 +198,17 @@ mod message_queue_impl {
 			assert_eq!(MessageQueue::<Runtime>::get(nonce), Some(message));
 
 			event_exists(Event::<Runtime>::MessageSubmitted { nonce, message })
+		});
+	}
+
+	#[test]
+	fn error_on_max_nonce() {
+		new_test_ext().execute_with(|| {
+			let message = 1;
+
+			MessageNonceStore::<Runtime>::set(u64::MAX);
+
+			assert_noop!(Queue::queue(message), Overflow);
 		});
 	}
 }
@@ -220,6 +234,7 @@ mod on_idle {
 			assert_eq!(handle.times(), 3);
 			assert_eq!(MessageQueue::<Runtime>::iter().count(), 0);
 			assert_eq!(FailedMessageQueue::<Runtime>::iter().count(), 0);
+			assert_eq!(LastProcessedNonce::<Runtime>::get(), 3)
 		});
 	}
 
@@ -245,6 +260,7 @@ mod on_idle {
 			assert_eq!(weight, PROCESS_WEIGHT);
 			assert_eq!(handle.times(), 5);
 			assert_eq!(MessageQueue::<Runtime>::iter().count(), 0);
+			assert_eq!(LastProcessedNonce::<Runtime>::get(), 5)
 		});
 	}
 
@@ -265,6 +281,51 @@ mod on_idle {
 			assert_eq!(handle.times(), 3);
 			assert_eq!(MessageQueue::<Runtime>::iter().count(), 0);
 			assert_eq!(FailedMessageQueue::<Runtime>::iter().count(), 1);
+			assert_eq!(LastProcessedNonce::<Runtime>::get(), 3)
+		});
+	}
+
+	#[test]
+	fn with_no_messages() {
+		new_test_ext().execute_with(|| {
+			let _ = Queue::on_idle(0, TOTAL_WEIGHT);
+
+			assert_eq!(LastProcessedNonce::<Runtime>::get(), 0)
+		});
+	}
+
+	#[test]
+	fn with_skipped_message_nonce() {
+		new_test_ext().execute_with(|| {
+			(1..=3).for_each(|i| Queue::queue(i * 10).unwrap());
+
+			Processor::mock_max_processing_weight(|_| PROCESS_LIMIT_WEIGHT);
+			let handle = Processor::mock_process(|_| (Ok(()), PROCESS_WEIGHT));
+
+			// Manually process the 2nd nonce, the on_idle hook should skip it and process
+			// the remaining nonces.
+			assert_ok!(Queue::process_message(RuntimeOrigin::signed(1), 2));
+
+			let weight = Queue::on_idle(0, TOTAL_WEIGHT);
+
+			assert_eq!(weight, PROCESS_WEIGHT * 2);
+			assert_eq!(handle.times(), 3);
+			assert_eq!(MessageQueue::<Runtime>::iter().count(), 0);
+			assert_eq!(FailedMessageQueue::<Runtime>::iter().count(), 0);
+			assert_eq!(LastProcessedNonce::<Runtime>::get(), 3)
+		});
+	}
+
+	#[test]
+	fn max_messages() {
+		new_test_ext().execute_with(|| {
+			LastProcessedNonce::<Runtime>::set(u64::MAX);
+
+			let _ = Queue::on_idle(0, TOTAL_WEIGHT);
+
+			event_exists(Event::<Runtime>::MaxNumberOfMessagesWasReached {
+				last_processed_nonce: u64::MAX,
+			})
 		});
 	}
 }

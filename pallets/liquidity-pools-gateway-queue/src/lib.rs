@@ -100,7 +100,9 @@ pub mod pallet {
 		},
 
 		/// Maximum number of messages was reached.
-		MaxNumberOfMessagesWasReached,
+		MaxNumberOfMessagesWasReached {
+			last_processed_nonce: T::MessageNonce,
+		},
 	}
 
 	#[pallet::error]
@@ -214,8 +216,10 @@ pub mod pallet {
 			let mut weight_used = T::DbWeight::get().reads(1);
 
 			loop {
-				if let Err(_) = last_processed_nonce.ensure_add_assign(One::one()) {
-					Self::deposit_event(Event::<T>::MaxNumberOfMessagesWasReached);
+				if last_processed_nonce.ensure_add_assign(One::one()).is_err() {
+					Self::deposit_event(Event::<T>::MaxNumberOfMessagesWasReached {
+						last_processed_nonce,
+					});
 
 					break;
 				}
@@ -232,8 +236,15 @@ pub mod pallet {
 
 				let message = match MessageQueue::<T>::get(last_processed_nonce) {
 					Some(msg) => msg,
-					// No message found, we can stop.
-					None => break,
+					// No message found at this nonce, we can skip it.
+					None => {
+						LastProcessedNonce::<T>::set(last_processed_nonce);
+
+						// 1 write for setting the last processed nonce
+						weight_used.saturating_accrue(T::DbWeight::get().writes(1));
+
+						continue;
+					}
 				};
 
 				let remaining_weight = max_weight.saturating_sub(weight_used);
@@ -244,7 +255,7 @@ pub mod pallet {
 					break;
 				}
 
-				let weight = match Self::process_message_and_deposit_event(
+				let processing_weight = match Self::process_message_and_deposit_event(
 					last_processed_nonce,
 					message.clone(),
 				) {
@@ -257,14 +268,15 @@ pub mod pallet {
 					}
 				};
 
-				weight_used.saturating_accrue(weight);
+				weight_used.saturating_accrue(processing_weight);
 
 				MessageQueue::<T>::remove(last_processed_nonce);
 
-				// 1 write for removing the message
-				weight_used.saturating_accrue(T::DbWeight::get().writes(1));
-
 				LastProcessedNonce::<T>::set(last_processed_nonce);
+
+				// 1 write for removing the message
+				// 1 write for setting the last processed nonce
+				weight_used.saturating_accrue(T::DbWeight::get().writes(2));
 			}
 
 			weight_used
