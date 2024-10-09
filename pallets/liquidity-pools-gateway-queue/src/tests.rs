@@ -323,7 +323,7 @@ mod on_idle {
 
 			let _ = Queue::on_idle(0, TOTAL_WEIGHT);
 
-			event_exists(Event::<Runtime>::MaxNumberOfMessagesWasReached {
+			event_exists(Event::<Runtime>::MaxNumberOfMessagesReached {
 				last_processed_nonce: u64::MAX,
 			})
 		});

@@ -100,7 +100,7 @@ pub mod pallet {
 		},
 
 		/// Maximum number of messages was reached.
-		MaxNumberOfMessagesWasReached {
+		MaxNumberOfMessagesReached {
 			last_processed_nonce: T::MessageNonce,
 		},
 	}
@@ -217,7 +217,7 @@ pub mod pallet {
 
 			loop {
 				if last_processed_nonce.ensure_add_assign(One::one()).is_err() {
-					Self::deposit_event(Event::<T>::MaxNumberOfMessagesWasReached {
+					Self::deposit_event(Event::<T>::MaxNumberOfMessagesReached {
 						last_processed_nonce,
 					});
 
