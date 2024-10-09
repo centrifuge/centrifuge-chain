@@ -35,14 +35,17 @@ use cfg_traits::liquidity_pools::{
 	OutboundMessageHandler, RouterProvider,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{
+	dispatch::DispatchResult,
+	pallet_prelude::*,
+	storage::{with_transaction, TransactionOutcome},
+};
 use frame_system::pallet_prelude::{ensure_signed, OriginFor};
 use message::GatewayMessage;
 use orml_traits::GetByKey;
 pub use pallet::*;
 use parity_scale_codec::FullCodec;
 use sp_arithmetic::traits::{BaseArithmetic, EnsureAddAssign, One};
-use sp_runtime::SaturatedConversion;
 use sp_std::convert::TryInto;
 
 use crate::{
@@ -469,8 +472,8 @@ pub mod pallet {
 				router_ids.iter().any(|x| x == &router_id),
 				Error::<T>::UnknownRouter
 			);
-			// Message recovery shouldn't be supported for setups that have less than 1
-			// router since no proofs are required in that case.
+			// Message recovery shouldn't be supported for setups that have less than 2
+			// routers since no proofs are required in that case.
 			ensure!(router_ids.len() > 1, Error::<T>::NotEnoughRoutersForDomain);
 
 			let session_id = SessionIdStore::<T>::get();
@@ -621,45 +624,33 @@ pub mod pallet {
 		type Message = GatewayMessage<T::Message, T::RouterId>;
 
 		fn process(msg: Self::Message) -> (DispatchResult, Weight) {
-			match msg {
-				GatewayMessage::Inbound {
-					domain_address,
-					message,
-					router_id,
-				} => {
-					let mut counter = 0;
-
-					let res = Self::process_inbound_message(
+			// The #[transactional] macro only works for functions that return a
+			// `DispatchResult` therefore, we need to manually add this here.
+			let res = with_transaction(|| {
+				let res = match msg {
+					GatewayMessage::Inbound {
 						domain_address,
 						message,
 						router_id,
-						&mut counter,
-					);
+					} => Self::process_inbound_message(domain_address, message, router_id),
+					GatewayMessage::Outbound { message, router_id } => {
+						T::MessageSender::send(router_id, T::Sender::get(), message)
+					}
+				};
 
-					let weight = match counter {
-						0 => LP_DEFENSIVE_WEIGHT / 10,
-						n => LP_DEFENSIVE_WEIGHT.saturating_mul(n),
-					};
-
-					(res, weight)
+				if res.is_ok() {
+					TransactionOutcome::Commit(res)
+				} else {
+					TransactionOutcome::Rollback(res)
 				}
-				GatewayMessage::Outbound { message, router_id } => {
-					let res = T::MessageSender::send(router_id, T::Sender::get(), message);
+			});
 
-					(res, LP_DEFENSIVE_WEIGHT)
-				}
-			}
+			(res, LP_DEFENSIVE_WEIGHT)
 		}
 
-		/// Returns the max processing weight for a message, based on its
-		/// direction.
-		fn max_processing_weight(msg: &Self::Message) -> Weight {
-			match msg {
-				GatewayMessage::Inbound { message, .. } => {
-					LP_DEFENSIVE_WEIGHT.saturating_mul(message.submessages().len().saturated_into())
-				}
-				GatewayMessage::Outbound { .. } => LP_DEFENSIVE_WEIGHT,
-			}
+		/// Returns the maximum weight for processing one message.
+		fn max_processing_weight(_: &Self::Message) -> Weight {
+			LP_DEFENSIVE_WEIGHT
 		}
 	}
 
