@@ -1352,11 +1352,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
-		0 // Disable update delay in benchmarks
-	} else {
-		7 * SECONDS_PER_DAY // 7 days notice
-	};
+	pub const MinUpdateDelay: u64 = 7 * SECONDS_PER_DAY; // 7 days notice
 
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
 		0 // Disable challenge time in benchmarks
@@ -1473,17 +1469,14 @@ impl PoolUpdateGuard for UpdateGuard {
 }
 
 impl pallet_pool_registry::Config for Runtime {
-	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
-	type PoolFeesInspect = PoolFees;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;

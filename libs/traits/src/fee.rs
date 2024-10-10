@@ -12,7 +12,7 @@
 
 use frame_support::pallet_prelude::TypeInfo;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_runtime::DispatchResult;
+use sp_runtime::{traits::Get, DispatchResult};
 use strum::{EnumCount, EnumIter};
 
 /// The priority segregation of pool fees
@@ -30,10 +30,7 @@ pub enum PoolFeeBucket {
 }
 
 /// Trait to add fees to a pool
-pub trait PoolFeesMutate {
-	type PoolId;
-	type FeeInfo;
-
+pub trait PoolFeesMutate: PoolFeesInspect {
 	/// Add a new fee to the pool and bucket.
 	///
 	/// NOTE: Assumes call permissions are separately checked beforehand.
@@ -44,8 +41,10 @@ pub trait PoolFeesMutate {
 pub trait PoolFeesInspect {
 	type PoolId;
 
-	/// Returns the maximum number of pool fees required for accurate weights
-	fn get_max_fee_count() -> u32;
+	type FeeInfo;
+
+	/// Maximum number of pool fees required for accurate weights
+	type MaxFeesPerPool: Get<u32>;
 
 	/// Returns the maximum number of pool fees per bucket required for accurate
 	/// weights
@@ -57,6 +56,12 @@ pub trait PoolFeesInspect {
 	/// Returns the current amount of active fees for the given pool and bucket
 	/// pair
 	fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: PoolFeeBucket) -> u32;
+
+	/// Worst list of pool fee info
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_pool_fee_infos(
+		n: u32,
+	) -> frame_support::BoundedVec<Self::FeeInfo, Self::MaxFeesPerPool>;
 }
 
 /// Trait to prorate a fee amount to a rate or amount

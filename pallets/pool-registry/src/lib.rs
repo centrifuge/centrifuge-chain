@@ -19,26 +19,18 @@
 #![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	fee::{PoolFeeBucket, PoolFeesInspect},
-	AssetMetadataOf, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
+	fee::PoolFeeBucket, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PoolFeeInfo, PoolMetadata, PoolRegistrationStatus},
-	tokens::CustomMetadata,
+	pools::PoolFeeInfo,
 };
 use frame_support::{pallet_prelude::*, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_traits::asset_registry::{Inspect, Mutate};
 pub use pallet::*;
-use parity_scale_codec::{HasCompact, MaxEncodedLen};
+use parity_scale_codec::MaxEncodedLen;
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, BadOrigin},
-	FixedPointNumber, FixedPointOperand,
-};
-use sp_std::vec::Vec;
-use staging_xcm::VersionedLocation;
+use sp_runtime::traits::BadOrigin;
 pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -48,8 +40,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod weights;
-
-type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
 
 type PoolChangesOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
 	<T as frame_system::Config>::AccountId,
@@ -65,10 +55,30 @@ type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWrite
 	<T as Config>::PoolId,
 >>::Policy;
 
-type PoolFeeInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
+type PoolFeeInput<T> = (
+	PoolFeeBucket,
+	PoolFeeInfo<
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::Balance,
+		<T as Config>::InterestRate,
+	>,
+);
+
+type MaxTranches<T> = <<T as Config>::ModifyPool as PoolMutate<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::PoolId,
->>::PoolFeeInput;
+>>::MaxTranches;
+
+type MaxFeesPerPool<T> = <<T as Config>::ModifyPool as PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::PoolId,
+>>::MaxFeesPerPool;
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub enum PoolRegistrationStatus {
+	Registered,
+	Unregistered,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -78,62 +88,33 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Balance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
+		type Balance: Parameter + MaxEncodedLen;
 
-		type PoolId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ core::fmt::Debug;
+		type PoolId: Parameter + Copy + MaxEncodedLen;
 
-		/// A fixed-point number which represents an
-		/// interest rate.
-		type InterestRate: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+		/// A fixed-point number which represents an interest rate.
+		type InterestRate: Parameter + MaxEncodedLen;
 
 		type ModifyPool: PoolMutate<
 			Self::AccountId,
 			Self::PoolId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
-			PoolFeeInput = (
-				PoolFeeBucket,
-				PoolFeeInfo<Self::AccountId, Self::Balance, Self::InterestRate>,
-			),
+			PoolFeeInput = PoolFeeInput<Self>,
 		>;
 
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
 
-		type CurrencyId: Parameter + Copy + From<(Self::PoolId, Self::TrancheId)>;
+		type CurrencyId: Parameter;
 
-		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
+		type TrancheId;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		/// Max number of Tranches
-		#[pallet::constant]
-		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
-
 		/// Max size of Metadata
 		#[pallet::constant]
-		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
+		type MaxSizeMetadata: Get<u32>;
 
 		type Permission: Permissions<
 			Self::AccountId,
@@ -141,21 +122,6 @@ pub mod pallet {
 			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
-
-		/// The registry type used for retrieving and updating tranche metadata
-		/// as part of the `PoolMetadata` trait implementation
-		type AssetRegistry: Mutate<
-				AssetId = Self::CurrencyId,
-				Balance = Self::Balance,
-				CustomMetadata = CustomMetadata,
-			> + Inspect<
-				AssetId = Self::CurrencyId,
-				Balance = Self::Balance,
-				CustomMetadata = CustomMetadata,
-			>;
-
-		/// The source of truth for the pool fees counters;
-		type PoolFeesInspect: PoolFeesInspect<PoolId = Self::PoolId>;
 
 		/// Weight Information
 		type WeightInfo: WeightInfo;
@@ -167,7 +133,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_metadata)]
 	pub(crate) type PoolMetadata<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, PoolMetadataOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, BoundedVec<u8, T::MaxSizeMetadata>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pools)]
@@ -181,8 +147,6 @@ pub mod pallet {
 		Registered { pool_id: T::PoolId },
 		/// A pool update was registered.
 		UpdateRegistered { pool_id: T::PoolId },
-		/// A pool update was executed.
-		UpdateExecuted { pool_id: T::PoolId },
 		/// A pool update was stored for later execution.
 		UpdateStored { pool_id: T::PoolId },
 		/// Pool metadata was set.
@@ -194,18 +158,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Invalid metadata passed
-		BadMetadata,
 		/// A Pool with the given ID was already registered in the past
 		PoolAlreadyRegistered,
-		/// No metadata for the given currency found
-		MetadataForCurrencyNotFound,
-		/// No Metadata found for the given PoolId
-		NoSuchPoolMetadata,
-		/// The given tranche token name exceeds the length limit
-		TrancheTokenNameTooLong,
-		/// The given tranche symbol name exceeds the length limit
-		TrancheSymbolNameTooLong,
 	}
 
 	#[pallet::call]
@@ -237,12 +191,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
-			tranche_inputs: Vec<TrancheInputOf<T>>,
+			tranche_inputs: BoundedVec<TrancheInputOf<T>, MaxTranches<T>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
-			metadata: Option<Vec<u8>>,
+			metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>>,
 			write_off_policy: PolicyOf<T>,
-			pool_fees: Vec<PoolFeeInputOf<T>>,
+			pool_fees: BoundedVec<PoolFeeInput<T>, MaxFeesPerPool<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -291,13 +245,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(
-			T::MaxTranches::get(),
-			T::PoolFeesInspect::get_max_fee_count()).max(
-				T::WeightInfo::update_and_execute(T::MaxTranches::get(),
-				T::PoolFeesInspect::get_max_fee_count()
-			))
-		)]
+		#[pallet::weight(T::WeightInfo::update(MaxTranches::<T>::get()))]
 		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -328,22 +276,13 @@ pub mod pallet {
 			Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 			let weight = match state {
-				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0, 0),
-				UpdateState::Executed(num_tranches) => {
-					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					T::WeightInfo::update_and_execute(
-						num_tranches,
-						T::PoolFeesInspect::get_pool_fee_count(pool_id),
-					)
-				}
+				UpdateState::NoExecution => T::WeightInfo::update(0),
 				UpdateState::Stored(num_tranches) => {
 					Self::deposit_event(Event::UpdateStored { pool_id });
-					T::WeightInfo::update_no_execution(
-						num_tranches,
-						T::PoolFeesInspect::get_pool_fee_count(pool_id),
-					)
+					T::WeightInfo::update(num_tranches)
 				}
 			};
+
 			Ok(Some(weight).into())
 		}
 
@@ -353,10 +292,7 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_update(
-			T::MaxTranches::get(),
-			T::PoolFeesInspect::get_max_fee_count()
-		))]
+		#[pallet::weight(T::WeightInfo::execute_update(MaxTranches::<T>::get()))]
 		#[pallet::call_index(2)]
 		pub fn execute_update(
 			origin: OriginFor<T>,
@@ -365,23 +301,20 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let num_tranches = T::ModifyPool::execute_update(pool_id)?;
-			let num_fees = T::PoolFeesInspect::get_pool_fee_count(pool_id);
-			Ok(Some(T::WeightInfo::execute_update(num_tranches, num_fees)).into())
+
+			Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(
-			metadata.len().try_into().unwrap_or(u32::MAX),
-			T::PoolFeesInspect::get_max_fee_count()
-		))]
+		#[pallet::weight(T::WeightInfo::set_metadata())]
 		#[pallet::call_index(3)]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			metadata: Vec<u8>,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -400,84 +333,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn do_set_metadata(pool_id: T::PoolId, metadata: Vec<u8>) -> DispatchResult {
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
-				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
+		fn do_set_metadata(
+			pool_id: T::PoolId,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
+		) -> DispatchResult {
+			PoolMetadata::<T>::insert(pool_id, metadata.clone());
 
-			PoolMetadata::<T>::insert(
-				pool_id,
-				PoolMetadataOf::<T> {
-					metadata: checked_metadata.clone(),
-				},
-			);
-
-			Self::deposit_event(Event::MetadataSet {
-				pool_id,
-				metadata: checked_metadata,
-			});
+			Self::deposit_event(Event::MetadataSet { pool_id, metadata });
 
 			Ok(())
-		}
-	}
-
-	impl<T: Config> cfg_traits::PoolMetadata<T::Balance, VersionedLocation> for Pallet<T> {
-		type AssetMetadata = AssetMetadataOf<T::AssetRegistry>;
-		type CustomMetadata = CustomMetadata;
-		type PoolId = T::PoolId;
-		type PoolMetadata = PoolMetadataOf<T>;
-		type TrancheId = T::TrancheId;
-
-		fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError> {
-			PoolMetadata::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPoolMetadata.into())
-		}
-
-		fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult {
-			Self::do_set_metadata(pool_id, metadata)
-		}
-
-		fn get_tranche_token_metadata(
-			pool_id: Self::PoolId,
-			tranche_id: Self::TrancheId,
-		) -> Result<Self::AssetMetadata, DispatchError> {
-			let currency_id = (pool_id, tranche_id).into();
-			T::AssetRegistry::metadata(&currency_id)
-				.ok_or(Error::<T>::MetadataForCurrencyNotFound.into())
-		}
-
-		fn create_tranche_token_metadata(
-			pool_id: Self::PoolId,
-			tranche: Self::TrancheId,
-			metadata: Self::AssetMetadata,
-		) -> DispatchResult {
-			let currency_id = (pool_id, tranche).into();
-			T::AssetRegistry::register_asset(Some(currency_id), metadata)
-		}
-
-		fn update_tranche_token_metadata(
-			pool_id: Self::PoolId,
-			tranche: Self::TrancheId,
-			decimals: Option<u32>,
-			name: Option<Vec<u8>>,
-			symbol: Option<Vec<u8>>,
-			existential_deposit: Option<T::Balance>,
-			location: Option<Option<VersionedLocation>>,
-			additional: Option<Self::CustomMetadata>,
-		) -> DispatchResult {
-			let currency_id = (pool_id, tranche).into();
-			T::AssetRegistry::update_asset(
-				currency_id,
-				decimals,
-				name.map(|s| s.try_into())
-					.transpose()
-					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?,
-				symbol
-					.map(|s| s.try_into())
-					.transpose()
-					.map_err(|_| Error::<T>::TrancheSymbolNameTooLong)?,
-				existential_deposit,
-				location,
-				additional,
-			)
 		}
 	}
 }

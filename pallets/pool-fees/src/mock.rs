@@ -360,7 +360,7 @@ pub(crate) fn init_mocks() {
 		Ok(Change::AppendFee(
 			PoolFees::generate_fee_id().unwrap(),
 			PoolFeeBucket::Top,
-			<PoolFees as cfg_traits::benchmarking::PoolFeesBenchmarkHelper>::get_default_fixed_fee_info(),
+			PoolFees::get_default_fixed_fee_info(),
 		))
 	});
 

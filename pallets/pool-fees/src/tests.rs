@@ -1443,7 +1443,7 @@ mod inspect {
 	fn max_fee_count() {
 		ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
 			assert_eq!(
-				PoolFees::get_max_fee_count(),
+				<PoolFees as PoolFeesInspect>::MaxFeesPerPool::get(),
 				<Runtime as Config>::MaxFeesPerPool::get()
 			);
 		})

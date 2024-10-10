@@ -19,11 +19,8 @@ scale-info = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
-orml-asset-registry = { workspace = true }
-orml-traits = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-staging-xcm = { workspace = true }
 
 cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
@@ -31,21 +28,9 @@ cfg-types = { workspace = true }
 
 # Benchmarking dependencies - optional
 frame-benchmarking = { workspace = true, optional = true }
-pallet-investments = { workspace = true, optional = true }
-pallet-pool-fees = { workspace = true, optional = true }
-pallet-pool-system = { workspace = true, optional = true }
-pallet-timestamp = { workspace = true, optional = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
-cfg-test-utils = { workspace = true, default-features = true }
-orml-tokens = { workspace = true, default-features = true }
-pallet-balances = { workspace = true, default-features = true }
-pallet-permissions = { workspace = true, default-features = true }
-pallet-pool-fees = { workspace = true, default-features = true }
-pallet-pool-system = { workspace = true, default-features = true }
-pallet-timestamp = { workspace = true, default-features = true }
-serde = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
@@ -60,30 +45,18 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "cfg-primitives/std",
-  "orml-traits/std",
-  "orml-asset-registry/std",
   "frame-benchmarking/std",
-  "pallet-investments/std",
   "scale-info/std",
-  "staging-xcm/std",
-  "pallet-pool-fees/std",
-  "pallet-pool-system/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
-  "pallet-investments/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
-  "cfg-test-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "pallet-pool-fees/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "pallet-pool-system/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
@@ -92,8 +65,5 @@ try-runtime = [
   "frame-support/try-runtime",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
-  "orml-asset-registry/try-runtime",
-  "pallet-pool-fees/try-runtime",
-  "pallet-investments/try-runtime",
   "sp-runtime/try-runtime",
 ]
