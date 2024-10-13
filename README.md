@@ -33,8 +33,6 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**anchors-v2**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors-v2) ([docs](https://reference.centrifuge.io/pallet_anchors_v2/index.html)): Second version of the pallet used to store document hashes on-chain.
 
-- [**axelar-routers**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools-gateway/pallet-axelar-router) ([docs](https://reference.centrifuge.io/pallet-axelar-router/index.html)): Pallet that communicates with other chains through axelar.
-
 - [**block-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/block-rewards) ([docs](https://reference.centrifuge.io/pallet_block_rewards/index.html)): Provides means of configuring and distributing block rewards to collators as well as the annual treasury inflation.
 
 - [**bridge**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/bridge) ([docs](https://reference.centrifuge.io/pallet_bridge/index.html)): Connecting [ChainBridge](https://github.com/centrifuge/chainbridge-substrate) to transfer tokens to and from Ethereum.
@@ -82,8 +80,6 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 - [**restricted-xtokens**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/restricted-xtokens) ([docs](https://reference.centrifuge.io/pallet_restricted_xtokens/index.html)): Wrapper pallet over `orml-xtokens` which allows the runtime to create arbitrary filters for transfers of x-chain-transfers.
 
 - [**rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/rewards) ([docs](https://reference.centrifuge.io/pallet_rewards/index.html)): Implement a [scalable reward distribution](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism that can be used for other pallets to create different rewards systems.
-
-- [**swaps**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/swaps) ([docs](https://reference.centrifuge.io/pallet_swaps/index.html)): Enables applying swaps independently of previous swaps in the same or opposite directions.
 
 - [**token-mux**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/token-mux) ([docs](https://reference.centrifuge.io/pallet_token_mux/index.html)): Enables proxying variants of the same foreign assets to a local asset representation.
 
