@@ -574,8 +574,11 @@ pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessag
 	///
 	/// Directionality: Centrifuge <-> EVM Domain.
 	Forwarded {
+		/// The domain expected to be read for the destination
 		source_domain: SerializableDomain,
-		forwarding_contract: H160,
+		/// The contract where the message should be forwarded
+		forwarding_contract: [u8; 20],
+		/// The message
 		message: ForwardContent,
 	},
 }
@@ -657,7 +660,7 @@ impl LpMessageForwarded for Message {
 			} => source_domain
 				.try_into()
 				.ok()
-				.map(|domain| (domain, forwarding_contract, message.into())),
+				.map(|domain| (domain, forwarding_contract.into(), message.into())),
 			_ => None,
 		}
 	}
@@ -669,7 +672,7 @@ impl LpMessageForwarded for Message {
 	) -> Result<Self, DispatchError> {
 		Ok(Self::Forwarded {
 			source_domain: source_domain.into(),
-			forwarding_contract,
+			forwarding_contract: forwarding_contract.into(),
 			message: message.try_into()?,
 		})
 	}
@@ -1088,7 +1091,7 @@ mod tests {
 		test_encode_decode_identity(
 			Message::Batch(
 				BatchMessages::try_from(vec![
-					Message::AddPool { pool_id: 0 },
+					Message::AddPool { pool_id: 5 },
 					Message::AllowAsset {
 						currency: TOKEN_ID,
 						pool_id: POOL_ID,
@@ -1099,7 +1102,7 @@ mod tests {
 			concat!(
 				"04",                                                 // Batch index
 				"0009",                                               // AddPool length
-				"0a0000000000000000",                                 // AddPool content
+				"0a0000000000000005",                                 // AddPool content
 				"0019",                                               // AddAsset length
 				"0c0000000000bce1a40000000000000000000000000eb5ec7b", // AllowAsset content
 			),
@@ -1121,6 +1124,23 @@ mod tests {
 			gmpf::from_slice::<Message>(&hex::decode(encoded).unwrap()),
 			gmpf::Error::Message("A submessage can not be a batch".into()),
 		);
+	}
+
+	#[test]
+	fn forwarded_message() {
+		test_encode_decode_identity(
+			Message::Forwarded {
+				source_domain: Domain::Evm(1284).into(),
+				forwarding_contract: default_address_20().into(),
+				message: Message::AddPool { pool_id: 5 }.try_into().unwrap(),
+			},
+			concat!(
+				"1d",                                       // Forwarded index
+				"010000000000000504",                       // Domain
+				"1231231231231231231231231231231231231231", // forwarding_contract
+				"0a0000000000000005",                       // Inner AddPool message
+			),
+		)
 	}
 
 	/// Verify the identity property of decode . encode on a Message value and

@@ -90,11 +90,11 @@ where
 
 impl<Sender, Receiver> MessageReceiver for MessageSerializer<Sender, Receiver>
 where
-	Receiver: MessageReceiver<Middleware = RouterId, Origin = DomainAddress, Message = Message>,
+	Receiver: MessageReceiver<Middleware = RouterId, Origin = Domain, Message = Message>,
 {
 	type Message = Vec<u8>;
 	type Middleware = RouterId;
-	type Origin = DomainAddress;
+	type Origin = Domain;
 
 	fn receive(
 		middleware: Self::Middleware,

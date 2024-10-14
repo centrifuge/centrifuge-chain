@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
+use cfg_primitives::{AccountId, Balance, BlockNumber, PoolId, TrancheId, SECONDS_PER_YEAR};
 use cfg_traits::Seconds;
 use cfg_types::{
 	fixed_point::Rate,
@@ -150,4 +150,8 @@ pub fn get_tranche_ids<T: Runtime>(pool_id: PoolId) -> Vec<TrancheId> {
 		.tranches
 		.ids
 		.into_inner()
+}
+
+pub fn get_default_tranche_investor_validity<T: Runtime>(block: BlockNumber) -> Seconds {
+	SECONDS_PER_YEAR + Seconds::from(block * 12)
 }

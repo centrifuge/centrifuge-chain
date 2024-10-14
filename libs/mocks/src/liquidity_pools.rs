@@ -6,7 +6,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type DomainAddress;
+		type Domain;
 		type Message;
 	}
 
@@ -18,7 +18,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_handle(
-			f: impl Fn(T::DomainAddress, T::Message) -> DispatchResult + 'static,
+			f: impl Fn(T::Domain, T::Message) -> DispatchResult + 'static,
 		) -> CallHandler {
 			register_call!(move |(sender, msg)| f(sender, msg))
 		}
@@ -26,7 +26,7 @@ pub mod pallet {
 
 	impl<T: Config> InboundMessageHandler for Pallet<T> {
 		type Message = T::Message;
-		type Sender = T::DomainAddress;
+		type Sender = T::Domain;
 
 		fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
 			execute_call!((sender, msg))

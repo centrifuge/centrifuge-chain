@@ -129,11 +129,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 		Ok(())
 	}
 
-	fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<()>
+	fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
 	where
 		T: ?Sized + Serialize,
 	{
-		Ok(())
+		value.serialize(self)
 	}
 
 	fn serialize_newtype_variant<T>(

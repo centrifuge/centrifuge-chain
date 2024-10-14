@@ -1,4 +1,4 @@
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::Domain;
 use frame_support::{derive_impl, traits::EitherOfDiverse};
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::{H160, H256};
@@ -34,7 +34,7 @@ impl frame_system::Config for Runtime {
 impl cfg_mocks::router_message::pallet::Config for Runtime {
 	type Message = Vec<u8>;
 	type Middleware = Middleware;
-	type Origin = DomainAddress;
+	type Origin = Domain;
 }
 
 impl cfg_mocks::ethereum_transactor::pallet::Config for Runtime {}
