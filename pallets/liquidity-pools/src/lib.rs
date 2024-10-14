@@ -552,6 +552,7 @@ pub mod pallet {
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			Self::validate_investor_can_transfer(domain_address.account(), pool_id, tranche_id)?;
+			Self::validate_investor_can_transfer(who.clone(), pool_id, tranche_id)?;
 
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;

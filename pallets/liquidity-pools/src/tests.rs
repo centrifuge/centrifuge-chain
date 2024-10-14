@@ -214,7 +214,8 @@ mod transfer_tranche_tokens {
 		Time::mock_now(|| NOW);
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, CONTRACT_DOMAIN_ADDRESS.account());
+			let address_check = who == CONTRACT_DOMAIN_ADDRESS.account() || who == ALICE;
+			assert!(address_check, "Attempted to check permissions neither for expected sender {} nor for expected domain address {}", ALICE, CONTRACT_DOMAIN_ADDRESS.account());
 			match role {
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 					assert_eq!(tranche_id, TRANCHE_ID);
@@ -226,7 +227,8 @@ mod transfer_tranche_tokens {
 		});
 		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(*who, CONTRACT_DOMAIN_ADDRESS.account());
+			let address_check = *who == CONTRACT_DOMAIN_ADDRESS.account() || *who == ALICE;
+			assert!(address_check, "Attempted to check permissions neither for expected sender {} nor for expected domain address {}", ALICE, CONTRACT_DOMAIN_ADDRESS.account());
 			assert_eq!(*tranche_id, TRANCHE_ID);
 			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
@@ -311,7 +313,7 @@ mod transfer_tranche_tokens {
 		}
 
 		#[test]
-		fn with_frozen_investor_permissions() {
+		fn with_frozen_investor_permissions_recipient() {
 			System::externalities().execute_with(|| {
 				config_mocks();
 				Permissions::mock_has(move |scope, who, role| {
@@ -342,6 +344,41 @@ mod transfer_tranche_tokens {
 					Error::<Runtime>::InvestorDomainAddressFrozen,
 				);
 			})
+		}
+
+		#[test]
+		fn with_frozen_investor_permissions_sender() {
+			System::externalities().execute_with(|| {
+                config_mocks();
+                Permissions::mock_has(move |scope, who, role| {
+                    assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+                    let address_check = who == CONTRACT_DOMAIN_ADDRESS.account() || who == ALICE;
+                    assert!(address_check, "Attempted to check permissions neither for expected sender {} nor for expected domain address {}", ALICE, CONTRACT_DOMAIN_ADDRESS.account());
+                    match role {
+                        Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
+                            assert_eq!(tranche_id, TRANCHE_ID);
+                            assert_eq!(validity, NOW_SECS);
+                            true
+                        }
+                        Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
+                            assert_eq!(tranche_id, TRANCHE_ID);
+                            who == ALICE
+                        }
+                        _ => false,
+                    }
+                });
+
+                assert_noop!(
+					LiquidityPools::transfer_tranche_tokens(
+						RuntimeOrigin::signed(ALICE),
+						POOL_ID,
+						TRANCHE_ID,
+						CONTRACT_DOMAIN_ADDRESS,
+						AMOUNT
+					),
+					Error::<Runtime>::InvestorDomainAddressFrozen,
+				);
+            })
 		}
 
 		#[test]
