@@ -227,7 +227,8 @@ mod transfer_tranche_tokens {
 		});
 		Permissions::mock_get(move |(scope, who, tranche_id)| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(*who, CONTRACT_DOMAIN_ADDRESS.account());
+			let address_check = *who == CONTRACT_DOMAIN_ADDRESS.account() || *who == ALICE;
+			assert!(address_check, "Attempted to check permissions neither for expected sender {} nor for expected domain address {}", ALICE, CONTRACT_DOMAIN_ADDRESS.account());
 			assert_eq!(*tranche_id, TRANCHE_ID);
 			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
