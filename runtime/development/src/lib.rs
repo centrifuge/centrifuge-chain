@@ -40,9 +40,7 @@ use cfg_types::{
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
-	permissions::{
-		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
-	},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
@@ -269,25 +267,25 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	fn contains(c: &RuntimeCall) -> bool {
 		match c {
 			RuntimeCall::PolkadotXcm(method) => match method {
-				// Block these calls when called by a signed extrinsic.
-				// Root will still be able to execute these.
-				pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::teleport_assets { .. } // deprecated
-				| pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_suspension { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-			},
+                // Block these calls when called by a signed extrinsic.
+                // Root will still be able to execute these.
+                pallet_xcm::Call::execute { .. }
+                | pallet_xcm::Call::transfer_assets { .. }
+                | pallet_xcm::Call::teleport_assets { .. } // deprecated
+                | pallet_xcm::Call::reserve_transfer_assets { .. } // deprecated
+                | pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+                | pallet_xcm::Call::limited_teleport_assets { .. } => false,
+                pallet_xcm::Call::__Ignore { .. } => {
+                    unimplemented!()
+                }
+                // Allow all these calls. Only send(..) is callable by signed the rest needs root.
+                pallet_xcm::Call::send { .. }
+                | pallet_xcm::Call::force_xcm_version { .. }
+                | pallet_xcm::Call::force_suspension { .. }
+                | pallet_xcm::Call::force_default_xcm_version { .. }
+                | pallet_xcm::Call::force_subscribe_version_notify { .. }
+                | pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
+            },
 			// We block this call since it includes Moonbeam trait implementations such
 			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
 			// arbitrary users calling it.
@@ -1436,7 +1434,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = PERMISSION_DELAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 1_000;
@@ -1450,6 +1448,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
+	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
@@ -1511,16 +1510,17 @@ where
 			amount: _amount,
 		} = details;
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,
@@ -1684,7 +1684,7 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = ();

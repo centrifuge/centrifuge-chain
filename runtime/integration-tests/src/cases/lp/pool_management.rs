@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, Balance, PoolId, SECONDS_PER_YEAR};
+use cfg_primitives::{AccountId, Balance, BlockNumber, PoolId, SECONDS_PER_YEAR};
 use cfg_traits::{PoolMetadata, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -178,9 +178,9 @@ fn hook_address<T: Runtime>() {
 		let solidity = evm.deployed(names::RESTRICTION_MANAGER).address();
 		let rust = LOCAL_RESTRICTION_MANAGER_ADDRESS.into();
 		assert_eq!(
-			solidity, rust,
-			"Hook address changed, please change our stored value (right) to the new address (left)"
-		);
+            solidity, rust,
+            "Hook address changed, please change our stored value (right) to the new address (left)"
+        );
 	})
 }
 
@@ -373,6 +373,7 @@ fn disallow_investment_currency<T: Runtime>() {
 
 #[test_runtimes([centrifuge, development])]
 fn update_member<T: Runtime>() {
+	let validity_block: BlockNumber = 2;
 	let mut env = super::setup::<T, _>(|evm| {
 		super::setup_currencies(evm);
 		super::setup_pools(evm);
@@ -401,7 +402,7 @@ fn update_member<T: Runtime>() {
 	});
 
 	env.state_mut(|_| {
-		crate::utils::pool::give_role::<T>(
+		give_role::<T>(
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()).account(),
 			POOL_A,
 			PoolRole::TrancheInvestor(pool_a_tranche_1_id::<T>(), SECONDS_PER_YEAR),
@@ -412,7 +413,7 @@ fn update_member<T: Runtime>() {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, Keyring::Bob.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(validity_block),
 		));
 
 		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
@@ -749,9 +750,9 @@ fn update_tranche_hook<T: Runtime>() {
 		let solidity = evm.deployed(names::RESTRICTION_MANAGER).address();
 		let rust = LOCAL_RESTRICTION_MANAGER_ADDRESS.into();
 		assert_eq!(
-			solidity, rust,
-			"Hook address changed, please change our stored value (right) to the new address (left)"
-		);
+            solidity, rust,
+            "Hook address changed, please change our stored value (right) to the new address (left)"
+        );
 		let hook_address = Decoder::<H160>::decode(
 			&evm.view(Keyring::Alice, POOL_A_T_1, "hook", None)
 				.unwrap()

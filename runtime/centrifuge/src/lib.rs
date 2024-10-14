@@ -40,9 +40,7 @@ use cfg_types::{
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
-	permissions::{
-		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
-	},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
@@ -399,16 +397,17 @@ where
 			amount: _amount,
 		} = details;
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,
@@ -1535,7 +1534,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = PERMISSION_DELAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 10_000;
@@ -1617,6 +1616,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
+	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
@@ -1632,7 +1632,7 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;

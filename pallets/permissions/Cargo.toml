@@ -17,13 +17,14 @@ parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 
 cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+orml-traits = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 # benchmarking
-cfg-types = { workspace = true, optional = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -38,6 +39,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking/std",
+  "orml-traits/std",
   "sp-runtime/std",
   "sp-std/std",
   "cfg-traits/std",
