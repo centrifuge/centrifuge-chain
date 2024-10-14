@@ -2,7 +2,10 @@
   "name": "Centrifuge",
   "id": "centrifuge",
   "chainType": "Live",
-  "bootNodes": [],
+  "bootNodes": [
+    "/dns/centrifuge.boot.stake.plus/tcp/30332/wss/p2p/12D3KooWLVUug9B9kKtANaf3Gzf4s4XyiTSyp8EK3FwXYFU2cgHo",
+    "/dns/centrifuge.boot.stake.plus/tcp/31332/wss/p2p/12D3KooWSyenezPBEZ72TjbanvFXCJdcMDVENKE3Drd5DpRcfj3D"
+  ],
   "telemetryEndpoints": [
     [
       "/dns/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
