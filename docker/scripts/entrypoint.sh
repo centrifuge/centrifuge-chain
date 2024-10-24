@@ -49,4 +49,4 @@ then
 fi
 
 # Start the chain
-centrifuge-chain "$@"
+exec centrifuge-chain "$@"
