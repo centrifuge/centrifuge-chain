@@ -35,7 +35,8 @@ pub mod pallet {
 	use cfg_traits::{
 		changes::ChangeGuard,
 		fee::{FeeAmountProration, PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
-		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
+		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Reserve, Seconds,
+		TimeAsSecs,
 	};
 	use cfg_types::{
 		pools::{
@@ -615,10 +616,10 @@ pub mod pallet {
 		pub(crate) fn update_active_fees(
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
-			reserve: &mut T::Balance,
+			reserve: &mut impl Reserve<T::Balance>,
 			assets_under_management: T::Balance,
 			epoch_duration: Seconds,
-		) -> Result<T::Balance, DispatchError> {
+		) -> Result<impl Reserve<T::Balance>, DispatchError> {
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
 					let limit = fee.amounts.limit();
@@ -648,8 +649,8 @@ pub mod pallet {
 					.map_err(|e: DispatchError| e)?;
 
 					// Disbursement amount is limited by reserve
-					let disbursement = fee_amount.min(*reserve);
-					reserve.ensure_sub_assign(disbursement)?;
+					let disbursement = fee_amount.min(reserve.total());
+					reserve.withdraw(disbursement)?;
 
 					// Update fee amounts
 					fee.amounts.pending.ensure_sub_assign(disbursement)?;
@@ -672,7 +673,7 @@ pub mod pallet {
 				Ok::<(), DispatchError>(())
 			})?;
 
-			Ok(*reserve)
+			Ok(reserve)
 		}
 
 		/// Entirely remove a stored fee from the given pair of pool id and fee
@@ -738,7 +739,7 @@ pub mod pallet {
 		/// ```
 		pub fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
-			reserve: &mut T::Balance,
+			reserve: &mut impl Reserve<T::Balance>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let fee_nav = PortfolioValuation::<T>::get(pool_id);
 			let aum = AssetsUnderManagement::<T>::get(pool_id);
@@ -859,17 +860,17 @@ pub mod pallet {
 		fn on_closing_mutate_reserve(
 			pool_id: Self::PoolId,
 			assets_under_management: Self::Balance,
-			reserve: &mut Self::Balance,
+			reserve: &mut impl Reserve<Self::Balance>,
 		) -> Result<(), Self::Error> {
 			// Determine pending fees and NAV based on last epoch's AUM
-			let res_pre_fees = *reserve;
+			let res_pre_fees = reserve.total();
 			Self::update_portfolio_valuation_for_pool(pool_id, reserve)?;
 
 			// Set current AUM for next epoch's closing
 			AssetsUnderManagement::<T>::insert(pool_id, assets_under_management);
 
 			// Transfer disbursement amount from pool account to pallet sovereign account
-			let total_fee_amount = res_pre_fees.saturating_sub(*reserve);
+			let total_fee_amount = res_pre_fees.saturating_sub(reserve.total());
 			if !total_fee_amount.is_zero() {
 				let pool_currency =
 					T::PoolReserve::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;

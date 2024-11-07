@@ -50,7 +50,7 @@ use sp_runtime::{
 		EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, Get, One, Saturating,
 		Zero,
 	},
-	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 use tranches::{
@@ -112,26 +112,13 @@ pub type TrancheOf<T> = Tranche<
 >;
 
 /// Type alias to ease function signatures
-pub type PoolDetailsOf<T> = PoolDetails<
-	<T as Config>::CurrencyId,
-	<T as Config>::TrancheCurrency,
-	<T as Config>::EpochId,
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheId,
-	<T as Config>::PoolId,
-	<T as Config>::MaxTranches,
->;
+pub type PoolDetailsOf<T> = PoolDetails<T>;
 
 /// Type alias for `struct EpochExecutionInfo`
 type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
-	<T as Config>::TrancheWeight,
 	BlockNumberFor<T>,
-	<T as Config>::TrancheCurrency,
 	<T as Config>::MaxTranches,
 >;
 
@@ -174,7 +161,7 @@ pub mod pallet {
 	use cfg_traits::{
 		fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-		EpochTransitionHook, PoolUpdateGuard,
+		EpochTransitionHook, PoolUpdateGuard, Reserve,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
@@ -631,188 +618,86 @@ pub mod pallet {
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
-				// Get positive NAV from AUM
-				let (nav_aum, aum_last_updated) =
-					T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-				ensure!(
-					now.saturating_sub(aum_last_updated) <= pool.parameters.max_nav_age,
-					Error::<T>::NAVTooOld
-				);
+				let nav = Self::get_nav(pool_id, |nav_aum| {
+					T::OnEpochTransition::on_closing_mutate_reserve(
+						pool_id,
+						nav_aum,
+						&mut pool.reserve,
+					)
+				})?;
 
-				// Calculate fees to get negative NAV
-				T::OnEpochTransition::on_closing_mutate_reserve(
-					pool_id,
-					nav_aum,
-					&mut pool.reserve.total,
+				let prices = Self::calculate_prices(
+					&mut pool.tranches,
+					nav.total(pool.reserve.total())
+						// NOTE: From an accounting perspective, erroring out would be correct.
+						// However, since investments of this epoch are included in the
+						// reserve only in the next epoch, every new pool with a configured
+						// fee is likely to be blocked if we threw an error here. Thus, we
+						// dispatch an event as a defensive workaround.
+						.map_err(|_| {
+							Self::deposit_event(Event::NegativeBalanceSheet {
+								pool_id,
+								nav_aum,
+								nav_fees,
+								reserve: pool.reserve.total(),
+							});
+						})
+						.unwrap_or(T::Balance::default()),
 				)?;
-				let (nav_fees, fees_last_updated) =
-					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-				ensure!(
-					now.saturating_sub(fees_last_updated) <= pool.parameters.max_nav_age,
-					Error::<T>::NAVTooOld
-				);
-				let nav = Nav::new(nav_aum, nav_fees);
-				let nav_total = nav
-					.total(pool.reserve.total)
-					// NOTE: From an accounting perspective, erroring out would be correct. However,
-					// since investments of this epoch are included in the reserve only in the next
-					// epoch, every new pool with a configured fee is likely to be blocked if we
-					// threw an error here. Thus, we dispatch an event as a defensive workaround.
-					.map_err(|_| {
-						Self::deposit_event(Event::NegativeBalanceSheet {
-							pool_id,
-							nav_aum,
-							nav_fees,
-							reserve: pool.reserve.total,
-						});
-					})
-					.unwrap_or(T::Balance::default());
+
 				let submission_period_epoch = pool.epoch.current;
-
 				pool.start_next_epoch(now)?;
-
-				let epoch_tranche_prices = pool
-					.tranches
-					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav_total, now)?;
-
-				// If closing the epoch would wipe out a tranche, the close is invalid.
-				// TODO: This should instead put the pool into an error state
-				ensure!(
-					!epoch_tranche_prices
-						.iter()
-						.any(|price| *price == Zero::zero()),
-					Error::<T>::WipedOut
-				);
 
 				Self::deposit_event(Event::EpochClosed {
 					pool_id,
 					epoch_id: submission_period_epoch,
 				});
 
-				// Get the orders
-				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
-				if orders.all_are_zero() {
-					T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
-
-					pool.tranches.combine_with_mut_residual_top(
-						&epoch_tranche_prices,
-						|tranche, price| {
-							let zero_fulfillment = FulfillmentWithPrice {
-								of_amount: Perquintill::zero(),
-								price: *price,
-							};
-							T::Investments::invest_fulfillment(tranche.currency, zero_fulfillment)?;
-							T::Investments::redeem_fulfillment(tranche.currency, zero_fulfillment)
-						},
-					)?;
-
-					pool.execute_previous_epoch()?;
-
-					Self::deposit_event(Event::EpochExecuted {
-						pool_id,
-						epoch_id: submission_period_epoch,
-					});
-
-					return Ok(Some(T::WeightInfo::close_epoch_no_orders(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
-					))
-					.into());
-				}
-
-				let epoch_tranches: Vec<EpochExecutionTrancheOf<T>> =
-					pool.tranches.combine_with_residual_top(
-						epoch_tranche_prices
-							.iter()
-							.zip(orders.invest_redeem_residual_top()),
-						|tranche, (price, (invest, redeem))| {
-							let epoch_tranche = EpochExecutionTranche {
-								currency: tranche.currency,
-								supply: tranche.balance()?,
-								price: *price,
-								invest,
-								redeem,
-								seniority: tranche.seniority,
-								min_risk_buffer: tranche.min_risk_buffer(),
-								_phantom: Default::default(),
-							};
-
-							Ok(epoch_tranche)
-						},
-					)?;
+				// Get the orders.
+				//
+				// NOTE: This will move the total amounts of investments into the reserve,
+				//       making them available for originations. IF the pools does not
+				//       fulfill the order 100%, the reserve is expected to be able
+				//       to re-fund the investment side when executing the epoch.
+				let orders = Self::summarize_orders(&pool.tranches, &prices)?;
 
 				let mut epoch = EpochExecutionInfo {
-					nav,
+					orders,
 					epoch: submission_period_epoch,
-					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
+					dirty: false,
 				};
 
-				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
+				let no_execution_solution = pool.tranches.combine_residual_top(|_| {
 					Ok(TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::one(),
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
 					})
 				})?;
 
-				if Self::inspect_solution(pool, &epoch, &full_execution_solution)
-					.map(|state| state == PoolState::Healthy)
-					.unwrap_or(false)
-				{
-					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
-					Self::deposit_event(Event::EpochExecuted {
-						pool_id,
-						epoch_id: submission_period_epoch,
-					});
-					Ok(Some(T::WeightInfo::close_epoch_execute(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
-					))
-					.into())
-				} else {
-					// Any new submission needs to improve on the existing state (which is defined
-					// as a total fulfilment of 0%)
-					let no_execution_solution = pool.tranches.combine_residual_top(|_| {
-						Ok(TrancheSolution {
-							invest_fulfillment: Perquintill::zero(),
-							redeem_fulfillment: Perquintill::zero(),
-						})
-					})?;
+				let existing_state_solution =
+					Self::score_solution(pool, &epoch, &no_execution_solution)?;
+				epoch.best_submission = Some(existing_state_solution);
+				EpochExecution::<T>::insert(pool_id, epoch);
 
-					let existing_state_solution =
-						Self::score_solution(pool, &epoch, &no_execution_solution)?;
-					epoch.best_submission = Some(existing_state_solution);
-					EpochExecution::<T>::insert(pool_id, epoch);
-
-					Ok(Some(T::WeightInfo::close_epoch_no_execution(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
-					))
-					.into())
-				}
+				Ok(Some(T::WeightInfo::close_epoch_no_execution(
+					pool.tranches
+						.num_tranches()
+						.try_into()
+						.expect("MaxTranches is u32. qed."),
+					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
+				))
+				.into())
 			})
 		}
 
-		/// Submit a partial execution solution for a closed epoch
+		/// Submit a execution solution for a closed epoch
 		///
 		/// If the submitted solution is "better" than the
 		/// previous best solution, it will replace it. Solutions
 		/// are ordered such that solutions which do not violate
 		/// constraints are better than those that do.
-		///
-		/// Once a valid solution has been submitted, the
-		/// challenge time begins. The pool can be executed once
-		/// the challenge time has expired.
 		#[pallet::weight(T::WeightInfo::submit_solution(
 			T::MaxTranches::get(),
 			T::PoolFees::get_max_fees_per_bucket()
@@ -823,7 +708,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			solution: Vec<TrancheSolution>,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin, &pool_id)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
@@ -838,12 +723,16 @@ pub mod pallet {
 				}
 
 				epoch.best_submission = Some(new_solution.clone());
+				epoch.dirty = false;
 
+				// TODO: We might wanna re-enable that at some point WHEN we enable epoch
+				//       closing and execution from all but the admin again
+				//
 				// Challenge period starts when the first new solution has been submitted
-				if epoch.challenge_period_end.is_none() {
-					epoch.challenge_period_end =
-						Some(Self::current_block().saturating_add(T::ChallengeTime::get()));
-				}
+				// if epoch.challenge_period_end.is_none() {
+				//  	epoch.challenge_period_end =
+				//		Some(Self::current_block().saturating_add(T::ChallengeTime::get()));
+				// }
 
 				Self::deposit_event(Event::SolutionSubmitted {
 					pool_id,
@@ -886,39 +775,25 @@ pub mod pallet {
 					.as_mut()
 					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
-				ensure!(
-					epoch.best_submission.is_some(),
-					Error::<T>::NoSolutionAvailable
-				);
+				let solution = if let Some(best_submission) = &epoch.best_submission {
+					best_submission.solution()
+				} else {
+					return Err(Error::<T>::NoSolutionAvailable);
+				};
 
-				// The challenge period is some if we have submitted at least one valid
-				// solution since going into submission period. Hence, if it is none
-				// no solution beside the injected zero-solution is available.
-				ensure!(
-					epoch.challenge_period_end.is_some(),
-					Error::<T>::NoSolutionAvailable
-				);
+				if let Some(challenge_period_end) = epoch.challenge_period_end {
+					ensure!(
+						challenge_period_end <= Self::current_block(),
+						Error::<T>::ChallengeTimeHasNotPassed
+					);
+				}
 
-				ensure!(
-					epoch
-						.challenge_period_end
-						.expect("Challenge period is some. qed.")
-						<= Self::current_block(),
-					Error::<T>::ChallengeTimeHasNotPassed
-				);
+				ensure!(!epoch.dirty, Error::<T>::InvalidSolution);
 
-				// TODO: Write a test for the `expect` in case we allow the removal of pools at
-				// some point
 				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 					let pool = pool
 						.as_mut()
-						.expect("EpochExecutionInfo can only exist on existing pools. qed.");
-
-					let solution = &epoch
-						.best_submission
-						.as_ref()
-						.expect("Solution exists. qed.")
-						.solution();
+						.map_err("EpochExecutionInfo can only exist on existing pools. qed.")?;
 
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
 					Self::deposit_event(Event::EpochExecuted {
@@ -928,17 +803,14 @@ pub mod pallet {
 					Ok(())
 				})?;
 
-				let num_tranches = epoch
-					.tranches
-					.num_tranches()
-					.try_into()
-					.expect("MaxTranches is u32. qed.");
-
-				// This kills the epoch info in storage.
-				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
 				*epoch_info = None;
+
 				Ok(Some(T::WeightInfo::execute_epoch(
-					num_tranches,
+					epoch
+						.tranches
+						.num_tranches()
+						.try_into()
+						.map_err("TryInto u32 failed. Never should happen. qed.")?,
 					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 				))
 				.into())
@@ -1014,7 +886,7 @@ pub mod pallet {
 			solution: &[TrancheSolution],
 		) -> Result<PoolState, DispatchError> {
 			ensure!(
-				solution.len() == epoch.tranches.num_tranches(),
+				solution.len() == pool.tranches.num_tranches(),
 				Error::<T>::InvalidSolution
 			);
 
@@ -1038,7 +910,7 @@ pub mod pallet {
 			})?;
 
 			let currency_available: T::Balance = acc_invest
-				.checked_add(&pool.reserve.total)
+				.checked_add(&pool.reserve.total())
 				.ok_or(Error::<T>::InvalidSolution)?;
 
 			let new_reserve = currency_available
@@ -1208,6 +1080,50 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn get_nav(
+			pool_id: T::PoolId,
+			between: impl FnOnce(T::Balance) -> DispatchResult,
+		) -> Result<Nav<T::Balance>, DispatchError> {
+			let now = T::Time::now();
+
+			// Get positive NAV from AUM
+			let (nav_aum, aum_last_updated) =
+				T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+			ensure!(
+				now.saturating_sub(aum_last_updated) <= pool.parameters.max_nav_age,
+				Error::<T>::NAVTooOld
+			);
+
+			between(nav_aum)?;
+
+			let (nav_fees, fees_last_updated) =
+				T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+
+			ensure!(
+				now.saturating_sub(fees_last_updated) <= pool.parameters.max_nav_age,
+				Error::<T>::NAVTooOld
+			);
+
+			Ok(Nav::new(nav_aum, nav_fees))
+		}
+
+		fn calculate_prices(
+			tranches: &mut TranchesOf<T>,
+			nav_total: T::Balance,
+		) -> Result<Vec<T::BalanceRatio>, DispatchError> {
+			let prices = tranches
+				.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav_total, T::Time::now())?;
+
+			// If closing the epoch would wipe out a tranche, the close is invalid.
+			// TODO: This should instead put the pool into an error state
+			ensure!(
+				!prices.iter().any(|price| *price == Zero::zero()),
+				Error::<T>::WipedOut
+			);
+
+			Ok(prices)
+		}
+
 		fn do_execute_epoch(
 			pool_id: T::PoolId,
 			pool: &mut PoolDetailsOf<T>,
@@ -1216,14 +1132,40 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
 
-			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
+			let nav = Self::get_nav(pool_id, |_| Ok(()))?;
+			let prices = Self::calculate_prices(
+				&mut pool.tranches,
+				nav.total(pool.reserve.total())
+					// NOTE: From an accounting perspective, erroring out would be correct.
+					// However, since investments of this epoch are included in the
+					// reserve only in the next epoch, every new pool with a configured
+					// fee is likely to be blocked if we threw an error here. Thus, we
+					// dispatch an event as a defensive workaround.
+					.map_err(|_| {
+						Self::deposit_event(Event::NegativeBalanceSheet {
+							pool_id,
+							nav_aum,
+							nav_fees,
+							reserve: pool.reserve.total(),
+						});
+					})
+					.unwrap_or(T::Balance::default()),
+			)?;
 
-			for (tranche, solution) in epoch.tranches.residual_top_slice().iter().zip(solution) {
+			// NOTE: Calling invest_fulfillment() will take care of re-transferring the
+			//       unfulfilled funds from the reserve to the investment pallet.
+			for ((tranche, solution), price) in pool
+				.tranches
+				.residual_top_slice()
+				.iter()
+				.zip(solution)
+				.zip(prices)
+			{
 				T::Investments::invest_fulfillment(
 					tranche.currency,
 					FulfillmentWithPrice {
 						of_amount: solution.invest_fulfillment,
-						price: tranche.price,
+						price,
 					},
 				)?;
 
@@ -1238,26 +1180,38 @@ pub mod pallet {
 
 			pool.execute_previous_epoch()?;
 
-			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = epoch.nav.total(pool.reserve.total)?;
+			let executed_amounts =
+				pool.tranches
+					.combine_with_residual_top(solution, |tranche, solution| {
+						Ok((
+							solution.invest_fulfillment.mul_floor(tranche.invest),
+							solution.redeem_fulfillment.mul_floor(tranche.redeem),
+						))
+					});
 
+			let total_assets = nav.total(pool.reserve.total())?;
+
+			let now = T::Time::now();
 			let tranche_ratios = {
 				let mut sum_non_residual_tranche_ratios = Perquintill::zero();
 				let num_tranches = pool.tranches.num_tranches();
 				let mut current_tranche = 1;
-				let mut ratios = epoch
+				let mut ratios = pool
 					.tranches
 					// NOTE: Reversing amounts, as residual amount is on top.
-					.combine_with_non_residual_top(
+					.combine_with_mut_non_residual_top(
 						executed_amounts.rev(),
 						|tranche, &(invest, redeem)| {
+							// Update tranche debt
+							tranche.accrue(now)?;
+
 							// NOTE: Need to have this clause as the current Perquintill
 							//       implementation defaults to 100% if the denominator is zero
 							let ratio = if total_assets.is_zero() {
 								Perquintill::zero()
 							} else if current_tranche < num_tranches {
 								Perquintill::from_rational(
-									tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+									tranche.balance().ensure_add(invest)?.ensure_sub(redeem)?,
 									total_assets,
 								)
 							} else {
@@ -1279,9 +1233,9 @@ pub mod pallet {
 			};
 
 			pool.tranches.rebalance_tranches(
-				T::Time::now(),
-				pool.reserve.total,
-				epoch.nav.nav_aum,
+				now,
+				pool.reserve.total(),
+				nav.aum(),
 				tranche_ratios.as_slice(),
 				&executed_amounts,
 			)?;
@@ -1301,7 +1255,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = T::Time::now();
 
-				pool.reserve.total.ensure_add_assign(amount)?;
+				Self::do_debit(pool_id, &who, amount)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1328,16 +1282,11 @@ pub mod pallet {
 				// TODO: Add a debug log here and/or a debut_assert maybe even an error if
 				// remaining_amount != 0 at this point!
 
-				T::Tokens::transfer(
-					pool.currency,
-					&who,
-					&pool_account,
-					amount,
-					Preservation::Expendable,
-				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
-			})
+			})?;
+
+			Self::mark_dirty(pool_id)
 		}
 
 		pub(crate) fn do_withdraw(
@@ -1350,16 +1299,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = T::Time::now();
 
-				pool.reserve.total = pool
-					.reserve
-					.total
-					.checked_sub(&amount)
-					.ok_or(TokenError::FundsUnavailable)?;
-				pool.reserve.available = pool
-					.reserve
-					.available
-					.checked_sub(&amount)
-					.ok_or(TokenError::FundsUnavailable)?;
+				Self::do_credit(pool_id, &who, amount)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1383,14 +1323,66 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
+				Self::deposit_event(Event::Rebalanced { pool_id });
+
+				Ok(())
+			})?;
+
+			Self::mark_dirty(pool_id)
+		}
+
+		pub(crate) fn do_credit(
+			pool_id: T::PoolId,
+			to: &T::AccountId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |details| {
+				let details = details.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
 				T::Tokens::transfer(
-					pool.currency,
-					&pool_account,
-					&who,
+					details.currency,
+					&PoolLocator { pool_id }.into_account_truncating(),
+					to,
 					amount,
 					Preservation::Expendable,
-				)?;
-				Self::deposit_event(Event::Rebalanced { pool_id });
+				)
+				.map(|_| ())?;
+
+				details.reserve.withdraw(amount)
+			})?;
+
+			Self::mark_dirty(pool_id)
+		}
+
+		pub(crate) fn do_debit(
+			pool_id: T::PoolId,
+			from: &T::AccountId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |details| {
+				let details = details.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				T::Tokens::transfer(
+					details.currency,
+					from,
+					&PoolLocator { pool_id }.into_account_truncating(),
+					amount,
+					Preservation::Expendable,
+				)
+				.map(|_| ())?;
+
+				details.reserve.deposit(amount)
+			})?;
+
+			Self::mark_dirty(pool_id)
+		}
+
+		fn mark_dirty(pool_id: T::PoolId) -> DispatchResult {
+			// Need to mark the solution as dirty, as the state has changed
+			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
+				if let Some(epoch) = epoch_info.as_mut() {
+					epoch.dirty = true;
+				}
 				Ok(())
 			})
 		}

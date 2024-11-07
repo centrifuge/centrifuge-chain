@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Seconds;
+use cfg_traits::{Reserve, Seconds};
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 pub use changes::PoolChangeProposal;
 use frame_support::{
@@ -29,8 +29,12 @@ use sp_runtime::{
 };
 use sp_std::{cmp::PartialEq, vec::Vec};
 
-use crate::tranches::{
-	EpochExecutionTranches, TrancheEssence, TrancheInput, TrancheSolution, TrancheUpdate, Tranches,
+use crate::{
+	tranches::{
+		EpochExecutionTranches, TrancheEssence, TrancheInput, TrancheSolution, TrancheUpdate,
+		Tranches,
+	},
+	Config, Error,
 };
 
 // The TypeId impl we derive pool-accounts from
@@ -39,52 +43,36 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct ReserveDetails<Balance> {
+pub struct ReserveDetails<T: Config> {
 	/// Investments will be allowed up to this amount.
-	pub max: Balance,
+	pub max: T::Balance,
 	/// Current total amount of currency in the pool reserve.
-	pub total: Balance,
+	total: T::Balance,
 	/// Current reserve that is available for originations.
-	pub available: Balance,
+	available: T::Balance,
 }
 
-impl<Balance> ReserveDetails<Balance>
-where
-	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
-{
-	/// Update the total balance of the reserve based on the provided solution
-	/// for in- and outflows of this epoc.
-	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
-		&mut self,
-		epoch_tranches: &EpochExecutionTranches<
-			Balance,
-			BalanceRatio,
-			Weight,
-			TrancheCurrency,
-			MaxExecutionTranches,
-		>,
-		solution: &[TrancheSolution],
-	) -> DispatchResult
-	where
-		Weight: Copy + From<u128>,
-		BalanceRatio: Copy,
-		MaxExecutionTranches: Get<u32>,
-	{
-		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
+impl<T: Config> Reserve<T::Balance> for ReserveDetails<T> {
+	fn deposit(&mut self, amount: T::Balance) -> DispatchResult {
+		self.total = self.total.ensure_add(amount)?;
+		self.available = self.available.ensure_add(amount)?;
+		Ok(())
+	}
 
-		// Update the total/available reserve for the new total value of the pool
-		let mut acc_investments = Balance::zero();
-		let mut acc_redemptions = Balance::zero();
-		for &(invest, redeem) in executed_amounts.iter() {
-			acc_investments.ensure_add_assign(invest)?;
-			acc_redemptions.ensure_add_assign(redeem)?;
-		}
+	fn withdraw(&mut self, amount: T::Balance) -> DispatchResult {
 		self.total = self
 			.total
-			.ensure_add(acc_investments)?
-			.ensure_sub(acc_redemptions)?;
-
+			.ensure_sub(amount)
+			.map_err(Error::InsufficientCurrency)?;
+		self.available = self
+			.available
+			.ensure_sub(amount)
+			.map_err(Error::InsufficientCurrency)?;
 		Ok(())
+	}
+
+	fn total(&self) -> T::Balance {
+		self.total
 	}
 }
 
@@ -106,34 +94,27 @@ pub struct PoolLocator<PoolId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct PoolDetails<
-	CurrencyId,
-	TrancheCurrency,
-	EpochId,
-	Balance,
-	Rate,
-	Weight,
-	TrancheId,
-	PoolId,
-	MaxTranches,
-> where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
-	MaxTranches: Get<u32>,
-	TrancheCurrency: Into<CurrencyId>,
-{
+pub struct PoolDetails<T: Config> {
 	/// Currency that the pool is denominated in (immutable).
-	pub currency: CurrencyId,
+	pub currency: T::CurrencyId,
 	/// List of tranches, ordered junior to senior.
-	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>,
+	pub tranches: Tranches<
+		T::Balance,
+		T::Rate,
+		T::TrancheWeight,
+		T::TrancheCurrency,
+		T::TrancheId,
+		T::PoolId,
+		T::MaxTranches,
+	>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
 	/// The status the pool is currently in.
 	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
-	pub epoch: EpochState<EpochId>,
+	pub epoch: EpochState<T::EpochId>,
 	/// Details about the reserve (unused capital) in the pool.
-	pub reserve: ReserveDetails<Balance>,
+	pub reserve: ReserveDetails<T::Balance>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -226,16 +207,11 @@ where
 	pub fn start_next_epoch(&mut self, now: Seconds) -> DispatchResult {
 		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
-		// TODO: Remove and set state rather to EpochClosing or similar
-		// Set available reserve to 0 to disable originations while the epoch is closed
-		// but not executed
-		self.reserve.available = Zero::zero();
 
 		Ok(())
 	}
 
 	pub fn execute_previous_epoch(&mut self) -> DispatchResult {
-		self.reserve.available = self.reserve.total;
 		self.epoch
 			.last_executed
 			.ensure_add_assign(One::one())
