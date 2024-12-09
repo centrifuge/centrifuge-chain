@@ -323,14 +323,14 @@ pub mod pallet {
 		type Time: TimeAsSecs;
 
 		/// Add pool fees
-		type PoolFees: PoolFeesMutate<
+		type PoolFees: PoolFeesInspect<
+				PoolId = Self::PoolId,
 				FeeInfo = PoolFeeInfo<
 					<Self as frame_system::Config>::AccountId,
 					Self::Balance,
 					Self::Rate,
 				>,
-				PoolId = Self::PoolId,
-			> + PoolFeesInspect<PoolId = Self::PoolId>;
+			> + PoolFeesMutate;
 
 		/// Epoch transition hook required for Pool Fees
 		type OnEpochTransition: EpochTransitionHook<
@@ -526,10 +526,6 @@ pub mod pallet {
 		InvalidTrancheUpdate,
 		/// No metadata for the given currency found
 		MetadataForCurrencyNotFound,
-		/// The given tranche token name exceeds the length limit
-		TrancheTokenNameTooLong,
-		/// The given tranche symbol name exceeds the length limit
-		TrancheSymbolNameTooLong,
 		/// Registering the metadata for a tranche threw an error
 		FailedToRegisterTrancheMetadata,
 		/// Updating the metadata for a tranche threw an error

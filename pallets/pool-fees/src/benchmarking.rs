@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	benchmarking::{PoolBenchmarkHelper, PoolFeesBenchmarkHelper},
+	benchmarking::PoolBenchmarkHelper,
 	changes::ChangeGuard,
 	fee::{PoolFeeBucket, PoolFeesMutate as _},
 };
@@ -166,5 +166,5 @@ where
 	let pool_id = T::PoolId::default();
 	T::ChangeGuard::bench_create_pool(pool_id, &pool_admin);
 
-	<PoolFees<T> as PoolFeesBenchmarkHelper>::add_pool_fees(pool_id, PoolFeeBucket::Top, n);
+	PoolFees::<T>::add_pool_fees(pool_id, PoolFeeBucket::Top, n);
 }

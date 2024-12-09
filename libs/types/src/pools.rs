@@ -28,20 +28,6 @@ pub struct TrancheMetadata<StringLimit: Get<u32>> {
 	pub token_symbol: BoundedVec<u8, StringLimit>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct PoolMetadata<MetaSize>
-where
-	MetaSize: Get<u32>,
-{
-	pub metadata: BoundedVec<u8, MetaSize>,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum PoolRegistrationStatus {
-	Registered,
-	Unregistered,
-}
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolNav<Balance> {
 	pub nav_aum: Balance,

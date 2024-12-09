@@ -1,7 +1,8 @@
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use cfg_traits::{
-		investments::InvestmentAccountant, PoolInspect, PoolReserve, Seconds, TrancheTokenPrice,
+		investments::InvestmentAccountant, PoolInspect, PoolMutate, PoolReserve, Seconds,
+		TrancheTokenPrice, UpdateState,
 	};
 	use cfg_types::investments::InvestmentInfo;
 	use frame_support::pallet_prelude::*;
@@ -221,6 +222,82 @@ pub mod pallet {
 		type PoolId = T::PoolId;
 
 		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {
+			execute_call!(a)
+		}
+	}
+
+	/// Mutability capabilities to this mock
+	pub trait ConfigMut: Config {
+		type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+		type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+		type PoolFeeInput: Encode + Decode + Clone + TypeInfo;
+		type MaxTranches: Get<u32>;
+		type MaxFeesPerPool: Get<u32>;
+	}
+
+	impl<T: ConfigMut> Pallet<T> {
+		pub fn mock_create(
+			func: impl Fn(
+					T::AccountId,
+					T::AccountId,
+					T::PoolId,
+					BoundedVec<T::TrancheInput, T::MaxTranches>,
+					T::CurrencyId,
+					T::Balance,
+					BoundedVec<T::PoolFeeInput, T::MaxFeesPerPool>,
+				) -> DispatchResult
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c, d, e, f, g)| func(a, b, c, d, e, f, g));
+		}
+
+		pub fn mock_update(
+			f: impl Fn(T::PoolId, T::PoolChanges) -> Result<UpdateState, DispatchError> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_execute_update(f: impl Fn(T::PoolId) -> Result<u32, DispatchError> + 'static) {
+			register_call!(f);
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_worst_pool_changes(f: impl Fn(Option<u32>) -> T::PoolChanges + 'static) {
+			register_call!(f);
+		}
+	}
+
+	impl<T: ConfigMut> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
+		type Balance = T::Balance;
+		type CurrencyId = T::CurrencyId;
+		type MaxFeesPerPool = T::MaxFeesPerPool;
+		type MaxTranches = T::MaxTranches;
+		type PoolChanges = T::PoolChanges;
+		type PoolFeeInput = T::PoolFeeInput;
+		type TrancheInput = T::TrancheInput;
+
+		fn create(
+			a: T::AccountId,
+			b: T::AccountId,
+			c: T::PoolId,
+			d: BoundedVec<T::TrancheInput, T::MaxTranches>,
+			e: T::CurrencyId,
+			f: T::Balance,
+			g: BoundedVec<T::PoolFeeInput, T::MaxFeesPerPool>,
+		) -> DispatchResult {
+			execute_call!((a, b, c, d, e, f, g))
+		}
+
+		fn update(a: T::PoolId, b: T::PoolChanges) -> Result<UpdateState, DispatchError> {
+			execute_call!((a, b))
+		}
+
+		fn execute_update(a: T::PoolId) -> Result<u32, DispatchError> {
+			execute_call!(a)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_pool_changes(a: Option<u32>) -> Self::PoolChanges {
 			execute_call!(a)
 		}
 	}

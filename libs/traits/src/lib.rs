@@ -22,13 +22,16 @@ use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::{RuntimeDebug, TypeInfo},
 	traits::UnixTime,
-	Parameter,
+	BoundedVec, Parameter,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use orml_traits::asset_registry;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use sp_runtime::{traits::Member, DispatchError};
-use sp_std::{fmt::Debug, marker::PhantomData, vec::Vec};
+use sp_runtime::{
+	traits::{Get, Member},
+	DispatchError,
+};
+use sp_std::{fmt::Debug, marker::PhantomData};
 
 pub mod changes;
 pub mod data;
@@ -96,7 +99,6 @@ pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed(u32),
 	Stored(u32),
 }
 
@@ -106,72 +108,55 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type CurrencyId;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
-	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
+	type PoolFeeInput: Encode + Decode + Clone + TypeInfo;
+	type MaxTranches: Get<u32>;
+	type MaxFeesPerPool: Get<u32>;
 
 	fn create(
 		admin: AccountId,
 		depositor: AccountId,
 		pool_id: PoolId,
-		tranche_inputs: Vec<Self::TrancheInput>,
+		tranche_inputs: BoundedVec<Self::TrancheInput, Self::MaxTranches>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
-		pool_fees: Vec<Self::PoolFeeInput>,
+		pool_fees: BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
 	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
-}
 
-/// A trait that supports retrieval and mutation of pool and tranche token
-/// metadata.
-pub trait PoolMetadata<Balance, VersionedMultiLocation> {
-	type AssetMetadata;
-	type CustomMetadata;
-	type PoolMetadata;
-	type PoolId: Parameter
-		+ Member
-		+ Debug
-		+ Copy
-		+ Default
-		+ TypeInfo
-		+ Encode
-		+ Decode
-		+ MaxEncodedLen;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	/// A worst case list of tranches
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_tranche_input_list(
+		_num_tranches: u32,
+	) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
+		Default::default()
+	}
 
-	/// Get the metadata of the given pool.
-	fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError>;
+	/// A worst case list of pool fees
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_fee_input_list(
+		_num_pool_fees: u32,
+	) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+		Default::default()
+	}
 
-	/// Set the metadata of the given pool.
-	fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult;
+	/// A worst case change
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_pool_changes(_num_tranches: Option<u32>) -> Self::PoolChanges;
 
-	/// Get the metadata of the given pair of pool and tranche id.
-	fn get_tranche_token_metadata(
-		pool_id: Self::PoolId,
-		tranche: Self::TrancheId,
-	) -> Result<Self::AssetMetadata, DispatchError>;
+	/// Returns a valid currency to be used in the pool
+	#[cfg(feature = "runtime-benchmarks")]
+	fn register_pool_currency(_: &Self::CurrencyId) {}
 
-	/// Register the metadata for the currency derived from the given pair of
-	/// pool id and tranche.
-	fn create_tranche_token_metadata(
-		pool_id: Self::PoolId,
-		tranche: Self::TrancheId,
-		metadata: Self::AssetMetadata,
-	) -> DispatchResult;
+	/// Satisfy the account preconditions as a depositor
+	#[cfg(feature = "runtime-benchmarks")]
+	fn fund_depositor(_: &AccountId) {}
 
-	#[allow(clippy::too_many_arguments)]
-	/// Update the metadata of the given pair of pool and tranche id.
-	fn update_tranche_token_metadata(
-		pool_id: Self::PoolId,
-		tranche: Self::TrancheId,
-		decimals: Option<u32>,
-		name: Option<Vec<u8>>,
-		symbol: Option<Vec<u8>>,
-		existential_deposit: Option<Balance>,
-		location: Option<Option<VersionedMultiLocation>>,
-		additional: Option<Self::CustomMetadata>,
-	) -> DispatchResult;
+	/// Creates the heaviest pool possible
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_heaviest_pool(_: PoolId, _: AccountId, _: Self::CurrencyId, _num_tranches: u32) {}
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
