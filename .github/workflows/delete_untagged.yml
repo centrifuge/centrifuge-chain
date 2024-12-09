@@ -10,7 +10,7 @@ jobs:
       # id-token: write
     steps:
       - name: Delete untagged ghcr
-        uses: Chizkiyahu/delete-untagged-ghcr-action@v3
+        uses: Chizkiyahu/delete-untagged-ghcr-action@v4
         with:
           # Personal access token (PAT) used to fetch the repository. The PAT is configured
           # with the local git config, which enables your scripts to run authenticated git
