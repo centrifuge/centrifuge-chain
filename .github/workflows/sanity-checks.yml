@@ -35,10 +35,14 @@ jobs:
       # Required for integration tests evm interaction
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        
       - name: Debug GitHub Environment Variables
+        shell: bash
         run: |
-          echo "Printing all variables in GITHUB_ENV:"
-          cat $GITHUB_ENV || echo "GITHUB_ENV file not found or empty"
+          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
+          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
+          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
+          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
@@ -67,9 +71,12 @@ jobs:
           GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Debug GitHub Environment Variables
+        shell: bash
         run: |
-          echo "Printing all variables in GITHUB_ENV:"
-          cat $GITHUB_ENV || echo "GITHUB_ENV file not found or empty"
+          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
+          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
+          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
+          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
