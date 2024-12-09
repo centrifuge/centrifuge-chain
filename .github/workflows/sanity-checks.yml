@@ -35,12 +35,19 @@ jobs:
       # Required for integration tests evm interaction
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        
+      - name: Debug GitHub Environment Variables
+        shell: bash
+        run: |
+          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
+          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
+          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
+          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
-          RUSTC_WRAPPER: "sccache"
 
   benchmark-check:
     if: ${{ !github.event.pull_request.draft }}
@@ -63,10 +70,16 @@ jobs:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 
+      - name: Debug GitHub Environment Variables
+        shell: bash
+        run: |
+          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
+          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
+          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
+          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: benchmark-check
           RUNTIME: ${{ matrix.runtime }}
-          RUSTC_WRAPPER: "sccache"
