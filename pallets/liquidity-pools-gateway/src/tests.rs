@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::LP_DEFENSIVE_WEIGHT;
-use cfg_traits::liquidity_pools::{
-	LpMessageHash, LpMessageSerializer, MessageProcessor, OutboundMessageHandler,
-};
+use cfg_traits::liquidity_pools::{LpMessageHash, MessageProcessor, OutboundMessageHandler};
 use cfg_types::domain_address::*;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use itertools::Itertools;
@@ -13,10 +11,6 @@ use sp_core::{bounded::BoundedVec, crypto::AccountId32};
 use sp_runtime::{
 	DispatchError,
 	DispatchError::{Arithmetic, BadOrigin},
-};
-use sp_std::sync::{
-	atomic::{AtomicU32, Ordering},
-	Arc,
 };
 
 use super::{
@@ -313,66 +307,6 @@ mod extrinsics {
 					),
 					Error::<Runtime>::MessagePackingAlreadyStarted
 				);
-			});
-		}
-
-		#[test]
-		fn process_inbound() {
-			new_test_ext().execute_with(|| {
-				let domain = Domain::Evm(TEST_EVM_CHAIN);
-
-				let router_id_1 = ROUTER_ID_1;
-
-				Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
-				SessionIdStore::<Runtime>::set(1);
-
-				let handler = MockLiquidityPools::mock_handle(|_, _| Ok(()));
-
-				let submessage_count = 5;
-
-				let (result, weight) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain,
-					message: Message::deserialize(&(1..=submessage_count).collect::<Vec<_>>())
-						.unwrap(),
-					router_id: ROUTER_ID_1,
-				});
-
-				let expected_weight = LP_DEFENSIVE_WEIGHT.saturating_mul(submessage_count.into());
-
-				assert_ok!(result);
-				assert_eq!(weight, expected_weight);
-				assert_eq!(handler.times(), submessage_count as u32);
-			});
-		}
-
-		#[test]
-		fn process_inbound_with_errors() {
-			new_test_ext().execute_with(|| {
-				let domain = Domain::Evm(1);
-
-				let router_id_1 = ROUTER_ID_1;
-
-				Routers::<Runtime>::set(BoundedVec::try_from(vec![router_id_1]).unwrap());
-				SessionIdStore::<Runtime>::set(1);
-
-				let counter = Arc::new(AtomicU32::new(0));
-
-				let handler = MockLiquidityPools::mock_handle(move |_, _| {
-					match counter.fetch_add(1, Ordering::Relaxed) {
-						2 => Err(DispatchError::Unavailable),
-						_ => Ok(()),
-					}
-				});
-
-				let (result, _) = LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-					domain,
-					message: Message::deserialize(&(1..=5).collect::<Vec<_>>()).unwrap(),
-					router_id: ROUTER_ID_1,
-				});
-
-				assert_err!(result, DispatchError::Unavailable);
-				// 2 correct messages and 1 failed message processed.
-				assert_eq!(handler.times(), 3);
 			});
 		}
 	}
@@ -968,7 +902,6 @@ mod implementations {
 		mod inbound {
 			use super::*;
 
-			#[macro_use]
 			mod util {
 				use super::*;
 
@@ -1960,6 +1893,160 @@ mod implementations {
 							let (res, _) = LiquidityPoolsGateway::process(gateway_message);
 							assert_noop!(res, Error::<Runtime>::ProofNotExpectedFromFirstRouter);
 						});
+					}
+
+					#[test]
+					fn storage_rollback_on_failure() {
+						new_test_ext().execute_with(|| {
+							Routers::<Runtime>::set(
+								BoundedVec::<_, _>::try_from(vec![ROUTER_ID_1, ROUTER_ID_2])
+									.unwrap(),
+							);
+							SessionIdStore::<Runtime>::set(1);
+
+							let err = DispatchError::Unavailable;
+
+							MockLiquidityPools::mock_handle(move |_, _| Err(err));
+
+							let (res, _) =
+								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								});
+							assert_ok!(res);
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_1
+							)
+							.is_some());
+
+							let (res, _) =
+								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								});
+							assert_noop!(res, err);
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_1
+							)
+							.is_some());
+							assert!(PendingInboundEntries::<Runtime>::get(
+								MESSAGE_HASH,
+								ROUTER_ID_2
+							)
+							.is_none());
+						});
+					}
+				}
+
+				mod session_id_change {
+					use super::*;
+
+					#[derive(Debug)]
+					enum TestAction {
+						SetRouters(Vec<RouterId>),
+						ProcessMessage(GatewayMessage<Message, RouterId>),
+					}
+
+					#[test]
+					fn no_execution_after_session_change() {
+						let tests = vec![
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_3,
+								}),
+							],
+							vec![
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_2,
+								}),
+								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Simple,
+									router_id: ROUTER_ID_1,
+								}),
+								TestAction::ProcessMessage(GatewayMessage::Inbound {
+									domain_address: TEST_DOMAIN_ADDRESS,
+									message: Message::Proof(MESSAGE_HASH),
+									router_id: ROUTER_ID_3,
+								}),
+							],
+						];
+
+						for test in tests {
+							println!("Executing session id change test for - {:?}", test);
+
+							new_test_ext().execute_with(|| {
+								for action in test {
+									let mock_handler =
+										MockLiquidityPools::mock_handle(move |_, _| Ok(()));
+
+									match action {
+										TestAction::SetRouters(routers) => {
+											assert_ok!(LiquidityPoolsGateway::set_routers(
+												RuntimeOrigin::root(),
+												BoundedVec::<_, _>::try_from(routers).unwrap(),
+											));
+										}
+										TestAction::ProcessMessage(message) => {
+											let (res, _) = LiquidityPoolsGateway::process(message);
+											assert_ok!(res);
+										}
+									}
+
+									assert_eq!(mock_handler.times(), 0)
+								}
+							});
+						}
 					}
 				}
 			}

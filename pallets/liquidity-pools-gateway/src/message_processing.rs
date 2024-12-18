@@ -1,6 +1,5 @@
 use cfg_traits::liquidity_pools::{
-	InboundMessageHandler, LpMessageBatch, LpMessageHash, LpMessageProof, MessageHash,
-	MessageQueue, RouterProvider,
+	InboundMessageHandler, LpMessageHash, LpMessageProof, MessageHash, MessageQueue, RouterProvider,
 };
 use cfg_types::domain_address::Domain;
 use frame_support::{
@@ -333,7 +332,11 @@ impl<T: Config> Pallet<T> {
 				// we can return.
 				None => return Ok(()),
 				Some(stored_inbound_entry) => match stored_inbound_entry {
-					InboundEntry::Message(message_entry) => message = Some(message_entry.message),
+					InboundEntry::Message(message_entry)
+						if message_entry.session_id == session_id =>
+					{
+						message = Some(message_entry.message)
+					}
 					InboundEntry::Proof(proof_entry)
 						if proof_entry.has_valid_vote_for_session(session_id) =>
 					{
@@ -349,9 +352,9 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
-
 			T::InboundMessageHandler::handle(domain, msg)?;
+
+			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
 			Self::deposit_event(Event::<T>::InboundMessageExecuted {
 				domain,
@@ -401,33 +404,31 @@ impl<T: Config> Pallet<T> {
 		domain: Domain,
 		message: T::Message,
 		router_id: T::RouterId,
-		counter: &mut u64,
 	) -> DispatchResult {
 		let router_ids = Self::get_router_ids_for_domain(domain)?;
 		let session_id = SessionIdStore::<T>::get();
 		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
+		let message_hash = message.get_message_hash();
+		let inbound_entry: InboundEntry<T> = InboundEntry::create(
+			message.clone(),
+			session_id,
+			domain_address.clone(),
+			expected_proof_count,
+		);
 
-		for submessage in message.submessages() {
-			counter.ensure_add_assign(1)?;
+		inbound_entry.validate(&router_ids, &router_id.clone())?;
 
-			let message_hash = submessage.get_message_hash();
+		Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
 
-			let inbound_entry: InboundEntry<T> =
-				InboundEntry::create(submessage.clone(), session_id, domain, expected_proof_count);
+		Self::deposit_processing_event(domain, message, message_hash, router_id.clone());
 
-			inbound_entry.validate(&router_ids, &router_id.clone())?;
-			Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
-
-			Self::deposit_processing_event(domain, submessage, message_hash, router_id.clone());
-
-			Self::execute_if_requirements_are_met(
-				message_hash,
-				&router_ids,
-				session_id,
-				expected_proof_count,
-				domain,
-			)?;
-		}
+		Self::execute_if_requirements_are_met(
+			message_hash,
+			&router_ids,
+			session_id,
+			expected_proof_count,
+			domain,
+		)?;
 
 		Ok(())
 	}

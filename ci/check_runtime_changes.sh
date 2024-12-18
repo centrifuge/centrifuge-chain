@@ -48,7 +48,7 @@ RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
 
 echo "There are ${RUNTIME_FILE_CHANGED} file(s) changed in runtime "
 
-# If there are no changes in the runtime file, exit sucessfully
+# If there are no changes in the runtime file, exit successfully
 if (( $RUNTIME_FILE_CHANGED == 0 ))
 then
 	echo -e "| ${OK} Nothing is changed in runtime"

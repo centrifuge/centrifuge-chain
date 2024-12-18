@@ -10,19 +10,27 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use frame_support::migrations::VersionedMigration;
+
 use crate::Runtime;
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1401 = (
-	// Clear OutboundMessageNonceStore
-	frame_support::migrations::VersionedMigration<
+pub type UpgradeCentrifuge1403 = (
+	// Clear v0 RelayerList storage
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
+	runtime_common::migrations::liquidity_pools_v2::v0_init_message_queue::Migration<Runtime>,
+	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
+	VersionedMigration<
 		0,
-		1,
-		runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>,
+		3,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Remove deprecated RelayerList storage
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Remove undecodable ForeignInvestmentInfo v0 entries
 	runtime_common::migrations::foreign_investments_v2::Migration<Runtime>,
 	// Bump to v1
