@@ -121,12 +121,12 @@ pub fn create<T: Runtime>(
 		},
 		admin,
 		pool_id,
-		tranches,
+		tranches.try_into().unwrap(),
 		currency_id,
 		Balance::MAX,
 		None,
 		BoundedVec::default(),
-		vec![],
+		BoundedVec::default(),
 	)
 	.unwrap();
 

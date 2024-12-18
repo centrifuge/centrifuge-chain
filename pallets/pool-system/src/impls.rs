@@ -12,7 +12,7 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::{PoolFeeBucket, PoolFeesMutate},
+	fee::{PoolFeeBucket, PoolFeesInspect, PoolFeesMutate},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	PoolUpdateGuard, TrancheTokenPrice, UpdateState,
 };
@@ -21,7 +21,7 @@ use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
 	Contains,
 };
-use sp_runtime::traits::Hash;
+use sp_runtime::traits::{EnsureInto, Hash};
 
 use super::*;
 use crate::{
@@ -95,6 +95,8 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
+	type MaxFeesPerPool = <T::PoolFees as PoolFeesInspect>::MaxFeesPerPool;
+	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
@@ -106,10 +108,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		admin: T::AccountId,
 		depositor: T::AccountId,
 		pool_id: T::PoolId,
-		tranche_inputs: Vec<TrancheInput<T::Rate, T::StringLimit>>,
+		tranche_inputs: BoundedVec<TrancheInput<T::Rate, T::StringLimit>, T::MaxTranches>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		pool_fees: Vec<Self::PoolFeeInput>,
+		pool_fees: BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -134,15 +136,16 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let now = T::Time::now();
 
-		let tranches = Tranches::<
-			T::Balance,
-			T::Rate,
-			T::TrancheWeight,
-			T::TrancheCurrency,
-			T::TrancheId,
-			T::PoolId,
-			T::MaxTranches,
-		>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone(), now)?;
+		let tranches =
+			Tranches::<
+				T::Balance,
+				T::Rate,
+				T::TrancheWeight,
+				T::TrancheCurrency,
+				T::TrancheId,
+				T::PoolId,
+				T::MaxTranches,
+			>::from_input::<T::StringLimit>(pool_id, tranche_inputs.clone().into_inner(), now)?;
 
 		let pool_details = PoolDetails {
 			currency,
@@ -177,8 +180,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details
-				.essence_from_tranche_input::<T::StringLimit>(ids, tranche_inputs.clone())?,
+			essence: pool_details.essence_from_tranche_input::<T::StringLimit>(
+				ids,
+				tranche_inputs.clone().into_inner(),
+			)?,
 		});
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
@@ -269,17 +274,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			submitted_at: now,
 		};
 
-		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
-			Self::do_update_pool(&pool_id, &changes)?;
+		ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok(UpdateState::Executed(num_tranches))
-		} else {
-			// If an update was already stored, this will override it
-			ScheduledUpdate::<T>::insert(pool_id, update);
-
-			Ok(UpdateState::Stored(num_tranches))
-		}
+		let num_tranches = pool.tranches.num_tranches().ensure_into()?;
+		Ok(UpdateState::Stored(num_tranches))
 	}
 
 	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
@@ -294,6 +292,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
 		let now = T::Time::now();
+
+		#[cfg(not(feature = "runtime-benchmarks"))]
 		ensure!(
 			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
 			Error::<T>::ScheduledTimeHasNotPassed
@@ -306,8 +306,150 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		Self::do_update_pool(&pool_id, &update.changes)?;
 
-		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
+		let num_tranches = pool.tranches.num_tranches().ensure_into()?;
+
 		Ok(num_tranches)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_tranche_input_list(n: u32) -> BoundedVec<Self::TrancheInput, Self::MaxTranches> {
+		use cfg_types::pools::TrancheMetadata;
+
+		let senior_interest_rate = T::Rate::saturating_from_rational(5, 100)
+			/ T::Rate::saturating_from_integer(cfg_primitives::SECONDS_PER_YEAR);
+		let mut tranches: Vec<_> = (1..n)
+			.map(|tranche_id| TrancheInput {
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: senior_interest_rate
+						/ T::Rate::saturating_from_integer(tranche_id)
+						+ One::one(),
+					min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+				},
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			})
+			.collect();
+		tranches.insert(
+			0,
+			TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			},
+		);
+
+		tranches.try_into().unwrap()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_fee_input_list(n: u32) -> BoundedVec<Self::PoolFeeInput, Self::MaxFeesPerPool> {
+		let n_in_bucket = sp_std::cmp::min(n, T::PoolFees::get_max_fees_per_bucket());
+		T::PoolFees::worst_pool_fee_infos(n_in_bucket)
+			.into_iter()
+			.map(|fee| (PoolFeeBucket::Top, fee))
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_pool_changes(tranches: Option<u32>) -> Self::PoolChanges {
+		use cfg_primitives::{SECONDS_PER_DAY, SECONDS_PER_HOUR};
+		use cfg_types::pools::TrancheMetadata;
+
+		match tranches {
+			Some(n) => {
+				let tranche_updates = Self::worst_tranche_input_list(n)
+					.iter()
+					.map(|input| TrancheUpdate {
+						tranche_type: input.tranche_type,
+						seniority: input.seniority,
+					})
+					.collect::<Vec<_>>()
+					.try_into()
+					.unwrap();
+
+				let tranche_metadatas = sp_std::iter::repeat(TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				})
+				.take(n as usize)
+				.collect::<Vec<_>>()
+				.try_into()
+				.unwrap();
+
+				PoolChanges {
+					tranches: Change::NewValue(tranche_updates),
+					min_epoch_time: Change::NewValue(SECONDS_PER_DAY),
+					max_nav_age: Change::NewValue(SECONDS_PER_HOUR),
+					tranche_metadata: Change::NewValue(tranche_metadatas),
+				}
+			}
+			None => PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(SECONDS_PER_DAY),
+				max_nav_age: Change::NewValue(SECONDS_PER_HOUR),
+				tranche_metadata: Change::NoChange,
+			},
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn register_pool_currency(currency_id: &T::CurrencyId) {
+		use cfg_types::tokens::CustomMetadata;
+
+		let metadata = orml_asset_registry::AssetMetadata {
+			decimals: 18,
+			name: Default::default(),
+			symbol: Default::default(),
+			existential_deposit: Zero::zero(),
+			location: None,
+			additional: CustomMetadata {
+				pool_currency: true,
+				..CustomMetadata::default()
+			},
+		};
+
+		T::AssetRegistry::register_asset(Some(*currency_id), metadata).unwrap();
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn fund_depositor(admin: &T::AccountId) {
+		use frame_support::traits::Currency;
+
+		T::Currency::make_free_balance_be(
+			admin,
+			T::PoolDeposit::get() + T::Currency::minimum_balance(),
+		);
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_heaviest_pool(
+		pool_id: T::PoolId,
+		admin: T::AccountId,
+		currency_id: T::CurrencyId,
+		num_tranches: u32,
+	) {
+		use sp_runtime::traits::Bounded;
+
+		Self::fund_depositor(&admin);
+		Self::register_pool_currency(&currency_id);
+		Self::create(
+			admin.clone(),
+			admin,
+			pool_id,
+			Self::worst_tranche_input_list(num_tranches),
+			currency_id,
+			T::Balance::max_value(),
+			Self::worst_fee_input_list(Self::MaxFeesPerPool::get()),
+		)
+		.unwrap();
 	}
 }
 
@@ -464,83 +606,35 @@ mod benchmarks_utils {
 		},
 		investments::Investment,
 	};
-	use cfg_types::{
-		pools::TrancheMetadata,
-		tokens::{CurrencyId, CustomMetadata},
-	};
 	use frame_benchmarking::account;
 	use frame_support::traits::Currency;
 	use frame_system::RawOrigin;
-	use sp_std::vec;
 
 	use super::*;
 
-	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
+	const POOL_CURRENCY_INDEX: u32 = 1;
 	const FUNDS: u128 = u64::max_value() as u128;
 
-	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T> {
+	impl<T: Config> PoolBenchmarkHelper for Pallet<T>
+	where
+		T::CurrencyId: From<u32>,
+	{
 		type AccountId = T::AccountId;
 		type PoolId = T::PoolId;
 
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
-			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
-				frame_support::assert_ok!(T::AssetRegistry::register_asset(
-					Some(POOL_CURRENCY),
-					orml_asset_registry::AssetMetadata {
-						decimals: 12,
-						name: Default::default(),
-						symbol: Default::default(),
-						existential_deposit: Zero::zero(),
-						location: None,
-						additional: CustomMetadata {
-							pool_currency: true,
-							..CustomMetadata::default()
-						},
-					},
-				));
-			}
-
-			// Pool creation
-			T::Currency::make_free_balance_be(
-				admin,
-				T::PoolDeposit::get() + T::Currency::minimum_balance(),
-			);
-			frame_support::assert_ok!(Pallet::<T>::create(
-				admin.clone(),
-				admin.clone(),
+			Self::create_heaviest_pool(
 				pool_id,
-				vec![
-					TrancheInput {
-						tranche_type: TrancheType::Residual,
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-					TrancheInput {
-						tranche_type: TrancheType::NonResidual {
-							interest_rate_per_sec: One::one(),
-							min_risk_buffer: Perquintill::from_percent(10),
-						},
-						seniority: None,
-						metadata: TrancheMetadata {
-							token_name: BoundedVec::default(),
-							token_symbol: BoundedVec::default(),
-						},
-					},
-				],
-				POOL_CURRENCY,
-				FUNDS.into(),
-				// NOTE: Genesis pool fees missing per default, could be added via <T::PoolFees as
-				// PoolFeesBenchmarkHelper>::add_pool_fees(..)
-				vec![],
-			));
+				admin.clone(),
+				T::CurrencyId::from(POOL_CURRENCY_INDEX),
+				T::MaxTranches::get(),
+			);
 		}
 	}
 
-	impl<T: Config<CurrencyId = CurrencyId>> FundedPoolBenchmarkHelper for Pallet<T>
+	impl<T: Config> FundedPoolBenchmarkHelper for Pallet<T>
 	where
+		T::CurrencyId: From<u32>,
 		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
 		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
 	{
@@ -555,7 +649,7 @@ mod benchmarks_utils {
 			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			frame_support::assert_ok!(T::Tokens::mint_into(
-				POOL_CURRENCY,
+				T::CurrencyId::from(POOL_CURRENCY_INDEX),
 				&pool_account,
 				POOL_ACCOUNT_BALANCE.into()
 			));
@@ -590,7 +684,8 @@ mod benchmarks_utils {
 		}
 
 		fn bench_investor_setup(pool_id: T::PoolId, account: T::AccountId, balance: T::Balance) {
-			T::Tokens::mint_into(POOL_CURRENCY, &account, balance).unwrap();
+			let pool_currency = T::CurrencyId::from(POOL_CURRENCY_INDEX);
+			T::Tokens::mint_into(pool_currency, &account, balance).unwrap();
 			T::Currency::make_free_balance_be(&account, balance);
 
 			let tranche =
@@ -604,7 +699,7 @@ mod benchmarks_utils {
 		}
 	}
 
-	impl<T: Config<CurrencyId = CurrencyId>> InvestmentIdBenchmarkHelper for Pallet<T> {
+	impl<T: Config> InvestmentIdBenchmarkHelper for Pallet<T> {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
