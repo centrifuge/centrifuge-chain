@@ -409,12 +409,8 @@ impl<T: Config> Pallet<T> {
 		let session_id = SessionIdStore::<T>::get();
 		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 		let message_hash = message.get_message_hash();
-		let inbound_entry: InboundEntry<T> = InboundEntry::create(
-			message.clone(),
-			session_id,
-			domain_address.clone(),
-			expected_proof_count,
-		);
+		let inbound_entry: InboundEntry<T> =
+			InboundEntry::create(message.clone(), session_id, domain, expected_proof_count);
 
 		inbound_entry.validate(&router_ids, &router_id.clone())?;
 

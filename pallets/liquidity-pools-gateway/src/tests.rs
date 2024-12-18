@@ -1910,7 +1910,7 @@ mod implementations {
 
 							let (res, _) =
 								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Simple,
 									router_id: ROUTER_ID_1,
 								});
@@ -1923,7 +1923,7 @@ mod implementations {
 
 							let (res, _) =
 								LiquidityPoolsGateway::process(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_2,
 								});
@@ -1957,13 +1957,13 @@ mod implementations {
 							vec![
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Simple,
 									router_id: ROUTER_ID_1,
 								}),
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_2,
 								}),
@@ -1971,13 +1971,13 @@ mod implementations {
 							vec![
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_2,
 								}),
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Simple,
 									router_id: ROUTER_ID_1,
 								}),
@@ -1985,18 +1985,18 @@ mod implementations {
 							vec![
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Simple,
 									router_id: ROUTER_ID_1,
 								}),
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_2,
 								}),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_3,
 								}),
@@ -2004,18 +2004,18 @@ mod implementations {
 							vec![
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_2,
 								}),
 								TestAction::SetRouters(vec![ROUTER_ID_1, ROUTER_ID_2, ROUTER_ID_3]),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Simple,
 									router_id: ROUTER_ID_1,
 								}),
 								TestAction::ProcessMessage(GatewayMessage::Inbound {
-									domain_address: TEST_DOMAIN_ADDRESS,
+									domain: TEST_DOMAIN,
 									message: Message::Proof(MESSAGE_HASH),
 									router_id: ROUTER_ID_3,
 								}),

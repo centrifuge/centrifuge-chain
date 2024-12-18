@@ -142,9 +142,8 @@ pub mod v2_update_message_queue {
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			assert!(
 				v2::MessageQueue::<T>::iter_values().all(|message| match message {
-					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
-						domain_address, ..
-					} => maybe_router_id(domain_address.domain()).is_some(),
+					v2::GatewayMessage::<T::AccountId, Message>::Inbound { domain, .. } =>
+						maybe_router_id(domain.domain()).is_some(),
 					v2::GatewayMessage::<T::AccountId, Message>::Outbound {
 						destination, ..
 					} => maybe_router_id(destination).is_some(),
@@ -153,9 +152,8 @@ pub mod v2_update_message_queue {
 			assert!(v2::FailedMessageQueue::<T>::iter_values()
 				.into_iter()
 				.all(|(message, _)| match message {
-					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
-						domain_address, ..
-					} => maybe_router_id(domain_address.domain()).is_some(),
+					v2::GatewayMessage::<T::AccountId, Message>::Inbound { domain, .. } =>
+						maybe_router_id(domain.domain()).is_some(),
 					v2::GatewayMessage::<T::AccountId, Message>::Outbound {
 						destination, ..
 					} => maybe_router_id(destination).is_some(),
@@ -657,7 +655,7 @@ mod types {
                             Message,
                             RouterId,
                         >::Inbound {
-                            domain_address,
+                            domain: domain_address.domain(),
                             message,
                             router_id,
                         }
@@ -775,6 +773,8 @@ mod types {
 				From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		{
 			pub(crate) fn migrate_to_domain_config(&self, chain_id: EVMChainId) -> AxelarConfig {
+				todo!()
+				/*
 				AxelarConfig {
 					liquidity_pools_contract_address: self.liquidity_pools_contract_address,
 					domain: DomainConfig::Evm(EvmConfig {
@@ -784,6 +784,7 @@ mod types {
 						fee_values: self.router.evm_domain.fee_values.clone(),
 					}),
 				}
+				*/
 			}
 		}
 
