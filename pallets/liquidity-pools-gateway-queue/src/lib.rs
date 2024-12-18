@@ -133,13 +133,18 @@ pub mod pallet {
 
 			let message = MessageQueue::<T>::take(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			let (result, weight) = Self::process_message_and_deposit_event(nonce, message.clone());
+			let (result, mut weight) =
+				Self::process_message_and_deposit_event(nonce, message.clone());
 
 			if let Err(e) = result {
 				FailedMessageQueue::<T>::insert(nonce, (message, e));
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight)))
+			// Add write from MessageQueue::take
+			Ok(PostDispatchInfo::from(Some(
+				weight.saturating_add(T::DbWeight::get().writes(1)),
+			)))
 		}
 
 		/// Convenience method for manually processing a failed message.
@@ -166,13 +171,17 @@ pub mod pallet {
 			let (message, _) =
 				FailedMessageQueue::<T>::get(nonce).ok_or(Error::<T>::MessageNotFound)?;
 
-			let (result, weight) = Self::process_message_and_deposit_event(nonce, message);
+			let (result, mut weight) = Self::process_message_and_deposit_event(nonce, message);
 
 			if result.is_ok() {
 				FailedMessageQueue::<T>::remove(nonce);
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
 			}
 
-			Ok(PostDispatchInfo::from(Some(weight)))
+			// Add read from FailedMessageQueue
+			Ok(PostDispatchInfo::from(Some(
+				weight.saturating_add(T::DbWeight::get().reads(1)),
+			)))
 		}
 	}
 
@@ -205,7 +214,9 @@ pub mod pallet {
 			let mut processed_entries = Vec::new();
 
 			for (nonce, message) in MessageQueue::<T>::iter() {
-				let remaining_weight = max_weight.saturating_sub(weight_used);
+				let remaining_weight = max_weight
+					.saturating_sub(weight_used)
+					.saturating_sub(T::DbWeight::get().reads(1));
 				let next_weight = T::MessageProcessor::max_processing_weight(&message);
 
 				// We ensure we have still capacity in the block before processing the message
@@ -237,7 +248,7 @@ pub mod pallet {
 
 				weight_used = weight_used.saturating_add(weight);
 
-				if weight_used.all_gte(max_weight) {
+				if weight_used.any_gte(max_weight) {
 					break;
 				}
 			}
