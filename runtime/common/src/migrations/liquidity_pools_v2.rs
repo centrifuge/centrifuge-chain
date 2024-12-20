@@ -540,10 +540,13 @@ pub mod init_axelar_router {
 			chain_id: EVMChainId,
 			domain: &Domain,
 		) -> DispatchResult {
+			// Read v0::gateway::AllowList storage => addr1
+			// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
+
 			pallet_axelar_router::Pallet::<T>::set_config(
 				T::RuntimeOrigin::root(),
 				router.evm_chain.clone(),
-				Box::new(router.migrate_to_domain_config(chain_id)),
+				Box::new(router.migrate_to_domain_config(chain_id /* , addr1, addr2 */)),
 			)
 			.map_err(|e| {
 				log::error!(
@@ -773,18 +776,17 @@ mod types {
 				From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		{
 			pub(crate) fn migrate_to_domain_config(&self, chain_id: EVMChainId) -> AxelarConfig {
-				todo!()
-				/*
 				AxelarConfig {
-					liquidity_pools_contract_address: self.liquidity_pools_contract_address,
+					app_contract_address: todo!("previous value in gateway::AllowList storage"),
+					inbound_contract_address: todo!(
+						"previous axelar-gateway-precompile::GatewayContract storage",
+					),
+					outbound_contract_address: self.liquidity_pools_contract_address,
 					domain: DomainConfig::Evm(EvmConfig {
-						chain_id,
-						target_contract_address: self.router.evm_domain.target_contract_address,
-						target_contract_hash: self.router.evm_domain.target_contract_hash,
-						fee_values: self.router.evm_domain.fee_values.clone(),
+						chain_id: chain_id,
+						outbound_fee_values: self.router.evm_domain.fee_values.clone(),
 					}),
-				}
-				*/
+				};
 			}
 		}
 
