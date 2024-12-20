@@ -757,6 +757,20 @@ mod types {
 			AxelarXCM(AxelarXCMRouter<T>),
 		}
 
+		#[storage_alias]
+		pub type GatewayContract<T: pallet_axelar_router::Config> =
+			StorageValue<pallet_axelar_router::Pallet<T>, H160, ValueQuery>;
+
+		#[storage_alias]
+		pub type Allowlist<T: pallet_liquidity_pools_gateway::Config> = StorageDoubleMap<
+			pallet_liquidity_pools_gateway::Pallet<T>,
+			Blake2_128Concat,
+			Domain,
+			Blake2_128Concat,
+			DomainAddress,
+			(),
+		>;
+
 		#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 		pub struct AxelarEVMRouter<T>
 		where
