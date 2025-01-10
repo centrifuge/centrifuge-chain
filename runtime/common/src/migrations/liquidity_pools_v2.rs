@@ -142,10 +142,6 @@ pub mod v2_update_message_queue {
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			assert!(
 				v2::MessageQueue::<T>::iter_values().all(|message| match message {
-					// TODO: Investigate whether current GatewayMessage should contain domain
-					// instead (newer commit than on public)
-					// Ref public: https://github.com/centrifuge/centrifuge-chain/blame/main/pallets/liquidity-pools-gateway/src/message.rs#L8
-					// Ref internal: https://github.com/centrifuge/centrifuge-chain-internal/blame/main/pallets/liquidity-pools-gateway/src/message.rs#L8
 					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
 						domain_address, ..
 					} => maybe_router_id(domain_address.domain()).is_some(),
@@ -157,7 +153,6 @@ pub mod v2_update_message_queue {
 			assert!(v2::FailedMessageQueue::<T>::iter_values()
 				.into_iter()
 				.all(|(message, _)| match message {
-					// TODO: See above
 					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
 						domain_address, ..
 					} => maybe_router_id(domain_address.domain()).is_some(),
