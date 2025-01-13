@@ -425,11 +425,10 @@ pub mod v0_init_message_queue {
 pub mod init_axelar_router {
 	use cfg_types::{domain_address::DomainAddress, EVMChainId};
 	#[cfg(feature = "try-runtime")]
+	use frame_support::dispatch::DispatchResult;
+	#[cfg(feature = "try-runtime")]
 	use frame_support::storage::transactional;
-	use frame_support::{
-		dispatch::DispatchResult,
-		traits::{GetStorageVersion, OriginTrait, StorageVersion},
-	};
+	use frame_support::traits::{GetStorageVersion, OriginTrait, StorageVersion};
 	use frame_system::pallet_prelude::OriginFor;
 	#[cfg(feature = "try-runtime")]
 	use sp_arithmetic::traits::SaturatedConversion;
