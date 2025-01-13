@@ -65,14 +65,12 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 		let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 		let axelar_evm_config = AxelarConfig {
-			liquidity_pools_contract_address: evm.deployed(names::ADAPTER).address(),
+			app_contract_address: H160(EVM_LP_INSTANCE),
+			inbound_contract_address: evm.deployed(names::ADAPTER).address(),
+			outbound_contract_address: evm.deployed(names::ADAPTER).address(),
 			domain: DomainConfig::Evm(EvmConfig {
 				chain_id: EVM_DOMAIN_CHAIN_ID,
-				target_contract_address: evm.deployed(names::ADAPTER).address(),
-				target_contract_hash: BlakeTwo256::hash_of(
-					&evm.deployed(names::ADAPTER).deployed_bytecode,
-				),
-				fee_values: FeeValues {
+				outbound_fee_values: FeeValues {
 					value: sp_core::U256::zero(),
 					gas_limit: sp_core::U256::from(500_000),
 					gas_price: sp_core::U256::from(base_fee),
@@ -84,11 +82,6 @@ pub fn setup<T: Runtime, F: FnOnce(&mut <RuntimeEnv<T> as EnvEvmExtension<T>>::E
 			RawOrigin::Root.into(),
 			EVM_DOMAIN_STR.as_bytes().to_vec().try_into().unwrap(),
 			Box::new(axelar_evm_config)
-		));
-
-		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
-			RawOrigin::Root.into(),
-			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, H160(EVM_LP_INSTANCE))
 		));
 
 		assert_ok!(pallet_liquidity_pools_gateway::Pallet::<T>::set_routers(
@@ -681,7 +674,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_A,
 			pool_a_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL B - Tranche 1/2
@@ -701,7 +696,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_B,
 			pool_b_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL B - Tranche 2/2
@@ -721,7 +718,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_B,
 			pool_b_tranche_2_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		// POOL C - Tranche 1/1
@@ -741,7 +740,9 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			POOL_C,
 			utils::pool_c_tranche_1_id::<T>(),
 			DomainAddress::Evm(EVM_DOMAIN_CHAIN_ID, investor.in_eth()),
-			SECONDS_PER_YEAR,
+			crate::utils::pool::get_default_tranche_investor_validity::<T>(
+				frame_system::Pallet::<T>::block_number()
+			),
 		));
 
 		for currency in [names::USDC, names::FRAX, names::DAI] {

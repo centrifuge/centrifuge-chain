@@ -10,13 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId};
+use cfg_primitives::{AccountId, Balance, InvestmentId, PoolId, TrancheId};
 use cfg_traits::{Permissions, PreConditions};
 use cfg_types::{
-	permissions::{PermissionScope, PoolRole, Role},
+	permissions::{PermissionScope, PoolRole, Role, TrancheInvestorInfo},
 	tokens::CurrencyId,
 };
-use frame_support::{dispatch::DispatchResult, traits::UnixTime};
+use frame_support::dispatch::DispatchResult;
+use orml_traits::GetByKey;
 use pallet_investments::OrderType;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
@@ -52,47 +53,38 @@ where
 /// Checks whether the given `who` has the role
 /// of a `TrancheInvestor` without having `FrozenInvestor` for the given pool
 /// and tranche.
-pub struct IsUnfrozenTrancheInvestor<P, T>(PhantomData<(P, T)>);
+pub struct IsUnfrozenTrancheInvestor<P>(PhantomData<P>);
 impl<
-		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-		T: UnixTime,
-	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P, T>
+		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>
+			+ GetByKey<
+				(PermissionScope<PoolId, CurrencyId>, AccountId, TrancheId),
+				Option<TrancheInvestorInfo<TrancheId>>,
+			>,
+	> PreConditions<OrderType<AccountId, InvestmentId, Balance>> for IsUnfrozenTrancheInvestor<P>
 {
 	type Result = DispatchResult;
 
 	fn check(order: OrderType<AccountId, InvestmentId, Balance>) -> Self::Result {
-		let is_tranche_investor = match order {
+		let (who, pool_id, tranche_id) = match order {
 			OrderType::Investment {
 				who,
 				investment_id: (pool_id, tranche_id),
 				..
-			} => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-				) && !P::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
-				)
 			}
-			OrderType::Redemption {
+			| OrderType::Redemption {
 				who,
 				investment_id: (pool_id, tranche_id),
 				..
-			} => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::now().as_secs())),
-				) && !P::has(
+			} => (who, pool_id, tranche_id),
+		};
+
+		let is_tranche_investor =
+			P::get(&(PermissionScope::Pool(pool_id), who.clone(), tranche_id)).is_some()
+				&& !P::has(
 					PermissionScope::Pool(pool_id),
 					who,
 					Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)),
-				)
-			}
-		};
+				);
 
 		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())

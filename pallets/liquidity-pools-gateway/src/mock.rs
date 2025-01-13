@@ -178,7 +178,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_mock_liquidity_pools::Config for Runtime {
-	type DomainAddress = DomainAddress;
+	type Domain = Domain;
 	type Message = Message;
 }
 

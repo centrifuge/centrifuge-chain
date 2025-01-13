@@ -12,7 +12,7 @@
 
 use cfg_traits::swaps::{OrderInfo, OrderRatio, Swap, SwapInfo, TokenSwaps};
 use frame_support::{
-	assert_err, assert_ok,
+	assert_err, assert_noop, assert_ok,
 	traits::fungibles::{Inspect, InspectHold},
 };
 use sp_runtime::{DispatchError, FixedPointNumber};
@@ -287,6 +287,7 @@ fn fill_order_full() {
 			RuntimeOrigin::signed(TO),
 			order_id,
 			amount_out,
+			amount_in,
 		));
 
 		util::assert_no_exists_order(order_id);
@@ -313,6 +314,7 @@ fn fill_order_partial_in_two_times() {
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(9),
+			first_amount_in,
 		));
 
 		assert_ok!(
@@ -349,6 +351,7 @@ fn fill_order_partial_in_two_times() {
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(1),
+			second_amount_in,
 		));
 
 		util::assert_no_exists_order(order_id);
@@ -368,10 +371,42 @@ fn fill_order_partial_in_two_times() {
 }
 
 #[test]
+fn fill_order_slippage_excess() {
+	new_test_ext().execute_with(|| {
+		let amount_out = token_a(10);
+		let order_id = util::create_default_order(amount_out);
+
+		let max_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(10));
+
+		assert_noop!(
+			OrderBook::fill_order(
+				RuntimeOrigin::signed(TO),
+				order_id,
+				amount_out,
+				max_amount_in - 1,
+			),
+			Error::<Runtime>::SlippageExceeded
+		);
+	});
+}
+
+#[test]
+fn fill_order_slippage_excess_zero_amount() {
+	new_test_ext().execute_with(|| {
+		let amount_out = OrderBook::min_fulfillment_amount(CURRENCY_A).unwrap();
+		let order_id = util::create_default_order(amount_out);
+		assert_noop!(
+			OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, amount_out, 0),
+			Error::<Runtime>::SlippageExceeded
+		);
+	});
+}
+
+#[test]
 fn fill_unknown_order() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::fill_order(RuntimeOrigin::signed(TO), 1, token_a(1)),
+			OrderBook::fill_order(RuntimeOrigin::signed(TO), 1, token_a(1), Balance::MAX),
 			Error::<Runtime>::OrderNotFound
 		);
 	});
@@ -387,6 +422,7 @@ fn fill_order_partial_with_insufficient_amount() {
 				RuntimeOrigin::signed(TO),
 				order_id,
 				OrderBook::min_fulfillment_amount(CURRENCY_A).unwrap() - 1,
+				Balance::MAX
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount
 		);
@@ -399,13 +435,23 @@ fn fill_order_partial_with_insufficient_funds() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::fill_order(RuntimeOrigin::signed(OTHER), order_id, token_a(3)),
+			OrderBook::fill_order(
+				RuntimeOrigin::signed(OTHER),
+				order_id,
+				token_a(3),
+				Balance::MAX
+			),
 			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
 
 		// Check for the case of the same account without be funded
 		assert_err!(
-			OrderBook::fill_order(RuntimeOrigin::signed(FROM), order_id, token_a(3)),
+			OrderBook::fill_order(
+				RuntimeOrigin::signed(FROM),
+				order_id,
+				token_a(3),
+				Balance::MAX
+			),
 			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
 	});
@@ -417,7 +463,12 @@ fn fill_order_partial_with_bigger_fulfilling_amount() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(11)),
+			OrderBook::fill_order(
+				RuntimeOrigin::signed(TO),
+				order_id,
+				token_a(11),
+				Balance::MAX
+			),
 			Error::<Runtime>::FulfillAmountTooLarge,
 		);
 	});
@@ -447,6 +498,7 @@ fn correct_order_details() {
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(9),
+			amount_in
 		));
 
 		assert_eq!(
@@ -480,6 +532,7 @@ fn fulfill_zero_amount_order() {
 		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(FROM),
 			order_id,
+			0,
 			0
 		));
 	});
@@ -543,6 +596,7 @@ mod market {
 				RuntimeOrigin::signed(TO),
 				order_id,
 				token_a(9),
+				first_amount_in
 			));
 
 			assert_ok!(
@@ -581,7 +635,12 @@ mod market {
 			MockRatioProvider::mock_get(move |_, _| Ok(Some(DEFAULT_RATIO)));
 
 			assert_err!(
-				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
+				OrderBook::fill_order(
+					RuntimeOrigin::signed(TO),
+					order_id,
+					token_a(3),
+					Balance::MAX
+				),
 				Error::<Runtime>::MarketFeederNotFound,
 			);
 		});
@@ -596,7 +655,12 @@ mod market {
 			MockRatioProvider::mock_get(move |_, _| Ok(None));
 
 			assert_err!(
-				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
+				OrderBook::fill_order(
+					RuntimeOrigin::signed(TO),
+					order_id,
+					token_a(3),
+					Balance::MAX
+				),
 				Error::<Runtime>::MarketRatioNotFound,
 			);
 		});

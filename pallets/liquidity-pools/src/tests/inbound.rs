@@ -17,7 +17,7 @@ fn receiving_invalid_message() {
 		let msg = Message::AddPool { pool_id: 123 };
 
 		assert_noop!(
-			LiquidityPools::handle(CONTRACT_DOMAIN_ADDRESS, msg),
+			LiquidityPools::handle(EVM_DOMAIN, msg),
 			Error::<Runtime>::InvalidIncomingMessage,
 		);
 	})
@@ -32,7 +32,7 @@ mod handle_transfer {
 			AssetRegistry::mock_metadata(|_| Some(util::default_metadata()));
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::TransferAssets {
 					currency: util::currency_index(CURRENCY_ID),
 					receiver: ALICE.into(),
@@ -52,7 +52,7 @@ mod handle_transfer {
 			System::externalities().execute_with(|| {
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
 							receiver: ALICE.into(),
@@ -70,7 +70,7 @@ mod handle_transfer {
 				AssetRegistry::mock_metadata(|_| None);
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferAssets {
 							currency: util::currency_index(CURRENCY_ID),
 							receiver: ALICE.into(),
@@ -85,21 +85,18 @@ mod handle_transfer {
 }
 
 mod handle_tranche_tokens_transfer {
-	use cfg_types::domain_address::Domain;
+	use cfg_primitives::TrancheId;
+	use cfg_types::{domain_address::Domain, permissions::TrancheInvestorInfo};
 
 	use super::*;
 
 	fn config_mocks(receiver: DomainAddress) {
 		Time::mock_now(|| NOW);
+		let r = receiver.clone();
 		Permissions::mock_has(move |scope, who, role| {
 			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
-			assert_eq!(who, receiver.account());
+			assert_eq!(who, r.account());
 			match role {
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, validity)) => {
-					assert_eq!(tranche_id, TRANCHE_ID);
-					assert_eq!(validity, NOW_SECS);
-					true
-				}
 				Role::PoolRole(PoolRole::FrozenTrancheInvestor(tranche_id)) => {
 					assert_eq!(tranche_id, TRANCHE_ID);
 					// Default mock has unfrozen investor
@@ -107,6 +104,12 @@ mod handle_tranche_tokens_transfer {
 				}
 				_ => false,
 			}
+		});
+		Permissions::mock_get(move |(scope, who, tranche_id)| {
+			assert!(matches!(scope, PermissionScope::Pool(POOL_ID)));
+			assert_eq!(*who, receiver.account());
+			assert_eq!(*tranche_id, TRANCHE_ID);
+			Some(TrancheInvestorInfo::<TrancheId>::dummy(*tranche_id))
 		});
 		Pools::mock_pool_exists(|_| true);
 		Pools::mock_tranche_exists(|_, _| true);
@@ -117,15 +120,10 @@ mod handle_tranche_tokens_transfer {
 		System::externalities().execute_with(|| {
 			config_mocks(ALICE_LOCAL_DOMAIN_ADDRESS);
 
-			Tokens::mint_into(
-				TRANCHE_CURRENCY,
-				&CONTRACT_DOMAIN_ADDRESS.domain().into_account(),
-				AMOUNT,
-			)
-			.unwrap();
+			Tokens::mint_into(TRANCHE_CURRENCY, &EVM_DOMAIN.into_account(), AMOUNT).unwrap();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -135,7 +133,7 @@ mod handle_tranche_tokens_transfer {
 				}
 			));
 
-			let origin = CONTRACT_DOMAIN_ADDRESS.domain().into_account();
+			let origin = EVM_DOMAIN.into_account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &origin), 0);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE.into()), AMOUNT);
 		});
@@ -172,7 +170,7 @@ mod handle_tranche_tokens_transfer {
 			Tokens::mint_into(TRANCHE_CURRENCY, &origin, AMOUNT).unwrap();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::TransferTrancheTokens {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -199,7 +197,7 @@ mod handle_tranche_tokens_transfer {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -218,10 +216,11 @@ mod handle_tranche_tokens_transfer {
 			System::externalities().execute_with(|| {
 				config_mocks(ALICE_LOCAL_DOMAIN_ADDRESS);
 				Permissions::mock_has(|_, _, _| false);
+				Permissions::mock_get(|(_, _, _)| None);
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -243,7 +242,7 @@ mod handle_tranche_tokens_transfer {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -265,7 +264,7 @@ mod handle_tranche_tokens_transfer {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -287,7 +286,7 @@ mod handle_tranche_tokens_transfer {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -308,7 +307,7 @@ mod handle_tranche_tokens_transfer {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::TransferTrancheTokens {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -348,7 +347,7 @@ mod handle_increase_invest_order {
 			config_mocks();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::DepositRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -371,7 +370,7 @@ mod handle_increase_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -393,7 +392,7 @@ mod handle_increase_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -415,7 +414,7 @@ mod handle_increase_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::DepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -454,7 +453,7 @@ mod handle_cancel_invest_order {
 			config_mocks();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::CancelDepositRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -476,7 +475,7 @@ mod handle_cancel_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -497,7 +496,7 @@ mod handle_cancel_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -518,7 +517,7 @@ mod handle_cancel_invest_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelDepositRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -556,15 +555,10 @@ mod handle_increase_redeem_order {
 		System::externalities().execute_with(|| {
 			config_mocks();
 
-			Tokens::mint_into(
-				TRANCHE_CURRENCY,
-				&CONTRACT_DOMAIN_ADDRESS.domain().into_account(),
-				AMOUNT,
-			)
-			.unwrap();
+			Tokens::mint_into(TRANCHE_CURRENCY, &EVM_DOMAIN.into_account(), AMOUNT).unwrap();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::RedeemRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -574,7 +568,7 @@ mod handle_increase_redeem_order {
 				},
 			));
 
-			let destination = CONTRACT_DOMAIN_ADDRESS.domain().into_account();
+			let destination = EVM_DOMAIN.into_account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), 0);
 			let local = DomainAddress::new(EVM_DOMAIN, ALICE.into()).account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &local), AMOUNT);
@@ -592,7 +586,7 @@ mod handle_increase_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -614,7 +608,7 @@ mod handle_increase_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -636,7 +630,7 @@ mod handle_increase_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -657,7 +651,7 @@ mod handle_increase_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::RedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -694,7 +688,7 @@ mod handle_cancel_redeem_order {
 		);
 		Gateway::mock_handle(|sender, destination, msg| {
 			assert_eq!(sender, TreasuryAccount::get());
-			assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
+			assert_eq!(destination, EVM_DOMAIN);
 			assert_eq!(
 				msg,
 				Message::FulfilledCancelRedeemRequest {
@@ -715,7 +709,7 @@ mod handle_cancel_redeem_order {
 			config_mocks();
 
 			assert_ok!(LiquidityPools::handle(
-				CONTRACT_DOMAIN_ADDRESS,
+				EVM_DOMAIN,
 				Message::CancelRedeemRequest {
 					pool_id: POOL_ID,
 					tranche_id: TRANCHE_ID,
@@ -724,7 +718,7 @@ mod handle_cancel_redeem_order {
 				},
 			));
 
-			let destination = CONTRACT_DOMAIN_ADDRESS.domain().into_account();
+			let destination = EVM_DOMAIN.into_account();
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &ALICE), 0);
 			assert_eq!(Tokens::balance(TRANCHE_CURRENCY, &destination), AMOUNT);
 		});
@@ -741,7 +735,7 @@ mod handle_cancel_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -762,7 +756,7 @@ mod handle_cancel_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,
@@ -783,7 +777,7 @@ mod handle_cancel_redeem_order {
 
 				assert_noop!(
 					LiquidityPools::handle(
-						CONTRACT_DOMAIN_ADDRESS,
+						EVM_DOMAIN,
 						Message::CancelRedeemRequest {
 							pool_id: POOL_ID,
 							tranche_id: TRANCHE_ID,

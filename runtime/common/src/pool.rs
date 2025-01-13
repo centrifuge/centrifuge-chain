@@ -20,9 +20,9 @@ pub struct LiquidityAndPoolAdminOrRoot<T>(sp_std::marker::PhantomData<T>);
 impl<
 		T: frame_system::Config
 			+ pallet_permissions::Config<
-				Scope = PermissionScope<T::PoolId, T::CurrencyId>,
-				Role = Role<T::TrancheId>,
-			> + pallet_pool_system::Config,
+				Scope = PermissionScope<T::PoolId, <T as pallet_pool_system::Config>::CurrencyId>,
+				Role = Role<<T as pallet_permissions::Config>::TrancheId>,
+			> + pallet_pool_system::Config<TrancheId = <T as pallet_permissions::Config>::TrancheId>,
 	> EnsureOriginWithArg<T::RuntimeOrigin, T::PoolId> for LiquidityAndPoolAdminOrRoot<T>
 {
 	type Success = ();

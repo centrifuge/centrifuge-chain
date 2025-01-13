@@ -1,21 +1,16 @@
-use cfg_primitives::Balance;
+use cfg_primitives::{AccountId, Balance};
 use cfg_traits::liquidity_pools::{LpMessageSerializer, MessageProcessor};
-use cfg_types::{
-	domain_address::{Domain, DomainAddress},
-	EVMChainId,
-};
+use cfg_types::{domain_address::Domain, EVMChainId};
 use ethabi::{Function, Param, ParamType, Token};
-use frame_support::{assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_ok, dispatch::RawOrigin, BoundedVec};
 use orml_traits::MultiCurrency;
 use pallet_axelar_router::{AxelarConfig, AxelarId, DomainConfig, EvmConfig, FeeValues};
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use runtime_common::{
-	account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY,
-	gateway::get_gateway_domain_address, routing::RouterId,
+	evm::precompile::LP_AXELAR_GATEWAY, gateway::get_gateway_domain_address, routing::RouterId,
 };
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::{BlakeTwo256, Hash};
 
 use crate::{
 	config::Runtime,
@@ -30,8 +25,6 @@ use crate::{
 };
 
 mod axelar_evm {
-	use frame_support::BoundedVec;
-
 	use super::*;
 
 	const CHAIN_NAME: &str = "Ethereum";
@@ -39,21 +32,21 @@ mod axelar_evm {
 	const CHAIN_ID: EVMChainId = 1;
 	const TEST_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
 	const TEST_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
-	const AXELAR_CONTRACT_CODE: &[u8] = &[0, 0, 0];
-	const AXELAR_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
-	const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(2);
-	const SOURCE_ADDRESS: H160 = H160::repeat_byte(3);
-	const RECEIVER_ADDRESS: H160 = H160::repeat_byte(4);
+	const LP_CONTRACT_ADDRESS: H160 = H160::repeat_byte(1);
+	const OUTBOUND_CONTRACT_CODE: &[u8] = &[0, 0, 0];
+	const OUTBOUND_CONTRACT: H160 = H160::repeat_byte(2);
+	const INBOUND_CONTRACT: H160 = H160::repeat_byte(3);
+	const RECEIVER_ADDRESS: AccountId = AccountId::new([4; 32]);
 	const TRANSFER_AMOUNT: Balance = usd18(100);
 
 	fn base_config<T: Runtime>() -> AxelarConfig {
 		AxelarConfig {
-			liquidity_pools_contract_address: LP_CONTRACT_ADDRESS,
+			app_contract_address: LP_CONTRACT_ADDRESS,
+			inbound_contract_address: INBOUND_CONTRACT,
+			outbound_contract_address: OUTBOUND_CONTRACT,
 			domain: DomainConfig::Evm(EvmConfig {
 				chain_id: CHAIN_ID,
-				target_contract_address: AXELAR_CONTRACT_ADDRESS,
-				target_contract_hash: BlakeTwo256::hash_of(&AXELAR_CONTRACT_CODE),
-				fee_values: FeeValues {
+				outbound_fee_values: FeeValues {
 					value: U256::from(0),
 					gas_limit: U256::from(T::config().gas_transaction_call + 1_000_000),
 					gas_price: U256::from(10),
@@ -95,14 +88,16 @@ mod axelar_evm {
 		.encode_input(&[
 			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
 			Token::String(CHAIN_NAME.into()),
-			Token::String(String::from_utf8(SOURCE_ADDRESS.as_fixed_bytes().to_vec()).unwrap()),
+			Token::String(String::from_utf8(LP_CONTRACT_ADDRESS.0.to_vec()).unwrap()),
 			Token::Bytes(message.serialize()),
 		])
 		.expect("cannot encode input for test contract function");
 
+		// Note: this method can return ok but internally fails.
+		// This probably means an error in the code under execute() precompile
 		assert_ok!(pallet_evm::Pallet::<T>::call(
 			RawOrigin::Root.into(),
-			LP_CONTRACT_ADDRESS,
+			INBOUND_CONTRACT,
 			H160::from_low_u64_be(LP_AXELAR_GATEWAY),
 			eth_function_encoded.to_vec(),
 			U256::from(0),
@@ -119,9 +114,9 @@ mod axelar_evm {
 		let mut env = RuntimeEnv::<T>::default();
 
 		env.parachain_state_mut(|| {
-			pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
+			pallet_evm::AccountCodes::<T>::insert(OUTBOUND_CONTRACT, OUTBOUND_CONTRACT_CODE);
 
-			utils::evm::mint_balance_into_derived_account::<T>(AXELAR_CONTRACT_ADDRESS, cfg(1));
+			utils::evm::mint_balance_into_derived_account::<T>(OUTBOUND_CONTRACT, cfg(1));
 			utils::evm::mint_balance_into_derived_account::<T>(
 				get_gateway_domain_address::<T>().h160(),
 				cfg(1),
@@ -157,13 +152,8 @@ mod axelar_evm {
 				.storage(),
 		);
 
-		let derived_receiver_account =
-			env.parachain_state(|| AccountConverter::evm_address_to_account::<T>(RECEIVER_ADDRESS));
-
 		env.parachain_state_mut(|| {
-			pallet_evm::AccountCodes::<T>::insert(AXELAR_CONTRACT_ADDRESS, AXELAR_CONTRACT_CODE);
-
-			utils::evm::mint_balance_into_derived_account::<T>(LP_CONTRACT_ADDRESS, cfg(1));
+			utils::evm::mint_balance_into_derived_account::<T>(INBOUND_CONTRACT, cfg(1));
 
 			assert_ok!(pallet_axelar_router::Pallet::<T>::set_config(
 				RawOrigin::Root.into(),
@@ -179,15 +169,9 @@ mod axelar_evm {
 			let message = Message::TransferAssets {
 				currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(Usd18.id())
 					.unwrap(),
-				receiver: derived_receiver_account.clone().into(),
+				receiver: RECEIVER_ADDRESS.into(),
 				amount: TRANSFER_AMOUNT,
 			};
-
-			pallet_liquidity_pools_gateway::Pallet::<T>::add_instance(
-				RawOrigin::Root.into(),
-				DomainAddress::Evm(CHAIN_ID, SOURCE_ADDRESS),
-			)
-			.unwrap();
 
 			send_ethereum_message_through_axelar_to_centrifuge::<T>(message);
 		});
@@ -196,7 +180,7 @@ mod axelar_evm {
 
 		env.parachain_state(|| {
 			assert_eq!(
-				orml_tokens::Pallet::<T>::free_balance(Usd18.id(), &derived_receiver_account),
+				orml_tokens::Pallet::<T>::free_balance(Usd18.id(), &RECEIVER_ADDRESS),
 				TRANSFER_AMOUNT
 			);
 		});

@@ -20,14 +20,14 @@ use cfg_traits::{
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
-	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
+	permissions::{PermissionRoles, PermissionScope, PoolRole, Role},
 	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
-	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers},
+	traits::{Contains, EnsureOriginWithArg, Hooks, PalletInfoAccess, SortedMembers, UnixTime},
 	Blake2_128, PalletId, StorageHasher,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -143,7 +143,8 @@ impl frame_system::Config for Runtime {
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
 
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig
+)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
@@ -167,6 +168,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
+	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
 
@@ -264,16 +266,17 @@ where
 			amount: _amount,
 		} = details.clone();
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,
