@@ -11,8 +11,13 @@
 // GNU General Public License for more details.
 
 use frame_support::migrations::VersionedMigration;
+use sp_core::parameter_types;
 
 use crate::Runtime;
+
+parameter_types! {
+	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
+}
 
 pub type UpgradeDevelopment1403 = (
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
@@ -25,8 +30,13 @@ pub type UpgradeDevelopment1403 = (
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
-	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storag
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::Allowlist storage
 	runtime_common::migrations::liquidity_pools_v2::kill_allowlist::Migration<Runtime, 40>,
+	// Remove deprecated LiquidityPoolsAxelarGateway
+	runtime_common::migrations::nuke::KillPallet<
+		PalletLiquidityPoolsAxelarGateway,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
 );

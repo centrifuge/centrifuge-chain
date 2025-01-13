@@ -2116,7 +2116,8 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config<T>, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
-		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 165,
+		// Removed: LiquidityPoolsAxelarGateway = 165
+		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 166,
 
 		// Synced pallets across all runtimes - Range: 180-240
 		// WHY: * integrations like fireblocks will need to know the index in the enum

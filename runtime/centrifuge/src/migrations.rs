@@ -11,8 +11,13 @@
 // GNU General Public License for more details.
 
 use frame_support::migrations::VersionedMigration;
+use sp_core::parameter_types;
 
 use crate::Runtime;
+
+parameter_types! {
+	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
+}
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
@@ -49,6 +54,11 @@ pub type UpgradeCentrifuge1403 = (
 			crate::MaxTranches,
 		>,
 		pallet_permissions::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
+	// Remove deprecated LiquidityPoolsAxelarGateway
+	runtime_common::migrations::nuke::KillPallet<
+		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
 );
