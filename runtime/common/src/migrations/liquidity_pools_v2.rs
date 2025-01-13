@@ -108,7 +108,7 @@ pub mod v2_update_message_queue {
 
 	pub struct Migration<T>(PhantomData<T>);
 
-	impl<T> OnRuntimeUpgrade for v2_update_message_queue::Migration<T>
+	impl<T> OnRuntimeUpgrade for Migration<T>
 	where
 		T: pallet_liquidity_pools_gateway::Config<Message = Message>
 			+ frame_system::Config
@@ -366,7 +366,7 @@ pub mod v0_init_message_queue {
 }
 
 pub mod init_axelar_router {
-	use cfg_types::EVMChainId;
+	use cfg_types::{domain_address::DomainAddress, EVMChainId};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::storage::transactional;
 	use frame_support::{
@@ -405,7 +405,7 @@ pub mod init_axelar_router {
 		fn on_runtime_upgrade() -> Weight {
 			let (reads, writes) = Self::migrate_domain_routers().unwrap_or_default();
 			log::info!(
-				"{LOG_PREFIX} ON_RUNTIME_UPGRADE: Migration done with {writes:?} updated domains!"
+				"{LOG_PREFIX} ON_RUNTIME_UPGRADE: Migration done with {writes:?} updated domain addresses!"
 			);
 
 			T::DbWeight::get().reads_writes(reads, writes.saturating_add(1))
@@ -418,7 +418,7 @@ pub mod init_axelar_router {
 			// Need to rollback in order to be NOOP
 			let _ = transactional::with_storage_layer(|| -> DispatchResult {
 				let (r, w) = Self::migrate_domain_routers()?;
-				log::info!("{LOG_PREFIX} PRE Migration counts {w:?} updated domains and {} removed domains", r.saturating_sub(w));
+				log::info!("{LOG_PREFIX} PRE Migration counts {w:?} updated domain addresses and {} removed domains", r.saturating_sub(w));
 				writes = w;
 				Err(DispatchError::Other("Reverting on purpose"))
 			});
@@ -495,8 +495,9 @@ pub mod init_axelar_router {
 
 				match val {
 					v0::DomainRouter::AxelarEVM(axelar) => {
-						Self::migrate_axelar_evm(axelar, chain_id, &domain)?;
-						writes.saturating_accrue(1);
+						let (r, w) = Self::migrate_axelar_evm(axelar, chain_id, &domain)?;
+						reads.saturating_accrue(r);
+						writes.saturating_accrue(w);
 					}
 					v0::DomainRouter::EthereumXCM(_) => {
 						log::info!(
@@ -530,8 +531,9 @@ pub mod init_axelar_router {
 					}
 					Some(id) => id,
 				};
-				Self::migrate_axelar_evm(domain_router.into(), chain_id, &domain)?;
-				writes.saturating_accrue(1);
+				let (r, w) = Self::migrate_axelar_evm(domain_router.into(), chain_id, &domain)?;
+				reads.saturating_accrue(r);
+				writes.saturating_accrue(w);
 			}
 
 			Ok((reads, writes))
@@ -541,20 +543,46 @@ pub mod init_axelar_router {
 			router: v0::AxelarEVMRouter<T>,
 			chain_id: EVMChainId,
 			domain: &Domain,
-		) -> DispatchResult {
-			pallet_axelar_router::Pallet::<T>::set_config(
-				T::RuntimeOrigin::root(),
-				router.evm_chain.clone(),
-				Box::new(router.migrate_to_domain_config(chain_id)),
-			)
-			.map_err(|e| {
-				log::error!(
-					"{LOG_PREFIX}: Failed to set axelar config for {domain:?} due to error \n{e:?}"
-				);
-				e
-			})?;
+		) -> Result<(u64, u64), DispatchError> {
+			let mut reads = 1u64;
+			let mut writes = 0u64;
 
-			Ok(())
+			let outbound_contract_address = v0::GatewayContract::get();
+
+			if let Some((whitelisted_domain_address, _)) =
+				v0::Allowlist::<T>::iter_prefix(domain).last()
+			{
+				log::info!("{LOG_PREFIX}: Migrating {domain:?} domain with allowlist domain address {whitelisted_domain_address:?}");
+
+				if let DomainAddress::Evm(_, app_contract_address) = whitelisted_domain_address {
+					pallet_axelar_router::Pallet::<T>::set_config(
+						T::RuntimeOrigin::root(),
+						router.evm_chain.clone(),
+						Box::new(router.migrate_to_domain_config(
+							chain_id,
+							// Read v0::gateway::AllowList storage => addr1
+							app_contract_address,
+							// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
+							outbound_contract_address,
+						)),
+					)
+					.map_err(|e| {
+						log::error!(
+							"{LOG_PREFIX}: Failed to set axelar config for {domain:?} due to error \n{e:?}"
+						);
+						e
+					})?;
+
+					writes += 1;
+				} else {
+					log::error!(
+						"{LOG_PREFIX}: Failed to retrieve EVM domain_address from {whitelisted_domain_address:?}"
+					);
+					reads += 1;
+				}
+			}
+
+			Ok((reads.saturating_add(writes), writes))
 		}
 	}
 }
@@ -688,9 +716,7 @@ mod types {
 			BoundedVec,
 		};
 		use frame_system::pallet_prelude::OriginFor;
-		// TODO: Re-enable after AxelarConfig fix
-		// use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
-		use pallet_axelar_router::{AxelarConfig, FeeValues};
+		use pallet_axelar_router::{AxelarConfig, DomainConfig, EvmConfig, FeeValues};
 		use pallet_liquidity_pools::Message;
 		use sp_core::{H160, H256};
 		use staging_xcm::VersionedLocation;
@@ -758,6 +784,29 @@ mod types {
 			AxelarXCM(AxelarXCMRouter<T>),
 		}
 
+		struct LiquidityPoolsAxelarGatewayPrefix;
+		impl frame_support::traits::StorageInstance for LiquidityPoolsAxelarGatewayPrefix {
+			const STORAGE_PREFIX: &'static str = "GatewayContract";
+
+			fn pallet_prefix() -> &'static str {
+				"LiquidityPoolsAxelarGateway"
+			}
+		}
+
+		#[storage_alias]
+		pub type GatewayContract =
+			StorageValue<LiquidityPoolsAxelarGatewayPrefix, H160, ValueQuery>;
+
+		#[storage_alias]
+		pub type Allowlist<T: pallet_liquidity_pools_gateway::Config> = StorageDoubleMap<
+			pallet_liquidity_pools_gateway::Pallet<T>,
+			Blake2_128Concat,
+			Domain,
+			Blake2_128Concat,
+			DomainAddress,
+			(),
+		>;
+
 		#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 		pub struct AxelarEVMRouter<T>
 		where
@@ -776,19 +825,21 @@ mod types {
 			OriginFor<T>:
 				From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		{
-			pub(crate) fn migrate_to_domain_config(&self, _chain_id: EVMChainId) -> AxelarConfig {
-				todo!()
-				/*
+			pub(crate) fn migrate_to_domain_config(
+				&self,
+				chain_id: EVMChainId,
+				app_contract_address: H160,
+				inbound_contract_address: H160,
+			) -> AxelarConfig {
 				AxelarConfig {
-					liquidity_pools_contract_address: self.liquidity_pools_contract_address,
+					app_contract_address,
+					inbound_contract_address,
+					outbound_contract_address: self.liquidity_pools_contract_address,
 					domain: DomainConfig::Evm(EvmConfig {
 						chain_id,
-						target_contract_address: self.router.evm_domain.target_contract_address,
-						target_contract_hash: self.router.evm_domain.target_contract_hash,
-						fee_values: self.router.evm_domain.fee_values.clone(),
+						outbound_fee_values: self.router.evm_domain.fee_values.clone(),
 					}),
 				}
-				*/
 			}
 		}
 
