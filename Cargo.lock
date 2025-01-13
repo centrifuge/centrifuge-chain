@@ -3116,7 +3116,6 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-pools",
- "pallet-liquidity-pools-forwarder",
  "pallet-liquidity-pools-gateway",
  "pallet-liquidity-pools-gateway-queue",
  "pallet-liquidity-rewards",
