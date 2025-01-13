@@ -17,7 +17,7 @@ use crate::Runtime;
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeCentrifuge1403 = (
-	// Clear v0 RelayerList storage
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
 	runtime_common::migrations::liquidity_pools_v2::v0_init_message_queue::Migration<Runtime>,
@@ -29,8 +29,8 @@ pub type UpgradeCentrifuge1403 = (
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
-	// Remove deprecated RelayerList storage
-	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::Allowlist storage
+	runtime_common::migrations::liquidity_pools_v2::kill_allowlist::Migration<Runtime, 20>,
 	// Remove undecodable ForeignInvestmentInfo v0 entries
 	runtime_common::migrations::foreign_investments_v2::Migration<Runtime>,
 	// Bump to v1

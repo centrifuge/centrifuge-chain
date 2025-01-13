@@ -15,8 +15,9 @@ use frame_support::migrations::VersionedMigration;
 use crate::Runtime;
 
 pub type UpgradeDevelopment1403 = (
-	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
 	runtime_common::migrations::liquidity_pools_v2::v2_update_message_queue::Migration<Runtime>,
+	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
 	VersionedMigration<
 		2,
 		3,
@@ -24,4 +25,8 @@ pub type UpgradeDevelopment1403 = (
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::Allowlist storage
+	runtime_common::migrations::liquidity_pools_v2::kill_allowlist::Migration<Runtime, 40>,
 );

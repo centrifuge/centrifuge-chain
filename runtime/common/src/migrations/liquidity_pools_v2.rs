@@ -97,6 +97,63 @@ pub mod kill_relayer_list {
 	}
 }
 
+pub mod kill_allowlist {
+	use frame_support::traits::OnRuntimeUpgrade;
+	#[cfg(feature = "try-runtime")]
+	use frame_support::{dispatch::DispatchResult, storage::with_storage_layer};
+	#[cfg(feature = "try-runtime")]
+	use sp_arithmetic::traits::Zero;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec;
+
+	use super::{types::v0, *};
+	use crate::migrations::nuke::storage_clean_res_log;
+
+	const LOG_PREFIX: &str = "ClearAllowlist";
+
+	pub struct Migration<T, const REMOVAL_ITEM_LIMIT: u32>(PhantomData<T>);
+
+	impl<T, const REMOVAL_ITEM_LIMIT: u32> OnRuntimeUpgrade for Migration<T, REMOVAL_ITEM_LIMIT>
+	where
+		T: pallet_liquidity_pools_gateway::Config,
+	{
+		fn on_runtime_upgrade() -> Weight {
+			let res = v0::Allowlist::<T>::clear(REMOVAL_ITEM_LIMIT, None);
+			storage_clean_res_log(&res, "Allowlist", LOG_PREFIX);
+
+			log::info!("{LOG_PREFIX}: Migration done!");
+
+			T::DbWeight::get().reads_writes(res.loops.into(), res.unique.into())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+			let mut cleared: bool = false;
+
+			// Need to rollback in order to be NOOP
+			let _ = with_storage_layer(|| -> DispatchResult {
+				cleared = v0::Allowlist::<T>::clear(REMOVAL_ITEM_LIMIT, None)
+					.maybe_cursor
+					.is_none();
+				Err(DispatchError::Other("Reverting on purpose"))
+			});
+			assert!(cleared);
+
+			log::info!("{LOG_PREFIX}: Pre checks done!");
+
+			Ok(vec![])
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
+			assert!(v0::Allowlist::<T>::iter_keys().count().is_zero());
+			log::info!("{LOG_PREFIX}: Post checks done!");
+
+			Ok(())
+		}
+	}
+}
+
 pub mod v2_update_message_queue {
 	use pallet_liquidity_pools::Message;
 	use pallet_liquidity_pools_gateway::message::GatewayMessage;
