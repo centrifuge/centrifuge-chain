@@ -11,13 +11,18 @@
 // GNU General Public License for more details.
 
 use frame_support::migrations::VersionedMigration;
+use sp_core::parameter_types;
 
 use crate::Runtime;
+
+parameter_types! {
+	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
+}
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
 pub type UpgradeAltair1403 = (
-	// Clear v0 RelayerList storage
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
 	runtime_common::migrations::liquidity_pools_v2::v0_init_message_queue::Migration<Runtime>,
@@ -47,6 +52,11 @@ pub type UpgradeAltair1403 = (
 			crate::MaxTranches,
 		>,
 		pallet_permissions::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
+	// Remove deprecated LiquidityPoolsAxelarGateway
+	runtime_common::migrations::nuke::KillPallet<
+		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
 );
