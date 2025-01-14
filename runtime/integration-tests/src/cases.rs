@@ -5,7 +5,6 @@ mod currency_conversions;
 mod ethereum_transaction;
 mod example;
 mod foreign_investments;
-mod forwarder;
 mod investments;
 mod loans;
 mod lp;

@@ -1859,15 +1859,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_liquidity_pools_forwarder::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Message = pallet_liquidity_pools::Message;
-	type MessageReceiver = LiquidityPoolsGateway;
-	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
-	type RouterId = RouterId;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 parameter_types! {
 	pub Sender: DomainAddress = gateway::get_gateway_domain_address::<Runtime>();
 	pub const MaxIncomingMessageSize: u32 = 1024;
@@ -1881,7 +1872,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type MessageSender = LiquidityPoolsForwarder;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, ()>;
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
@@ -2005,7 +1996,7 @@ impl pallet_ethereum_transaction::Config for Runtime {}
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type Middleware = RouterId;
-	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
+	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }
@@ -2210,7 +2201,6 @@ construct_runtime!(
 		// our pallets part 2
 		AnchorsV2: pallet_anchors_v2::{Pallet, Call, Storage, Event<T>} = 130,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 131,
-		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 132,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

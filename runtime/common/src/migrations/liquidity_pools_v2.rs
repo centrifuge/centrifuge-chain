@@ -97,6 +97,63 @@ pub mod kill_relayer_list {
 	}
 }
 
+pub mod kill_allowlist {
+	use frame_support::traits::OnRuntimeUpgrade;
+	#[cfg(feature = "try-runtime")]
+	use frame_support::{dispatch::DispatchResult, storage::with_storage_layer};
+	#[cfg(feature = "try-runtime")]
+	use sp_arithmetic::traits::Zero;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec;
+
+	use super::{types::v0, *};
+	use crate::migrations::nuke::storage_clean_res_log;
+
+	const LOG_PREFIX: &str = "ClearAllowlist";
+
+	pub struct Migration<T, const REMOVAL_ITEM_LIMIT: u32>(PhantomData<T>);
+
+	impl<T, const REMOVAL_ITEM_LIMIT: u32> OnRuntimeUpgrade for Migration<T, REMOVAL_ITEM_LIMIT>
+	where
+		T: pallet_liquidity_pools_gateway::Config,
+	{
+		fn on_runtime_upgrade() -> Weight {
+			let res = v0::Allowlist::<T>::clear(REMOVAL_ITEM_LIMIT, None);
+			storage_clean_res_log(&res, "Allowlist", LOG_PREFIX);
+
+			log::info!("{LOG_PREFIX}: Migration done!");
+
+			T::DbWeight::get().reads_writes(res.loops.into(), res.unique.into())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+			let mut cleared: bool = false;
+
+			// Need to rollback in order to be NOOP
+			let _ = with_storage_layer(|| -> DispatchResult {
+				cleared = v0::Allowlist::<T>::clear(REMOVAL_ITEM_LIMIT, None)
+					.maybe_cursor
+					.is_none();
+				Err(DispatchError::Other("Reverting on purpose"))
+			});
+			assert!(cleared);
+
+			log::info!("{LOG_PREFIX}: Pre checks done!");
+
+			Ok(vec![])
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
+			assert!(v0::Allowlist::<T>::iter_keys().count().is_zero());
+			log::info!("{LOG_PREFIX}: Post checks done!");
+
+			Ok(())
+		}
+	}
+}
+
 pub mod v2_update_message_queue {
 	use pallet_liquidity_pools::Message;
 	use pallet_liquidity_pools_gateway::message::GatewayMessage;
@@ -108,7 +165,7 @@ pub mod v2_update_message_queue {
 
 	pub struct Migration<T>(PhantomData<T>);
 
-	impl<T> OnRuntimeUpgrade for v2_update_message_queue::Migration<T>
+	impl<T> OnRuntimeUpgrade for Migration<T>
 	where
 		T: pallet_liquidity_pools_gateway::Config<Message = Message>
 			+ frame_system::Config
@@ -142,8 +199,9 @@ pub mod v2_update_message_queue {
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			assert!(
 				v2::MessageQueue::<T>::iter_values().all(|message| match message {
-					v2::GatewayMessage::<T::AccountId, Message>::Inbound { domain, .. } =>
-						maybe_router_id(domain.domain()).is_some(),
+					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
+						domain_address, ..
+					} => maybe_router_id(domain_address.domain()).is_some(),
 					v2::GatewayMessage::<T::AccountId, Message>::Outbound {
 						destination, ..
 					} => maybe_router_id(destination).is_some(),
@@ -152,8 +210,9 @@ pub mod v2_update_message_queue {
 			assert!(v2::FailedMessageQueue::<T>::iter_values()
 				.into_iter()
 				.all(|(message, _)| match message {
-					v2::GatewayMessage::<T::AccountId, Message>::Inbound { domain, .. } =>
-						maybe_router_id(domain.domain()).is_some(),
+					v2::GatewayMessage::<T::AccountId, Message>::Inbound {
+						domain_address, ..
+					} => maybe_router_id(domain_address.domain()).is_some(),
 					v2::GatewayMessage::<T::AccountId, Message>::Outbound {
 						destination, ..
 					} => maybe_router_id(destination).is_some(),
@@ -364,13 +423,12 @@ pub mod v0_init_message_queue {
 }
 
 pub mod init_axelar_router {
-	use cfg_types::EVMChainId;
+	use cfg_types::{domain_address::DomainAddress, EVMChainId};
+	#[cfg(feature = "try-runtime")]
+	use frame_support::dispatch::DispatchResult;
 	#[cfg(feature = "try-runtime")]
 	use frame_support::storage::transactional;
-	use frame_support::{
-		dispatch::DispatchResult,
-		traits::{GetStorageVersion, OriginTrait, StorageVersion},
-	};
+	use frame_support::traits::{GetStorageVersion, OriginTrait, StorageVersion};
 	use frame_system::pallet_prelude::OriginFor;
 	#[cfg(feature = "try-runtime")]
 	use sp_arithmetic::traits::SaturatedConversion;
@@ -403,7 +461,7 @@ pub mod init_axelar_router {
 		fn on_runtime_upgrade() -> Weight {
 			let (reads, writes) = Self::migrate_domain_routers().unwrap_or_default();
 			log::info!(
-				"{LOG_PREFIX} ON_RUNTIME_UPGRADE: Migration done with {writes:?} updated domains!"
+				"{LOG_PREFIX} ON_RUNTIME_UPGRADE: Migration done with {writes:?} updated domain addresses!"
 			);
 
 			T::DbWeight::get().reads_writes(reads, writes.saturating_add(1))
@@ -416,7 +474,7 @@ pub mod init_axelar_router {
 			// Need to rollback in order to be NOOP
 			let _ = transactional::with_storage_layer(|| -> DispatchResult {
 				let (r, w) = Self::migrate_domain_routers()?;
-				log::info!("{LOG_PREFIX} PRE Migration counts {w:?} updated domains and {} removed domains", r.saturating_sub(w));
+				log::info!("{LOG_PREFIX} PRE Migration counts {w:?} updated domain addresses and {} removed domains", r.saturating_sub(w));
 				writes = w;
 				Err(DispatchError::Other("Reverting on purpose"))
 			});
@@ -493,8 +551,9 @@ pub mod init_axelar_router {
 
 				match val {
 					v0::DomainRouter::AxelarEVM(axelar) => {
-						Self::migrate_axelar_evm(axelar, chain_id, &domain)?;
-						writes.saturating_accrue(1);
+						let (r, w) = Self::migrate_axelar_evm(axelar, chain_id, &domain)?;
+						reads.saturating_accrue(r);
+						writes.saturating_accrue(w);
 					}
 					v0::DomainRouter::EthereumXCM(_) => {
 						log::info!(
@@ -528,8 +587,9 @@ pub mod init_axelar_router {
 					}
 					Some(id) => id,
 				};
-				Self::migrate_axelar_evm(domain_router.into(), chain_id, &domain)?;
-				writes.saturating_accrue(1);
+				let (r, w) = Self::migrate_axelar_evm(domain_router.into(), chain_id, &domain)?;
+				reads.saturating_accrue(r);
+				writes.saturating_accrue(w);
 			}
 
 			Ok((reads, writes))
@@ -539,23 +599,46 @@ pub mod init_axelar_router {
 			router: v0::AxelarEVMRouter<T>,
 			chain_id: EVMChainId,
 			domain: &Domain,
-		) -> DispatchResult {
-			// Read v0::gateway::AllowList storage => addr1
-			// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
+		) -> Result<(u64, u64), DispatchError> {
+			let mut reads = 1u64;
+			let mut writes = 0u64;
 
-			pallet_axelar_router::Pallet::<T>::set_config(
-				T::RuntimeOrigin::root(),
-				router.evm_chain.clone(),
-				Box::new(router.migrate_to_domain_config(chain_id /* , addr1, addr2 */)),
-			)
-			.map_err(|e| {
-				log::error!(
-					"{LOG_PREFIX}: Failed to set axelar config for {domain:?} due to error \n{e:?}"
-				);
-				e
-			})?;
+			let outbound_contract_address = v0::GatewayContract::get();
 
-			Ok(())
+			if let Some((whitelisted_domain_address, _)) =
+				v0::Allowlist::<T>::iter_prefix(domain).last()
+			{
+				log::info!("{LOG_PREFIX}: Migrating {domain:?} domain with allowlist domain address {whitelisted_domain_address:?}");
+
+				if let DomainAddress::Evm(_, app_contract_address) = whitelisted_domain_address {
+					pallet_axelar_router::Pallet::<T>::set_config(
+						T::RuntimeOrigin::root(),
+						router.evm_chain.clone(),
+						Box::new(router.migrate_to_domain_config(
+							chain_id,
+							// Read v0::gateway::AllowList storage => addr1
+							app_contract_address,
+							// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
+							outbound_contract_address,
+						)),
+					)
+					.map_err(|e| {
+						log::error!(
+							"{LOG_PREFIX}: Failed to set axelar config for {domain:?} due to error \n{e:?}"
+						);
+						e
+					})?;
+
+					writes += 1;
+				} else {
+					log::error!(
+						"{LOG_PREFIX}: Failed to retrieve EVM domain_address from {whitelisted_domain_address:?}"
+					);
+					reads += 1;
+				}
+			}
+
+			Ok((reads.saturating_add(writes), writes))
 		}
 	}
 }
@@ -757,9 +840,18 @@ mod types {
 			AxelarXCM(AxelarXCMRouter<T>),
 		}
 
+		struct LiquidityPoolsAxelarGatewayPrefix;
+		impl frame_support::traits::StorageInstance for LiquidityPoolsAxelarGatewayPrefix {
+			const STORAGE_PREFIX: &'static str = "GatewayContract";
+
+			fn pallet_prefix() -> &'static str {
+				"LiquidityPoolsAxelarGateway"
+			}
+		}
+
 		#[storage_alias]
-		pub type GatewayContract<T: pallet_axelar_router::Config> =
-			StorageValue<pallet_axelar_router::Pallet<T>, H160, ValueQuery>;
+		pub type GatewayContract =
+			StorageValue<LiquidityPoolsAxelarGatewayPrefix, H160, ValueQuery>;
 
 		#[storage_alias]
 		pub type Allowlist<T: pallet_liquidity_pools_gateway::Config> = StorageDoubleMap<
@@ -789,18 +881,21 @@ mod types {
 			OriginFor<T>:
 				From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		{
-			pub(crate) fn migrate_to_domain_config(&self, chain_id: EVMChainId) -> AxelarConfig {
+			pub(crate) fn migrate_to_domain_config(
+				&self,
+				chain_id: EVMChainId,
+				app_contract_address: H160,
+				inbound_contract_address: H160,
+			) -> AxelarConfig {
 				AxelarConfig {
-					app_contract_address: todo!("previous value in gateway::AllowList storage"),
-					inbound_contract_address: todo!(
-						"previous axelar-gateway-precompile::GatewayContract storage",
-					),
+					app_contract_address,
+					inbound_contract_address,
 					outbound_contract_address: self.liquidity_pools_contract_address,
 					domain: DomainConfig::Evm(EvmConfig {
-						chain_id: chain_id,
+						chain_id,
 						outbound_fee_values: self.router.evm_domain.fee_values.clone(),
 					}),
-				};
+				}
 			}
 		}
 
