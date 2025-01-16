@@ -1,22 +1,22 @@
 use cfg_primitives::{PoolId, TrancheId};
 use cfg_traits::{Millis, Seconds};
 use cfg_types::{
-    domain_address::{Domain, DomainAddress},
-    permissions::PermissionScope,
-    tokens::{
-        AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
-        LocalAssetId,
-    },
+	domain_address::{Domain, DomainAddress},
+	permissions::PermissionScope,
+	tokens::{
+		AssetMetadata, AssetStringLimit, CrossChainTransferability, CurrencyId, CustomMetadata,
+		LocalAssetId,
+	},
 };
+use frame_support::PalletId;
 use frame_support::{derive_impl, traits::PalletInfo as _};
 use orml_traits::parameter_type_with_key;
-use sp_core::H160;
-use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
 use pallet_liquidity_pools::Message;
-use frame_support::PalletId;
+use sp_core::H160;
 use sp_runtime::BuildStorage;
+use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
 
-use crate::{pallet as pallet_cfg_migration};
+use crate::pallet as pallet_cfg_migration;
 
 pub type Balance = u128;
 pub type AccountId = AccountId32;
@@ -63,63 +63,63 @@ frame_support::construct_runtime!(
 		MarketRatio: cfg_mocks::token_swaps::pallet,
 		Tokens: orml_tokens,
 		LiquidityPools: pallet_liquidity_pools,
-        CfgMigration: pallet_cfg_migration,
+		CfgMigration: pallet_cfg_migration,
 	}
 );
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-    type AccountId = AccountId;
-    type Block = frame_system::mocking::MockBlock<Runtime>;
-    type Lookup = IdentityLookup<Self::AccountId>;
+	type AccountId = AccountId;
+	type Block = frame_system::mocking::MockBlock<Runtime>;
+	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
 impl cfg_mocks::time::pallet::Config for Runtime {
-    type Moment = Millis;
+	type Moment = Millis;
 }
 
 impl cfg_mocks::permissions::pallet::Config for Runtime {
-    type Scope = PermissionScope<PoolId, CurrencyId>;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
 }
 
 impl cfg_mocks::pools::pallet::Config for Runtime {
-    type Balance = Balance;
-    type BalanceRatio = Ratio;
-    type CurrencyId = CurrencyId;
-    type PoolId = PoolId;
-    type TrancheId = TrancheId;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type PoolId = PoolId;
+	type TrancheId = TrancheId;
 }
 
 impl cfg_mocks::asset_registry::pallet::Config for Runtime {
-    type AssetId = CurrencyId;
-    type Balance = Balance;
-    type CustomMetadata = CustomMetadata;
-    type StringLimit = AssetStringLimit;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type CustomMetadata = CustomMetadata;
+	type StringLimit = AssetStringLimit;
 }
 
 impl cfg_mocks::foreign_investment::pallet::Config for Runtime {
-    type Amount = Balance;
-    type CurrencyId = CurrencyId;
-    type InvestmentId = (PoolId, TrancheId);
-    type TrancheAmount = Balance;
+	type Amount = Balance;
+	type CurrencyId = CurrencyId;
+	type InvestmentId = (PoolId, TrancheId);
+	type TrancheAmount = Balance;
 }
 
 impl cfg_mocks::pallet_mock_liquidity_pools_gateway::Config for Runtime {
-    type Destination = Domain;
-    type Message = Message;
+	type Destination = Domain;
+	type Message = Message;
 }
 
 impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
-    type Conditions = (AccountId, DomainAddress, CurrencyId);
-    type Result = DispatchResult;
+	type Conditions = (AccountId, DomainAddress, CurrencyId);
+	type Result = DispatchResult;
 }
 
 impl cfg_mocks::token_swaps::pallet::Config for Runtime {
-    type BalanceIn = Balance;
-    type BalanceOut = Balance;
-    type CurrencyId = CurrencyId;
-    type OrderId = ();
-    type Ratio = Ratio;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
+	type CurrencyId = CurrencyId;
+	type OrderId = ();
+	type Ratio = Ratio;
 }
 
 parameter_type_with_key! {
@@ -129,17 +129,17 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-    type Amount = i64;
-    type Balance = Balance;
-    type CurrencyHooks = ();
-    type CurrencyId = CurrencyId;
-    type DustRemovalWhitelist = frame_support::traits::Nothing;
-    type ExistentialDeposits = ExistentialDeposits;
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = [u8; 8];
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
+	type Amount = i64;
+	type Balance = Balance;
+	type CurrencyHooks = ();
+	type CurrencyId = CurrencyId;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type ExistentialDeposits = ExistentialDeposits;
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
@@ -148,46 +148,47 @@ frame_support::parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-    type AssetRegistry = AssetRegistry;
-    type Balance = Balance;
-    type BalanceRatio = Ratio;
-    type CurrencyId = CurrencyId;
-    type ForeignInvestment = ForeignInvestment;
-    type GeneralCurrencyPrefix = CurrencyPrefix;
-    type MarketRatio = MarketRatio;
-    type OutboundMessageHandler = Gateway;
-    type Permission = Permissions;
-    type PoolId = PoolId;
-    type PoolInspect = Pools;
-    type PreTransferFilter = TransferFilter;
-    type RuntimeEvent = RuntimeEvent;
-    type Time = Time;
-    type Tokens = Tokens;
-    type TrancheId = TrancheId;
-    type TrancheTokenPrice = Pools;
-    type TreasuryAccount = TreasuryAccount;
-    type WeightInfo = ();
+	type AssetRegistry = AssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type ForeignInvestment = ForeignInvestment;
+	type GeneralCurrencyPrefix = CurrencyPrefix;
+	type MarketRatio = MarketRatio;
+	type OutboundMessageHandler = Gateway;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = Pools;
+	type PreTransferFilter = TransferFilter;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Time;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = Pools;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
 	pub IouCfg: CurrencyId = CurrencyId::ForeignAsset(0);
 	pub NativeCfg: CurrencyId = CurrencyId::Native;
-    pub CfgLockAccount: PalletId = PalletId(*b"cfg/lock");
-    pub EVMChainId: u64 = 1;
+	pub CfgLockAccount: PalletId = PalletId(*b"cfg/lock");
+	pub EVMChainId: u64 = 1;
 }
 
 impl pallet_cfg_migration::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type CfgLockAccount = CfgLockAccount;
-    type IouCfg = IouCfg;
-    type NativeCfg = NativeCfg;
-    type EVMChainId = EVMChainId;
-    type WeightInfo = ();
+	type RuntimeEvent = RuntimeEvent;
+	type CfgLockAccount = CfgLockAccount;
+	type IouCfg = IouCfg;
+	type NativeCfg = NativeCfg;
+	type EVMChainId = EVMChainId;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let t = frame_system::GenesisConfig::<Runtime>::default()
-        .build_storage()
-        .unwrap();
-    t.into()
+	let t = frame_system::GenesisConfig::<Runtime>::default()
+		.build_storage()
+		.unwrap();
+
+	t.into()
 }
