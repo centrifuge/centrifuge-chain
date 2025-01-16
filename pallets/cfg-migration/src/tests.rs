@@ -1,11 +1,13 @@
-use crate::{mock::*, pallet::*};
 use frame_system::pallet_prelude::OriginFor;
+
+use crate::{mock::*, pallet::*};
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use frame_support::{assert_noop, assert_ok};
 	use sp_core::H160;
+
+	use super::*;
 
 	#[test]
 	fn test_migrate_success() {

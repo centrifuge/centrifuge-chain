@@ -18,15 +18,16 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use cfg_types::domain_address::DomainAddress;
-	use frame_support::sp_runtime::traits::AccountIdConversion;
-	use frame_support::traits::fungibles::Mutate;
-	use frame_support::traits::tokens::Preservation;
-	use frame_support::traits::OriginTrait;
-	use frame_support::PalletId;
+	use frame_support::{
+		sp_runtime::traits::AccountIdConversion,
+		traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
+		PalletId,
+	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::H160;
+
+	use super::*;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);

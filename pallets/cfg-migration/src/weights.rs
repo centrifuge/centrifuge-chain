@@ -14,11 +14,11 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-    fn migrate() -> Weight;
+	fn migrate() -> Weight;
 }
 
 impl WeightInfo for () {
-    fn migrate() -> Weight {
-        Weight::zero()
-    }
+	fn migrate() -> Weight {
+		Weight::zero()
+	}
 }

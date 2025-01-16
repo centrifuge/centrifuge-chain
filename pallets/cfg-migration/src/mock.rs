@@ -8,13 +8,11 @@ use cfg_types::{
 		LocalAssetId,
 	},
 };
-use frame_support::PalletId;
-use frame_support::{derive_impl, traits::PalletInfo as _};
+use frame_support::{derive_impl, traits::PalletInfo as _, PalletId};
 use orml_traits::parameter_type_with_key;
 use pallet_liquidity_pools::Message;
 use sp_core::H160;
-use sp_runtime::BuildStorage;
-use sp_runtime::{traits::IdentityLookup, AccountId32, DispatchResult, FixedU128};
+use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage, DispatchResult, FixedU128};
 
 use crate::pallet as pallet_cfg_migration;
 
@@ -177,11 +175,11 @@ frame_support::parameter_types! {
 }
 
 impl pallet_cfg_migration::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type CfgLockAccount = CfgLockAccount;
+	type EVMChainId = EVMChainId;
 	type IouCfg = IouCfg;
 	type NativeCfg = NativeCfg;
-	type EVMChainId = EVMChainId;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
