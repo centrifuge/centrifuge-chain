@@ -28,7 +28,14 @@ cfg-types = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-io = { workspace = true }
+sp-io = { workspace = true , default-features = true}
+orml-traits = { workspace = true , default-features = true}
+orml-tokens = { workspace = true , default-features = true }
+cfg-primitives = { workspace = true , default-features = true }
+cfg-traits = { workspace = true , default-features = true }
+cfg-types = { workspace = true , default-features = true }
+cfg-utils = { workspace = true , default-features = true }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
