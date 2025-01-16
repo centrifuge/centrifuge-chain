@@ -1,0 +1,64 @@
+[package]
+name = "pallet-cfg-migration"
+description = "Pallet to migrate CFG to Ethereum"
+version = "2.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+pallet-liquidity-pools = { workspace = true }
+pallet-balances = { workspace = true }
+cfg-types = { workspace = true }
+
+# optional dependencies for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
+[dev-dependencies]
+sp-io = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "frame-benchmarking/std",
+    "pallet-balances/std",
+    "pallet-liquidity-pools/std",
+    "cfg-types/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
+    "pallet-liquidity-pools/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
+]
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "sp-runtime/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-liquidity-pools/try-runtime",
+    "cfg-types/try-runtime",
+]

@@ -13,6 +13,7 @@ members = [
   "pallets/axelar-router",
   "pallets/bridge",
   "pallets/block-rewards",
+  "pallets/cfg-migration",
   "pallets/collator-allowlist",
   "pallets/ethereum-transaction",
   "pallets/fees",
