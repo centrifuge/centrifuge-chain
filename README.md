@@ -24,7 +24,7 @@
   </p>
 
 ## About Centrifuge
-Centrifuge is the infrastructure that facilitates the decentralized financing of real-world assets natively on-chain, creating a fully transparent market which allows borrowers and lenders to transact without unnecessary intermediaries. Asset pools are fully collateralized, liquidity providers have legal recourse, and the protocol is asset-class agnostic with pools for assets spanning mortgages, invoices, microlending and consumer finance. Ultimately, the protocol aims to lower the cost of borrowing for businesses around the world, while providing DeFi users with a stable source of collateralized yield that is uncorrelated to the volatile crypto markets. By bringing the entire structured credit market on-chain across securitization, tokenization, privacy, governance, and liquidity integrations, Centrifuge is building a more transparent, affordable, and limitless financial system.
+Centrifuge is the infrastructure that facilitates the decentralized financing of real-world assets natively on-chain, creating a fully transparent market that allows borrowers and lenders to transact without unnecessary intermediaries. Asset pools are fully collateralized, liquidity providers have legal recourse, and the protocol is asset-class agnostic with pools for assets spanning mortgages, invoices, microlending and consumer finance. Ultimately, the protocol aims to lower the cost of borrowing for businesses around the world, while providing DeFi users with a stable source of collateralized yield that is uncorrelated to the volatile crypto markets. By bringing the entire structured credit market on-chain across securitization, tokenization, privacy, governance, and liquidity integrations, Centrifuge is building a more transparent, affordable, and limitless financial system.
 
 ## Building blocks
 On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation:
@@ -51,7 +51,7 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**investments**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/investments) ([docs](https://reference.centrifuge.io/pallet_investments/index.html)): Provides orders for assets and allows user to collect these orders.
 
-- [**keystore**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/keystore) ([docs](https://reference.centrifuge.io/pallet_keystore/index.html)): Linking public keys to accounts. Supporting the operations of the offchain document consensus layer through the Centrifuge POD (Private Offchain Data) Node.
+- [**keystore**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/keystore) ([docs](https://reference.centrifuge.io/pallet_keystore/index.html)): Linking public keys to accounts. Supporting the operations of the off-chain document consensus layer through the Centrifuge POD (Private Offchain Data) Node.
 
 - [**liquidity-pools**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-pools) ([docs](https://reference.centrifuge.io/pallet_liquidity_pools/index.html)): Provides the toolset to enable foreign investments on foreign domains.
 
