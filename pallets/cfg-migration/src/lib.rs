@@ -16,7 +16,7 @@ pub type ChainName = BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use cfg_traits::liquidity_pools::AxelarGasService;
+	use cfg_traits::liquidity_pools::{AxelarGasService, LpMessageSerializer};
 	use cfg_types::domain_address::DomainAddress;
 	use frame_support::sp_runtime::traits::EnsureSub;
 	use frame_support::traits::fungibles::Inspect;
@@ -49,7 +49,7 @@ pub mod pallet {
 		type GasPaymentService: AxelarGasService<
 			Middleware = ChainName,
 			Origin = DomainAddress,
-			Message = Message,
+			Message = Vec<u8>,
 		>;
 
 		/// The sender account that will be used in the OutboundQueue
@@ -128,7 +128,8 @@ pub mod pallet {
 					)?,
 					receiver: receiver.bytes(),
 					amount: transfer_amount.into(),
-				},
+				}
+				.serialize(),
 				bridge_fee.into(),
 			)?;
 

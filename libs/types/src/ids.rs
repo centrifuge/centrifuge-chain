@@ -33,6 +33,7 @@ pub const BLOCK_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/blrw");
 pub const LIQUIDITY_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/lqrw");
 pub const POOL_FEES_PALLET_ID: PalletId = PalletId(*b"cfg/plfs");
 pub const TOKEN_MUX_PALLET_ID: PalletId = PalletId(*b"cfg/tmux");
+pub const CFG_LOCK_ID: PalletId = PalletId(*b"cfg/lock");
 
 // Other ids
 pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";

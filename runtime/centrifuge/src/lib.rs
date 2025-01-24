@@ -49,6 +49,7 @@ use cfg_types::{
 };
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use fp_rpc::TransactionStatus;
+use frame_support::BoundedVec;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -1995,12 +1996,38 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
+parameter_types! {
+	// Reference see <https://docs.axelar.dev/resources/contract-addresses/mainnet/>
+	pub AxelarGasServiceAddress: H160 = H160::from(hex_literal::hex!("2d5d7d31F671F86C782533cc367F14109a082712"));
+}
+
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type AxelarGasService = AxelarGasServiceAddress;
 	type Middleware = RouterId;
 	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
+}
+
+parameter_types! {
+	pub const ReceiverEVMChainId: u64 = 1;
+	pub const NativeCfg: CurrencyId = CurrencyId::Native;
+	pub const IouCfg: CurrencyId = CurrencyId::ForeignAsset(200_001);
+	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
+	pub DestinationAxelarChainName:  BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("Ethereum"));
+}
+
+impl pallet_cfg_migration::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type CfgLockAccount = CfgLockAccount;
+	type IouCfg = IouCfg;
+	type NativeCfg = NativeCfg;
+	type ReceiverEVMChainId = ReceiverEVMChainId;
+	type DestinationAxelarChainName = DestinationAxelarChainName;
+	type GasPaymentService = AxelarRouter;
+	type Sender = Sender;
+	type WeightInfo = ();
 }
 
 /// Block type as expected by this runtime.
@@ -2103,6 +2130,7 @@ construct_runtime!(
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
 		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 116,
+		CfgMigration: pallet_cfg_migration::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

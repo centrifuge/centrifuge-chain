@@ -364,14 +364,14 @@ pub mod pallet {
 			chain_name: Self::Middleware,
 			origin: Self::Origin,
 			message: Self::Message,
-			fee_amount: H256,
+			fee_amount: U256,
 		) -> DispatchResult {
 			let config = Configuration::<T>::get(&chain_name)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
 			let axelar_message = wrap_into_axelar_msg(
 				message,
-				chain_name.into_inner(),
+				chain_name.clone().into_inner(),
 				config.app_contract_address,
 			)
 			.map_err(DispatchError::Other)?;
