@@ -12,8 +12,10 @@
 // GNU General Public License for more details.
 
 use frame_support::{dispatch::DispatchResult, weights::Weight};
-use sp_runtime::app_crypto::sp_core::U256;
-use sp_runtime::{app_crypto::sp_core::H160, DispatchError};
+use sp_runtime::{
+	app_crypto::sp_core::{H160, U256},
+	DispatchError,
+};
 use sp_std::vec::Vec;
 
 /// Type that represents the hash of an LP message.

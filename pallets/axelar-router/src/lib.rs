@@ -139,9 +139,6 @@ pub mod pallet {
 
 		/// The target of the messages coming from this chain
 		type Transactor: EthereumTransactor;
-
-		/// The target contract for paying axelar gas fees for a message
-		type AxelarGasService: Get<H160>;
 	}
 
 	#[pallet::storage]
@@ -150,12 +147,18 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ChainNameById<T: Config> = StorageMap<_, Twox64Concat, AxelarId, ChainName>;
 
+	#[pallet::storage]
+	pub type AxelarGasServiceAddress<T: Config> = StorageValue<_, H160, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		ConfigSet {
 			name: ChainName,
 			config: Box<AxelarConfig>,
+		},
+		AxelarGasServiceSet {
+			address: H160,
 		},
 	}
 
@@ -206,6 +209,18 @@ pub mod pallet {
 				name: chain_name,
 				config,
 			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(1)))]
+		#[pallet::call_index(1)]
+		pub fn set_axelar_gas_service(origin: OriginFor<T>, address: H160) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			AxelarGasServiceAddress::<T>::set(address);
+
+			Self::deposit_event(Event::<T>::AxelarGasServiceSet { address });
 
 			Ok(())
 		}
@@ -388,7 +403,7 @@ pub mod pallet {
 			match config.domain {
 				DomainConfig::Evm(evm_config) => T::Transactor::call(
 					origin.h160(),
-					T::AxelarGasService::get(),
+					AxelarGasServiceAddress::<T>::get(),
 					axelar_gas_service_data.as_slice(),
 					fee_amount,
 					evm_config.outbound_fee_values.gas_price,

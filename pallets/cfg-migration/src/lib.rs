@@ -15,19 +15,22 @@ pub type ChainName = BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use cfg_traits::liquidity_pools::{AxelarGasService, LpMessageSerializer};
 	use cfg_types::domain_address::DomainAddress;
-	use frame_support::sp_runtime::traits::EnsureSub;
-	use frame_support::traits::fungibles::Inspect;
 	use frame_support::{
-		sp_runtime::traits::AccountIdConversion,
-		traits::{fungibles::Mutate, tokens::Preservation, OriginTrait},
+		sp_runtime::traits::{AccountIdConversion, EnsureSub},
+		traits::{
+			fungibles::{Inspect, Mutate},
+			tokens::Preservation,
+			OriginTrait,
+		},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
 	use pallet_liquidity_pools::Message;
 	use sp_core::H160;
+
+	use super::*;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);

@@ -107,6 +107,9 @@ pub const LOCAL_RESTRICTION_MANAGER_ADDRESS: [u8; 20] =
 	hex_literal::hex!("193356f6df34af00288f98bbb34d6ec98512ed32");
 
 pub mod contracts {
+	pub const ERC_20: &str = "ERC20";
+
+	pub const IOU_CFG: &str = "IouCfg";
 	pub const ROOT: &str = "Root";
 	pub const ESCROW: &str = "Escrow";
 	pub const POOL_MANAGER: &str = "PoolManager";
@@ -125,6 +128,9 @@ pub mod contracts {
 }
 
 pub mod names {
+	pub const NEW_CFG: &str = "NewCfg";
+	pub const W_CFG: &str = "WCFG";
+	pub const IOU_CFG: &str = "IouCfg";
 	pub const ROOT: &str = "root";
 	pub const ESCROW: &str = "escrow";
 	pub const POOL_MANAGER: &str = "pool_manager";

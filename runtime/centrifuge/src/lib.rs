@@ -49,7 +49,6 @@ use cfg_types::{
 };
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use fp_rpc::TransactionStatus;
-use frame_support::BoundedVec;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -67,7 +66,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	PalletId,
+	BoundedVec, PalletId,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -1996,36 +1995,33 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
-parameter_types! {
-	// Reference see <https://docs.axelar.dev/resources/contract-addresses/mainnet/>
-	pub AxelarGasServiceAddress: H160 = H160::from(hex_literal::hex!("2d5d7d31F671F86C782533cc367F14109a082712"));
-}
-
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type AxelarGasService = AxelarGasServiceAddress;
 	type Middleware = RouterId;
 	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }
 
+/// The last of all
+pub const IOU_CFG: CurrencyId = CurrencyId::ForeignAsset(999_999);
+
 parameter_types! {
 	pub const ReceiverEVMChainId: u64 = 1;
 	pub const NativeCfg: CurrencyId = CurrencyId::Native;
-	pub const IouCfg: CurrencyId = CurrencyId::ForeignAsset(200_001);
+	pub const IouCfg: CurrencyId = IOU_CFG;
 	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
 	pub DestinationAxelarChainName:  BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("Ethereum"));
 }
 
 impl pallet_cfg_migration::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type CfgLockAccount = CfgLockAccount;
+	type DestinationAxelarChainName = DestinationAxelarChainName;
+	type GasPaymentService = AxelarRouter;
 	type IouCfg = IouCfg;
 	type NativeCfg = NativeCfg;
 	type ReceiverEVMChainId = ReceiverEVMChainId;
-	type DestinationAxelarChainName = DestinationAxelarChainName;
-	type GasPaymentService = AxelarRouter;
+	type RuntimeEvent = RuntimeEvent;
 	type Sender = Sender;
 	type WeightInfo = ();
 }

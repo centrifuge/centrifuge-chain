@@ -76,6 +76,15 @@ pub fn rely<T: Runtime>(evm: &mut <RuntimeEnv<T> as EnvEvmExtension<T>>::EvmEnv)
 		Some(&[Token::Address(evm.deployed(names::ROOT).address())]),
 	)
 	.unwrap();
+	// Admin needs access to pool manager
+	evm.call(
+		Keyring::Alice,
+		Default::default(),
+		names::POOL_MANAGER,
+		"rely",
+		Some(&[Token::Address(Keyring::Admin.in_eth())]),
+	)
+	.unwrap();
 	evm.call(
 		Keyring::Alice,
 		Default::default(),
