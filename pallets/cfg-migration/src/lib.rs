@@ -39,6 +39,8 @@ pub mod pallet {
 		type IouCfg: Get<Self::CurrencyId>;
 		type NativeCfg: Get<Self::CurrencyId>;
 		type EVMChainId: Get<u64>;
+		type AxelarGateway: Get<H160>;
+		type AddressConverter: Convert<T::AccountId, H160>;
 		type WeightInfo: WeightInfo;
 	}
 	#[pallet::event]
@@ -57,35 +59,82 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		pub fn migrate(
 			origin: OriginFor<T>,
-			cfg_amount: T::Balance,
+			bridge_fee: T::Balance,
 			receiver: H160,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let cfg_lock_account = T::CfgLockAccount::get().into_account_truncating();
 			let iou = T::IouCfg::get();
+			let native_cfg = T::NativeCfg::get();
 
+			// Get user's full CFG balance
+			let total_balance = T::Tokens::balance(native_cfg, &who);
+			ensure!(total_balance >= bridge_fee, Error::<T>::InsufficientBalance);
+
+			let transfer_amount = total_balance.ensure_sub(&bridge_fee)?;
+
+			// Transfer full balance to lock account first
 			T::Tokens::transfer(
-				T::NativeCfg::get(),
+				native_cfg,
 				&who,
 				&cfg_lock_account,
-				cfg_amount,
+				total_balance,
 				Preservation::Expendable,
 			)?;
-			T::Tokens::mint_into(iou, &cfg_lock_account, cfg_amount)?;
 
+			// Mint IOU for actual transfer amount
+			T::Tokens::mint_into(iou, &cfg_lock_account, transfer_amount)?;
+
+			// Pay Axelar fees via EVM call
+			Self::pay_axelar_fee(fee, &cfg_lock_account)?;
+
+			// Initiate cross-chain transfer
 			pallet_liquidity_pools::Pallet::<T>::transfer(
-				OriginFor::<T>::signed(cfg_lock_account),
+				OriginFor::<T>::signed(cfg_lock_account.clone()),
 				T::IouCfg::get(),
 				DomainAddress::Evm(T::EVMChainId::get(), receiver),
-				cfg_amount,
+				transfer_amount,
 			)?;
 
 			Self::deposit_event(Event::CfgMigrationInitiated {
 				sender: who,
 				receiver,
-				amount: cfg_amount,
+				amount: transfer_amount,
 			});
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn pay_axelar_fee(fee: T::Balance, from_account: &T::AccountId) -> DispatchResult {
+			let axelar_gateway = T::AxelarGateway::get();
+			let evm_account = T::AddressConverter::convert(from_account.clone());
+
+			// Convert fee to EVM compatible format
+			let fee_u256: U256 = fee.into();
+
+			// Construct call to Axelar's CallContract
+			let call_data = ethabi::encode(&[
+				Token::String("ethereum".into()),
+				Token::String("0x".into()), // Placeholder for destination address
+				Token::Bytes(vec![]),       // Empty payload for example
+			]);
+
+			// Dispatch EVM call
+			pallet_evm::Pallet::<T>::call(
+				evm_account,
+				axelar_gateway,
+				call_data,
+				fee_u256,
+				1000000u64.into(),         // Example gas limit
+				U256::from(1_000_000_000), // Example gas price
+				None,
+				None,
+				vec![],
+			)
+			.map_err(|_| Error::<T>::AxelarFeePaymentFailed)?;
 
 			Ok(())
 		}
