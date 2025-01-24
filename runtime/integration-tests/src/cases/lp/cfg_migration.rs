@@ -87,18 +87,18 @@ mod utils {
 				contracts::ERC_20,
 				names::NEW_CFG,
 				Keyring::Admin,
+				Some(&[Token::Uint(Uint::from(18))]),
+			);
+			evm.deploy(
+				contracts::IOU_CFG,
+				names::IOU_CFG,
+				Keyring::Admin,
 				Some(&[
 					Token::Address(evm.deployed(names::POOL_MANAGER).address()),
 					Token::Address(evm.deployed(names::ESCROW).address()),
 					Token::Address(evm.deployed(names::NEW_CFG).address()),
 					Token::Address(evm.deployed(names::W_CFG).address()),
 				]),
-			);
-			evm.deploy(
-				contracts::IOU_CFG,
-				names::IOU_CFG,
-				Keyring::Admin,
-				Some(&[Token::Uint(Uint::from(18))]),
 			);
 			evm.call(
 				Keyring::Admin,
