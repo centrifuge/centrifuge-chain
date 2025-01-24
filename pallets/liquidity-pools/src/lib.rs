@@ -139,7 +139,8 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen
 			+ Into<u128>
-			+ From<u128>;
+			+ From<u128>
+			+ Into<U256>;
 
 		type PoolId: Member
 			+ Parameter

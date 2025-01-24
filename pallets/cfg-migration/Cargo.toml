@@ -23,6 +23,7 @@ sp-std = { workspace = true }
 pallet-liquidity-pools = { workspace = true }
 pallet-balances = { workspace = true }
 cfg-types = { workspace = true }
+cfg-traits = { workspace = true }
 
 # optional dependencies for benchmarking
 frame-benchmarking = { workspace = true, optional = true }
@@ -32,7 +33,6 @@ sp-io = { workspace = true , default-features = true}
 orml-traits = { workspace = true , default-features = true}
 orml-tokens = { workspace = true , default-features = true }
 cfg-primitives = { workspace = true , default-features = true }
-cfg-traits = { workspace = true , default-features = true }
 cfg-types = { workspace = true , default-features = true }
 cfg-utils = { workspace = true , default-features = true }
 cfg-mocks = { workspace = true, default-features = true }
@@ -51,6 +51,7 @@ std = [
     "pallet-balances/std",
     "pallet-liquidity-pools/std",
     "cfg-types/std",
+    "cfg-traits/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
@@ -60,6 +61,7 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "pallet-liquidity-pools/runtime-benchmarks",
     "cfg-types/runtime-benchmarks",
+    "cfg-traits/runtime-benchmarks"
 ]
 try-runtime = [
     "frame-support/try-runtime",
@@ -68,4 +70,5 @@ try-runtime = [
     "pallet-balances/try-runtime",
     "pallet-liquidity-pools/try-runtime",
     "cfg-types/try-runtime",
+    "cfg-traits/try-runtime"
 ]

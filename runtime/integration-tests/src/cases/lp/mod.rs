@@ -49,6 +49,7 @@ use crate::{
 	},
 };
 
+pub mod cfg_migration;
 pub mod investments;
 pub mod pool_management;
 pub mod setup_evm;

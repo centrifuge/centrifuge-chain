@@ -10,6 +10,4 @@ benchmarks! {
 		// Fund the caller
 		T::Currency::make_free_balance_be(&caller, amount);
 	}: _(RawOrigin::Signed(caller), amount, receiver)
-
-	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
