@@ -2010,6 +2010,29 @@ impl pallet_axelar_router::Config for Runtime {
 	type Transactor = EthereumTransaction;
 }
 
+/// The last of all
+pub const IOU_CFG: CurrencyId = CurrencyId::ForeignAsset(999_999);
+
+parameter_types! {
+	pub const ReceiverEVMChainId: u64 = 11155111;
+	pub const NativeCfg: CurrencyId = CurrencyId::Native;
+	pub const IouCfg: CurrencyId = IOU_CFG;
+	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
+	pub DestinationAxelarChainName:  BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("ethereum-sepolia"));
+}
+
+impl pallet_cfg_migration::Config for Runtime {
+	type CfgLockAccount = CfgLockAccount;
+	type DestinationAxelarChainName = DestinationAxelarChainName;
+	type GasPaymentService = AxelarRouter;
+	type IouCfg = IouCfg;
+	type NativeCfg = NativeCfg;
+	type ReceiverEVMChainId = ReceiverEVMChainId;
+	type RuntimeEvent = RuntimeEvent;
+	type Sender = Sender;
+	type WeightInfo = ();
+}
+
 impl pallet_conviction_voting::Config for Runtime {
 	type Currency = Balances;
 	type MaxTurnout =
