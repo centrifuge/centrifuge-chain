@@ -84,7 +84,7 @@ const INVESTOR_VALIDITY: Seconds = Seconds::MAX;
 pub const EVM_LP_INSTANCE: [u8; 20] = hex!("1111111111111111111111111111111111111111");
 
 /// The faked domain name the LP messages are coming from and going to.
-pub const EVM_DOMAIN_STR: &str = "TestDomain";
+pub const EVM_DOMAIN_STR: &str = "Ethereum";
 
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;

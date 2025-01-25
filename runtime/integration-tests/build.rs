@@ -12,6 +12,7 @@
 use std::{env, fs, path::PathBuf, process::Command};
 
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
+const VAULTS_SOL_SOURCES: &str = "VAULTS_SOL_SOURCES";
 
 fn main() {
 	let paths = fs::read_dir("./submodules/")
@@ -83,6 +84,14 @@ fn main() {
 						);
 
 						LP_SOL_SOURCES
+					}
+					"vaults-internal" => {
+						println!(
+							"cargo::warning=Build vaults-internals Solidity contracts. Stored at {} ",
+							out_dir_build
+						);
+
+						VAULTS_SOL_SOURCES
 					}
 					_ => {
 						println!(

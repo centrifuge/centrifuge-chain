@@ -85,8 +85,12 @@ pub trait Runtime:
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
-	+ pallet_investments::Config<InvestmentId = InvestmentId, Amount = Balance, BalanceRatio = Ratio>
-	+ pallet_loans::Config<
+	+ pallet_investments::Config<
+		InvestmentId = InvestmentId,
+		Amount = Balance,
+		BalanceRatio = Ratio,
+		Tokens = <Self as pallet_pool_system::Config>::Tokens,
+	> + pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
 		LoanId = LoanId,
@@ -135,6 +139,7 @@ pub trait Runtime:
 		PoolId = PoolId,
 		TrancheId = TrancheId,
 		BalanceRatio = Ratio,
+		Tokens = <Self as pallet_pool_system::Config>::Tokens,
 	> + pallet_liquidity_pools_gateway::Config<RouterId = RouterId, Message = Message>
 	+ pallet_liquidity_pools_gateway_queue::Config<Message = GatewayMessage<Message, RouterId>>
 	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
@@ -182,6 +187,7 @@ pub trait Runtime:
 		CurrencyId = CurrencyId,
 		Balance = Balance,
 		Rewards = pallet_rewards::Pallet<Self, instances::BlockRewards>,
+		Tokens = <Self as pallet_pool_system::Config>::Tokens,
 	> + pallet_axelar_router::Config
 	+ pallet_liquidity_pools_forwarder::Config<Message = Message, RouterId = RouterId>
 	+ pallet_token_mux::Config<
@@ -189,6 +195,7 @@ pub trait Runtime:
 		BalanceOut = Balance,
 		CurrencyId = CurrencyId,
 		OrderId = OrderId,
+		Tokens = <Self as pallet_pool_system::Config>::Tokens,
 	>
 {
 	/// Value to differentiate the runtime in tests.

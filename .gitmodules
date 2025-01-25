@@ -2,3 +2,7 @@
 	path = runtime/integration-tests/submodules/liquidity-pools
 	url = git@github.com:centrifuge/liquidity-pools.git
 	branch = centrifuge-chain/release-v1.0
+[submodule "runtime/integration-tests/submodules/vaults-internal"]
+	path = runtime/integration-tests/submodules/vaults-internal
+	url = git@github.com:centrifuge/vaults-internal.git
+	branch = feat/iou-contract

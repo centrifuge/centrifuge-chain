@@ -19,7 +19,8 @@ use crate::{config::Runtime, utils::ESSENTIAL};
 /// This panics if the solidity contracts were not built properly. This can
 /// happen if the submodule was not pulled or the forge cli has not been
 /// installed locally.
-pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to populate environment variable LP_SOL_SOURCES pointing to missing solidity source files in the 'target/*/build/integration-tests*/out' directory required for EVM integration tests.\n\nPlease check if you have pulled the 'liquidity-pools' submodule via `git pull --recurse-submodules` and if you have installed the forge cli, e.g. check `forge -V`.");
+// pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to populate environment variable LP_SOL_SOURCES pointing to missing solidity source files in the 'target/*/build/integration-tests*/out' directory required for EVM integration tests.\n\nPlease check if you have pulled the 'liquidity-pools' submodule via `git pull --recurse-submodules` and if you have installed the forge cli, e.g. check `forge -V`.");
+pub const VAULTS_SOL_SOURCES: &str = env!("VAULTS_SOL_SOURCES", "Build script failed to populate environment variable VAULTS_SOL_SOURCES pointing to missing solidity source files in the 'target/*/build/integration-tests*/out' directory required for EVM integration tests.\n\nPlease check if you have pulled the 'liquidity-pools' submodule via `git pull --recurse-submodules` and if you have installed the forge cli, e.g. check `forge -V`.");
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeployedContractInfo {
@@ -97,7 +98,7 @@ fn traversal(path: impl AsRef<Path>, files: &mut Vec<PathBuf>) {
 pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 	let mut contracts = HashMap::new();
 	let mut files = Vec::new();
-	traversal(LP_SOL_SOURCES, &mut files);
+	traversal(VAULTS_SOL_SOURCES, &mut files);
 	files.iter().for_each(|path| {
 		let file_name = path
 			.file_name()

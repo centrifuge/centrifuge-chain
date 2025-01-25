@@ -17,6 +17,7 @@ pub type ChainName = BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>;
 pub mod pallet {
 	use cfg_traits::liquidity_pools::{AxelarGasService, LpMessageSerializer};
 	use cfg_types::domain_address::DomainAddress;
+	use frame_support::sp_runtime::traits::Zero;
 	use frame_support::{
 		sp_runtime::traits::{AccountIdConversion, EnsureSub},
 		traits::{
@@ -67,6 +68,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emit when user can not pay for the bridge fee
 		InsufficientBalance,
+		/// Emit when user has no balance to transfer, after fee
+		ZeroTransfer,
 	}
 
 	#[pallet::event]
@@ -91,7 +94,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let cfg_lock_account = T::CfgLockAccount::get().into_account_truncating();
-			let iou = T::IouCfg::get();
+			let iou_cfg = T::IouCfg::get();
 			let native_cfg = T::NativeCfg::get();
 			let receiver = DomainAddress::Evm(T::ReceiverEVMChainId::get(), receiver);
 
@@ -100,6 +103,8 @@ pub mod pallet {
 			ensure!(total_balance >= bridge_fee, Error::<T>::InsufficientBalance);
 
 			let transfer_amount = total_balance.ensure_sub(bridge_fee)?;
+
+			ensure!(!transfer_amount.is_zero(), Error::<T>::ZeroTransfer);
 
 			// Transfer sending balance to lock account first
 			T::Tokens::transfer(
@@ -120,26 +125,29 @@ pub mod pallet {
 			)?;
 
 			// Mint IOU for actual transfer amount
-			T::Tokens::mint_into(iou, &cfg_lock_account, transfer_amount)?;
+			T::Tokens::mint_into(iou_cfg, &cfg_lock_account, transfer_amount)?;
 
-			T::GasPaymentService::pay_fees(
-				T::DestinationAxelarChainName::get(),
-				T::Sender::get(),
-				Message::TransferAssets {
-					currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(
-						native_cfg,
-					)?,
-					receiver: receiver.bytes(),
-					amount: transfer_amount.into(),
-				}
-				.serialize(),
-				bridge_fee.into(),
-			)?;
+			if !bridge_fee.is_zero() {
+				// Pay bridge fee
+				T::GasPaymentService::pay_fees(
+					T::DestinationAxelarChainName::get(),
+					T::Sender::get(),
+					Message::TransferAssets {
+						currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(
+							iou_cfg,
+						)?,
+						receiver: receiver.bytes(),
+						amount: transfer_amount.into(),
+					}
+					.serialize(),
+					bridge_fee.into(),
+				)?;
+			}
 
 			// Initiate cross-chain transfer
 			pallet_liquidity_pools::Pallet::<T>::transfer(
 				OriginFor::<T>::signed(cfg_lock_account.clone()),
-				T::IouCfg::get(),
+				iou_cfg,
 				receiver.clone(),
 				transfer_amount,
 			)?;
