@@ -66,13 +66,15 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<(T::BalanceRatio, Seconds)> {
-		let now = T::Time::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
-		// Get cached nav as calculating current nav would be too computationally
-		// expensive
-		let (nav, nav_last_updated) = T::AssetsUnderManagementNAV::nav(pool_id)?;
-		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
+		let (nav_loans, nav_loans_updates) = T::AssetsUnderManagementNAV::nav(pool_id)?;
+		let (nav_fees, nav_fees_updated) = T::PoolFeesNAV::nav(pool_id)?;
+
+		let nav = Nav::new(nav_loans, nav_fees);
+		let total_assets = nav
+			.total(pool.reserve.total)
+			.unwrap_or(<T as Config>::Balance::zero());
 
 		let tranche_index: usize = pool
 			.tranches
@@ -81,12 +83,12 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.ok()?;
 		let prices = pool
 			.tranches
-			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
+			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, T::Time::now())
 			.ok()?;
 
 		let price = prices.get(tranche_index).cloned()?;
 
-		Some((price, nav_last_updated))
+		Some((price, sp_std::cmp::min(nav_fees_updated, nav_loans_updates)))
 	}
 }
 

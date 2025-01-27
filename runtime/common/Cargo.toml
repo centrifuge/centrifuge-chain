@@ -90,6 +90,7 @@ pallet-investments = { workspace = true }
 pallet-keystore = { workspace = true }
 pallet-liquidity-pools = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
+pallet-liquidity-pools-gateway-queue = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
 pallet-loans = { workspace = true }
 pallet-membership = { workspace = true }
@@ -207,6 +208,8 @@ std = [
   "pallet-keystore/std",
   "pallet-liquidity-pools/std",
   "pallet-liquidity-pools-gateway/std",
+  "pallet-liquidity-pools-gateway-queue/std",
+  "pallet-axelar-router/std",
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-membership/std",
@@ -284,6 +287,8 @@ runtime-benchmarks = [
   "pallet-keystore/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
   "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway-queue/runtime-benchmarks",
+  "pallet-axelar-router/runtime-benchmarks",
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
@@ -357,6 +362,8 @@ try-runtime = [
   "pallet-keystore/try-runtime",
   "pallet-liquidity-pools/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
+  "pallet-liquidity-pools-gateway-queue/try-runtime",
+  "pallet-axelar-router/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-membership/try-runtime",
