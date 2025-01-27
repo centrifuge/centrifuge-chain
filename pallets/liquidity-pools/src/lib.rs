@@ -644,7 +644,7 @@ pub mod pallet {
 			T::OutboundMessageHandler::handle(
 				who.clone(),
 				receiver.domain(),
-				Message::TransferAssets {
+				Message::UnlockTokens {
 					amount: amount.into(),
 					currency,
 					receiver: receiver.bytes(),
@@ -1167,11 +1167,10 @@ pub mod pallet {
 
 			match msg {
 				Message::RegisterAsset { .. } => Ok(()), // Skip behavior, event dispatched above
-				Message::TransferAssets {
+				Message::LockTokens {
 					currency,
 					receiver,
 					amount,
-					..
 				} => Self::handle_transfer(currency.into(), receiver.into(), amount.into()),
 				Message::TransferTrancheTokens {
 					pool_id,

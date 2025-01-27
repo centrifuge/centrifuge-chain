@@ -29,7 +29,7 @@ mod transfer {
 				assert_eq!(destination, CONTRACT_DOMAIN_ADDRESS.domain());
 				assert_eq!(
 					msg,
-					Message::TransferAssets {
+					Message::UnlockTokens {
 						currency: util::currency_index(CURRENCY_ID),
 						receiver: CONTRACT_DOMAIN_ADDRESS.bytes(),
 						amount: AMOUNT

@@ -127,7 +127,7 @@ mod utils {
 				Keyring::Alice,
 				Default::default(),
 				names::POOL_MANAGER,
-				"transferAssets",
+				"lockTokens",
 				Some(&[
 					Token::Address(evm.deployed(names::USDC).address()),
 					Token::FixedBytes(Keyring::Ferdie.id().to_raw_vec()),

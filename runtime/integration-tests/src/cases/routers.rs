@@ -166,7 +166,7 @@ mod axelar_evm {
 				BoundedVec::try_from(vec![TEST_ROUTER_ID]).unwrap(),
 			));
 
-			let message = Message::TransferAssets {
+			let message = Message::LockTokens {
 				currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(Usd18.id())
 					.unwrap(),
 				receiver: RECEIVER_ADDRESS.into(),

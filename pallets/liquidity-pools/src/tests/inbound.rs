@@ -33,7 +33,7 @@ mod handle_transfer {
 
 			assert_ok!(LiquidityPools::handle(
 				EVM_DOMAIN,
-				Message::TransferAssets {
+				Message::LockTokens {
 					currency: util::currency_index(CURRENCY_ID),
 					receiver: ALICE.into(),
 					amount: AMOUNT,
@@ -53,7 +53,7 @@ mod handle_transfer {
 				assert_noop!(
 					LiquidityPools::handle(
 						EVM_DOMAIN,
-						Message::TransferAssets {
+						Message::LockTokens {
 							currency: util::currency_index(CURRENCY_ID),
 							receiver: ALICE.into(),
 							amount: 0,
@@ -71,7 +71,7 @@ mod handle_transfer {
 				assert_noop!(
 					LiquidityPools::handle(
 						EVM_DOMAIN,
-						Message::TransferAssets {
+						Message::LockTokens {
 							currency: util::currency_index(CURRENCY_ID),
 							receiver: ALICE.into(),
 							amount: AMOUNT,
