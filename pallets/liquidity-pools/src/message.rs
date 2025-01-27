@@ -328,9 +328,14 @@ pub enum Message<BatchContent = BatchMessages, ForwardContent = NonForwardMessag
 	/// to the corresponding EVM Address.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	AddAsset {
-		currency: u128,
-		evm_address: [u8; 20],
+	RegisterAsset {
+		asset_id: u128,
+		asset_address: [u8; 20],
+		unknown: Address,
+		#[serde(with = "serde_big_array::BigArray")]
+		name: [u8; TOKEN_NAME_SIZE],
+		symbol: [u8; TOKEN_SYMBOL_SIZE],
+		decimals: u8,
 	},
 	/// Add a pool to a domain.
 	///
@@ -769,13 +774,25 @@ mod tests {
 	}
 
 	#[test]
-	fn add_currency() {
+	fn register_asset() {
 		test_encode_decode_identity(
-			Message::AddAsset {
-				currency: TOKEN_ID,
-				evm_address: default_address_20(),
+			Message::RegisterAsset {
+				asset_id: TOKEN_ID,
+				asset_address: default_address_20(),
+                unknown: default_address_32(),
+				name: vec_to_fixed_array(b"Some Name"),
+				symbol: vec_to_fixed_array( b"SYMBOL"),
+				decimals: 15,
 			},
-			"090000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
+			concat!(
+				"09",
+                "0000000000000000000000000eb5ec7b",
+                "1231231231231231231231231231231231231231",
+                "4564564564564564564564564564564564564564564564564564564564564564",
+                "536f6d65204e616d650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                "53594d424f4c0000000000000000000000000000000000000000000000000000",
+                "0f",
+			),
 		)
 	}
 

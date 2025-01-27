@@ -15,12 +15,11 @@ use cfg_traits::{PoolMetadata, TrancheTokenPrice};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::PoolRole,
-	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::CurrencyId,
 };
 use ethabi::{ethereum_types::H160, Token, Uint};
 use frame_support::{assert_ok, traits::OriginTrait};
 use frame_system::pallet_prelude::OriginFor;
-use pallet_liquidity_pools::GeneralCurrencyIndexOf;
 use sp_runtime::FixedPointNumber;
 
 use crate::{
@@ -36,99 +35,10 @@ use crate::{
 	env::{EnvEvmExtension, EvmEnv},
 	utils::{
 		accounts::Keyring,
-		currency::{register_currency, CurrencyInfo},
+		currency::CurrencyInfo,
 		pool::{give_role, remove_role},
 	},
 };
-
-#[test_runtimes([centrifuge, development])]
-fn add_currency<T: Runtime>() {
-	let mut env = super::setup::<T, _>(|_| {});
-
-	#[allow(non_camel_case_types)]
-	pub struct TestCurrency;
-	impl CurrencyInfo for TestCurrency {
-		fn custom(&self) -> CustomMetadata {
-			CustomMetadata {
-				pool_currency: true,
-				transferability: CrossChainTransferability::LiquidityPools,
-				permissioned: false,
-				mintable: false,
-				local_representation: None,
-			}
-		}
-
-		fn id(&self) -> CurrencyId {
-			CurrencyId::ForeignAsset(200_001)
-		}
-	}
-
-	env.state_mut(|evm| {
-		evm.deploy(
-			"ERC20",
-			"test_erc20",
-			Keyring::Admin,
-			Some(&[Token::Uint(Uint::from(TestCurrency.decimals()))]),
-		);
-
-		register_currency::<T>(TestCurrency, |meta| {
-			meta.location = Some(utils::lp_asset_location::<T>(
-				evm.deployed("test_erc20").address(),
-			));
-		});
-
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-			OriginFor::<T>::signed(Keyring::Alice.into()),
-			TestCurrency.id()
-		));
-
-		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>)
-	});
-
-	let index = GeneralCurrencyIndexOf::<T>::try_from(TestCurrency.id()).unwrap();
-
-	env.state_mut(|evm| {
-		// Verify the  test currencies are correctly added to the pool manager
-		assert_eq!(
-			Decoder::<H160>::decode(
-				&evm.view(
-					Keyring::Alice,
-					names::POOL_MANAGER,
-					"idToAsset",
-					Some(&[Token::Uint(Uint::from(index.index))])
-				)
-				.unwrap()
-				.value
-			),
-			evm.deployed("test_erc20").address()
-		);
-
-		assert_eq!(
-			Decoder::<Balance>::decode(
-				&evm.view(
-					Keyring::Alice,
-					names::POOL_MANAGER,
-					"assetToId",
-					Some(&[Token::Address(evm.deployed("test_erc20").address())]),
-				)
-				.unwrap()
-				.value
-			),
-			index.index
-		);
-	});
-
-	env.state_mut(|evm| {
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-			OriginFor::<T>::signed(Keyring::Alice.into()),
-			TestCurrency.id()
-		));
-
-		utils::process_gateway_message::<T>(|_| {
-			utils::verify_outbound_failure_on_lp::<T>(evm.deployed(names::ADAPTER).address())
-		});
-	});
-}
 
 #[test_runtimes([centrifuge, development])]
 fn add_pool<T: Runtime>() {

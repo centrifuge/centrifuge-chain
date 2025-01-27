@@ -636,19 +636,6 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		));
 	});
 
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-		OriginFor::<T>::signed(Keyring::Alice.into()),
-		USDC.id()
-	));
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-		OriginFor::<T>::signed(Keyring::Alice.into()),
-		DAI.id()
-	));
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-		OriginFor::<T>::signed(Keyring::Alice.into()),
-		FRAX.id()
-	));
-
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 

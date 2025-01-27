@@ -654,31 +654,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a currency to the set of known currencies on the domain derived
-		/// from the given currency.
-		///
-		/// Origin: Anyone because transmitted data is queried from chain.
-		#[pallet::weight(T::WeightInfo::add_currency())]
-		#[pallet::call_index(8)]
-		pub fn add_currency(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let (chain_id, evm_address) = Self::try_get_wrapped_token(&currency_id)?;
-
-			T::OutboundMessageHandler::handle(
-				who,
-				Domain::Evm(chain_id),
-				Message::AddAsset {
-					currency,
-					evm_address: evm_address.0,
-				},
-			)?;
-
-			Ok(())
-		}
-
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
 		///
@@ -1191,6 +1166,7 @@ pub mod pallet {
 			});
 
 			match msg {
+				Message::RegisterAsset { .. } => Ok(()), // Skip behavior, event dispatched above
 				Message::TransferAssets {
 					currency,
 					receiver,

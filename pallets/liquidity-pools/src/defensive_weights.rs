@@ -19,7 +19,6 @@ pub trait WeightInfo {
 	fn update_member() -> Weight;
 	fn transfer() -> Weight;
 	fn set_domain_router() -> Weight;
-	fn add_currency() -> Weight;
 	fn allow_investment_currency() -> Weight;
 	fn disallow_investment_currency() -> Weight;
 	fn schedule_upgrade() -> Weight;
@@ -91,12 +90,6 @@ impl WeightInfo for () {
 
 	fn unfreeze_investor() -> Weight {
 		default_defensive_weight()
-	}
-
-	fn add_currency() -> Weight {
-		// Reads: 2x AssetRegistry
-		// Writes: MessageNonceStore, MessageQueue
-		RocksDbWeight::get().reads_writes(2, 2)
 	}
 
 	fn allow_investment_currency() -> Weight {
