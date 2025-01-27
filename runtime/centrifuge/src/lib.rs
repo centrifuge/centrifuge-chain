@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1401,
+	spec_version: 1403,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1843,15 +1843,6 @@ parameter_types! {
 	pub const MaxRouterCount: u32 = 8;
 }
 
-impl pallet_liquidity_pools_forwarder::Config for Runtime {
-	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type Message = pallet_liquidity_pools::Message;
-	type MessageReceiver = LiquidityPoolsGateway;
-	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
-	type RouterId = RouterId;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 parameter_types! {
 	// A temporary admin account for the LP logic
 	// This is a multi-sig controlled pure proxy on mainnet
@@ -1875,7 +1866,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type MessageSender = LiquidityPoolsForwarder;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, ()>;
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
@@ -1998,7 +1989,7 @@ impl pallet_ethereum_transaction::Config for Runtime {}
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type Middleware = RouterId;
-	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
+	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }
@@ -2037,7 +2028,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1401,
+	migrations::UpgradeCentrifuge1403,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2102,7 +2093,6 @@ construct_runtime!(
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
-		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2126,7 +2116,8 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config<T>, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
-		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 165,
+		// Removed: LiquidityPoolsAxelarGateway = 165
+		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 166,
 
 		// Synced pallets across all runtimes - Range: 180-240
 		// WHY: * integrations like fireblocks will need to know the index in the enum
