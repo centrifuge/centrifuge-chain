@@ -103,7 +103,6 @@ pallet-interest-accrual = { workspace = true }
 pallet-investments = { workspace = true }
 pallet-keystore = { workspace = true }
 pallet-liquidity-pools = { workspace = true }
-pallet-liquidity-pools-forwarder = { workspace = true }
 pallet-liquidity-pools-gateway = { workspace = true }
 pallet-liquidity-pools-gateway-queue = { workspace = true }
 pallet-liquidity-rewards = { workspace = true }
@@ -229,7 +228,6 @@ std = [
   "pallet-investments/std",
   "pallet-keystore/std",
   "pallet-liquidity-pools/std",
-  "pallet-liquidity-pools-forwarder/std",
   "pallet-liquidity-pools-gateway/std",
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
@@ -314,7 +312,6 @@ runtime-benchmarks = [
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
-  "pallet-liquidity-pools-forwarder/runtime-benchmarks",
   "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
@@ -398,7 +395,6 @@ try-runtime = [
   "pallet-investments/try-runtime",
   "pallet-keystore/try-runtime",
   "pallet-liquidity-pools/try-runtime",
-  "pallet-liquidity-pools-forwarder/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",

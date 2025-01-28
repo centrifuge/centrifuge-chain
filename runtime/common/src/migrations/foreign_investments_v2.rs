@@ -18,7 +18,7 @@ use sp_std::vec::Vec;
 pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
 const REMOVAL_LIMIT: u32 = 10u32;
-const LOG_PREFIX: &str = "LiquidityPoolsGatewayV1";
+const LOG_PREFIX: &str = "ForeignInvestmentsV2";
 
 impl<T> OnRuntimeUpgrade for Migration<T>
 where

@@ -22,7 +22,6 @@ use parity_scale_codec::FullCodec;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::traits::{EnsureAddAssign, One};
-use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -61,6 +60,12 @@ pub mod pallet {
 	#[pallet::getter(fn message_nonce_store)]
 	pub type MessageNonceStore<T: Config> = StorageValue<_, T::MessageNonce, ValueQuery>;
 
+	/// Storage that is used for keeping track of the last nonce that was
+	/// processed.
+	#[pallet::storage]
+	#[pallet::getter(fn last_processed_nonce)]
+	pub type LastProcessedNonce<T: Config> = StorageValue<_, T::MessageNonce, ValueQuery>;
+
 	/// Storage for messages that will be processed during the `on_idle` hook.
 	#[pallet::storage]
 	#[pallet::getter(fn message_queue)]
@@ -92,6 +97,11 @@ pub mod pallet {
 			nonce: T::MessageNonce,
 			message: T::Message,
 			error: DispatchError,
+		},
+
+		/// Maximum number of messages was reached.
+		MaxNumberOfMessagesReached {
+			last_processed_nonce: T::MessageNonce,
 		},
 	}
 
@@ -209,11 +219,43 @@ pub mod pallet {
 		}
 
 		fn service_message_queue(max_weight: Weight) -> Weight {
-			let mut weight_used = Weight::zero();
+			let mut last_processed_nonce = LastProcessedNonce::<T>::get();
 
-			let mut processed_entries = Vec::new();
+			// 1 read for the last processed nonce
+			let mut weight_used = T::DbWeight::get().reads(1);
 
-			for (nonce, message) in MessageQueue::<T>::iter() {
+			loop {
+				if last_processed_nonce.ensure_add_assign(One::one()).is_err() {
+					Self::deposit_event(Event::<T>::MaxNumberOfMessagesReached {
+						last_processed_nonce,
+					});
+
+					break;
+				}
+
+				// 1 read for the nonce
+				weight_used.saturating_accrue(T::DbWeight::get().reads(1));
+
+				if last_processed_nonce > MessageNonceStore::<T>::get() {
+					break;
+				}
+
+				// 1 read for the message
+				weight_used.saturating_accrue(T::DbWeight::get().reads(1));
+
+				let message = match MessageQueue::<T>::get(last_processed_nonce) {
+					Some(msg) => msg,
+					// No message found at this nonce, we can skip it.
+					None => {
+						LastProcessedNonce::<T>::set(last_processed_nonce);
+
+						// 1 write for setting the last processed nonce
+						weight_used.saturating_accrue(T::DbWeight::get().writes(1));
+
+						continue;
+					}
+				};
+
 				let remaining_weight = max_weight
 					.saturating_sub(weight_used)
 					.saturating_sub(T::DbWeight::get().reads(1));
@@ -224,37 +266,28 @@ pub mod pallet {
 					break;
 				}
 
-				let weight = match Self::process_message_and_deposit_event(nonce, message.clone()) {
-					(Ok(()), weight) => {
-						// Extra weight breakdown:
-						//
-						// 1 read for the message
-						// 1 write for the message removal
-						weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
-					}
+				let processing_weight = match Self::process_message_and_deposit_event(
+					last_processed_nonce,
+					message.clone(),
+				) {
+					(Ok(()), weight) => weight,
 					(Err(e), weight) => {
-						FailedMessageQueue::<T>::insert(nonce, (message, e));
+						FailedMessageQueue::<T>::insert(last_processed_nonce, (message, e));
 
-						// Extra weight breakdown:
-						//
-						// 1 read for the message
 						// 1 write for the failed message
-						// 1 write for the message removal
-						weight.saturating_add(T::DbWeight::get().reads_writes(1, 2))
+						weight.saturating_add(T::DbWeight::get().writes(1))
 					}
 				};
 
-				processed_entries.push(nonce);
+				weight_used.saturating_accrue(processing_weight);
 
-				weight_used = weight_used.saturating_add(weight);
+				MessageQueue::<T>::remove(last_processed_nonce);
 
-				if weight_used.any_gte(max_weight) {
-					break;
-				}
-			}
+				LastProcessedNonce::<T>::set(last_processed_nonce);
 
-			for entry in processed_entries {
-				MessageQueue::<T>::remove(entry);
+				// 1 write for removing the message
+				// 1 write for setting the last processed nonce
+				weight_used.saturating_accrue(T::DbWeight::get().writes(2));
 			}
 
 			weight_used

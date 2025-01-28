@@ -300,7 +300,7 @@ pub mod pallet {
 		/// The metadata of the given asset does not declare it as transferable
 		/// via LiquidityPools'.
 		AssetNotLiquidityPoolsTransferable,
-		/// The asset is not a a wrapped token and thus cannot be
+		/// The asset is not a wrapped token and thus cannot be
 		/// transferred via liquidity pools.
 		AssetNotLiquidityPoolsWrappedToken,
 		/// A pool could not be found.

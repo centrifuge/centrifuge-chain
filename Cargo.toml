@@ -54,7 +54,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://reference.centrifuge.io/centrifuge_chain/index.html"
-version = "0.14.0"
+version = "0.14.3"
 
 [workspace.dependencies]
 hex-literal = { version = "0.4.1" }

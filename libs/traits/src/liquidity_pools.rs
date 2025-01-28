@@ -172,7 +172,7 @@ pub trait MessageProcessor {
 	/// Process a message.
 	fn process(msg: Self::Message) -> (DispatchResult, Weight);
 
-	/// Max weight that processing a message can take
+	/// Max weight that processing a message can take.
 	fn max_processing_weight(msg: &Self::Message) -> Weight;
 }
 

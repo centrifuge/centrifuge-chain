@@ -10,35 +10,33 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use frame_support::migrations::VersionedMigration;
+use sp_core::parameter_types;
+
 use crate::Runtime;
 
-pub type UpgradeDevelopment1401 = (
-	// Clear OutboundMessageNonceStore
-	frame_support::migrations::VersionedMigration<
-		0,
-		1,
-		runtime_common::migrations::liquidity_pools_gateway::Migration<Runtime>,
+parameter_types! {
+	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
+}
+
+pub type UpgradeDevelopment1403 = (
+	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
+	runtime_common::migrations::liquidity_pools_v2::v2_update_message_queue::Migration<Runtime>,
+	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
+	VersionedMigration<
+		2,
+		3,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
-	// Remove undecodable ForeignInvestmentInfo v0 entries
-	runtime_common::migrations::foreign_investments_v2::Migration<Runtime>,
-	// Bump to v1
-	runtime_common::migrations::increase_storage_version::Migration<
-		pallet_foreign_investments::Pallet<Runtime>,
-		1,
-		2,
-	>,
-	// Migrate TrancheInvestor permission role and storage version from v0 to v1
-	frame_support::migrations::VersionedMigration<
-		0,
-		1,
-		runtime_common::migrations::permissions_v1::Migration<
-			Runtime,
-			crate::MinDelay,
-			crate::MaxTranches,
-		>,
-		pallet_permissions::Pallet<Runtime>,
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storag
+	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
+	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::Allowlist storage
+	runtime_common::migrations::liquidity_pools_v2::kill_allowlist::Migration<Runtime, 40>,
+	// Remove deprecated LiquidityPoolsAxelarGateway
+	runtime_common::migrations::nuke::KillPallet<
+		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
 );
