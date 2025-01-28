@@ -68,7 +68,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	PalletId,
+	BoundedVec, PalletId,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -2009,7 +2009,7 @@ parameter_types! {
 	pub const NativeCfg: CurrencyId = CurrencyId::Native;
 	pub const IouCfg: CurrencyId = IOU_CFG;
 	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
-	pub DestinationAxelarChainName:  BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("ethereum-sepolia"));
+	pub DestinationAxelarChainName: BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("ethereum-sepolia"));
 }
 
 impl pallet_cfg_migration::Config for Runtime {
@@ -2224,6 +2224,7 @@ construct_runtime!(
 		// our pallets part 2
 		AnchorsV2: pallet_anchors_v2::{Pallet, Call, Storage, Event<T>} = 130,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 131,
+		CfgMigration: pallet_cfg_migration::{Pallet, Call, Storage, Event<T>} = 132,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
