@@ -10,26 +10,37 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::cases::lp::utils::{process_gateway_message, verify_gateway_message_success};
+use cfg_primitives::{Balance, CFG};
+use ethabi::Token;
+use frame_support::{
+	assert_ok,
+	traits::{fungibles::Inspect, OriginTrait},
+};
+use frame_system::pallet_prelude::OriginFor;
+use sp_core::Get;
+use sp_runtime::traits::AccountIdConversion;
+
 use crate::{
-	cases::lp::{names, setup, utils::Decoder, DEFAULT_BALANCE},
+	cases::lp::{
+		names, setup,
+		utils::{process_gateway_message, verify_gateway_message_success, Decoder},
+		DEFAULT_BALANCE,
+	},
 	config::Runtime,
 	env::{EnvEvmExtension, EvmEnv},
 	utils::accounts::Keyring,
 };
-use cfg_primitives::{Balance, CFG};
-use ethabi::Token;
-use frame_support::assert_ok;
-use frame_support::traits::fungibles::Inspect;
-use frame_support::traits::OriginTrait;
-use frame_system::pallet_prelude::OriginFor;
-use sp_core::Get;
-use sp_runtime::traits::AccountIdConversion;
 
 const AXELAR_FEE: Balance = 100 * CFG;
 const USER: Keyring = Keyring::Charlie;
 
 mod utils {
+	use cfg_primitives::{Balance, MICRO_CFG};
+	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
+	use ethabi::{Token, Uint};
+	use frame_support::{assert_ok, traits::OriginTrait};
+	use frame_system::pallet_prelude::OriginFor;
+
 	use crate::{
 		cases::lp::{contracts, names, utils},
 		config::Runtime,
@@ -39,13 +50,6 @@ mod utils {
 			currency::{register_currency, CurrencyInfo},
 		},
 	};
-	use cfg_primitives::Balance;
-	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
-	use ethabi::Token;
-	use ethabi::Uint;
-	use frame_support::assert_ok;
-	use frame_support::traits::OriginTrait;
-	use frame_system::pallet_prelude::OriginFor;
 
 	#[allow(non_camel_case_types)]
 	pub struct IOU_CFG;
@@ -65,11 +69,11 @@ mod utils {
 		}
 
 		fn id(&self) -> CurrencyId {
-			CurrencyId::ForeignAsset(999_999)
+			cfg_types::tokens::usdc::CURRENCY_ID_IOU_CFG
 		}
 
 		fn ed(&self) -> Balance {
-			100_000_000_000_000
+			1 * MICRO_CFG
 		}
 
 		fn decimals(&self) -> u32 {
