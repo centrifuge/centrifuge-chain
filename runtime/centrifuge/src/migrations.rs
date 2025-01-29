@@ -61,4 +61,13 @@ pub type UpgradeCentrifuge1403 = (
 		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Register IOU CFG
+	// NOTE: Wrapping into versioned migration for successful try-runtime idempotency checks
+	VersionedMigration<
+		0,
+		1,
+		runtime_common::migrations::asset_registry_iou_cfg::Migration<Runtime>,
+		pallet_cfg_migration::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
 );
