@@ -29,6 +29,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_liquidity_pools::Message;
 	use sp_core::H160;
+	use sp_std::vec::Vec;
 
 	use super::*;
 
