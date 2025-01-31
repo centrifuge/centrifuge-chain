@@ -115,7 +115,7 @@ impl<Rate> WriteOffRule<Rate> {
 	}
 }
 
-/// The status of the writen off
+/// The status of the written off
 #[derive(
 	Encode,
 	Decode,
