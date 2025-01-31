@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script will use the open dependabot PRs to peform an upgrade of all GH actions
+# This script will use the open dependabot PRs to perform an upgrade of all GH actions
 
 # The target branch to merge all Dependabot PRs into
 TARGET_BRANCH="upgrade-gh-actions"
