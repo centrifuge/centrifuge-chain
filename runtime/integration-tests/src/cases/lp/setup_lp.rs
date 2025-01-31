@@ -397,31 +397,27 @@ pub fn setup_tranches<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 /// * Pool B with 2 tranches
 pub fn setup_pools<T: Runtime>(_evm: &mut impl EvmEnv<T>) {
 	crate::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL_A, LocalUSDC.id());
-
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_A,
 		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
-
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 	crate::utils::pool::create_two_tranched::<T>(Keyring::Admin.into(), POOL_B, LocalUSDC.id());
-
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_B,
 		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 	crate::utils::pool::create_one_tranched::<T>(Keyring::Admin.into(), POOL_C, USDC.id());
-
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_pool(
 		OriginFor::<T>::signed(Keyring::Admin.into()),
 		POOL_C,
 		Domain::Evm(EVM_DOMAIN_CHAIN_ID)
 	));
-
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
@@ -589,7 +585,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Alice.in_eth()),
-			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 		]),
 	)
 	.unwrap();
@@ -600,7 +596,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Bob.in_eth()),
-			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 		]),
 	)
 	.unwrap();
@@ -611,7 +607,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		"mint",
 		Some(&[
 			Token::Address(Keyring::Charlie.in_eth()),
-			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+			Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 		]),
 	)
 	.unwrap();
@@ -628,6 +624,7 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		meta.location = Some(utils::lp_asset_location::<T>(
 			evm.deployed(names::DAI).address(),
 		));
+		meta.additional.local_representation = Some(LocalUSDC.id().try_into().unwrap())
 	});
 
 	register_currency::<T>(FRAX, |meta| {
@@ -640,15 +637,18 @@ pub fn setup_currencies<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		OriginFor::<T>::signed(Keyring::Alice.into()),
 		USDC.id()
 	));
-	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
-		OriginFor::<T>::signed(Keyring::Alice.into()),
-		DAI.id()
-	));
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
+
 	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
 		OriginFor::<T>::signed(Keyring::Alice.into()),
 		FRAX.id()
 	));
+	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
+	assert_ok!(pallet_liquidity_pools::Pallet::<T>::add_currency(
+		OriginFor::<T>::signed(Keyring::Alice.into()),
+		DAI.id()
+	));
 	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
@@ -678,6 +678,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				frame_system::Pallet::<T>::block_number()
 			),
 		));
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		// POOL B - Tranche 1/2
 		// Allow investor to locally invest
@@ -700,6 +701,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				frame_system::Pallet::<T>::block_number()
 			),
 		));
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		// POOL B - Tranche 2/2
 		// Allow investor to locally invest
@@ -722,6 +724,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				frame_system::Pallet::<T>::block_number()
 			),
 		));
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		// POOL C - Tranche 1/1
 		// Allow investor to locally invest
@@ -744,8 +747,16 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				frame_system::Pallet::<T>::block_number()
 			),
 		));
+		utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 
 		for currency in [names::USDC, names::FRAX, names::DAI] {
+			let decimals = match currency {
+				names::USDC => DECIMALS_6,
+				names::DAI => DECIMALS_18,
+				names::FRAX => DECIMALS_6,
+				_ => unreachable!(),
+			};
+
 			// Fund investor on EVM side
 			evm.call(
 				Keyring::Admin,
@@ -754,12 +765,13 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 				"mint",
 				Some(&[
 					Token::Address(investor.in_eth()),
-					Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+					Token::Uint(U256::from(DEFAULT_BALANCE * decimals)),
 				]),
 			)
 			.unwrap();
+
 			assert_eq!(
-				DEFAULT_BALANCE * DECIMALS_6,
+				DEFAULT_BALANCE * decimals,
 				Decoder::<Balance>::decode(
 					&evm.view(
 						investor,
@@ -794,7 +806,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_A_T_1_DAI).address()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 			]),
 		)
 		.unwrap();
@@ -829,7 +841,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_1_DAI).address()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 			]),
 		)
 		.unwrap();
@@ -864,7 +876,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_B_T_2_DAI).address()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 			]),
 		)
 		.unwrap();
@@ -899,7 +911,7 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 			"approve",
 			Some(&[
 				Token::Address(evm.deployed(names::POOL_C_T_1_DAI).address()),
-				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_6)),
+				Token::Uint(U256::from(DEFAULT_BALANCE * DECIMALS_18)),
 			]),
 		)
 		.unwrap();
@@ -915,8 +927,6 @@ pub fn setup_investors<T: Runtime>(evm: &mut impl EvmEnv<T>) {
 		)
 		.unwrap();
 	});
-
-	utils::process_gateway_message::<T>(utils::verify_gateway_message_success::<T>);
 }
 
 /// Adds bidirectional trading pairs with conversion ratio one.

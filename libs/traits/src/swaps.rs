@@ -74,6 +74,13 @@ pub trait TokenSwaps<Account> {
 		max_amount_in: Self::BalanceIn,
 	) -> DispatchResult;
 
+	/// Fill an existing order amount, without slippage protection
+	fn fill_order_no_slip_prot(
+		account: Account,
+		order_id: Self::OrderId,
+		amount_out: Self::BalanceOut,
+	) -> DispatchResult;
+
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
