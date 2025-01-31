@@ -44,7 +44,7 @@ pub enum WriteOffTrigger {
 	PriceOutdated(Seconds),
 }
 
-/// Wrapper type to identify equality berween kinds of triggers,
+/// Wrapper type to identify equality between kinds of triggers,
 /// without taking into account their inner values
 #[derive(Encode, Decode, Clone, Eq, PartialOrd, Ord, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct UniqueWriteOffTrigger(pub WriteOffTrigger);
