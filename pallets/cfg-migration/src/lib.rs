@@ -93,9 +93,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			bridge_fee: T::Balance,
 			receiver: H160,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let mut weight = Weight::zero();
 
 			let cfg_lock_account = T::CfgLockAccount::get().into_account_truncating();
 			let iou_cfg = T::IouCfg::get();
@@ -104,7 +103,6 @@ pub mod pallet {
 
 			// Get user's full CFG balance
 			let total_balance = T::Tokens::balance(native_cfg, &who);
-			weight.saturating_accrue(T::DbWeight::get().reads(1));
 			ensure!(total_balance >= bridge_fee, Error::<T>::InsufficientBalance);
 
 			let transfer_amount = total_balance.ensure_sub(bridge_fee)?;
@@ -119,7 +117,6 @@ pub mod pallet {
 				transfer_amount,
 				Preservation::Expendable,
 			)?;
-			weight.saturating_accrue(T::DbWeight::get().reads_writes(3, 2));
 
 			// Transfer bridge fee to sending account
 			T::Tokens::transfer(
@@ -129,31 +126,25 @@ pub mod pallet {
 				bridge_fee,
 				Preservation::Expendable,
 			)?;
-			weight.saturating_accrue(T::DbWeight::get().reads_writes(3, 2));
 
 			// Mint IOU for actual transfer amount
 			T::Tokens::mint_into(iou_cfg, &cfg_lock_account, transfer_amount)?;
-			weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 2));
 
 			if !bridge_fee.is_zero() {
 				// Pay bridge fee
-				weight.saturating_accrue(
-					T::GasPaymentService::pay_fees(
-						T::DestinationAxelarChainName::get(),
-						T::Sender::get(),
-						Message::TransferAssets {
-							currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(
-								iou_cfg,
-							)?,
-							receiver: receiver.bytes(),
-							amount: transfer_amount.into(),
-						}
-						.serialize(),
-						bridge_fee.into(),
-					)?
-					.actual_weight
-					.unwrap_or_default(),
-				);
+				T::GasPaymentService::pay_fees(
+					T::DestinationAxelarChainName::get(),
+					T::Sender::get(),
+					Message::TransferAssets {
+						currency: pallet_liquidity_pools::Pallet::<T>::try_get_general_index(
+							iou_cfg,
+						)?,
+						receiver: receiver.bytes(),
+						amount: transfer_amount.into(),
+					}
+					.serialize(),
+					bridge_fee.into(),
+				)?;
 			}
 
 			// Initiate cross-chain transfer
@@ -163,7 +154,6 @@ pub mod pallet {
 				receiver.clone(),
 				transfer_amount,
 			)?;
-			weight.saturating_accrue(weights::default_defensive_weight());
 
 			Self::deposit_event(Event::CfgMigrationInitiated {
 				sender: who,
@@ -171,7 +161,7 @@ pub mod pallet {
 				amount: transfer_amount,
 			});
 
-			Ok(Some(weight).into())
+			Ok(())
 		}
 	}
 }

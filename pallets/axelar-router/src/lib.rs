@@ -383,7 +383,7 @@ pub mod pallet {
 			origin: Self::Origin,
 			message: Self::Message,
 			fee_amount: U256,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let config = Configuration::<T>::get(&chain_name)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
@@ -411,7 +411,9 @@ pub mod pallet {
 					fee_amount,
 					evm_config.outbound_fee_values.gas_price,
 					evm_config.outbound_fee_values.gas_limit,
-				),
+				)
+				.map(|_info| ())
+				.map_err(|e| e.error),
 			}
 		}
 	}

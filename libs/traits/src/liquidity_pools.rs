@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
-	weights::Weight,
-};
+use frame_support::{dispatch::DispatchResult, weights::Weight};
 use sp_runtime::{
 	app_crypto::sp_core::{H160, U256},
 	DispatchError,
@@ -155,7 +152,7 @@ pub trait AxelarGasService {
 		origin: Self::Origin,
 		message: Self::Message,
 		fee_amount: U256,
-	) -> DispatchResultWithPostInfo;
+	) -> DispatchResult;
 }
 
 /// The trait required for queueing messages.
