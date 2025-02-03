@@ -3099,6 +3099,7 @@ dependencies = [
  "pallet-base-fee",
  "pallet-block-rewards",
  "pallet-bridge",
+ "pallet-cfg-migration",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",

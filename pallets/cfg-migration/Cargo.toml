@@ -13,62 +13,62 @@ documentation.workspace = true
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-liquidity-pools = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-pallet-liquidity-pools = { workspace = true }
-pallet-balances = { workspace = true }
-cfg-types = { workspace = true }
-cfg-traits = { workspace = true }
 
 # optional dependencies for benchmarking
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-io = { workspace = true , default-features = true}
-orml-traits = { workspace = true , default-features = true}
-orml-tokens = { workspace = true , default-features = true }
-cfg-primitives = { workspace = true , default-features = true }
-cfg-types = { workspace = true , default-features = true }
-cfg-utils = { workspace = true , default-features = true }
 cfg-mocks = { workspace = true, default-features = true }
+cfg-primitives = { workspace = true, default-features = true }
+cfg-types = { workspace = true, default-features = true }
+cfg-utils = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
-    "parity-scale-codec/std",
-    "scale-info/std",
-    "frame-support/std",
-    "frame-system/std",
-    "sp-core/std",
-    "sp-std/std",
-    "sp-runtime/std",
-    "frame-benchmarking/std",
-    "pallet-balances/std",
-    "pallet-liquidity-pools/std",
-    "cfg-types/std",
-    "cfg-traits/std",
+  "parity-scale-codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-core/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "frame-benchmarking/std",
+  "pallet-balances/std",
+  "pallet-liquidity-pools/std",
+  "cfg-types/std",
+  "cfg-traits/std",
 ]
 runtime-benchmarks = [
-    "frame-benchmarking/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks",
-    "pallet-liquidity-pools/runtime-benchmarks",
-    "cfg-types/runtime-benchmarks",
-    "cfg-traits/runtime-benchmarks"
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-liquidity-pools/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
 ]
 try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-    "sp-runtime/try-runtime",
-    "pallet-balances/try-runtime",
-    "pallet-liquidity-pools/try-runtime",
-    "cfg-types/try-runtime",
-    "cfg-traits/try-runtime"
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "pallet-balances/try-runtime",
+  "pallet-liquidity-pools/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-traits/try-runtime",
 ]

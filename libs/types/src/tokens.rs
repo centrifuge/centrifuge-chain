@@ -449,6 +449,7 @@ pub mod usdc {
 
 	pub const CURRENCY_ID_LP_CELO_WORMHOLE: CurrencyId = CurrencyId::ForeignAsset(100_004);
 	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_006);
+	pub const CURRENCY_ID_IOU_CFG: CurrencyId = CurrencyId::ForeignAsset(999_999);
 
 	pub const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
 	pub const CURRENCY_ID_LOCAL: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID);

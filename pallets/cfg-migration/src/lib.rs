@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::pallet_prelude::*;
 
 mod weights;
 
@@ -17,9 +17,8 @@ pub type ChainName = BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>;
 pub mod pallet {
 	use cfg_traits::liquidity_pools::{AxelarGasService, LpMessageSerializer};
 	use cfg_types::domain_address::DomainAddress;
-	use frame_support::sp_runtime::traits::Zero;
 	use frame_support::{
-		sp_runtime::traits::{AccountIdConversion, EnsureSub},
+		sp_runtime::traits::{AccountIdConversion, EnsureSub, Zero},
 		traits::{
 			fungibles::{Inspect, Mutate},
 			tokens::Preservation,
@@ -30,10 +29,14 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_liquidity_pools::Message;
 	use sp_core::H160;
+	use sp_std::vec::Vec;
 
 	use super::*;
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 	#[pallet::pallet]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -84,7 +87,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate())]
+		#[pallet::weight(<T as Config>::WeightInfo::migrate())]
 		#[pallet::call_index(0)]
 		pub fn migrate(
 			origin: OriginFor<T>,

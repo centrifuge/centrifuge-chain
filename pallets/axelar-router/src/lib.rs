@@ -412,7 +412,7 @@ pub mod pallet {
 					evm_config.outbound_fee_values.gas_price,
 					evm_config.outbound_fee_values.gas_limit,
 				)
-				.map(|_| ())
+				.map(|_info| ())
 				.map_err(|e| e.error),
 			}
 		}

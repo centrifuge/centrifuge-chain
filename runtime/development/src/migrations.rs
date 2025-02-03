@@ -39,4 +39,6 @@ pub type UpgradeDevelopment1403 = (
 		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Register IOU CFG
+	runtime_common::migrations::asset_registry_iou_cfg::Migration<Runtime>,
 );
