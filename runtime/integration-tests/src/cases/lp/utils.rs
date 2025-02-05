@@ -134,7 +134,7 @@ pub fn process_gateway_message<T: Runtime>(
 		)
 		.unwrap();
 
-		let _events = frame_system::Pallet::<T>::events();
+		let _events = last_event::<T, pallet_liquidity_pools_gateway_queue::Event<T>>();
 
 		match msg {
 			GatewayMessage::Inbound { message, .. } => verifier(message),

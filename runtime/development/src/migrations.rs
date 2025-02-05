@@ -39,4 +39,12 @@ pub type UpgradeDevelopment1403 = (
 		PalletLiquidityPoolsAxelarGateway,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
+	// Rename Local USDC to US Dollar, register DAI and USDS
+	VersionedMigration<
+		0,
+		1,
+		runtime_common::migrations::asset_registry_local_usdc_dai_usds::CombinedMigration<Runtime>,
+		pallet_token_mux::Pallet<Runtime>,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
 );

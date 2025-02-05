@@ -661,7 +661,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			usdc::CURRENCY_ID_LOCAL,
+			usdc::CURRENCY_ID_LOCAL_USD,
 			AssetMetadata {
 				decimals: 6,
 				name: b"Local USDC"
@@ -715,7 +715,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
-					local_representation: Some(usdc::LOCAL_ASSET_ID),
+					local_representation: Some(usdc::LOCAL_ASSET_ID_USD),
 				},
 			}
 			.encode(),

@@ -42,7 +42,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::swaps::{OrderRatio, TokenSwaps};
 	use cfg_types::tokens::CustomMetadata;
 	use frame_support::{
@@ -50,14 +49,15 @@ pub mod pallet {
 		traits::{
 			fungibles,
 			fungibles::Mutate,
-			tokens::{Fortitude, Precision, Preservation},
+			tokens::{Fortitude, Precision},
+			OriginTrait,
 		},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand};
-	use sp_runtime::traits::{AccountIdConversion, EnsureFixedPointNumber, One};
+	use sp_runtime::traits::{AccountIdConversion, One};
 
 	use super::*;
 
@@ -65,7 +65,7 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -185,20 +185,30 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
-			currency_out: T::CurrencyId,
-			amount_out: T::BalanceOut,
+			variant: T::CurrencyId,
+			amount: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			let local = Self::try_local(&variant)?;
 
-			let local = Self::try_local(&currency_out)?;
+			// Place an order via OrderBook for the given amount and variant/local
+			// conversion
+			let order_id = T::OrderBook::place_order(
+				who.clone(),
+				local,
+				variant,
+				amount,
+				OrderRatio::Custom(One::one()),
+			)?;
 
-			Self::mint_route(&who, local, currency_out, amount_out)?;
+			Self::match_swap(T::RuntimeOrigin::signed(Self::account()), order_id, amount)?;
 
+			// Emit event for successful deposit
 			Self::deposit_event(Event::<T>::Deposited {
 				who,
-				currency_out,
+				currency_out: variant,
 				currency_in: local,
-				amount: amount_out,
+				amount,
 			});
 
 			Ok(())
@@ -208,20 +218,30 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
-			currency_out: T::CurrencyId,
-			amount_out: T::BalanceOut,
+			variant: T::CurrencyId,
+			amount: T::BalanceOut,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			let local = Self::try_local(&variant)?;
 
-			let local = Self::try_local(&currency_out)?;
+			// Place an order for burning (swap in reverse direction)
+			let order_id = T::OrderBook::place_order(
+				who.clone(),
+				variant,
+				local,
+				amount,
+				OrderRatio::Custom(One::one()),
+			)?;
 
-			Self::burn_route(&who, local, currency_out, amount_out)?;
+			// Match the swap order after placement
+			Self::match_swap(T::RuntimeOrigin::signed(Self::account()), order_id, amount)?;
 
+			// Emit event for successful burn
 			Self::deposit_event(Event::<T>::Burned {
 				who,
 				currency_out: local,
-				currency_in: currency_out,
-				amount: amount_out,
+				currency_in: variant,
+				amount,
 			});
 
 			Ok(())
@@ -240,14 +260,9 @@ pub mod pallet {
 				T::OrderBook::get_order_details(order_id).ok_or(Error::<T>::SwapNotFound)?;
 
 			let ratio = match order.ratio {
-				OrderRatio::Market => T::BalanceRatio::ensure_from_rational(
-					amount,
-					T::OrderBook::convert_by_market(
-						order.swap.currency_in,
-						order.swap.currency_out,
-						amount,
-					)?,
-				)?,
+				OrderRatio::Market => {
+					T::OrderBook::market_ratio(order.swap.currency_in, order.swap.currency_out)?
+				}
 				OrderRatio::Custom(ratio) => ratio,
 			};
 
@@ -267,13 +282,8 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					let amount_in = Self::convert_stable(
-						order.swap.currency_out,
-						order.swap.currency_in,
-						amount,
-					)?;
 					T::Tokens::mint_into(local, &Self::account(), amount.into())?;
-					T::OrderBook::fill_order(Self::account(), order_id, amount, amount_in)?;
+					T::OrderBook::fill_order_no_slip_prot(Self::account(), order_id, amount)?;
 				}
 				// Exchange foreign for local and burn local
 				(Err(_), Ok(local)) => {
@@ -282,12 +292,7 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					let amount_in = Self::convert_stable(
-						order.swap.currency_out,
-						order.swap.currency_in,
-						amount,
-					)?;
-					T::OrderBook::fill_order(Self::account(), order_id, amount, amount_in)?;
+					T::OrderBook::fill_order_no_slip_prot(Self::account(), order_id, amount)?;
 					T::Tokens::burn_from(
 						local,
 						&Self::account(),
@@ -312,47 +317,6 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		fn mint_route(
-			who: &T::AccountId,
-			local: T::CurrencyId,
-			variant: T::CurrencyId,
-			amount: T::BalanceOut,
-		) -> DispatchResult {
-			T::Tokens::transfer(
-				variant,
-				who,
-				&Self::account(),
-				amount.into(),
-				Preservation::Expendable,
-			)?;
-
-			T::Tokens::mint_into(local, who, amount.into()).map(|_| ())
-		}
-
-		fn burn_route(
-			who: &T::AccountId,
-			local: T::CurrencyId,
-			variant: T::CurrencyId,
-			amount: T::BalanceOut,
-		) -> DispatchResult {
-			T::Tokens::burn_from(
-				local,
-				who,
-				amount.into(),
-				Precision::Exact,
-				Fortitude::Polite,
-			)?;
-
-			T::Tokens::transfer(
-				variant,
-				&Self::account(),
-				who,
-				amount.into(),
-				Preservation::Expendable,
-			)
-			.map(|_| ())
-		}
-
 		pub(crate) fn try_local(currency: &T::CurrencyId) -> Result<T::CurrencyId, DispatchError> {
 			let meta_variant =
 				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MetadataNotFound)?;
@@ -365,32 +329,10 @@ pub mod pallet {
 			)
 			.into();
 
-			let meta_local =
-				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MetadataNotFound)?;
-
-			// NOTE: We could also think about making conversion between local
-			//       representations and variants but I fear that we then have problems with
-			//       SUM(locked variants) = local. Hence, this restriction.
-			ensure!(
-				meta_local.decimals == meta_variant.decimals,
-				Error::<T>::DecimalMismatch
-			);
+			// Still wanna ensure local is registered.
+			let _ = T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MetadataNotFound)?;
 
 			Ok(local)
-		}
-
-		pub fn convert_stable(
-			currency_from: T::CurrencyId,
-			currency_to: T::CurrencyId,
-			amount_from: T::BalanceOut,
-		) -> Result<T::BalanceIn, DispatchError> {
-			let from_decimals = T::AssetRegistry::metadata(&currency_from)
-				.ok_or(Error::<T>::MetadataNotFound)?
-				.decimals;
-			let to_decimals = T::AssetRegistry::metadata(&currency_to)
-				.ok_or(Error::<T>::MetadataNotFound)?
-				.decimals;
-			Ok(convert_balance_decimals(from_decimals, to_decimals, amount_from.into())?.into())
 		}
 	}
 }

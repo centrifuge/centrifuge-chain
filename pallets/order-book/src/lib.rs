@@ -763,6 +763,24 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, amount_out, account, max_amount_in)
 		}
 
+		fn fill_order_no_slip_prot(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			amount_out: Self::BalanceOut,
+		) -> DispatchResult {
+			let order = <Orders<T>>::get(order_id)?;
+
+			let ratio = match order.ratio {
+				OrderRatio::Market => Self::market_ratio(order.currency_out, order.currency_in)?,
+				OrderRatio::Custom(ratio) => ratio,
+			};
+
+			let max_amount_in =
+				Self::convert_with_ratio(order.currency_out, order.currency_in, ratio, amount_out)?;
+
+			Self::fulfill_order_with_amount(order, amount_out, account, max_amount_in)
+		}
+
 		fn convert_by_market(
 			currency_in: Self::CurrencyId,
 			currency_out: Self::CurrencyId,
