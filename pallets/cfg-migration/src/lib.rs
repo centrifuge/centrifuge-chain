@@ -4,9 +4,6 @@ use frame_support::pallet_prelude::*;
 
 mod weights;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 pub use pallet::*;
 pub use weights::WeightInfo;
 
