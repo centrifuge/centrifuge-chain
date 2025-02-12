@@ -297,7 +297,7 @@ fn internal_dcf_with_no_maturity() {
 }
 
 #[test]
-fn internal_oustanding_debt_with_no_maturity() {
+fn internal_outstanding_debt_with_no_maturity() {
 	new_test_ext().execute_with(|| {
 		let mut internal = util::base_internal_loan();
 		internal.schedule.maturity = Maturity::None;
