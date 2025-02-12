@@ -7,7 +7,10 @@ use std::{
 use cfg_types::domain_address::DomainAddress;
 use ethabi::{ethereum_types::H160, Contract};
 use ethereum::ReceiptV3;
-use frame_support::traits::{fungible::Mutate, OriginTrait};
+use frame_support::{
+	__private::log,
+	traits::{fungible::Mutate, OriginTrait},
+};
 use pallet_evm::FeeCalculator;
 use sp_runtime::traits::Get;
 
@@ -19,6 +22,18 @@ use crate::{config::Runtime, utils::ESSENTIAL};
 /// This panics if the solidity contracts were not built properly. This can
 /// happen if the submodule was not pulled or the forge cli has not been
 /// installed locally.
+pub const LP_SOL_SOURCES: &str = env!(
+	"LP_SOL_SOURCES",
+	"Build script failed to populate environment variable LP_SOL_SOURCES pointing to missing solidity source files in the 'target/*/build/integration-tests*/out' directory required for EVM integration tests. Please check if you have
+
+1. Pulled the 'liquidity-pools' submodule via
+
+	git submodule update --init --recursive
+	git submodule update --remote runtime/integration-tests/submodules/liquidity-pools
+
+2. Installed the forge cli, e.g. check `forge -V`."
+);
+
 pub const VAULTS_SOL_SOURCES: &str = env!(
 	"VAULTS_SOL_SOURCES",
 	"Build script failed to populate environment variable VAULTS_SOL_SOURCES pointing to missing solidity source files in the 'target/*/build/integration-tests*/out' directory required for EVM integration tests. Please check if you have
@@ -107,7 +122,12 @@ fn traversal(path: impl AsRef<Path>, files: &mut Vec<PathBuf>) {
 pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 	let mut contracts = HashMap::new();
 	let mut files = Vec::new();
+
+	log::debug!("Fetching LP contracts");
+	traversal(LP_SOL_SOURCES, &mut files);
+	log::debug!("Fetching VAULTS contracts");
 	traversal(VAULTS_SOL_SOURCES, &mut files);
+
 	files.iter().for_each(|path| {
 		let file_name = path
 			.file_name()

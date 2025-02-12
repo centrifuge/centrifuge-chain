@@ -1,6 +1,6 @@
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [ opened, synchronize, reopened, ready_for_review ]
 name: Sanity checks
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -21,8 +21,19 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b #4.1.4
-        with:
-          submodules: 'recursive'
+
+      - name: Pull submodules with private key
+        env:
+          DEPLOY_KEY: ${{ secrets.VAULTS_INTERNAL_DEPLOY_KEY }}
+        run: |
+          # Setup SSH first
+          mkdir -p ~/.ssh
+          echo "${{ env.DEPLOY_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          # Pull all submodules
+          git submodule update --init --recursive
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -35,23 +46,17 @@ jobs:
       # Required for integration tests evm interaction
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        
-      - name: Debug GitHub Environment Variables
-        shell: bash
-        run: |
-          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
-          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
-          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
-          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
+          # SCCACHE_RECACHE: 1 # <- Enable to trigger re-caching
+        id: cargo-run
 
   benchmark-check:
     if: ${{ !github.event.pull_request.draft }}
-    # timeout-minutes: 90 # <- Not needed as ubunt-latest is free of charge
+    # timeout-minutes: 90 # <- Not needed as ubuntu-latest is free of charge
     name: bench-check-${{ matrix.runtime }}
     runs-on: ubuntu-latest #-4-cores
     strategy:
@@ -60,8 +65,19 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b #4.1.4
-        with:
-          submodules: 'recursive'
+
+      - name: Pull submodules with private key
+        env:
+          DEPLOY_KEY: ${{ secrets.VAULTS_INTERNAL_DEPLOY_KEY }}
+        run: |
+          # Setup SSH first
+          mkdir -p ~/.ssh
+          echo "${{ env.DEPLOY_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          
+          # Pull all submodules
+          git submodule update --init --recursive
 
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
@@ -70,16 +86,9 @@ jobs:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 
-      - name: Debug GitHub Environment Variables
-        shell: bash
-        run: |
-          echo "SCCACHE_GCS_BUCKET=${SCCACHE_GCS_BUCKET}"
-          echo "SCCACHE_GCS_RW_MODE=${SCCACHE_GCS_RW_MODE}"
-          echo "RUSTC_WRAPPER=${RUSTC_WRAPPER}"
-          echo "CARGO_INCREMENTAL=${CARGO_INCREMENTAL}"
-
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: benchmark-check
           RUNTIME: ${{ matrix.runtime }}
+          # SCCACHE_RECACHE: 1 # <- Enable to trigger re-caching

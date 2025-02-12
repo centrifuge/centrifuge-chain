@@ -14,94 +14,118 @@ use std::{env, fs, path::PathBuf, process::Command};
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 const VAULTS_SOL_SOURCES: &str = "VAULTS_SOL_SOURCES";
 
-fn main() {
-	let paths = fs::read_dir("./submodules/")
-		.expect("Submodules directory must exist for integration-tests");
-	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
+/// Enable when debugging integration test issues
+/// NOTE: Unfortunately, anything but `println!(cargo:warning)` is omitted
+/// during build. An alternative would be building in verbose mode via `cargo
+/// build --vv` but this requires more changes in CI than just enabling this
+/// flag.
+const DEBUG_BUILD: bool = false;
 
-	/*
-	match Command::new("git")
-		.args(&["pull", "--all", "--recurse-submodules=yes"])
-		.output()
-	{
-		Ok(o) if o.status.success() => {}
-		Ok(o) => {
-			println!(
-				"cargo:warning=Git fetch failed with: \n  - status: {}\n   -stderr: {}",
-				o.status,
-				String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
-			);
-		}
-		Err(err) => {
-			println!("cargo:warning=Failed to execute git command: {}", err);
-		}
+fn main() {
+	// Added debug message to confirm the script is running.
+	if DEBUG_BUILD {
+		println!("cargo:warning=build.rs started");
 	}
-	 */
+
+	let submodules_path = "./submodules/";
+	if DEBUG_BUILD {
+		println!(
+			"cargo:warning=Looking for submodules in: {}",
+			submodules_path
+		);
+	}
+
+	let paths = fs::read_dir(submodules_path)
+		.expect("Submodules directory must exist for integration-tests");
+
+	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
+	if DEBUG_BUILD {
+		println!("cargo:warning=OUT_DIR is set to: {}", out_dir);
+	}
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
-		if let Ok(dir_entry) = path.as_ref() {
-			if dir_entry
-				.metadata()
-				.map(|meta| meta.is_dir())
-				.unwrap_or(false)
-			{
-				verified_dir.push(
-					fs::canonicalize(dir_entry.path()).expect("Failed to find absolute path."),
+		match path {
+			Ok(dir_entry) => {
+				if dir_entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+					let canonical = fs::canonicalize(dir_entry.path())
+						.expect("Failed to determine canonical path.");
+					println!("cargo:warning=Found submodule directory: {:?}", canonical);
+					verified_dir.push(canonical);
+				}
+			}
+			Err(e) => {
+				println!(
+					"cargo:warning=Error reading submodules directory entry: {}",
+					e
 				);
 			}
 		}
 	}
 
 	for path in verified_dir {
-		env::set_current_dir(&path).unwrap();
-		let mut out_dir_build = PathBuf::from(out_dir.clone());
+		// Change working directory.
+		if let Err(e) = env::set_current_dir(&path) {
+			println!(
+				"cargo:warning=Failed to set current dir to {:?}: {}",
+				path, e
+			);
+			std::process::exit(1);
+		}
+		let mut out_dir_build = PathBuf::from(&out_dir);
 
+		// Extract the submodule folder name.
 		let parent = path
 			.components()
 			.last()
-			.expect("Repository itself has components. qed")
+			.expect("Directory has no components?")
 			.as_os_str()
 			.to_str()
-			.expect("OsStr is utf-8. qed");
+			.expect("Directory name is not valid UTF-8");
+		println!("cargo:warning=Processing submodule: {}", parent);
 
+		// Append the name to the build output directory.
 		out_dir_build.push(parent);
 		let out_dir_build = out_dir_build
 			.as_os_str()
 			.to_str()
-			.expect("OsStr is utf-8. qed");
+			.expect("OUT_DIR build path is not valid UTF-8");
+
+		if DEBUG_BUILD {
+			println!(
+				"cargo:warning=Output directory for {}: {}",
+				parent, out_dir_build
+			);
+			println!("cargo:warning=Out dir build: {out_dir_build:?}");
+		}
 
 		match Command::new("forge")
 			.args(["build", "--out", out_dir_build])
 			.output()
 		{
 			Ok(o) if o.status.success() => {
+				println!("cargo:warning=forge build succeeded for {}", parent);
 				let source = match parent {
 					"liquidity-pools" => {
 						println!(
-							"cargo::warning=Build liquidity-pools Solidity contracts. Stored at {} ",
+							"cargo:warning=Built liquidity-pools Solidity contracts stored at {}",
 							out_dir_build
 						);
-
 						LP_SOL_SOURCES
 					}
 					"vaults-internal" => {
 						println!(
-							"cargo::warning=Build vaults-internals Solidity contracts. Stored at {} ",
+							"cargo:warning=Built vaults-internal Solidity contracts stored at {}",
 							out_dir_build
 						);
-
 						VAULTS_SOL_SOURCES
 					}
 					_ => {
+						println!("cargo:warning=Unknown solidity source: {}", parent);
 						println!(
-							"cargo::warning=Unknown solidity source build. Name: {}",
-							parent
+							"cargo:warning=Skipping environment variable setting. Artifacts stored at {}",
+							out_dir_build
 						);
-						println!(
-                            "cargo::warning=No environment variable for sources set. Artifacts stored under: {}",
-                            out_dir_build
-                        );
 						continue;
 					}
 				};
@@ -110,13 +134,16 @@ fn main() {
 			}
 			Ok(o) => {
 				println!(
-					"cargo::warning=forge build failed with: \n  - status: {}\n   -stderr: {}",
+					"cargo:warning=forge build failed with: \n  - status: {:?}\n   -stderr: {:?}",
 					o.status,
-					String::from_utf8(o.stderr).expect("stderr is utf-8 encoded. qed.")
+					String::from_utf8(o.stderr).unwrap_or_else(|_| "Non UTF-8 output".into())
 				);
 			}
 			Err(err) => {
-				println!("cargo::warning=Failed to execute git command: {}", err);
+				println!(
+					"cargo:warning=Failed to execute forge command for {}: {}",
+					parent, err
+				);
 			}
 		}
 	}
