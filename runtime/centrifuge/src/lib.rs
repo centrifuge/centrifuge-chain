@@ -449,8 +449,10 @@ impl orml_tokens::Config for Runtime {
 impl orml_asset_registry::module::Config for Runtime {
 	type AssetId = CurrencyId;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
-	type AuthorityOrigin =
-		asset_registry::AuthorityOrigin<RuntimeOrigin, EnsureRootOr<HalfOfCouncil>>;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<
+		RuntimeOrigin,
+		EnsureAccountOrRootOr<LpAdminAccount, HalfOfCouncil>,
+	>;
 	type Balance = Balance;
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
