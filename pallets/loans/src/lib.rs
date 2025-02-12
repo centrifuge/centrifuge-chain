@@ -768,7 +768,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Updates the porfolio valuation for the given pool
+		/// Updates the portfolio valuation for the given pool
 		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
 			T::MaxActiveLoansPerPool::get()
 		))]
