@@ -10,8 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::traits::{Get, OnRuntimeUpgrade};
-use pallet_order_book::weights::Weight;
+use frame_support::{
+	traits::{Get, OnRuntimeUpgrade},
+	weights::Weight,
+};
 use sp_io::{storage::clear_prefix, KillStorageResult};
 use sp_std::vec::Vec;
 
