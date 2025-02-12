@@ -390,7 +390,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	/// Process the given amount to ensure it's a correct repayment.
-	/// - Taking current interest accrued and maximal repay prinicpal from
+	/// - Taking current interest accrued and maximal repay principal from
 	///   pricing
 	/// - Adapting interest repayment to be as maximum as the current interest
 	///   accrued
