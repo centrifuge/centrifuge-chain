@@ -359,7 +359,7 @@ pub mod pallet {
 		/// Execute a successful fee append proposal for the given (pool,
 		/// bucket) pair.
 		///
-		/// Origin unrestriced due to pre-check via proposal gate.
+		/// Origin unrestricted due to pre-check via proposal gate.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::apply_new_fee(T::MaxPoolFeesPerBucket::get()))]
 		pub fn apply_new_fee(
