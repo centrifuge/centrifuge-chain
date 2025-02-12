@@ -14,34 +14,24 @@ use std::{env, fs, path::PathBuf, process::Command};
 const LP_SOL_SOURCES: &str = "LP_SOL_SOURCES";
 const VAULTS_SOL_SOURCES: &str = "VAULTS_SOL_SOURCES";
 
-/// Enable when debugging integration test issues
-/// NOTE: Unfortunately, anything but `println!(cargo:warning)` is omitted
-/// during build. An alternative would be building in verbose mode via `cargo
-/// build --vv` but this requires more changes in CI than just enabling this
-/// flag.
-const DEBUG_BUILD: bool = false;
-
 fn main() {
 	// Added debug message to confirm the script is running.
-	if DEBUG_BUILD {
-		println!("cargo:warning=build.rs started");
-	}
+	#[cfg(feature = "debug-evm")]
+	println!("cargo:warning=build.rs started");
 
 	let submodules_path = "./submodules/";
-	if DEBUG_BUILD {
-		println!(
-			"cargo:warning=Looking for submodules in: {}",
-			submodules_path
-		);
-	}
+	#[cfg(feature = "debug-evm")]
+	println!(
+		"cargo:warning=Looking for submodules in: {}",
+		submodules_path
+	);
 
 	let paths = fs::read_dir(submodules_path)
 		.expect("Submodules directory must exist for integration-tests");
 
 	let out_dir = env::var("OUT_DIR").expect("Cargo sets OUT_DIR environment variable. qed.");
-	if DEBUG_BUILD {
-		println!("cargo:warning=OUT_DIR is set to: {}", out_dir);
-	}
+	#[cfg(feature = "debug-evm")]
+	println!("cargo:warning=OUT_DIR is set to: {}", out_dir);
 
 	let mut verified_dir = Vec::new();
 	for path in paths {
@@ -50,6 +40,8 @@ fn main() {
 				if dir_entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
 					let canonical = fs::canonicalize(dir_entry.path())
 						.expect("Failed to determine canonical path.");
+
+					#[cfg(feature = "debug-evm")]
 					println!("cargo:warning=Found submodule directory: {:?}", canonical);
 					verified_dir.push(canonical);
 				}
@@ -82,6 +74,8 @@ fn main() {
 			.as_os_str()
 			.to_str()
 			.expect("Directory name is not valid UTF-8");
+
+		#[cfg(feature = "debug-evm")]
 		println!("cargo:warning=Processing submodule: {}", parent);
 
 		// Append the name to the build output directory.
@@ -91,7 +85,8 @@ fn main() {
 			.to_str()
 			.expect("OUT_DIR build path is not valid UTF-8");
 
-		if DEBUG_BUILD {
+		#[cfg(feature = "debug-evm")]
+		{
 			println!(
 				"cargo:warning=Output directory for {}: {}",
 				parent, out_dir_build
@@ -104,7 +99,9 @@ fn main() {
 			.output()
 		{
 			Ok(o) if o.status.success() => {
+				#[cfg(feature = "debug-evm")]
 				println!("cargo:warning=forge build succeeded for {}", parent);
+
 				let source = match parent {
 					"liquidity-pools" => {
 						println!(

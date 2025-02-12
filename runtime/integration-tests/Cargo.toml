@@ -154,7 +154,9 @@ staging-parachain-info = { workspace = true, features = ["std"] }
 
 [features]
 # There is no need for integration test to add new features.
-# Just add the required ones to default:
+# Just add the required ones to default:
 default = [
-  "development-runtime/instant-voting",
+    "development-runtime/instant-voting",
 ]
+# Enable when debugging EVM integration tests relying on git submodules
+debug-evm = []
