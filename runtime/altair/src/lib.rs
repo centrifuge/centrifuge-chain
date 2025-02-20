@@ -1888,8 +1888,13 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
+parameter_types! {
+	pub DefaultAxelarGasServiceAddress: H160 = H160(hex_literal::hex!("2d5d7d31F671F86C782533cc367F14109a082712"));
+}
+
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type DefaultAxelarGasServiceAddress = DefaultAxelarGasServiceAddress;
 	type Middleware = RouterId;
 	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;

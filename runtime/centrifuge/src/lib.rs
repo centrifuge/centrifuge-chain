@@ -66,7 +66,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	PalletId,
+	BoundedVec, PalletId,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -449,8 +449,10 @@ impl orml_tokens::Config for Runtime {
 impl orml_asset_registry::module::Config for Runtime {
 	type AssetId = CurrencyId;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
-	type AuthorityOrigin =
-		asset_registry::AuthorityOrigin<RuntimeOrigin, EnsureRootOr<HalfOfCouncil>>;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<
+		RuntimeOrigin,
+		EnsureAccountOrRootOr<LpAdminAccount, HalfOfCouncil>,
+	>;
 	type Balance = Balance;
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
@@ -1986,12 +1988,37 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
+parameter_types! {
+	pub DefaultAxelarGasServiceAddress: H160 = H160(hex_literal::hex!("2d5d7d31F671F86C782533cc367F14109a082712"));
+}
+
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type DefaultAxelarGasServiceAddress = DefaultAxelarGasServiceAddress;
 	type Middleware = RouterId;
 	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
+}
+
+parameter_types! {
+	pub const ReceiverEVMChainId: u64 = 1;
+	pub const NativeCfg: CurrencyId = CurrencyId::Native;
+	pub const IouCfg: CurrencyId = cfg_types::tokens::usdc::CURRENCY_ID_IOU_CFG;
+	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
+	pub DestinationAxelarChainName:  BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("Ethereum"));
+}
+
+impl pallet_cfg_migration::Config for Runtime {
+	type CfgLockAccount = CfgLockAccount;
+	type DestinationAxelarChainName = DestinationAxelarChainName;
+	type GasPaymentService = AxelarRouter;
+	type IouCfg = IouCfg;
+	type NativeCfg = NativeCfg;
+	type ReceiverEVMChainId = ReceiverEVMChainId;
+	type RuntimeEvent = RuntimeEvent;
+	type Sender = Sender;
+	type WeightInfo = ();
 }
 
 /// Block type as expected by this runtime.
@@ -2093,6 +2120,7 @@ construct_runtime!(
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
+		CfgMigration: pallet_cfg_migration::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

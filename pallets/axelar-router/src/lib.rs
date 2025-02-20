@@ -17,7 +17,7 @@
 
 use cfg_traits::{
 	ethereum::EthereumTransactor,
-	liquidity_pools::{MessageReceiver, MessageSender},
+	liquidity_pools::{AxelarGasService, MessageReceiver, MessageSender},
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -142,6 +142,9 @@ pub mod pallet {
 
 		/// The target of the messages coming from this chain
 		type Transactor: EthereumTransactor;
+
+		/// The default axelar gas service
+		type DefaultAxelarGasServiceAddress: Get<H160>;
 	}
 
 	#[pallet::storage]
@@ -150,12 +153,18 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ChainNameById<T: Config> = StorageMap<_, Twox64Concat, AxelarId, ChainName>;
 
+	#[pallet::storage]
+	pub type AxelarGasServiceAddress<T: Config> = StorageValue<_, H160, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		ConfigSet {
 			name: ChainName,
 			config: Box<AxelarConfig>,
+		},
+		AxelarGasServiceSet {
+			address: H160,
 		},
 	}
 
@@ -206,6 +215,18 @@ pub mod pallet {
 				name: chain_name,
 				config,
 			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(Weight::from_parts(50_000_000, 512).saturating_add(RocksDbWeight::get().writes(1)))]
+		#[pallet::call_index(1)]
+		pub fn set_axelar_gas_service(origin: OriginFor<T>, address: H160) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			AxelarGasServiceAddress::<T>::set(Some(address));
+
+			Self::deposit_event(Event::<T>::AxelarGasServiceSet { address });
 
 			Ok(())
 		}
@@ -354,6 +375,52 @@ pub mod pallet {
 			}
 		}
 	}
+
+	impl<T: Config> AxelarGasService for Pallet<T> {
+		type Message = Vec<u8>;
+		type Middleware = ChainName;
+		type Origin = DomainAddress;
+
+		fn pay_fees(
+			chain_name: Self::Middleware,
+			origin: Self::Origin,
+			message: Self::Message,
+			fee_amount: U256,
+		) -> DispatchResult {
+			let config = Configuration::<T>::get(&chain_name)
+				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
+
+			let axelar_message = wrap_into_axelar_msg(
+				message,
+				chain_name.clone().into_inner(),
+				config.app_contract_address,
+			)
+			.map_err(DispatchError::Other)?;
+
+			let axelar_gas_service_data = wrap_into_axelar_gas_payment_msg(
+				origin.h160(),
+				chain_name.into_inner(),
+				config.app_contract_address,
+				axelar_message,
+				origin.h160(),
+			)
+			.map_err(DispatchError::Other)?;
+
+			match config.domain {
+				DomainConfig::Evm(evm_config) => T::Transactor::call(
+					origin.h160(),
+					AxelarGasServiceAddress::<T>::get()
+						.unwrap_or(T::DefaultAxelarGasServiceAddress::get()),
+					axelar_gas_service_data.as_slice(),
+					fee_amount,
+					evm_config.outbound_fee_values.gas_price,
+					evm_config.outbound_fee_values.gas_limit,
+				)
+				.map(|_info| ())
+				.map_err(|e| e.error),
+			}
+		}
+	}
 }
 
 /// Encodes the provided message into the format required for submitting it
@@ -421,6 +488,88 @@ pub fn wrap_into_axelar_msg(
 		// as: 0x1234…7890
 		Token::String(format!("0x{}", hex::encode(target_contract.0))),
 		Token::Bytes(serialized_msg),
+	])
+	.map_err(|_| "cannot encode input for Axelar contract function")?;
+
+	Ok(encoded_axelar_contract)
+}
+
+/// Encodes the provided calldata for paying the gas fees for a contract call
+///
+/// Axelar contract call:
+/// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/4c38242fb4e72dc183c035309a4877a898dea4a5/contracts/gas-service/AxelarGasService.sol#L62>
+pub fn wrap_into_axelar_gas_payment_msg(
+	sender: H160,
+	target_chain: Vec<u8>,
+	target_contract: H160,
+	payload: Vec<u8>,
+	refund_address: H160,
+) -> Result<Vec<u8>, &'static str> {
+	const AXELAR_FUNCTION_NAME: &str = "payNativeGasForContractCall";
+	const AXELAR_SENDER_PARAM: &str = "sender";
+	const AXELAR_DESTINATION_CHAIN_PARAM: &str = "destinationChain";
+	const AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM: &str = "destinationContractAddress";
+	const AXELAR_PAYLOAD_PARAM: &str = "payload";
+	const AXELAR_REFUND_ADDRESS_PARAM: &str = "refundAddress";
+
+	#[allow(deprecated)]
+	let encoded_axelar_contract = Contract {
+		constructor: None,
+		functions: BTreeMap::<String, Vec<Function>>::from([(
+			AXELAR_FUNCTION_NAME.into(),
+			vec![Function {
+				name: AXELAR_FUNCTION_NAME.into(),
+				inputs: vec![
+					Param {
+						name: AXELAR_SENDER_PARAM.into(),
+						kind: ParamType::Address,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_DESTINATION_CHAIN_PARAM.into(),
+						kind: ParamType::String,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM.into(),
+						kind: ParamType::String,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_PAYLOAD_PARAM.into(),
+						kind: ParamType::Bytes,
+						internal_type: None,
+					},
+					Param {
+						name: AXELAR_REFUND_ADDRESS_PARAM.into(),
+						kind: ParamType::Address,
+						internal_type: None,
+					},
+				],
+				outputs: vec![],
+				constant: Some(false),
+				state_mutability: Default::default(),
+			}],
+		)]),
+		events: Default::default(),
+		errors: Default::default(),
+		receive: false,
+		fallback: false,
+	}
+	.function(AXELAR_FUNCTION_NAME)
+	.map_err(|_| "cannot retrieve Axelar contract function")?
+	.encode_input(&[
+		Token::Address(sender),
+		Token::String(
+			String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?,
+		),
+		// Ensure that the target contract is correctly converted to hex.
+		//
+		// The `to_string` method on the H160 is returning a string containing an ellipsis, such
+		// as: 0x1234…7890
+		Token::String(format!("0x{}", hex::encode(target_contract.0))),
+		Token::Bytes(payload),
+		Token::Address(refund_address),
 	])
 	.map_err(|_| "cannot encode input for Axelar contract function")?;
 

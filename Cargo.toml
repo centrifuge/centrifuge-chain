@@ -13,6 +13,7 @@ members = [
   "pallets/axelar-router",
   "pallets/bridge",
   "pallets/block-rewards",
+  "pallets/cfg-migration",
   "pallets/collator-allowlist",
   "pallets/ethereum-transaction",
   "pallets/fees",
@@ -227,6 +228,7 @@ pallet-anchors-v2 = { path = "pallets/anchors-v2", default-features = false }
 pallet-axelar-router = { path = "pallets/axelar-router", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
+pallet-cfg-migration = { path = "pallets/cfg-migration", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
 pallet-ethereum-transaction = { path = "pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "pallets/fees", default-features = false }
