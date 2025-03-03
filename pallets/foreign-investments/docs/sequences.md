@@ -77,7 +77,7 @@ deactivate FI
 alt "if same currencies"
     FI -> FI : post_increase_swap()
     activate FI #Strategy
-    FI -> Investments ++ : increase_invesment()
+    FI -> Investments ++ : increase_investment()
     FI <-- Investments --
     deactivate FI
 end
@@ -90,7 +90,7 @@ activate LP
 LP -> FI ++ : cancel_foreign_investment()
 FI -> FI : cancel()
 activate FI #Strategy
-FI -> Investments ++ : cancel_invesment()
+FI -> Investments ++ : cancel_investment()
 FI <-- Investments --
 FI -> OrderBook ++ : create_swap()
 FI <-- OrderBook --
@@ -111,7 +111,7 @@ hnote over OrderBook : Order partially fulfilled
 FI <- OrderBook ++ : fulfill()
 FI -> FI : post_increase_swap()
 activate FI #Strategy
-FI -> Investments ++ : increase_invesment()
+FI -> Investments ++ : increase_investment()
 FI <-- Investments --
 deactivate FI
 FI --> OrderBook --
@@ -175,7 +175,7 @@ activate LP
 LP -> FI ++ : cancel_foreign_redemption()
 FI -> FI : cancel()
 activate FI #Strategy
-FI -> Investments ++ : cancel_redeemption()
+FI -> Investments ++ : cancel_redemption()
 FI <-- Investments --
 deactivate FI
 LP <-- FI --
