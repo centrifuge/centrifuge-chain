@@ -21,7 +21,7 @@ parameter_types! {
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1403 = (
+pub type UpgradeCentrifuge1500 = (
 	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue

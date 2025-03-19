@@ -19,7 +19,7 @@ parameter_types! {
 	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
 }
 
-pub type UpgradeDevelopment1403 = (
+pub type UpgradeDevelopment1500 = (
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
 	runtime_common::migrations::liquidity_pools_v2::v2_update_message_queue::Migration<Runtime>,
 	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
