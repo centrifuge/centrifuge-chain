@@ -43,7 +43,7 @@ pub type UpgradeDevelopment1500 = (
 	VersionedMigration<
 		0,
 		1,
-		runtime_common::migrations::asset_registry_local_usdc_dai_usds::CombinedMigration<Runtime>,
+		runtime_common::migrations::asset_registry_local_usdc_dai_usds::rename_local_usdc::Migration<Runtime>,
 		pallet_token_mux::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
