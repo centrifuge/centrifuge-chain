@@ -905,14 +905,18 @@ const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
-	type ChangeMembers = Council;
+	// NOTE: Next RU will remove this pallet. Removing the coupling to the Council
+	// already makes it dormant
+	type ChangeMembers = ();
 	type Currency = Balances;
 	type CurrencyToVote = U128CurrencyToVote;
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
 	/// Number of runners_up to keep.
 	type DesiredRunnersUp = DesiredRunnersUp;
-	type InitializeMembers = Council;
+	// NOTE: Next RU will remove this pallet. Removing the coupling to the Council
+	// already makes it dormant
+	type InitializeMembers = ();
 	type KickedMember = Treasury;
 	type LoserCandidate = Treasury;
 	type MaxCandidates = MaxCandidates;
@@ -2764,7 +2768,6 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_collective, Council]
 		[pallet_democracy, Democracy]
-		[pallet_elections_phragmen, Elections]
 		[pallet_identity, Identity]
 		[pallet_vesting, Vesting]
 		[pallet_preimage, Preimage]
