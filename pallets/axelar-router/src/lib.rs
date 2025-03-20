@@ -390,18 +390,11 @@ pub mod pallet {
 			let config = Configuration::<T>::get(&chain_name)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
-			let axelar_message = wrap_into_axelar_msg(
-				message,
-				chain_name.clone().into_inner(),
-				config.app_contract_address,
-			)
-			.map_err(DispatchError::Other)?;
-
 			let axelar_gas_service_data = wrap_into_axelar_gas_payment_msg(
 				origin.h160(),
 				chain_name.into_inner(),
 				config.app_contract_address,
-				axelar_message,
+				message,
 				origin.h160(),
 			)
 			.map_err(DispatchError::Other)?;
