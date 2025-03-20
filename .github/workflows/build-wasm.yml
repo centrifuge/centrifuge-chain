@@ -34,72 +34,54 @@ jobs:
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
 
-      # sccache does not work inside the srtool container
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # 2.7
-        with:
-          prefix-key: build
-          shared-key: wasm
-          workspaces: |
-            .
-            ./target/srtool
-          cache-directories: ./runtime
-
-      # Use this to debug what's going on inside the srtool container
-      # - name: Run Docker SRTool
-      #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
+      # # sccache does not work inside the srtool container
+      # - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # 2.7
       #   with:
-      #     image: paritytech/srtool:${{ matrix.rust_version }}
-      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}-runtime
-      #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.chain }}-runtime
-      #     run: |
-      #       echo "---- Env VARS ----"
-      #       echo "BUILD_OPT=${BUILD_OPT}"
-      #       echo "PACKAGE=${PACKAGE}"
-      #       echo "---- List Cache Folder ----"
-      #       ls -la /cargo-home/
-      #       du -sh /cargo-home/*
-      #       echo "---- RUNNING BUILD ----"
-      #       /srtool/build --app --json -cM   
+      #     prefix-key: build
+      #     shared-key: wasm
+      #     workspaces: |
+      #       .
+      #       ./target/srtool
+      #     cache-directories: ./runtime
       
-      
-      # Build and setup env vars:
-      - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
-        id: srtool_build
-        shell: bash
-        run: |
-          ##"RUNNING SRTOOL"
-          echo ::group::Docker run srtool build ${{ inputs.chain }}
-          CMD="docker run --rm  --user root --platform=linux/amd64
-          -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
-          -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build 
-          ${{ env.SRTOOL_IMAGE }} /srtool/build --app --json -cM"
-          echo ::debug::build::docker_run $CMD
-          echo ::endgroup
-          # here we keep streaming the progress and fetch the last line for the json result
-          stdbuf -oL $CMD | {
-            while IFS= read -r line
-            do
-              echo ║ $line
-              JSON="$line"
-            done
-            echo "json=$JSON" >> $GITHUB_OUTPUT
+      # # Build and setup env vars:
+      # - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
+      #   id: srtool_build
+      #   shell: bash
+      #   run: |
+      #     ##"RUNNING SRTOOL"
+      #     echo ::group::Docker run srtool build ${{ inputs.chain }}
+      #     CMD="docker run --rm  --user root --platform=linux/amd64
+      #     -e PROFILE=release -e PACKAGE=${{ matrix.chain }}-runtime -e BUILD_OPTS="--features=on-chain-release-build" 
+      #     -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build 
+      #     ${{ env.SRTOOL_IMAGE }} /srtool/build --app --json -cM"
+      #     echo ::debug::build::docker_run $CMD
+      #     echo ::endgroup
+      #     # here we keep streaming the progress and fetch the last line for the json result
+      #     stdbuf -oL $CMD | {
+      #       while IFS= read -r line
+      #       do
+      #         echo ║ $line
+      #         JSON="$line"
+      #       done
+      #       echo "json=$JSON" >> $GITHUB_OUTPUT
   
-            WASM=`echo $JSON | jq -r .runtimes.compact.wasm`
-            echo "wasm=$WASM" >> $GITHUB_OUTPUT
+      #       WASM=`echo $JSON | jq -r .runtimes.compact.wasm`
+      #       echo "wasm=$WASM" >> $GITHUB_OUTPUT
   
-            Z_WASM=`echo $JSON | jq -r .runtimes.compressed.wasm`
-            echo "wasm_compressed=$Z_WASM" >> $GITHUB_OUTPUT
-          }
+      #       Z_WASM=`echo $JSON | jq -r .runtimes.compressed.wasm`
+      #       echo "wasm_compressed=$Z_WASM" >> $GITHUB_OUTPUT
+      #     }
              
-      - name: Summary
-        run: |
-          ## JSON output
-          echo "::group::JSON output"
-          PRETTY_JSON=$(echo '${{ steps.srtool_build.outputs.json }}' | jq .)
-          echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
-          echo "JSON Output:"
-          cat "${{ matrix.chain }}-srtool-digest.json"
-          echo "::endgroup"
+      # - name: Summary
+      #   run: |
+      #     ## JSON output
+      #     echo "::group::JSON output"
+      #     PRETTY_JSON=$(echo '${{ steps.srtool_build.outputs.json }}' | jq .)
+      #     echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
+      #     echo "JSON Output:"
+      #     cat "${{ matrix.chain }}-srtool-digest.json"
+      #     echo "::endgroup"
 
       - id: 'auth'
         if: github.event_name != 'pull_request'
@@ -112,38 +94,46 @@ jobs:
         if: ${{ steps.auth.outcome == 'success' }}
         uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
 
-      - name: Publish artifacts to GCS
-        if: ${{ steps.auth.outcome == 'success' }}
-        shell: bash
+      - name: debug gcloud bucket
         run: |
-          ## Publish WASM and JSON summary
-          echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
-          gsutil cp \
-            "${{ steps.srtool_build.outputs.wasm_compressed }}" \
-            "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
-          ## Publish WASM and JSON summary
-          echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
-          gsutil cp \
-            "${{ steps.srtool_build.outputs.wasm_compressed }}" \
-            "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
-          gsutil cp \
-            "${{ matrix.chain }}-srtool-digest.json" \
-            "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json"
+          gsutil ls gs://centrifuge-wasm-repo/
+          echo "This is a test file." > /tmp/sample-file.txt
+          gsutil cp /tmp/sample-file.txt gs://centrifuge-wasm-repo/sample-file.txt
+          gsutil rm gs://centrifuge-wasm-repo/sample-file.txt
+          
 
-      - name: Upload WASM to release tag ${{ github.ref_name }}
-        uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # @v1
-        if: github.event_name == 'release'
-        # https://github.com/ncipollo/release-action
-        with:
-          tag: ${{ github.ref_name }}
-          commit: ${{ github.sha }}
-          artifacts: "${{ steps.srtool_build.outputs.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
-          replacesArtifacts: true
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          omitBodyDuringUpdate: true
-          omitDraftDuringUpdate: true
-          omitNameDuringUpdate: true
-          omitPrereleaseDuringUpdate: true
-          # updateOnlyUnreleased: true # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
+      # - name: Publish artifacts to GCS
+      #   if: ${{ steps.auth.outcome == 'success' }}
+      #   shell: bash
+      #   run: |
+      #     ## Publish WASM and JSON summary
+      #     echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
+      #     gsutil cp \
+      #       "${{ steps.srtool_build.outputs.wasm_compressed }}" \
+      #       "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
+      #     ## Publish WASM and JSON summary
+      #     echo '${{ steps.srtool_build.outputs.json }}' | jq . > "${{ matrix.chain }}-srtool-digest.json"
+      #     gsutil cp \
+      #       "${{ steps.srtool_build.outputs.wasm_compressed }}" \
+      #       "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD).wasm"
+      #     gsutil cp \
+      #       "${{ matrix.chain }}-srtool-digest.json" \
+      #       "gs://centrifuge-wasm-repo/${{ matrix.chain }}/${{ matrix.chain }}-$(git rev-parse --short HEAD)-srtool-digest.json"
+
+      # - name: Upload WASM to release tag ${{ github.ref_name }}
+      #   uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # @v1
+      #   if: github.event_name == 'release'
+      #   # https://github.com/ncipollo/release-action
+      #   with:
+      #     tag: ${{ github.ref_name }}
+      #     commit: ${{ github.sha }}
+      #     artifacts: "${{ steps.srtool_build.outputs.wasm_compressed }}, ${{ matrix.chain }}-srtool-digest.json"
+      #     replacesArtifacts: true
+      #     allowUpdates: true
+      #     artifactErrorsFailBuild: true
+      #     omitBodyDuringUpdate: true
+      #     omitDraftDuringUpdate: true
+      #     omitNameDuringUpdate: true
+      #     omitPrereleaseDuringUpdate: true
+      #     # updateOnlyUnreleased: true # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
           
