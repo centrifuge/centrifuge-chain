@@ -10,8 +10,8 @@ echo "*** Initializing WASM build environment"
 
 rustup update $RUST_TOOLCHAIN
 
-rustup toolchain install $RUST_TOOLCHAIN
-rustup toolchain install nightly
+rustup toolchain install $RUST_TOOLCHAIN --locked
+rustup toolchain install nightly --locked
 rustup default $RUST_TOOLCHAIN
 rustup component add rustfmt
 rustup component add rust-src
