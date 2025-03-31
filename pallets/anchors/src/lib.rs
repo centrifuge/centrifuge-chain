@@ -231,7 +231,7 @@ pub mod pallet {
 		/// These funds are returned to the same account after a succesful
 		/// [`Pallet::commit()`] call or explicitely if evicting the pre-commits
 		/// by calling [`Pallet::evict_pre_commits()`]. For a more detailed
-		/// explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+		/// explanation refer section 3.4 of [Centrifuge Protocol Paper](https://assets.ctfassets.net/xwo28v1qbyr0/6sW8tiAb96c0o8SKQyCk2O/b470827463c9a1a178f18c4f0f819819/Centrifuge-OS-Whitepaper-1-Pager-English-v20180705.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
 		#[pallet::call_index(0)]
 		pub fn pre_commit(
