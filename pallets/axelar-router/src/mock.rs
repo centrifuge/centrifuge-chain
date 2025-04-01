@@ -44,13 +44,8 @@ impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 	type Result = bool;
 }
 
-frame_support::parameter_types! {
-	pub DefaultAxelarGasServiceAddress: H160 = H160([0u8; 20]);
-}
-
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
-	type DefaultAxelarGasServiceAddress = DefaultAxelarGasServiceAddress;
 	type Middleware = Middleware;
 	type Receiver = Receiver;
 	type RuntimeEvent = RuntimeEvent;

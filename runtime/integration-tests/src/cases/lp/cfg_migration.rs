@@ -13,7 +13,7 @@
 use cfg_primitives::{Balance, CFG};
 use ethabi::Token;
 use frame_support::{
-	assert_ok,
+	assert_err, assert_ok,
 	traits::{fungibles::Inspect, OriginTrait},
 };
 use frame_system::pallet_prelude::OriginFor;
@@ -36,13 +36,16 @@ const USER: Keyring = Keyring::Charlie;
 
 mod utils {
 	use cfg_primitives::{Balance, MICRO_CFG};
-	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
+	use cfg_types::{
+		domain_address::DomainAddress,
+		tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+	};
 	use ethabi::{Token, Uint};
 	use frame_support::{assert_ok, traits::OriginTrait};
 	use frame_system::pallet_prelude::OriginFor;
 
 	use crate::{
-		cases::lp::{contracts, names, utils},
+		cases::lp::{contracts, names, utils, utils::to_fixed_array},
 		config::Runtime,
 		env::EvmEnv,
 		utils::{
@@ -50,6 +53,15 @@ mod utils {
 			currency::{register_currency, CurrencyInfo},
 		},
 	};
+
+	pub fn to_domain_addr(who: Keyring) -> DomainAddress {
+		use crate::cases::lp::EVM_DOMAIN_CHAIN_ID;
+
+		DomainAddress::new(
+			cfg_types::domain_address::Domain::Evm(EVM_DOMAIN_CHAIN_ID),
+			to_fixed_array(who.in_eth().as_bytes()),
+		)
+	}
 
 	#[allow(non_camel_case_types)]
 	pub struct IOU_CFG;
@@ -122,12 +134,6 @@ mod utils {
 		)
 		.unwrap();
 
-		// Store deployed adapter contract in storage
-		assert_ok!(pallet_axelar_router::Pallet::<T>::set_axelar_gas_service(
-			OriginFor::<T>::root(),
-			evm.deployed(names::ADAPTER).address()
-		));
-
 		// REGISTER IOU_CFG
 		register_currency::<T>(IOU_CFG, |meta| {
 			meta.location = Some(utils::lp_asset_location::<T>(
@@ -150,18 +156,41 @@ fn _test() {
 }
 
 #[test_runtimes([centrifuge])]
-fn full_cfg_migration_flow<
-	T: Runtime
-		+ pallet_cfg_migration::Config<Sender = <T as pallet_liquidity_pools_gateway::Config>::Sender>,
->() {
+fn full_cfg_migration_flow<T: Runtime + pallet_cfg_migration::Config>() {
 	let mut env = setup::<T, _>(utils::setup_axelar_gateway);
+
+	//  Ensure errors are triggered
+	env.state_mut(|_evm| {
+		assert_err!(
+			pallet_cfg_migration::Pallet::<T>::migrate(
+				OriginFor::<T>::signed(USER.into()),
+				utils::to_domain_addr(USER)
+			),
+			pallet_cfg_migration::Error::<T>::FeeAmountNotSet,
+		);
+		assert_ok!(pallet_cfg_migration::Pallet::<T>::set_fee_amount(
+			OriginFor::<T>::root(),
+			AXELAR_FEE
+		));
+
+		assert_err!(
+			pallet_cfg_migration::Pallet::<T>::migrate(
+				OriginFor::<T>::signed(USER.into()),
+				utils::to_domain_addr(USER)
+			),
+			pallet_cfg_migration::Error::<T>::FeeReceiverNotSet,
+		);
+		assert_ok!(pallet_cfg_migration::Pallet::<T>::set_fee_receiver(
+			OriginFor::<T>::root(),
+			Keyring::Admin.into()
+		));
+	});
 
 	// Execute migration
 	env.state_mut(|_evm| {
 		assert_ok!(pallet_cfg_migration::Pallet::<T>::migrate(
 			OriginFor::<T>::signed(USER.into()),
-			AXELAR_FEE,
-			USER.in_eth()
+			utils::to_domain_addr(USER)
 		));
 		process_gateway_message::<T>(verify_gateway_message_success::<T>);
 	});

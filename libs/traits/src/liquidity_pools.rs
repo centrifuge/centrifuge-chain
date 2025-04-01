@@ -12,10 +12,7 @@
 // GNU General Public License for more details.
 
 use frame_support::{dispatch::DispatchResult, weights::Weight};
-use sp_runtime::{
-	app_crypto::sp_core::{H160, U256},
-	DispatchError,
-};
+use sp_runtime::{app_crypto::sp_core::H160, DispatchError};
 use sp_std::vec::Vec;
 
 /// Type that represents the hash of an LP message.
@@ -135,23 +132,6 @@ pub trait MessageReceiver {
 		middleware: Self::Middleware,
 		origin: Self::Origin,
 		message: Self::Message,
-	) -> DispatchResult;
-}
-
-pub trait AxelarGasService {
-	/// The middleware by where this message is received
-	type Middleware;
-
-	/// The originator of the received message
-	type Origin;
-
-	type Message;
-
-	fn pay_fees(
-		axelar_id: Self::Middleware,
-		origin: Self::Origin,
-		message: Self::Message,
-		fee_amount: U256,
 	) -> DispatchResult;
 }
 
