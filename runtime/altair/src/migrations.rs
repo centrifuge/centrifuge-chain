@@ -21,16 +21,16 @@ parameter_types! {
 
 /// The migration set for Altair @ Kusama.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeAltair1500 = (
+pub type UpgradeAltair1505 = (
 	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
 	runtime_common::migrations::liquidity_pools_v2::v0_init_message_queue::Migration<Runtime>,
-	// Remove deprecated DomainRouters entries and migrate relevant ones to Axelar Router Config
+	// Bump Version from 0- to 3
 	VersionedMigration<
 		0,
 		3,
-		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
+		(),
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,

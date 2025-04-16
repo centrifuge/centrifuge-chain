@@ -11,17 +11,19 @@
 // GNU General Public License for more details.
 
 use frame_support::migrations::VersionedMigration;
-use sp_core::parameter_types;
+use sp_core::{parameter_types, H160};
 
 use crate::Runtime;
 
 parameter_types! {
 	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
+	pub AxelarGatewayContract: H160 = hex_literal::hex!("4F4495243837681061C4743b74B3eEdf548D56A5").into();
+	pub ForwarderContract: H160 = hex_literal::hex!("c1757c6A0563E37048869A342dF0651b9F267e41").into();
 }
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1500 = (
+pub type UpgradeCentrifuge1505 = (
 	// Remove deprecated LiquidityPoolsGateway::{v0, v1, v2}::RelayerList storage
 	runtime_common::migrations::liquidity_pools_v2::kill_relayer_list::Migration<Runtime>,
 	// Clear OutboundMessageNonceStore and migrate outbound storage to LP queue
@@ -30,7 +32,11 @@ pub type UpgradeCentrifuge1500 = (
 	VersionedMigration<
 		0,
 		3,
-		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<
+			Runtime,
+			AxelarGatewayContract,
+			ForwarderContract,
+		>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,

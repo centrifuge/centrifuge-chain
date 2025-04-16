@@ -433,17 +433,21 @@ pub mod init_axelar_router {
 	#[cfg(feature = "try-runtime")]
 	use sp_arithmetic::traits::SaturatedConversion;
 	use sp_arithmetic::traits::Saturating;
+	use sp_core::H160;
 	use sp_std::boxed::Box;
 
 	use super::{
 		types::{v0, v2},
 		*,
 	};
-	pub struct Migration<T>(PhantomData<T>);
+	pub struct Migration<T, AxelarGatewayContract, ForwarderContract>(
+		PhantomData<(T, AxelarGatewayContract, ForwarderContract)>,
+	);
 
 	const LOG_PREFIX: &str = "DomainRoutersToAxelarConfig";
 
-	impl<T> OnRuntimeUpgrade for Migration<T>
+	impl<T, AxelarGatewayContract, ForwarderContract> OnRuntimeUpgrade
+		for Migration<T, AxelarGatewayContract, ForwarderContract>
 	where
 		T: pallet_liquidity_pools_gateway::Config
 			+ pallet_liquidity_pools_gateway_queue::Config
@@ -457,6 +461,8 @@ pub mod init_axelar_router {
 			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		v0::DomainRouter<T>: sp_std::fmt::Debug,
 		v2::DomainRouter<T>: sp_std::fmt::Debug,
+		AxelarGatewayContract: Get<H160>,
+		ForwarderContract: Get<H160>,
 	{
 		fn on_runtime_upgrade() -> Weight {
 			let (reads, writes) = Self::migrate_domain_routers().unwrap_or_default();
@@ -506,7 +512,8 @@ pub mod init_axelar_router {
 		}
 	}
 
-	impl<T> Migration<T>
+	impl<T, AxelarGatewayContract, ForwarderContract>
+		Migration<T, AxelarGatewayContract, ForwarderContract>
 	where
 		T: pallet_liquidity_pools_gateway::Config
 			+ pallet_liquidity_pools_gateway_queue::Config
@@ -520,6 +527,8 @@ pub mod init_axelar_router {
 			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 		v0::DomainRouter<T>: sp_std::fmt::Debug,
 		v2::DomainRouter<T>: sp_std::fmt::Debug,
+		AxelarGatewayContract: Get<H160>,
+		ForwarderContract: Get<H160>,
 	{
 		fn migrate_domain_routers() -> Result<(u64, u64), DispatchError> {
 			match pallet_liquidity_pools_gateway::Pallet::<T>::on_chain_storage_version() {
@@ -603,23 +612,19 @@ pub mod init_axelar_router {
 			let mut reads = 1u64;
 			let mut writes = 0u64;
 
-			let outbound_contract_address = v0::GatewayContract::get();
-
 			if let Some((whitelisted_domain_address, _)) =
 				v0::Allowlist::<T>::iter_prefix(domain).last()
 			{
 				log::info!("{LOG_PREFIX}: Migrating {domain:?} domain with allowlist domain address {whitelisted_domain_address:?}");
 
-				if let DomainAddress::Evm(_, app_contract_address) = whitelisted_domain_address {
+				if let DomainAddress::Evm(_, _) = whitelisted_domain_address {
 					pallet_axelar_router::Pallet::<T>::set_config(
 						T::RuntimeOrigin::root(),
 						router.evm_chain.clone(),
 						Box::new(router.migrate_to_domain_config(
 							chain_id,
-							// Read v0::gateway::AllowList storage => addr1
-							app_contract_address,
-							// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
-							outbound_contract_address,
+							AxelarGatewayContract::get(),
+							ForwarderContract::get(),
 						)),
 					)
 					.map_err(|e| {
@@ -884,13 +889,13 @@ mod types {
 			pub(crate) fn migrate_to_domain_config(
 				&self,
 				chain_id: EVMChainId,
-				app_contract_address: H160,
-				inbound_contract_address: H160,
+				axelar_gateway_contract: H160,
+				forwarder_contract: H160,
 			) -> AxelarConfig {
 				AxelarConfig {
-					app_contract_address,
-					inbound_contract_address,
-					outbound_contract_address: self.liquidity_pools_contract_address,
+					app_contract_address: self.liquidity_pools_contract_address,
+					inbound_contract_address: forwarder_contract,
+					outbound_contract_address: axelar_gateway_contract,
 					domain: DomainConfig::Evm(EvmConfig {
 						chain_id,
 						outbound_fee_values: self.router.evm_domain.fee_values.clone(),
