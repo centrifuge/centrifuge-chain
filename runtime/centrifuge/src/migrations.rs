@@ -175,16 +175,18 @@ mod remove_phragmen_votes {
 }
 
 mod reset_council {
-	use cfg_primitives::AccountId;
+	use cfg_primitives::{AccountId, Balance};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::storage::transactional;
 	use frame_support::{
-		traits::{Get, OnRuntimeUpgrade, OriginTrait},
+		traits::{Get, OnRuntimeUpgrade, OriginTrait, ReservableCurrency},
 		weights::Weight,
 	};
 	use pallet_collective::pallet::Pallet as PalletCouncil;
+	use pallet_elections_phragmen::SeatHolder;
 	use runtime_common::instances::CouncilCollective;
 	use sp_core::crypto::AccountId32;
+	use sp_runtime::Saturating;
 	use sp_std::{vec, vec::Vec};
 
 	use super::*;
@@ -221,10 +223,12 @@ mod reset_council {
 	impl<T> OnRuntimeUpgrade for Migration<T>
 	where
 		T: frame_system::Config<AccountId = AccountId32>
-			+ pallet_collective::Config<CouncilCollective>,
+			+ pallet_balances::Config<Balance = Balance>
+			+ pallet_collective::Config<CouncilCollective>
+			+ pallet_elections_phragmen::Config<Currency = pallet_balances::Pallet<T>>,
 	{
 		fn on_runtime_upgrade() -> Weight {
-			Self::migrate()
+			Self::migrate_council().saturating_add(Self::migrate_election_members())
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -236,8 +240,16 @@ mod reset_council {
 					pallet_collective::Pallet::<T, CouncilCollective>::members().len();
 				assert_eq!(member_count, OldCount::get() as usize, "OldCount mismatch");
 
+				let elections_count = pallet_elections_phragmen::Pallet::<T>::members().len();
+				assert_eq!(
+					elections_count,
+					OldCount::get() as usize,
+					"Elections OldCount mismatch"
+				);
+
 				let _ = transactional::with_storage_layer(|| -> sp_runtime::DispatchResult {
-					Self::migrate();
+					Self::migrate_council();
+					Self::migrate_election_members();
 					Err(sp_runtime::DispatchError::Other("Reverting on purpose"))
 				});
 			} else {
@@ -269,6 +281,13 @@ mod reset_council {
 				"Prime Voter mismatch"
 			);
 
+			let elections_count = pallet_elections_phragmen::Pallet::<T>::members().len();
+			assert_eq!(
+				elections_count,
+				CouncilMembers::get().len(),
+				"Elections NewCount mismatch"
+			);
+
 			log::info!("{LOG_PREFIX}: Post done");
 
 			Ok(())
@@ -278,9 +297,11 @@ mod reset_council {
 	impl<T> Migration<T>
 	where
 		T: frame_system::Config<AccountId = AccountId32>
-			+ pallet_collective::Config<CouncilCollective>,
+			+ pallet_balances::Config<Balance = Balance>
+			+ pallet_collective::Config<CouncilCollective>
+			+ pallet_elections_phragmen::Config<Currency = pallet_balances::Pallet<T>>,
 	{
-		fn migrate() -> Weight {
+		fn migrate_council() -> Weight {
 			PalletCouncil::<T, CouncilCollective>::set_members(
 				<T as frame_system::Config>::RuntimeOrigin::root(),
 				CouncilMembers::get(),
@@ -301,6 +322,37 @@ mod reset_council {
 						.saturating_add(3),
 				),
 			)
+		}
+
+		fn migrate_election_members() -> Weight {
+			let mut count: u64 = 0;
+
+			let old_members: Vec<SeatHolder<AccountId32, Balance>> =
+				pallet_elections_phragmen::Members::<T>::take();
+
+			for old_member in old_members.iter() {
+				count.saturating_accrue(1);
+				pallet_balances::Pallet::<T>::unreserve(&old_member.who, old_member.deposit);
+			}
+
+			for (old_candidate, deposit) in pallet_elections_phragmen::Candidates::<T>::take() {
+				count.saturating_accrue(1);
+				pallet_balances::Pallet::<T>::unreserve(&old_candidate, deposit);
+			}
+
+			let mut new_members: Vec<SeatHolder<AccountId32, Balance>> = CouncilMembers::get()
+				.into_iter()
+				.map(|member| SeatHolder {
+					who: member,
+					stake: 1,
+					deposit: 0,
+				})
+				.collect();
+			new_members.sort_by(|a, b| a.who.cmp(&b.who));
+
+			pallet_elections_phragmen::Members::<T>::put(new_members);
+
+			T::DbWeight::get().writes(2.saturating_add(count))
 		}
 	}
 }
