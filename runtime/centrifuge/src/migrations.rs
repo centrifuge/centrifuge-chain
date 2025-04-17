@@ -11,14 +11,12 @@
 // GNU General Public License for more details.
 
 use frame_support::migrations::VersionedMigration;
-use sp_core::{parameter_types, H160};
+use sp_core::parameter_types;
 
 use crate::Runtime;
 
 parameter_types! {
 	pub PalletLiquidityPoolsAxelarGateway: &'static str = "LiquidityPoolsAxelarGateway";
-	pub AxelarGatewayContract: H160 = hex_literal::hex!("4F4495243837681061C4743b74B3eEdf548D56A5").into();
-	pub ForwarderContract: H160 = hex_literal::hex!("c1757c6A0563E37048869A342dF0651b9F267e41").into();
 }
 
 /// The migration set for Centrifuge @ Polkadot.
@@ -32,11 +30,7 @@ pub type UpgradeCentrifuge1505 = (
 	VersionedMigration<
 		0,
 		3,
-		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<
-			Runtime,
-			AxelarGatewayContract,
-			ForwarderContract,
-		>,
+		runtime_common::migrations::liquidity_pools_v2::init_axelar_router::Migration<Runtime>,
 		pallet_liquidity_pools_gateway::Pallet<Runtime>,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
