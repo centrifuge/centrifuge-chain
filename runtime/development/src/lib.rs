@@ -68,7 +68,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -171,7 +171,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1403,
+	spec_version: 1505,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1993,13 +1993,8 @@ impl pallet_ethereum::Config for Runtime {
 
 impl pallet_ethereum_transaction::Config for Runtime {}
 
-parameter_types! {
-	pub DefaultAxelarGasServiceAddress: H160 = H160(hex_literal::hex!("2d5d7d31F671F86C782533cc367F14109a082712"));
-}
-
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type DefaultAxelarGasServiceAddress = DefaultAxelarGasServiceAddress;
 	type Middleware = RouterId;
 	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
@@ -2007,22 +2002,17 @@ impl pallet_axelar_router::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ReceiverEVMChainId: u64 = 11155111;
 	pub const NativeCfg: CurrencyId = CurrencyId::Native;
 	pub const IouCfg: CurrencyId = cfg_types::tokens::usdc::CURRENCY_ID_IOU_CFG;
 	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
-	pub DestinationAxelarChainName: BoundedVec<u8, ConstU32<16>> = BoundedVec::truncate_from(Vec::from("ethereum-sepolia"));
 }
 
 impl pallet_cfg_migration::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type CfgLockAccount = CfgLockAccount;
-	type DestinationAxelarChainName = DestinationAxelarChainName;
-	type GasPaymentService = AxelarRouter;
 	type IouCfg = IouCfg;
 	type NativeCfg = NativeCfg;
-	type ReceiverEVMChainId = ReceiverEVMChainId;
 	type RuntimeEvent = RuntimeEvent;
-	type Sender = Sender;
 	type WeightInfo = ();
 }
 
@@ -2144,7 +2134,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1403,
+	crate::migrations::UpgradeDevelopment1505,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata

@@ -603,24 +603,18 @@ pub mod init_axelar_router {
 			let mut reads = 1u64;
 			let mut writes = 0u64;
 
-			let outbound_contract_address = v0::GatewayContract::get();
-
 			if let Some((whitelisted_domain_address, _)) =
 				v0::Allowlist::<T>::iter_prefix(domain).last()
 			{
 				log::info!("{LOG_PREFIX}: Migrating {domain:?} domain with allowlist domain address {whitelisted_domain_address:?}");
 
-				if let DomainAddress::Evm(_, app_contract_address) = whitelisted_domain_address {
+				let forwarder_contract = v0::GatewayContract::get();
+
+				if let DomainAddress::Evm(_, _) = whitelisted_domain_address {
 					pallet_axelar_router::Pallet::<T>::set_config(
 						T::RuntimeOrigin::root(),
 						router.evm_chain.clone(),
-						Box::new(router.migrate_to_domain_config(
-							chain_id,
-							// Read v0::gateway::AllowList storage => addr1
-							app_contract_address,
-							// Read v0::axelar-gateway-precompile::GatewayContract => addr 2
-							outbound_contract_address,
-						)),
+						Box::new(router.migrate_to_domain_config(chain_id, forwarder_contract)),
 					)
 					.map_err(|e| {
 						log::error!(
@@ -884,13 +878,12 @@ mod types {
 			pub(crate) fn migrate_to_domain_config(
 				&self,
 				chain_id: EVMChainId,
-				app_contract_address: H160,
-				inbound_contract_address: H160,
+				forwarder_contract: H160,
 			) -> AxelarConfig {
 				AxelarConfig {
-					app_contract_address,
-					inbound_contract_address,
-					outbound_contract_address: self.liquidity_pools_contract_address,
+					app_contract_address: self.liquidity_pools_contract_address,
+					inbound_contract_address: forwarder_contract,
+					outbound_contract_address: self.router.evm_domain.target_contract_address,
 					domain: DomainConfig::Evm(EvmConfig {
 						chain_id,
 						outbound_fee_values: self.router.evm_domain.fee_values.clone(),
