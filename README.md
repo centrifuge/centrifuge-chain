@@ -7,6 +7,7 @@
 [![License](https://img.shields.io/github/license/centrifuge/centrifuge-chain?color=green)](https://github.com/centrifuge/centrifuge-chain/blob/main/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fcentrifuge)](https://twitter.com/centrifuge/)
+[![Discord](https://img.shields.io/discord/805795848432779315)](https://discord.com/invite/yEzyUq5gxF)
 [![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/centrifuge_chat)
 
 </div>
