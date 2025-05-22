@@ -1,27 +1,28 @@
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [ opened, synchronize, reopened, ready_for_review ]
   pull_request_review:
-    types: [submitted]
+    types: [ submitted ]
   workflow_dispatch:
 name: Code coverage
 concurrency:
   group: 'codecov-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 permissions:
-    id-token: write
-    contents: read
+  id-token: write
+  contents: read
 jobs:
   codecov:
     runs-on: ubuntu-latest-4-cores
     if: >
-      github.event.pull_request.draft == false ||
+      &&
+      (github.event.pull_request.draft == false ||
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
       github.event.action == 'ready_for_review' ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@master
 
@@ -34,8 +35,8 @@ jobs:
           GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Install Tarpaulin
-        run: cargo install --locked cargo-tarpaulin
-        
+        run: cargo install --locked cargo-tarpaulin --version  0.30.0
+
       - name: generate codecov reports
         env:
           RUST_BACKTRACE: 1
@@ -52,7 +53,7 @@ jobs:
           --exclude-files runtime \
           --workspace --out xml
 
-    # UPLOAD REPORTS (requires cargo 1.70.0)
+      # UPLOAD REPORTS (requires cargo 1.70.0)
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         env:

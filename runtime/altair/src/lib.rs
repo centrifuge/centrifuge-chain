@@ -117,10 +117,7 @@ use runtime_common::{
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	remarks::Remark,
 	rewards::SingleCurrencyMovement,
-	routing::{
-		EvmAccountCodeChecker, LPGatewayRouterProvider, MessageSerializer, RouterDispatcher,
-		RouterId,
-	},
+	routing::{LPGatewayRouterProvider, MessageSerializer, RouterDispatcher, RouterId},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -169,7 +166,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1403,
+	spec_version: 1505,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -1115,7 +1112,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = PERMISSION_DELAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 10_000;
@@ -1129,6 +1126,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
+	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Self>;
 }
 
@@ -1667,7 +1665,7 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
@@ -1757,15 +1755,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_liquidity_pools_forwarder::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Message = pallet_liquidity_pools::Message;
-	type MessageReceiver = LiquidityPoolsGateway;
-	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
-	type RouterId = RouterId;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 parameter_types! {
 	pub Sender: DomainAddress = gateway::get_gateway_domain_address::<Runtime>();
 	pub const MaxIncomingMessageSize: u32 = 1024;
@@ -1779,7 +1768,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type MessageSender = LiquidityPoolsForwarder;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, ()>;
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
@@ -1901,9 +1890,8 @@ impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
 	type Middleware = RouterId;
-	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
+	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
 }
@@ -2027,7 +2015,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1403,
+	migrations::UpgradeAltair1505,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2134,7 +2122,6 @@ construct_runtime!(
 		// Removed: Swaps = 200
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 201,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 202,
-		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 203,
 	}
 );
 

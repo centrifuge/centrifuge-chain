@@ -200,7 +200,7 @@ pub mod pallet {
 		/// Currency id expected to give
 		pub currency_out: T::CurrencyId,
 
-		/// Amount in `currency_in` obtained by swaping `amount_out`
+		/// Amount in `currency_in` obtained by swapping `amount_out`
 		pub amount_in: T::BalanceIn,
 
 		/// How many tokens of `currency_out` available to sell
@@ -318,6 +318,9 @@ pub mod pallet {
 		MarketFeederNotFound,
 		/// Expected a market ratio for the given pair of currencies.
 		MarketRatioNotFound,
+		/// The amount of assets to sell exceeds the maximum provided by the
+		/// fulfilling account
+		SlippageExceeded,
 	}
 
 	#[pallet::call]
@@ -395,11 +398,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
 			amount_out: T::BalanceOut,
+			max_amount_in: T::BalanceIn,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 
-			Self::fulfill_order_with_amount(order, amount_out, account_id)
+			Self::fulfill_order_with_amount(order, amount_out, account_id, max_amount_in)
 		}
 
 		/// Set the market feeder for set market ratios.
@@ -534,6 +538,7 @@ pub mod pallet {
 			order: Order<T>,
 			amount_out: T::BalanceOut,
 			fulfilling_account: T::AccountId,
+			max_amount_in: T::BalanceIn,
 		) -> DispatchResult {
 			let min_fulfillment_amount_out = min(
 				order.amount_out,
@@ -552,6 +557,8 @@ pub mod pallet {
 
 			let amount_in =
 				Self::convert_with_ratio(order.currency_out, order.currency_in, ratio, amount_out)?;
+			// Protect the fulfilling account from extreme market conditions
+			ensure!(amount_in <= max_amount_in, Error::<T>::SlippageExceeded);
 
 			let remaining_amount_out = order
 				.amount_out
@@ -748,11 +755,30 @@ pub mod pallet {
 		fn fill_order(
 			account: T::AccountId,
 			order_id: Self::OrderId,
-			buy_amount: T::BalanceOut,
+			amount_out: T::BalanceOut,
+			max_amount_in: T::BalanceIn,
 		) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
 
-			Self::fulfill_order_with_amount(order, buy_amount, account)
+			Self::fulfill_order_with_amount(order, amount_out, account, max_amount_in)
+		}
+
+		fn fill_order_no_slip_prot(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			amount_out: Self::BalanceOut,
+		) -> DispatchResult {
+			let order = <Orders<T>>::get(order_id)?;
+
+			let ratio = match order.ratio {
+				OrderRatio::Market => Self::market_ratio(order.currency_out, order.currency_in)?,
+				OrderRatio::Custom(ratio) => ratio,
+			};
+
+			let max_amount_in =
+				Self::convert_with_ratio(order.currency_out, order.currency_in, ratio, amount_out)?;
+
+			Self::fulfill_order_with_amount(order, amount_out, account, max_amount_in)
 		}
 
 		fn convert_by_market(

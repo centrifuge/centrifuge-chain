@@ -18,9 +18,11 @@
 use cfg_traits::{
 	ethereum::EthereumTransactor,
 	liquidity_pools::{MessageReceiver, MessageSender},
-	PreConditions,
 };
-use cfg_types::{domain_address::DomainAddress, EVMChainId};
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	EVMChainId,
+};
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use fp_evm::PrecompileHandle;
 use frame_support::{
@@ -65,10 +67,19 @@ pub enum AxelarId {
 /// Configuration for outbound messages though axelar
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarConfig {
-	/// Address of liquidity pool contract in the target chain
-	pub liquidity_pools_contract_address: H160,
+	/// Address of application contract
+	/// This is the address wrapped in the axelar message
+	/// In both, inbound and outbound messages
+	pub app_contract_address: H160,
 
-	/// Configuration for executing the EVM call.
+	/// Address used to receive message from axelar.
+	/// Represents caller allowed to call the `execute()` precompile
+	pub inbound_contract_address: H160,
+
+	/// Address of the contract used to send messages to axelar.
+	pub outbound_contract_address: H160,
+
+	/// Configuration for specific domains.
 	pub domain: DomainConfig,
 }
 
@@ -84,17 +95,8 @@ pub struct EvmConfig {
 	/// Associated chain id
 	pub chain_id: EVMChainId,
 
-	/// The address of the contract deployed in our EVM.
-	pub target_contract_address: H160,
-
-	/// The `BlakeTwo256` hash of the target contract code.
-	///
-	/// This is used during router initialization to ensure that the correct
-	/// contract code is used.
-	pub target_contract_hash: H256,
-
 	/// The values used when executing the EVM call.
-	pub fee_values: FeeValues,
+	pub outbound_fee_values: FeeValues,
 }
 
 /// The FeeValues holds all information related to the transaction costs.
@@ -114,7 +116,10 @@ pub struct FeeValues {
 pub mod pallet {
 	use super::*;
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	#[pallet::pallet]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -128,7 +133,7 @@ pub mod pallet {
 		/// The target of the messages coming from other chains
 		type Receiver: MessageReceiver<
 			Middleware = Self::Middleware,
-			Origin = DomainAddress,
+			Origin = Domain,
 			Message = Vec<u8>,
 		>;
 
@@ -137,9 +142,6 @@ pub mod pallet {
 
 		/// The target of the messages coming from this chain
 		type Transactor: EthereumTransactor;
-
-		/// Checker to ensure an evm account code is registered
-		type EvmAccountCodeChecker: PreConditions<(H160, H256), Result = bool>;
 	}
 
 	#[pallet::storage]
@@ -163,7 +165,7 @@ pub mod pallet {
 		RouterConfigurationNotFound,
 
 		/// Emit when the evm account code is not registered
-		ContractCodeMismatch,
+		AccountCodeMismatch,
 
 		/// Emit when the source chain is too big
 		SourceChainTooLong,
@@ -172,7 +174,10 @@ pub mod pallet {
 		InvalidSourceAddress,
 
 		/// Emit when a message is received from a non LP caller
-		ContractCallerMismatch,
+		InboundContractMismatch,
+
+		/// Emit when a message is received from a non configured source address
+		SourceAddressMismatch,
 	}
 
 	#[pallet::call]
@@ -188,14 +193,6 @@ pub mod pallet {
 
 			match &config.domain {
 				DomainConfig::Evm(evm_config) => {
-					ensure!(
-						T::EvmAccountCodeChecker::check((
-							evm_config.target_contract_address,
-							evm_config.target_contract_hash,
-						)),
-						Error::<T>::ContractCodeMismatch
-					);
-
 					ChainNameById::<T>::insert(
 						AxelarId::Evm(evm_config.chain_id),
 						chain_name.clone(),
@@ -230,18 +227,24 @@ pub mod pallet {
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
 			ensure!(
-				caller == config.liquidity_pools_contract_address,
-				Error::<T>::ContractCallerMismatch,
+				caller == config.inbound_contract_address,
+				Error::<T>::InboundContractMismatch,
 			);
 
 			match config.domain {
 				DomainConfig::Evm(EvmConfig { chain_id, .. }) => {
-					let source_address_bytes = decode_var_source::<EVM_ADDRESS_LEN>(source_address)
-						.ok_or(Error::<T>::InvalidSourceAddress)?;
+					let source_address: H160 = decode_var_source::<EVM_ADDRESS_LEN>(source_address)
+						.ok_or(Error::<T>::InvalidSourceAddress)?
+						.into();
+
+					ensure!(
+						source_address == config.app_contract_address,
+						Error::<T>::SourceAddressMismatch
+					);
 
 					T::Receiver::receive(
 						AxelarId::Evm(chain_id).into(),
-						DomainAddress::Evm(chain_id, source_address_bytes.into()),
+						Domain::Evm(chain_id),
 						payload.to_vec(),
 					)
 				}
@@ -330,26 +333,24 @@ pub mod pallet {
 			let config = Configuration::<T>::get(&chain_name)
 				.ok_or(Error::<T>::RouterConfigurationNotFound)?;
 
-			match config.domain {
-				DomainConfig::Evm(evm_config) => {
-					let message = wrap_into_axelar_msg(
-						message,
-						chain_name.into_inner(),
-						config.liquidity_pools_contract_address,
-					)
-					.map_err(DispatchError::Other)?;
+			let axelar_message = wrap_into_axelar_msg(
+				message,
+				chain_name.into_inner(),
+				config.app_contract_address,
+			)
+			.map_err(DispatchError::Other)?;
 
-					T::Transactor::call(
-						origin.h160(),
-						evm_config.target_contract_address,
-						message.as_slice(),
-						evm_config.fee_values.value,
-						evm_config.fee_values.gas_price,
-						evm_config.fee_values.gas_limit,
-					)
-					.map(|_| ())
-					.map_err(|e| e.error)
-				}
+			match config.domain {
+				DomainConfig::Evm(evm_config) => T::Transactor::call(
+					origin.h160(),
+					config.outbound_contract_address,
+					axelar_message.as_slice(),
+					evm_config.outbound_fee_values.value,
+					evm_config.outbound_fee_values.gas_price,
+					evm_config.outbound_fee_values.gas_limit,
+				)
+				.map(|_| ())
+				.map_err(|e| e.error),
 			}
 		}
 	}

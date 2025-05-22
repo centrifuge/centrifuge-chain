@@ -27,6 +27,7 @@ pub type Ratio = FixedU128;
 pub type CurrencyId = cfg_types::tokens::CurrencyId;
 
 pub const USDC_DECIMALS: u32 = 6;
+pub const DIFF_DEC_USDC_DECIMALS: u32 = 18;
 
 pub const USDC_1: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const USDC_2: CurrencyId = CurrencyId::ForeignAsset(2);
@@ -37,11 +38,12 @@ pub const USDC_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
 pub const USDC_LOCAL: CurrencyId = CurrencyId::LocalAsset(USDC_LOCAL_ASSET_ID);
 
 pub const HAS_UNREGISTERED_LOCAL_ASSET: CurrencyId = CurrencyId::ForeignAsset(6);
-pub const USDC_WRONG_DECIMALS: CurrencyId = CurrencyId::ForeignAsset(7);
+pub const USDC_DIFF_DECIMALS: CurrencyId = CurrencyId::ForeignAsset(7);
 pub const UNREGISTERED_LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(2u32);
 
 pub const USER_1: AccountId = 1;
 pub const USER_2: AccountId = 2;
+pub const USER_3: AccountId = 3;
 pub const USER_NON: AccountId = 4;
 pub const USER_UNREGISTERED: AccountId = 5;
 pub const USER_LOCAL: AccountId = 6;
@@ -50,7 +52,12 @@ pub const fn token(amount: Balance) -> Balance {
 	amount * (10 as Balance).pow(USDC_DECIMALS)
 }
 
+pub const fn token_with(amount: Balance, decimals: u32) -> Balance {
+	amount * (10 as Balance).pow(decimals)
+}
+
 pub const INITIAL_AMOUNT: Balance = token(1000);
+pub const INITIAL_DIFF_DEC_USDC_AMOUNT: Balance = token_with(1000, DIFF_DEC_USDC_DECIMALS);
 
 frame_support::construct_runtime!(
 	pub enum Runtime {
@@ -150,6 +157,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(USER_1, USDC_1, INITIAL_AMOUNT),
 			(USER_2, USDC_2, INITIAL_AMOUNT),
 			(USER_NON, NON_USDC, INITIAL_AMOUNT),
+			(USER_3, USDC_DIFF_DECIMALS, INITIAL_DIFF_DEC_USDC_AMOUNT),
 			(USER_UNREGISTERED, UNREGISTERED_ASSET, INITIAL_AMOUNT),
 			(USER_LOCAL, USDC_LOCAL, INITIAL_AMOUNT),
 		],
@@ -157,15 +165,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 
-	for currency_id in [USDC_1, USDC_2, USDC_LOCAL, NON_USDC].into_iter() {
+	for currency_id in [USDC_1, USDC_2, USDC_LOCAL, NON_USDC, USDC_DIFF_DECIMALS].into_iter() {
 		let local_representation = if currency_id == USDC_LOCAL || currency_id == NON_USDC {
 			None
 		} else {
 			Some(USDC_LOCAL_ASSET_ID)
 		};
 
-		let decimals = if currency_id == NON_USDC {
-			USDC_DECIMALS + 1
+		let decimals = if currency_id == NON_USDC || currency_id == USDC_DIFF_DECIMALS {
+			DIFF_DEC_USDC_DECIMALS
 		} else {
 			USDC_DECIMALS
 		};
@@ -194,8 +202,8 @@ pub fn new_test_ext_invalid_assets() -> sp_io::TestExternalities {
 				asset_metadata(6, Some(UNREGISTERED_LOCAL_ASSET_ID)),
 			),
 			(
-				USDC_WRONG_DECIMALS,
-				asset_metadata(5, Some(USDC_LOCAL_ASSET_ID)),
+				USDC_DIFF_DECIMALS,
+				asset_metadata(DIFF_DEC_USDC_DECIMALS, Some(USDC_LOCAL_ASSET_ID)),
 			),
 			(USDC_LOCAL, asset_metadata(6, None)),
 		],

@@ -1,10 +1,9 @@
 use cfg_traits::liquidity_pools::MessageQueue;
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::Domain;
 use frame_support::{assert_ok, traits::OriginTrait};
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::message::GatewayMessage;
 use runtime_common::routing::{AxelarId, RouterId};
-use sp_core::H160;
 use sp_runtime::{traits::One, BoundedVec};
 
 use crate::{
@@ -29,7 +28,7 @@ fn queue_and_dequeue_inbound<T: Runtime>() {
 
 		let nonce = T::MessageNonce::one();
 		let message = GatewayMessage::Inbound {
-			domain_address: DomainAddress::Evm(1, H160::repeat_byte(2)),
+			domain: Domain::Evm(1),
 			router_id: DEFAULT_ROUTER_ID,
 			message: Message::Invalid,
 		};

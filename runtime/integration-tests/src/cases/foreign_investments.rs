@@ -32,7 +32,7 @@ use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{
 	foreign_investments::IdentityPoolCurrencyConverter, routing::RouterId, xcm::general_key,
 };
-use sp_core::{Get, H160};
+use sp_core::Get;
 use sp_runtime::{
 	traits::{AccountIdConversion, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion,
@@ -49,13 +49,6 @@ use crate::{
 	utils::{accounts::Keyring, genesis, genesis::Genesis, orml_asset_registry},
 };
 
-// ------------------
-//       NOTE
-// This file only contains foreign investments tests, but the name must remain
-// as it is until feature lpv2 is merged to avoid conflicts:
-// (https://github.com/centrifuge/centrifuge-chain/pull/1909)
-// ------------------
-
 /// The AUSD asset id
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
 /// The USDT asset id
@@ -71,11 +64,7 @@ pub const POOL_ADMIN: Keyring = Keyring::Bob;
 pub const POOL_ID: PoolId = 42;
 pub const CHAIN_ID: u64 = 1284;
 pub const DEFAULT_VALIDITY: Seconds = 2555583502;
-pub const DOMAIN_MOONBEAM: Domain = Domain::Evm(CHAIN_ID);
-pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
-	DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(99));
-pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
-	DomainAddress::Evm(CHAIN_ID, H160::repeat_byte(0));
+pub const EVM_DOMAIN: Domain = Domain::Evm(CHAIN_ID);
 pub const DEFAULT_ROUTER_ID: RouterId = RouterId::Axelar(AxelarId::Evm(CHAIN_ID));
 
 pub type LiquidityPoolMessage = Message;
@@ -340,7 +329,8 @@ pub mod utils {
 		assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 			RawOrigin::Signed(trader.clone()).into(),
 			swap_order_id,
-			amount_foreign
+			amount_foreign,
+			amount_pool,
 		));
 	}
 
@@ -374,10 +364,7 @@ pub mod utils {
 		// investment after the swap was fulfilled
 		if currency_id == pool_currency {
 			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::handle(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg.clone()
-				),
+				pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg.clone()),
 				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 		}
@@ -405,10 +392,7 @@ pub mod utils {
 			.expect("Should not overflow when incrementing amount");
 
 		// Execute byte message
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-			DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-			msg
-		));
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 		if currency_id == pool_currency {
 			// Verify investment was transferred into investment account
@@ -448,7 +432,7 @@ pub mod utils {
 		// are transferred from this account instead of minting
 		assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 			default_investment_id::<T>().into(),
-			&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
+			&EVM_DOMAIN.into_account(),
 			amount
 		));
 
@@ -476,10 +460,7 @@ pub mod utils {
 
 		// Should fail if investor does not have investor role yet
 		assert_noop!(
-			pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg.clone()
-			),
+			pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg.clone()),
 			DispatchError::Other("Account does not have the TrancheInvestor permission.")
 		);
 
@@ -490,10 +471,7 @@ pub mod utils {
 			PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
 		);
 
-		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-			DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-			msg
-		));
+		assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 		// Verify redemption was transferred into investment account
 		assert_eq!(
@@ -505,13 +483,6 @@ pub mod utils {
 		);
 		assert_eq!(
 			orml_tokens::Pallet::<T>::balance(default_investment_id::<T>().into(), &investor),
-			0
-		);
-		assert_eq!(
-			orml_tokens::Pallet::<T>::balance(
-				default_investment_id::<T>().into(),
-				&DEFAULT_OTHER_DOMAIN_ADDRESS.account(),
-			),
 			0
 		);
 		assert_eq!(
@@ -686,10 +657,7 @@ mod same_currencies {
 				currency: general_currency_index::<T>(currency_id),
 				amount,
 			};
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 		});
 	}
 
@@ -732,19 +700,13 @@ mod same_currencies {
 			// Expect failure if transferability is disabled since this is required for
 			// preparing the `FulfilledCancelDepositRequest` message.
 			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::handle(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg.clone()
-				),
+				pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg.clone()),
 				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 			enable_liquidity_pool_transferability::<T>(currency_id);
 
 			// Execute byte message
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 			// Verify investment was decreased into investment account
 			assert_eq!(
@@ -824,20 +786,14 @@ mod same_currencies {
 			// Expect failure if transferability is disabled since this is required for
 			// preparing the `FulfilledCancelDepositRequest` message.
 			assert_noop!(
-				pallet_liquidity_pools::Pallet::<T>::handle(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					msg.clone()
-				),
+				pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg.clone()),
 				pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
 			);
 
 			enable_liquidity_pool_transferability::<T>(currency_id);
 
 			// Execute byte message
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 			// Verify investment was entirely drained from investment account
 			assert_eq!(
@@ -888,7 +844,7 @@ mod same_currencies {
 			let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
-			let sending_domain_locator = DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
+			let sending_domain_locator = EVM_DOMAIN.into_account();
 			enable_liquidity_pool_transferability::<T>(currency_id);
 
 			// Create new pool
@@ -1029,7 +985,7 @@ mod same_currencies {
 			let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
-			let sending_domain_locator = DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
+			let sending_domain_locator = EVM_DOMAIN.into_account();
 			create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
 			do_initial_increase_investment::<T>(
 				pool_id,
@@ -1267,7 +1223,7 @@ mod same_currencies {
 			// Increasing again should just bump redeeming amount
 			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 				default_investment_id::<T>().into(),
-				&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
+				&EVM_DOMAIN.into_account(),
 				amount
 			));
 			let msg = LiquidityPoolMessage::RedeemRequest {
@@ -1277,10 +1233,7 @@ mod same_currencies {
 				currency: general_currency_index::<T>(currency_id),
 				amount,
 			};
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 		});
 	}
 
@@ -1300,7 +1253,7 @@ mod same_currencies {
 			let investor = DomainAddress::Evm(CHAIN_ID, Keyring::Bob.in_eth()).account();
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
-			let sending_domain_locator = DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
+			let sending_domain_locator = EVM_DOMAIN.into_account();
 
 			// Create new pool
 			create_currency_pool::<T>(pool_id, currency_id, currency_decimals.into());
@@ -1328,10 +1281,7 @@ mod same_currencies {
 			};
 
 			// Execute byte message
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 			// Verify investment was decreased into investment account
 			assert_eq!(
@@ -1615,10 +1565,7 @@ mod same_currencies {
 						amount: AUSD_ED,
 					};
 					assert_noop!(
-						pallet_liquidity_pools::Pallet::<T>::handle(
-							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-							increase_msg
-						),
+						pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, increase_msg),
 						pallet_investments::Error::<T>::CollectRequired
 					);
 
@@ -1630,10 +1577,7 @@ mod same_currencies {
 						currency: general_currency_index::<T>(currency_id),
 					};
 					assert_noop!(
-						pallet_liquidity_pools::Pallet::<T>::handle(
-							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-							decrease_msg
-						),
+						pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, decrease_msg),
 						pallet_investments::Error::<T>::CollectRequired
 					);
 				});
@@ -1667,7 +1611,7 @@ mod same_currencies {
 					// Mint more into DomainLocator required for subsequent invest attempt
 					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 						default_investment_id::<T>().into(),
-						&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
+						&EVM_DOMAIN.into_account(),
 						1,
 					));
 
@@ -1699,10 +1643,7 @@ mod same_currencies {
 						amount: 1,
 					};
 					assert_noop!(
-						pallet_liquidity_pools::Pallet::<T>::handle(
-							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-							increase_msg
-						),
+						pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, increase_msg),
 						pallet_investments::Error::<T>::CollectRequired
 					);
 
@@ -1714,10 +1655,7 @@ mod same_currencies {
 						currency: general_currency_index::<T>(currency_id),
 					};
 					assert_noop!(
-						pallet_liquidity_pools::Pallet::<T>::handle(
-							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-							decrease_msg
-						),
+						pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, decrease_msg),
 						pallet_investments::Error::<T>::CollectRequired
 					);
 				});
@@ -1755,7 +1693,7 @@ mod same_currencies {
 					enable_usdt_trading::<T>(pool_currency, amount, true, true, true);
 					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 						default_investment_id::<T>().into(),
-						&DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account(),
+						&EVM_DOMAIN.into_account(),
 						amount,
 					));
 
@@ -1769,10 +1707,7 @@ mod same_currencies {
 						currency: general_currency_index::<T>(foreign_currency),
 					};
 					assert_noop!(
-						pallet_liquidity_pools::Pallet::<T>::handle(
-							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-							decrease_msg
-						),
+						pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, decrease_msg),
 						pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 					);
 				});
@@ -1803,7 +1738,7 @@ mod mismatching_currencies {
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
 			let invest_amount_pool_denominated: u128 = 6 * decimals(18);
-			let sending_domain_locator = DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain().into_account();
+			let sending_domain_locator = EVM_DOMAIN.into_account();
 			let trader: AccountId = Keyring::Alice.into();
 			create_currency_pool::<T>(pool_id, pool_currency, pool_currency_decimals.into());
 
@@ -1840,10 +1775,7 @@ mod mismatching_currencies {
 				currency: general_currency_index::<T>(foreign_currency),
 				amount: invest_amount_foreign_denominated,
 			};
-			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg
-			));
+			assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(EVM_DOMAIN, msg));
 
 			// Process 100% of investment at 50% rate (1 pool currency = 2 tranche tokens)
 			assert_ok!(pallet_investments::Pallet::<T>::process_invest_orders(
@@ -1974,7 +1906,7 @@ mod mismatching_currencies {
 			// to foreign
 			assert!(!outbound_message_dispatched::<T>(|| {
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+					EVM_DOMAIN,
 					msg.clone()
 				));
 			}));
@@ -1983,7 +1915,8 @@ mod mismatching_currencies {
 				assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 					RawOrigin::Signed(trader.clone()).into(),
 					default_order_id::<T>(&investor),
-					invest_amount_pool_denominated / 4
+					invest_amount_pool_denominated / 4,
+					invest_amount_foreign_denominated / 4,
 				));
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
@@ -2005,7 +1938,8 @@ mod mismatching_currencies {
 			assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 				RawOrigin::Signed(trader.clone()).into(),
 				swap_order_id,
-				invest_amount_pool_denominated / 4 * 3
+				invest_amount_pool_denominated / 4 * 3,
+				invest_amount_foreign_denominated / 4 * 3
 			));
 			assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 				e.event
@@ -2119,15 +2053,15 @@ mod mismatching_currencies {
 				};
 
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::handle(
-					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-					cancel_msg
+					EVM_DOMAIN, cancel_msg
 				));
 			}));
 
 			assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 				RawOrigin::Signed(trader.clone()).into(),
 				default_order_id::<T>(&investor),
-				invest_amount_pool_denominated / 2
+				invest_amount_pool_denominated / 2,
+				invest_amount_foreign_denominated / 2
 			));
 
 			let nonce = MessageNonceStore::<T>::get();

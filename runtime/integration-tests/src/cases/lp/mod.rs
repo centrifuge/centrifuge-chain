@@ -31,7 +31,7 @@ use pallet_evm::FeeCalculator;
 use runtime_common::{oracle::Feeder, routing::RouterId};
 pub use setup_lp::*;
 use sp_core::{bounded_vec::BoundedVec, Get};
-use sp_runtime::traits::{BlakeTwo256, Hash, One};
+use sp_runtime::traits::One;
 
 use crate::{
 	cases::lp::utils::{pool_a_tranche_1_id, pool_b_tranche_1_id, pool_b_tranche_2_id, Decoder},
@@ -49,6 +49,7 @@ use crate::{
 	},
 };
 
+pub mod cfg_migration;
 pub mod investments;
 pub mod pool_management;
 pub mod setup_evm;
@@ -83,7 +84,7 @@ const INVESTOR_VALIDITY: Seconds = Seconds::MAX;
 pub const EVM_LP_INSTANCE: [u8; 20] = hex!("1111111111111111111111111111111111111111");
 
 /// The faked domain name the LP messages are coming from and going to.
-pub const EVM_DOMAIN_STR: &str = "TestDomain";
+pub const EVM_DOMAIN_STR: &str = "Ethereum";
 
 /// The test domain ChainId for the tests.
 pub const EVM_DOMAIN_CHAIN_ID: u64 = 1;
@@ -106,6 +107,9 @@ pub const LOCAL_RESTRICTION_MANAGER_ADDRESS: [u8; 20] =
 	hex_literal::hex!("193356f6df34af00288f98bbb34d6ec98512ed32");
 
 pub mod contracts {
+	pub const ERC_20: &str = "ERC20";
+
+	pub const IOU_CFG: &str = "IouCfg";
 	pub const ROOT: &str = "Root";
 	pub const ESCROW: &str = "Escrow";
 	pub const POOL_MANAGER: &str = "PoolManager";
@@ -124,6 +128,9 @@ pub mod contracts {
 }
 
 pub mod names {
+	pub const NEW_CFG: &str = "NewCfg";
+	pub const W_CFG: &str = "WCFG";
+	pub const IOU_CFG: &str = "IouCfg";
 	pub const ROOT: &str = "root";
 	pub const ESCROW: &str = "escrow";
 	pub const POOL_MANAGER: &str = "pool_manager";

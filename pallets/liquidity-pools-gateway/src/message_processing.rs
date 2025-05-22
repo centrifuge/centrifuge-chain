@@ -1,7 +1,7 @@
 use cfg_traits::liquidity_pools::{
 	InboundMessageHandler, LpMessageHash, LpMessageProof, MessageHash, MessageQueue, RouterProvider,
 };
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::Domain;
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -27,8 +27,8 @@ pub struct MessageEntry<T: Config> {
 	/// The sender of the inbound message.
 	///
 	/// NOTE - the `RouterProvider` ensures that we cannot have the same message
-	/// entry, for the same message, for different domain addresses.
-	pub domain_address: DomainAddress,
+	/// entry, for the same message, for different domain.
+	pub domain: Domain,
 
 	/// The LP message.
 	pub message: T::Message,
@@ -90,7 +90,7 @@ impl<T: Config> InboundEntry<T> {
 	pub fn create(
 		message: T::Message,
 		session_id: T::SessionId,
-		domain_address: DomainAddress,
+		domain: Domain,
 		expected_proof_count: u32,
 	) -> Self {
 		if message.is_proof_message() {
@@ -101,7 +101,7 @@ impl<T: Config> InboundEntry<T> {
 		} else {
 			InboundEntry::Message(MessageEntry {
 				session_id,
-				domain_address,
+				domain,
 				message,
 				expected_proof_count,
 			})
@@ -321,7 +321,7 @@ impl<T: Config> Pallet<T> {
 		router_ids: &[T::RouterId],
 		session_id: T::SessionId,
 		expected_proof_count: u32,
-		domain_address: DomainAddress,
+		domain: Domain,
 	) -> DispatchResult {
 		let mut message = None;
 		let mut votes = 0;
@@ -352,12 +352,12 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if let Some(msg) = message {
-			T::InboundMessageHandler::handle(domain_address.clone(), msg)?;
+			T::InboundMessageHandler::handle(domain, msg)?;
 
 			Self::execute_post_voting_dispatch(message_hash, router_ids, expected_proof_count)?;
 
 			Self::deposit_event(Event::<T>::InboundMessageExecuted {
-				domain_address,
+				domain,
 				message_hash,
 			})
 		}
@@ -401,58 +401,49 @@ impl<T: Config> Pallet<T> {
 	/// Iterates over a batch of messages and checks if the requirements for
 	/// processing each message are met.
 	pub(crate) fn process_inbound_message(
-		domain_address: DomainAddress,
+		domain: Domain,
 		message: T::Message,
 		router_id: T::RouterId,
 	) -> DispatchResult {
-		let router_ids = Self::get_router_ids_for_domain(domain_address.domain())?;
+		let router_ids = Self::get_router_ids_for_domain(domain)?;
 		let session_id = SessionIdStore::<T>::get();
 		let expected_proof_count = Self::get_expected_proof_count(&router_ids)?;
 		let message_hash = message.get_message_hash();
-		let inbound_entry: InboundEntry<T> = InboundEntry::create(
-			message.clone(),
-			session_id,
-			domain_address.clone(),
-			expected_proof_count,
-		);
+		let inbound_entry: InboundEntry<T> =
+			InboundEntry::create(message.clone(), session_id, domain, expected_proof_count);
 
 		inbound_entry.validate(&router_ids, &router_id.clone())?;
 
 		Self::upsert_pending_entry(message_hash, &router_id, inbound_entry)?;
 
-		Self::deposit_processing_event(
-			domain_address.clone(),
-			message,
-			message_hash,
-			router_id.clone(),
-		);
+		Self::deposit_processing_event(domain, message, message_hash, router_id.clone());
 
 		Self::execute_if_requirements_are_met(
 			message_hash,
 			&router_ids,
 			session_id,
 			expected_proof_count,
-			domain_address.clone(),
+			domain,
 		)?;
 
 		Ok(())
 	}
 
 	fn deposit_processing_event(
-		domain_address: DomainAddress,
+		domain: Domain,
 		message: T::Message,
 		message_hash: MessageHash,
 		router_id: T::RouterId,
 	) {
 		if message.is_proof_message() {
 			Self::deposit_event(Event::<T>::InboundProofProcessed {
-				domain_address,
+				domain,
 				message_hash,
 				router_id,
 			})
 		} else {
 			Self::deposit_event(Event::<T>::InboundMessageProcessed {
-				domain_address,
+				domain,
 				message_hash,
 				router_id,
 			})

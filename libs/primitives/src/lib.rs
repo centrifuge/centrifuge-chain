@@ -292,6 +292,10 @@ pub mod constants {
 	/// Defensive weight for processing LP messages;
 	pub const LP_DEFENSIVE_WEIGHT: Weight =
 		Weight::from_parts(LP_DEFENSIVE_WEIGHT_REF_TIME, LP_DEFENSIVE_WEIGHT_POV);
+
+	/// The delay of permissions which ensures an investor can still redeem
+	/// before being removed.
+	pub const PERMISSION_DELAY: u64 = 7 * SECONDS_PER_DAY;
 }
 
 /// Listing of parachains we integrate with.

@@ -20,8 +20,6 @@ pub const FORWARDER_DOMAIN: Domain = Domain::Evm(FORWARDER_CHAIN_ID);
 const FORWARDER_ADAPTER_ADDRESS: H160 = H160::repeat_byte(1);
 pub const FORWARDER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::Evm(FORWARDER_CHAIN_ID, FORWARDER_ADAPTER_ADDRESS);
-pub const SOURCE_DOMAIN_ADDRESS: DomainAddress =
-	DomainAddress::Evm(SOURCE_CHAIN_ID, FORWARD_CONTRACT);
 pub const FORWARD_CONTRACT: H160 = H160::repeat_byte(2);
 pub const ROUTER_ID: RouterId = 1u32;
 pub const ERROR_NESTING: DispatchError = DispatchError::Other("Nesting forward msg not allowed");
@@ -57,7 +55,8 @@ impl LpMessageForwarded for Message {
 frame_support::construct_runtime!(
 	pub enum Runtime {
 		System: frame_system,
-		MockSenderReceiver: cfg_mocks::router_message::pallet,
+		MockReceiver: cfg_mocks::router_message::pallet::<Instance1>,
+		MockSender: cfg_mocks::router_message::pallet::<Instance2>,
 		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder,
 	}
 );
@@ -70,7 +69,15 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
-impl cfg_mocks::router_message::pallet::Config for Runtime {
+type Instance1 = cfg_mocks::router_message::pallet::Instance1;
+impl cfg_mocks::router_message::pallet::Config<Instance1> for Runtime {
+	type Message = Message;
+	type Middleware = RouterId;
+	type Origin = Domain;
+}
+
+type Instance2 = cfg_mocks::router_message::pallet::Instance2;
+impl cfg_mocks::router_message::pallet::Config<Instance2> for Runtime {
 	type Message = Message;
 	type Middleware = RouterId;
 	type Origin = DomainAddress;
@@ -79,8 +86,8 @@ impl cfg_mocks::router_message::pallet::Config for Runtime {
 impl pallet_liquidity_pools_forwarder::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type Message = Message;
-	type MessageReceiver = MockSenderReceiver;
-	type MessageSender = MockSenderReceiver;
+	type MessageReceiver = MockReceiver;
+	type MessageSender = MockSender;
 	type RouterId = RouterId;
 	type RuntimeEvent = RuntimeEvent;
 }

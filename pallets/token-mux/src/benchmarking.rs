@@ -57,11 +57,18 @@ fn init_mocks() {
 		})
 	});
 
-	MockTokenSwaps::mock_fill_order(move |_, order_id, amount_out| {
+	MockTokenSwaps::mock_fill_order_no_slip_prot(move |_, order_id, amount_out| {
 		assert_eq!(order_id, ORDER_ID);
 		assert_eq!(amount_out, AMOUNT);
 
-		mock_swap(FOREIGN_CURRENCY, &who, LOCAL_CURRENCY, &TokenMux::account());
+		mock_swap(
+			FOREIGN_CURRENCY,
+			&who,
+			LOCAL_CURRENCY,
+			&TokenMux::account(),
+			AMOUNT,
+			AMOUNT,
+		);
 
 		Ok(())
 	});

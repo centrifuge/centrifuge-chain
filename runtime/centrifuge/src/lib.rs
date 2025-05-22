@@ -40,9 +40,7 @@ use cfg_types::{
 	investments::InvestmentPortfolio,
 	locations::RestrictedTransferLocation,
 	oracles::OracleKey,
-	permissions::{
-		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
-	},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolNav,
 	time::TimeProvider,
 	tokens::{
@@ -117,10 +115,7 @@ use runtime_common::{
 	},
 	permissions::{IsUnfrozenTrancheInvestor, PoolAdminCheck},
 	rewards::SingleCurrencyMovement,
-	routing::{
-		EvmAccountCodeChecker, LPGatewayRouterProvider, MessageSerializer, RouterDispatcher,
-		RouterId,
-	},
+	routing::{LPGatewayRouterProvider, MessageSerializer, RouterDispatcher, RouterId},
 	transfer_filter::{PreLpTransfer, PreNativeTransfer},
 	xcm::AccountIdToLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED,
@@ -167,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1403,
+	spec_version: 1505,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -402,16 +397,17 @@ where
 			amount: _amount,
 		} = details;
 
+		let now = <Timestamp as UnixTime>::now().as_secs();
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				) && P::has(
 					PermissionScope::Pool(pool_id),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, now)),
 				)
 			}
 			_ => true,
@@ -453,8 +449,10 @@ impl orml_tokens::Config for Runtime {
 impl orml_asset_registry::module::Config for Runtime {
 	type AssetId = CurrencyId;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
-	type AuthorityOrigin =
-		asset_registry::AuthorityOrigin<RuntimeOrigin, EnsureRootOr<HalfOfCouncil>>;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<
+		RuntimeOrigin,
+		EnsureAccountOrRootOr<LpAdminAccount, HalfOfCouncil>,
+	>;
 	type Balance = Balance;
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
@@ -907,14 +905,18 @@ const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
-	type ChangeMembers = Council;
+	// NOTE: Next RU will remove this pallet. Removing the coupling to the Council
+	// already makes it dormant
+	type ChangeMembers = ();
 	type Currency = Balances;
 	type CurrencyToVote = U128CurrencyToVote;
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
 	/// Number of runners_up to keep.
 	type DesiredRunnersUp = DesiredRunnersUp;
-	type InitializeMembers = Council;
+	// NOTE: Next RU will remove this pallet. Removing the coupling to the Council
+	// already makes it dormant
+	type InitializeMembers = ();
 	type KickedMember = Treasury;
 	type LoserCandidate = Treasury;
 	type MaxCandidates = MaxCandidates;
@@ -1512,7 +1514,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = EnsureRootOr<HalfOfCouncil>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolFees = PoolFees;
@@ -1538,7 +1540,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = PERMISSION_DELAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 10_000;
@@ -1620,6 +1622,7 @@ impl pallet_permissions::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
+	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
@@ -1635,7 +1638,7 @@ impl pallet_investments::Config for Runtime {
 	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
-	type PreConditions = IsUnfrozenTrancheInvestor<Permissions, Timestamp>;
+	type PreConditions = IsUnfrozenTrancheInvestor<Permissions>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
@@ -1846,15 +1849,6 @@ parameter_types! {
 	pub const MaxRouterCount: u32 = 8;
 }
 
-impl pallet_liquidity_pools_forwarder::Config for Runtime {
-	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type Message = pallet_liquidity_pools::Message;
-	type MessageReceiver = LiquidityPoolsGateway;
-	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
-	type RouterId = RouterId;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 parameter_types! {
 	// A temporary admin account for the LP logic
 	// This is a multi-sig controlled pure proxy on mainnet
@@ -1878,7 +1872,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxRouterCount = MaxRouterCount;
 	type Message = pallet_liquidity_pools::Message;
 	type MessageQueue = LiquidityPoolsGatewayQueue;
-	type MessageSender = LiquidityPoolsForwarder;
+	type MessageSender = MessageSerializer<RouterDispatcher<Runtime>, ()>;
 	type RouterId = RouterId;
 	type RouterProvider = LPGatewayRouterProvider;
 	type RuntimeEvent = RuntimeEvent;
@@ -2000,11 +1994,25 @@ impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl pallet_axelar_router::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type EvmAccountCodeChecker = EvmAccountCodeChecker<Runtime>;
 	type Middleware = RouterId;
-	type Receiver = MessageSerializer<RouterDispatcher<Runtime>, LiquidityPoolsForwarder>;
+	type Receiver = MessageSerializer<(), LiquidityPoolsGateway>;
 	type RuntimeEvent = RuntimeEvent;
 	type Transactor = EthereumTransaction;
+}
+
+parameter_types! {
+	pub const NativeCfg: CurrencyId = CurrencyId::Native;
+	pub const IouCfg: CurrencyId = cfg_types::tokens::usdc::CURRENCY_ID_IOU_CFG;
+	pub const CfgLockAccount: PalletId = cfg_types::ids::CFG_LOCK_ID;
+}
+
+impl pallet_cfg_migration::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type CfgLockAccount = CfgLockAccount;
+	type IouCfg = IouCfg;
+	type NativeCfg = NativeCfg;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 /// Block type as expected by this runtime.
@@ -2041,7 +2049,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1403,
+	migrations::UpgradeCentrifuge1505,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2106,7 +2114,7 @@ construct_runtime!(
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 114,
 		LiquidityPoolsGatewayQueue: pallet_liquidity_pools_gateway_queue::{Pallet, Call, Storage, Event<T>} = 115,
-		LiquidityPoolsForwarder: pallet_liquidity_pools_forwarder::{Pallet, Call, Storage, Event<T>} = 116,
+		CfgMigration: pallet_cfg_migration::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2130,7 +2138,8 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config<T>, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
-		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 165,
+		// Removed: LiquidityPoolsAxelarGateway = 165
+		AxelarRouter: pallet_axelar_router::{Pallet, Call, Storage, Event<T>} = 166,
 
 		// Synced pallets across all runtimes - Range: 180-240
 		// WHY: * integrations like fireblocks will need to know the index in the enum
@@ -2749,7 +2758,6 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_collective, Council]
 		[pallet_democracy, Democracy]
-		[pallet_elections_phragmen, Elections]
 		[pallet_identity, Identity]
 		[pallet_vesting, Vesting]
 		[pallet_preimage, Preimage]

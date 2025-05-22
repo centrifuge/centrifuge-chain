@@ -72,6 +72,13 @@ pub mod pallet {
 		}
 
 		pub fn mock_fill_order(
+			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut, T::BalanceIn) -> DispatchResult
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+		}
+
+		pub fn mock_fill_order_no_slip_prot(
 			f: impl Fn(T::AccountId, T::OrderId, T::BalanceOut) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
@@ -128,7 +135,20 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn fill_order(a: T::AccountId, b: Self::OrderId, c: Self::BalanceOut) -> DispatchResult {
+		fn fill_order(
+			a: T::AccountId,
+			b: Self::OrderId,
+			c: Self::BalanceOut,
+			d: Self::BalanceIn,
+		) -> DispatchResult {
+			execute_call!((a, b, c, d))
+		}
+
+		fn fill_order_no_slip_prot(
+			a: T::AccountId,
+			b: Self::OrderId,
+			c: Self::BalanceOut,
+		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

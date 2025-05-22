@@ -375,16 +375,11 @@ where
 	>,
 {
 	fn is_local_representation_of(&self, variant_currency: &Self) -> Result<bool, DispatchError> {
-		let meta_local = AssetInspect::metadata(self).ok_or(DispatchError::CannotLookup)?;
+		let _meta_local = AssetInspect::metadata(self).ok_or(DispatchError::CannotLookup)?;
 		let meta_variant =
 			AssetInspect::metadata(variant_currency).ok_or(DispatchError::CannotLookup)?;
 
 		if let Some(local) = meta_variant.additional.local_representation {
-			frame_support::ensure!(
-				meta_local.decimals == meta_variant.decimals,
-				DispatchError::Other("Mismatching decimals")
-			);
-
 			Ok(self == &local.into())
 		} else {
 			Ok(false)
@@ -449,9 +444,12 @@ pub mod usdc {
 
 	pub const CURRENCY_ID_LP_CELO_WORMHOLE: CurrencyId = CurrencyId::ForeignAsset(100_004);
 	pub const CURRENCY_ID_LP_CELO: CurrencyId = CurrencyId::ForeignAsset(100_006);
+	pub const CURRENCY_ID_DAI: CurrencyId = CurrencyId::ForeignAsset(100_007);
+	pub const CURRENCY_ID_USDS: CurrencyId = CurrencyId::ForeignAsset(100_008);
+	pub const CURRENCY_ID_IOU_CFG: CurrencyId = CurrencyId::ForeignAsset(999_998);
 
-	pub const LOCAL_ASSET_ID: LocalAssetId = LocalAssetId(1u32);
-	pub const CURRENCY_ID_LOCAL: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID);
+	pub const LOCAL_ASSET_ID_USD: LocalAssetId = LocalAssetId(1u32);
+	pub const CURRENCY_ID_LOCAL_USD: CurrencyId = CurrencyId::LocalAsset(LOCAL_ASSET_ID_USD);
 
 	pub const CHAIN_ID_ETHEREUM_MAINNET: EVMChainId = 1;
 	pub const CHAIN_ID_ETH_GOERLI_TESTNET: EVMChainId = 5;
