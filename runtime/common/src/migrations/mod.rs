@@ -19,8 +19,6 @@ pub mod liquidity_pools_v2;
 pub mod nuke;
 pub mod permissions_v1;
 pub mod precompile_account_codes;
-pub mod restricted_location;
-pub mod technical_comittee;
 
 pub mod utils {
 	use frame_support::storage::unhashed;
