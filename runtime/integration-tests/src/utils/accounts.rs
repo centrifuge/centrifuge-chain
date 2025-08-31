@@ -49,7 +49,7 @@ impl Keyring {
 	}
 
 	/// Returns the Ethereum address.
-	/// The H160 retrived is NOT the local representation of that account in our
+	/// The H160 retrieved is NOT the local representation of that account in our
 	/// chain, it's the real address in ethereum.
 	pub fn in_eth(self) -> H160 {
 		let pair: ecdsa::Pair = self.into();

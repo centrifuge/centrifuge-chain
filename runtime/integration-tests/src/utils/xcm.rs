@@ -49,7 +49,7 @@ pub fn enable_para_to_sibling_communication<T: Runtime + FudgeSupport>(env: &mut
 	});
 
 	env.relay_state_mut(|| {
-		// Enable para -> sibling comunication though relay
+		// Enable para -> sibling communication though relay
 		assert_ok!(
 			polkadot_runtime_parachains::hrmp::Pallet::<RelayRuntime<T>>::force_open_hrmp_channel(
 				RawOrigin::Root.into(),

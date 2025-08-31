@@ -34,7 +34,7 @@ mod impls;
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage. Used as building block for #[test_runtimes] procedural macro.
 ///
-/// NOTE: Do not use it direclty, use `#[test_runtimes]` proc macro instead
+/// NOTE: Do not use it directly, use `#[test_runtimes]` proc macro instead
 #[macro_export]
 macro_rules! __test_for_runtimes {
 	( [ $($runtime_name:ident),* ], $test_name:ident $(, $ignore:meta)?) => {
