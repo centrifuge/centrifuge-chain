@@ -35,7 +35,7 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
 
       # sccache does not work inside the srtool container
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # 2.7
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # 2.7
         with:
           prefix-key: build
           shared-key: wasm
