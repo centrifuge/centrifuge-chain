@@ -13,6 +13,7 @@
 //! Centrifuge Runtime-Common Migrations
 
 pub mod asset_registry_local_usdc_dai_usds;
+pub mod consolidate_usdc;
 pub mod foreign_investments_v2;
 pub mod increase_storage_version;
 pub mod liquidity_pools_v2;

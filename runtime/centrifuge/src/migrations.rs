@@ -10,6 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use runtime_common::migrations::consolidate_usdc;
+
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1506 = ();
+pub type UpgradeCentrifuge1507 = (consolidate_usdc::Migration<crate::Runtime>,);
