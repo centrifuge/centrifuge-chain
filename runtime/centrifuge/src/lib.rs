@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1505,
+	spec_version: 1507,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -941,7 +941,7 @@ parameter_types! {
 	pub  LaunchPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_LAUNCH_PERIOD");
 	pub  VotingPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_VOTING_PERIOD");
 	pub  FastTrackVotingPeriod: BlockNumber = prod_or_fast!(3 * HOURS, 1 * MINUTES, "CFG_FAST_TRACK_VOTING_PERIOD");
-	pub const InstantAllowed: bool = false;
+	pub const InstantAllowed: bool = true;
 	pub const MinimumDeposit: Balance = 1000 * CFG;
 	pub  EnactmentPeriod: BlockNumber = prod_or_fast!(8 * DAYS, 1 * MINUTES, "CFG_ENACTMENT_PERIOD");
 	pub  CooloffPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_COOLOFF_PERIOD");
@@ -969,7 +969,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	/// A unanimous council can have the next scheduled referendum be a straight
 	/// default-carries (NTB) vote.
-	type ExternalDefaultOrigin = AllOfCouncil;
+	type ExternalDefaultOrigin = EnsureAccountOrRootOr<LpAdminAccount, AllOfCouncil>;
 	/// A simple-majority can have the next scheduled referendum be a straight
 	/// majority-carries vote.
 	type ExternalMajorityOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
@@ -977,10 +977,10 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = HalfOfCouncil;
 	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureRootOr<HalfOfCouncil>;
+	type FastTrackOrigin = EnsureAccountOrRootOr<LpAdminAccount, HalfOfCouncil>;
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 	type InstantAllowed = InstantAllowed;
-	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
+	type InstantOrigin = EnsureAccountOrRootOr<LpAdminAccount, AllOfCouncil>;
 	// Same as EnactmentPeriod
 	/// How often (in blocks) new public referenda are launched.
 	type LaunchPeriod = LaunchPeriod;
@@ -2049,7 +2049,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1505,
+	migrations::UpgradeCentrifuge1507,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
