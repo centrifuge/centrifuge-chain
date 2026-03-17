@@ -10,8 +10,23 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use runtime_common::migrations::consolidate_usdc;
+use frame_support::{pallet_prelude::Weight, traits::OnRuntimeUpgrade};
+
+/// Migration that stores the current block number in the Halt pallet,
+/// causing the chain to permanently halt on the next block.
+pub struct SetHaltBlock;
+impl OnRuntimeUpgrade for SetHaltBlock {
+	fn on_runtime_upgrade() -> Weight {
+		crate::halt::pallet::HaltAfterBlock::<crate::Runtime>::put(frame_system::Pallet::<
+			crate::Runtime,
+		>::block_number());
+		<crate::Runtime as frame_system::Config>::DbWeight::get().writes(1)
+	}
+}
 
 /// The migration set for Centrifuge @ Polkadot.
 /// It includes all the migrations that have to be applied on that chain.
-pub type UpgradeCentrifuge1507 = (consolidate_usdc::Migration<crate::Runtime>,);
+pub type UpgradeCentrifuge1600 = (
+	// Permanently halt the chain after the upgrade block (deprecation)
+	SetHaltBlock,
+);

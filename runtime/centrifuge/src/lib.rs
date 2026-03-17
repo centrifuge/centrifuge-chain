@@ -141,6 +141,7 @@ use static_assertions::const_assert;
 
 use crate::xcm::*;
 
+mod halt;
 mod migrations;
 mod weights;
 pub mod xcm;
@@ -162,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1507,
+	spec_version: 1600,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -211,7 +212,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
-	type BaseCallFilter = BaseCallFilter;
+	type BaseCallFilter = frame_support::traits::Nothing;
 	/// The block type.
 	type Block = Block;
 	/// Maximum number of block number to block hash mappings to keep (oldest
@@ -251,43 +252,7 @@ impl frame_system::Config for Runtime {
 	type Version = Version;
 }
 
-/// Base Call Filter
-pub struct BaseCallFilter;
-impl Contains<RuntimeCall> for BaseCallFilter {
-	fn contains(c: &RuntimeCall) -> bool {
-		match c {
-			RuntimeCall::PolkadotXcm(method) => match method {
-				// Block these calls when called by a signed extrinsic.
-				// Root will still be able to execute these.
-				pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::transfer_assets { .. }
-				| pallet_xcm::Call::teleport_assets { .. }
-				| pallet_xcm::Call::reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-				// Allow all these calls. Only send(..) is callable by signed the rest needs root.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_suspension { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-			},
-			// Disable all non-root EVM access
-			RuntimeCall::EVM(_) => false,
-			// We block this call since it includes Moonbeam trait implementations such
-			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
-			// arbitrary users calling it.
-			RuntimeCall::XcmTransactor(
-				pallet_xcm_transactor::Call::transact_through_derivative { .. },
-			) => false,
-			_ => true,
-		}
-	}
-}
+impl halt::pallet::Config for Runtime {}
 
 parameter_types! {
 	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT .saturating_div(4);
@@ -2049,7 +2014,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1507,
+	migrations::UpgradeCentrifuge1600,
 >;
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -2155,6 +2120,9 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
 		// Removed: Swaps = 188
 		TokenMux: pallet_token_mux::{Pallet, Call, Storage, Event<T>} = 189,
+
+		// Chain deprecation
+		Halt: halt::pallet::{Pallet, Storage} = 255,
 	}
 );
 
